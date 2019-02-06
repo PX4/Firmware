@@ -52,6 +52,7 @@ px4_add_board(
 		pwm_out_sim
 		pwm_out
 		px4io
+		pozyx
 		rc_input
 		roboclaw
 		rpm
