@@ -60,6 +60,10 @@ LandingTargetEstimator::LandingTargetEstimator()
 	_paramHandle.mode = param_find("LTEST_MODE");
 	_paramHandle.scale_x = param_find("LTEST_SCALE_X");
 	_paramHandle.scale_y = param_find("LTEST_SCALE_Y");
+	_paramHandle.offset_x = param_find("LTEST_OFF_X");
+	_paramHandle.offset_y = param_find("LTEST_OFF_Y");
+	_paramHandle.sensor_offset_x = param_find("LTEST_S_OFF_X");
+	_paramHandle.sensor_offset_y = param_find("LTEST_S_OFF_Y");
 
 	_check_params(true);
 }
@@ -98,53 +102,20 @@ void LandingTargetEstimator::update()
 		}
 	}
 
-	if (!_new_irlockReport) {
+	if (!_new_sensorReport) {
 		// nothing to do
 		return;
 	}
 
 	// mark this sensor measurement as consumed
-	_new_irlockReport = false;
-
-	if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid || !_vehicleLocalPosition.dist_bottom_valid) {
-		// don't have the data needed for an update
-		return;
-	}
-
-	if (!PX4_ISFINITE(_irlockReport.pos_y) || !PX4_ISFINITE(_irlockReport.pos_x)) {
-		return;
-	}
-
-	// TODO account for sensor orientation as set by parameter
-	// default orientation has camera x pointing in body y, camera y in body -x
-
-	matrix::Vector<float, 3> sensor_ray; // ray pointing towards target in body frame
-	sensor_ray(0) = -_irlockReport.pos_y * _params.scale_y; // forward
-	sensor_ray(1) = _irlockReport.pos_x * _params.scale_x; // right
-	sensor_ray(2) = 1.0f;
-
-	// rotate the unit ray into the navigation frame, assume sensor frame = body frame
-	matrix::Quaternion<float> q_att(&_vehicleAttitude.q[0]);
-	_R_att = matrix::Dcm<float>(q_att);
-	sensor_ray = _R_att * sensor_ray;
-
-	if (fabsf(sensor_ray(2)) < 1e-6f) {
-		// z component of measurement unsafe, don't use this measurement
-		return;
-	}
-
-	float dist = _vehicleLocalPosition.dist_bottom;
-
-	// scale the ray s.t. the z component has length of dist
-	_rel_pos(0) = sensor_ray(0) / sensor_ray(2) * dist;
-	_rel_pos(1) = sensor_ray(1) / sensor_ray(2) * dist;
+	_new_sensorReport = false;
 
 	if (!_estimator_initialized) {
-		PX4_INFO("Init");
 		float vx_init = _vehicleLocalPosition.v_xy_valid ? -_vehicleLocalPosition.vx : 0.f;
 		float vy_init = _vehicleLocalPosition.v_xy_valid ? -_vehicleLocalPosition.vy : 0.f;
-		_kalman_filter_x.init(_rel_pos(0), vx_init, _params.pos_unc_init, _params.vel_unc_init);
-		_kalman_filter_y.init(_rel_pos(1), vy_init, _params.pos_unc_init, _params.vel_unc_init);
+		PX4_INFO("LTE: Init %.2f %.2f", (double)vx_init, (double)vy_init);
+		_kalman_filter_x.init(_sensor_report.rel_pos_x, vx_init, _params.pos_unc_init, _params.vel_unc_init);
+		_kalman_filter_y.init(_sensor_report.rel_pos_y, vy_init, _params.pos_unc_init, _params.vel_unc_init);
 
 		_estimator_initialized = true;
 		_last_update = hrt_absolute_time();
@@ -152,8 +123,10 @@ void LandingTargetEstimator::update()
 
 	} else {
 		// update
-		bool update_x = _kalman_filter_x.update(_rel_pos(0), _params.meas_unc * dist * dist);
-		bool update_y = _kalman_filter_y.update(_rel_pos(1), _params.meas_unc * dist * dist);
+		bool update_x = _kalman_filter_x.update(_sensor_report.rel_pos_x,
+							_params.meas_unc * _uncertainty_scale * _uncertainty_scale);
+		bool update_y = _kalman_filter_y.update(_sensor_report.rel_pos_y,
+							_params.meas_unc * _uncertainty_scale * _uncertainty_scale);
 
 		if (!update_x || !update_y) {
 			if (!_faulty) {
@@ -168,7 +141,7 @@ void LandingTargetEstimator::update()
 		if (!_faulty) {
 			// only publish if both measurements were good
 
-			_target_pose.timestamp = _irlockReport.timestamp;
+			_target_pose.timestamp = _sensor_report.timestamp;
 
 			float x, xvel, y, yvel, covx, covx_v, covy, covy_v;
 			_kalman_filter_x.getState(x, xvel);
@@ -179,11 +152,24 @@ void LandingTargetEstimator::update()
 
 			_target_pose.is_static = (_params.mode == TargetMode::Stationary);
 
+			// offset the landing target in earth frame
+			x += _params.offset_x;
+			y += _params.offset_y;
+
+			// offset the landing target in body frame
+			matrix::Vector3f off;
+			off(0) = _params.sensor_offset_x;
+			off(1) = _params.sensor_offset_y;
+			off(2) = 0.0f;
+			off = _R_att * off;
+			x += off(0);
+			y += off(1);
+
 			_target_pose.rel_pos_valid = true;
 			_target_pose.rel_vel_valid = true;
 			_target_pose.x_rel = x;
 			_target_pose.y_rel = y;
-			_target_pose.z_rel = dist;
+			_target_pose.z_rel = _sensor_report.rel_pos_z;
 			_target_pose.vx_rel = xvel;
 			_target_pose.vy_rel = yvel;
 
@@ -196,7 +182,7 @@ void LandingTargetEstimator::update()
 			if (_vehicleLocalPosition_valid && _vehicleLocalPosition.xy_valid) {
 				_target_pose.x_abs = x + _vehicleLocalPosition.x;
 				_target_pose.y_abs = y + _vehicleLocalPosition.y;
-				_target_pose.z_abs = dist + _vehicleLocalPosition.z;
+				_target_pose.z_abs = _sensor_report.rel_pos_z + _vehicleLocalPosition.z;
 				_target_pose.abs_pos_valid = true;
 
 			} else {
@@ -213,7 +199,7 @@ void LandingTargetEstimator::update()
 		_kalman_filter_x.getInnovations(innov_x, innov_cov_x);
 		_kalman_filter_y.getInnovations(innov_y, innov_cov_y);
 
-		_target_innovations.timestamp = _irlockReport.timestamp;
+		_target_innovations.timestamp = _sensor_report.timestamp;
 		_target_innovations.innov_x = innov_x;
 		_target_innovations.innov_cov_x = innov_cov_x;
 		_target_innovations.innov_y = innov_y;
@@ -238,6 +224,78 @@ void LandingTargetEstimator::_update_topics()
 	_vehicleLocalPosition_valid = _vehicleLocalPositionSub.update(&_vehicleLocalPosition);
 	_vehicleAttitude_valid = _attitudeSub.update(&_vehicleAttitude);
 	_vehicle_acceleration_valid = _vehicle_acceleration_sub.update(&_vehicle_acceleration);
+	_sensorBias_valid = _sensorBiasSub.update(&_sensorBias);
+
+	if (_irlockReportSub.update(&_irlockReport)) {
+		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid || !_vehicleLocalPosition.dist_bottom_valid) {
+			// don't have the data needed for an update
+			return;
+		}
+
+		if (!PX4_ISFINITE(_irlockReport.pos_y) || !PX4_ISFINITE(_irlockReport.pos_x)) {
+			return;
+		}
+
+		// TODO account for sensor orientation as set by parameter
+		// default orientation has camera x pointing in body y, camera y in body -x
+
+		matrix::Vector<float, 3> sensor_ray; // ray pointing towards target in body frame
+		sensor_ray(0) = -_irlockReport.pos_y * _params.scale_y; // forward
+		sensor_ray(1) = _irlockReport.pos_x * _params.scale_x; // right
+		sensor_ray(2) = 1.0f;
+
+		// rotate the unit ray into the navigation frame, assume sensor frame = body frame
+		matrix::Quaternion<float> q_att(&_vehicleAttitude.q[0]);
+		_R_att = matrix::Dcm<float>(q_att);
+		sensor_ray = _R_att * sensor_ray;
+
+		if (fabsf(sensor_ray(2)) < 1e-6f) {
+			// z component of measurement unsafe, don't use this measurement
+			return;
+		}
+
+		_new_sensorReport = true;
+		_uncertainty_scale = _vehicleLocalPosition.dist_bottom;
+
+		// scale the ray s.t. the z component has length of dist
+		_sensor_report.timestamp = _irlockReport.timestamp;
+		_sensor_report.rel_pos_x = sensor_ray(0) / sensor_ray(2) * _uncertainty_scale;
+		_sensor_report.rel_pos_y = sensor_ray(1) / sensor_ray(2) * _uncertainty_scale;
+		_sensor_report.rel_pos_z = _uncertainty_scale;
+	}
+
+	if (_pozyxReportSub.update(&_pozyxReport)) {
+		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid) {
+			// don't have the data needed for an update
+			return;
+		}
+
+		if (!PX4_ISFINITE(_pozyxReport.pos_y) || !PX4_ISFINITE(_pozyxReport.pos_x) ||
+		    !PX4_ISFINITE(_pozyxReport.pos_z)) {
+			return;
+		}
+
+		_new_sensorReport = true;
+		_uncertainty_scale = 1.0f;
+
+		// we're assuming the coordinate system is NEU
+		// to get the position relative to use we just need to negate x and y
+		_sensor_report.timestamp = _pozyxReport.timestamp;
+		_sensor_report.rel_pos_x = -_pozyxReport.pos_x;
+		_sensor_report.rel_pos_y = -_pozyxReport.pos_y;
+		_sensor_report.rel_pos_z = _pozyxReport.pos_z;
+	}
+}
+
+
+bool LandingTargetEstimator::_orb_update(const struct orb_metadata *meta, int handle, void *buffer)
+{
+	bool newData = false;
+
+	// check if there is new data to grab
+	if (orb_check(handle, &newData) != OK) {
+		return false;
+	}
 
 	_new_irlockReport = _irlockReportSub.update(&_irlockReport);
 }
@@ -255,6 +313,10 @@ void LandingTargetEstimator::_update_params()
 
 	param_get(_paramHandle.scale_x, &_params.scale_x);
 	param_get(_paramHandle.scale_y, &_params.scale_y);
+	param_get(_paramHandle.offset_x, &_params.offset_x);
+	param_get(_paramHandle.offset_y, &_params.offset_y);
+	param_get(_paramHandle.sensor_offset_x, &_params.sensor_offset_x);
+	param_get(_paramHandle.sensor_offset_y, &_params.sensor_offset_y);
 }
 
 

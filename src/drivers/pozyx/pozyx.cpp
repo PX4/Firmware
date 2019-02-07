@@ -88,13 +88,36 @@ private:
 	uint8_t 	_msg_len;
 	uint8_t 	_msg_chksum;
 
+	/**
+	 * Trampoline to the worker task
+	 */
 	static void task_main_trampoline(int argc, char *argv[]);
+
+	/**
+	 * worker task
+	 */
 	void task_main();
 
+	/**
+	 * Ringbuffer: Increase _tail index by one
+	 */
 	uint8_t get_next_index(uint8_t current);
+
+	/**
+	 * Ringbuffer: Return next byte
+	 */
 	uint8_t get_next_byte();
+
+	/**
+	 * Reads and parses data from serial
+	 */
 	bool read_and_parse(uint8_t *buf, int len);
+
+	/**
+	 * publish uORB message
+	 */
 	void send_pozyx_report(struct pozyx_position_s &pozyx_position);
+
 };
 
 namespace pozyx
@@ -118,6 +141,7 @@ Pozyx::Pozyx(const char *port) :
 {
 	/* store port name */
 	strncpy(_port, port, sizeof(_port));
+
 	/* enforce null termination */
 	_port[sizeof(_port) - 1] = '\0';
 
@@ -263,7 +287,7 @@ Pozyx::start()
 	_task_handle = px4_task_spawn_cmd("pozyx",
 					  SCHED_DEFAULT,
 					  SCHED_PRIORITY_MAX - 30,
-					  800,
+					  1500,
 					  (px4_main_t)&Pozyx::task_main_trampoline,
 					  nullptr);
 
@@ -297,8 +321,6 @@ Pozyx::get_next_byte()
 bool
 Pozyx::read_and_parse(uint8_t *buf, int len)
 {
-	printf("parsing");
-
 	// write new data into a ring buffer
 	for (int i = 0; i < len; i++) {
 		_head++;
@@ -438,7 +460,7 @@ Pozyx::send_pozyx_report(struct pozyx_position_s &pozyx_position)
 	pozyx_report.pos_y = 0.001f * pozyx_position.y;
 	pozyx_report.pos_z = 0.001f * pozyx_position.z;
 	pozyx_report.cov_xy = pozyx_position.position_error;
-	//PX4_WARN("pos %d %d %d", pozyx_report.cov_xy, pozyx_position.x, pozyx_position.y);
+	//PX4_WARN("pos %d %d %d", pozyx_report.x, pozyx_position.y, pozyx_position.z);
 	orb_publish(ORB_ID(pozyx_report), _pozyx_report_topic, &pozyx_report);
 }
 
@@ -446,6 +468,14 @@ void
 Pozyx::task_main()
 {
 	int fd = px4_open(_port, O_RDWR | O_NOCTTY);
+
+	if (fd < 0) {
+		PX4_WARN("serial port not open");
+	}
+
+	if (!isatty(fd)) {
+		PX4_WARN("not a serial device");
+	}
 
 	// we poll on data from the serial port
 	px4_pollfd_struct_t fds[1];
@@ -460,7 +490,7 @@ Pozyx::task_main()
 
 		// timed out
 		if (pret == 0) {
-			printf("Serial Timeout \n");
+			//printf("Serial Timeout \n");
 			continue;
 		}
 
@@ -488,6 +518,7 @@ Pozyx::task_main()
 
 int pozyx_main(int argc, char *argv[])
 {
+
 	/*
 	 * Start/load the driver.
 	 */
