@@ -452,6 +452,215 @@ bool Logger::copy_if_updated(int sub_idx, void *buffer, bool try_to_subscribe)
 	return updated;
 }
 
+<<<<<<< HEAD
+=======
+void Logger::add_default_topics()
+{
+	add_topic("actuator_controls_0", 100);
+	add_topic("actuator_controls_1", 100);
+	add_topic("airspeed", 200);
+	add_topic("airspeed_validated", 200);
+	add_topic("camera_capture");
+	add_topic("camera_trigger");
+	add_topic("camera_trigger_secondary");
+	add_topic("cpuload");
+	add_topic("estimator_innovations", 200);
+	add_topic("estimator_innovation_variances", 200);
+	add_topic("estimator_innovation_test_ratios", 200);
+	add_topic("ekf_gps_drift");
+	add_topic("esc_status", 250);
+	add_topic("estimator_status", 200);
+	add_topic("home_position");
+	add_topic("input_rc", 200);
+	add_topic("manual_control_setpoint", 200);
+	add_topic("mission");
+	add_topic("mission_result");
+	add_topic("optical_flow", 50);
+	add_topic("position_controller_status", 500);
+	add_topic("position_setpoint_triplet", 200);
+	add_topic("radio_status");
+	add_topic("rate_ctrl_status", 200);
+	add_topic("sensor_combined", 100);
+	add_topic("sensor_preflight", 200);
+	add_topic("system_power", 500);
+	add_topic("tecs_status", 200);
+	add_topic("trajectory_setpoint", 200);
+	add_topic("vehicle_air_data", 200);
+	add_topic("vehicle_angular_velocity", 20);
+	add_topic("vehicle_attitude", 50);
+	add_topic("vehicle_attitude_setpoint", 100);
+	add_topic("vehicle_command");
+	add_topic("vehicle_global_position", 200);
+	add_topic("vehicle_land_detected");
+	add_topic("vehicle_local_position", 100);
+	add_topic("vehicle_local_position_setpoint", 100);
+	add_topic("vehicle_magnetometer", 200);
+	add_topic("vehicle_rates_setpoint", 20);
+	add_topic("vehicle_status", 200);
+	add_topic("vehicle_status_flags");
+	add_topic("vtol_vehicle_status", 200);
+	add_topic("pozyx_report");
+
+	add_topic_multi("actuator_outputs", 100);
+	add_topic_multi("battery_status", 500);
+	add_topic_multi("distance_sensor", 100);
+	add_topic_multi("sensor_accel_status", 1000);
+	add_topic_multi("sensor_gyro_status", 1000);
+	add_topic_multi("telemetry_status");
+	add_topic_multi("vehicle_gps_position");
+	add_topic_multi("wind_estimate", 200);
+
+#ifdef CONFIG_ARCH_BOARD_PX4_SITL
+
+	add_topic("actuator_controls_virtual_fw");
+	add_topic("actuator_controls_virtual_mc");
+	add_topic("fw_virtual_attitude_setpoint");
+	add_topic("mc_virtual_attitude_setpoint");
+	add_topic("offboard_control_mode");
+	add_topic("position_controller_status");
+	add_topic("time_offset");
+	add_topic("vehicle_angular_velocity", 10);
+	add_topic("vehicle_attitude_groundtruth", 10);
+	add_topic("vehicle_global_position_groundtruth", 100);
+	add_topic("vehicle_local_position_groundtruth", 100);
+	add_topic("vehicle_roi");
+
+	add_topic_multi("multirotor_motor_limits");
+
+#endif /* CONFIG_ARCH_BOARD_PX4_SITL */
+}
+
+void Logger::add_high_rate_topics()
+{
+	// maximum rate to analyze fast maneuvers (e.g. for racing)
+	add_topic("actuator_controls_0");
+	add_topic("actuator_outputs");
+	add_topic("manual_control_setpoint");
+	add_topic("rate_ctrl_status");
+	add_topic("sensor_combined");
+	add_topic("vehicle_angular_velocity");
+	add_topic("vehicle_attitude");
+	add_topic("vehicle_attitude_setpoint");
+	add_topic("vehicle_rates_setpoint");
+}
+
+void Logger::add_debug_topics()
+{
+	add_topic("debug_array");
+	add_topic("debug_key_value");
+	add_topic("debug_value");
+	add_topic("debug_vect");
+}
+
+void Logger::add_estimator_replay_topics()
+{
+	// for estimator replay (need to be at full rate)
+	add_topic("ekf2_timestamps");
+	add_topic("ekf_gps_position");
+
+	// current EKF2 subscriptions
+	add_topic("airspeed");
+	add_topic("optical_flow");
+	add_topic("sensor_combined");
+	add_topic("sensor_selection");
+	add_topic("vehicle_air_data");
+	add_topic("vehicle_land_detected");
+	add_topic("vehicle_magnetometer");
+	add_topic("vehicle_status");
+	add_topic("vehicle_visual_odometry");
+	add_topic("vehicle_visual_odometry_aligned");
+	add_topic_multi("distance_sensor");
+	add_topic_multi("vehicle_gps_position");
+}
+
+void Logger::add_thermal_calibration_topics()
+{
+	add_topic_multi("sensor_accel", 100);
+	add_topic_multi("sensor_baro", 100);
+	add_topic_multi("sensor_gyro", 100);
+}
+
+void Logger::add_sensor_comparison_topics()
+{
+	add_topic_multi("sensor_accel", 100);
+	add_topic_multi("sensor_baro", 100);
+	add_topic_multi("sensor_gyro", 100);
+	add_topic_multi("sensor_mag", 100);
+}
+
+void Logger::add_vision_and_avoidance_topics()
+{
+	add_topic("cellular_status", 200);
+	add_topic("collision_constraints");
+	add_topic("obstacle_distance_fused");
+	add_topic("onboard_computer_status", 200);
+	add_topic("vehicle_mocap_odometry", 30);
+	add_topic("vehicle_trajectory_waypoint", 200);
+	add_topic("vehicle_trajectory_waypoint_desired", 200);
+	add_topic("vehicle_visual_odometry", 30);
+}
+
+void Logger::add_system_identification_topics()
+{
+	// for system id need to log imu and controls at full rate
+	add_topic("actuator_controls_0");
+	add_topic("actuator_controls_1");
+	add_topic("sensor_combined");
+}
+
+int Logger::add_topics_from_file(const char *fname)
+{
+	int ntopics = 0;
+
+	/* open the topic list file */
+	FILE *fp = fopen(fname, "r");
+
+	if (fp == nullptr) {
+		return -1;
+	}
+
+	/* call add_topic for each topic line in the file */
+	for (;;) {
+		/* get a line, bail on error/EOF */
+		char line[80];
+		line[0] = '\0';
+
+		if (fgets(line, sizeof(line), fp) == nullptr) {
+			break;
+		}
+
+		/* skip comment lines */
+		if ((strlen(line) < 2) || (line[0] == '#')) {
+			continue;
+		}
+
+		// read line with format: <topic_name>[, <interval>]
+		char topic_name[80];
+		uint32_t interval_ms = 0;
+		int nfields = sscanf(line, "%s %u", topic_name, &interval_ms);
+
+		if (nfields > 0) {
+			int name_len = strlen(topic_name);
+
+			if (name_len > 0 && topic_name[name_len - 1] == ',') {
+				topic_name[name_len - 1] = '\0';
+			}
+
+			/* add topic with specified interval_ms */
+			if (add_topic(topic_name, interval_ms)) {
+				ntopics++;
+
+			} else {
+				PX4_ERR("Failed to add topic %s", topic_name);
+			}
+		}
+	}
+
+	fclose(fp);
+	return ntopics;
+}
+
+>>>>>>> Addedd pozyx_report to logger. Added debug messages.
 const char *Logger::configured_backend_mode() const
 {
 	switch (_writer.backend()) {

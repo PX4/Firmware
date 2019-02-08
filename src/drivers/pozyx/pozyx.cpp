@@ -460,7 +460,7 @@ Pozyx::send_pozyx_report(struct pozyx_position_s &pozyx_position)
 	pozyx_report.pos_y = 0.001f * pozyx_position.y;
 	pozyx_report.pos_z = 0.001f * pozyx_position.z;
 	pozyx_report.cov_xy = pozyx_position.position_error;
-	//PX4_WARN("pos %d %d %d", pozyx_report.x, pozyx_position.y, pozyx_position.z);
+	PX4_WARN("pos Z %d", pozyx_position.z);
 	orb_publish(ORB_ID(pozyx_report), _pozyx_report_topic, &pozyx_report);
 }
 
