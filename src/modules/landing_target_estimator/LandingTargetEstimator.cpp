@@ -285,8 +285,8 @@ void LandingTargetEstimator::_update_topics()
 		_sensor_report.rel_pos_y = -_pozyxReport.pos_y;
 		_sensor_report.rel_pos_z = _pozyxReport.pos_z;
 
-		PX4_WARN("data from pozyx x: %.2f, y: %.2f, z: %.5f", (double)_sensor_report.rel_pos_x,
-			 (double)_sensor_report.rel_pos_y, (double) _sensor_report.rel_pos_z);
+		//PX4_WARN("data from pozyx x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
+		//	 (double)_sensor_report.rel_pos_y);
 	}
 }
 
