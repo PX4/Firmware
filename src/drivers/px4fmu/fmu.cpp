@@ -232,6 +232,7 @@ private:
 	bool		_safety_off;			///< State of the safety button from the subscribed safety topic
 	bool		_safety_btn_off;		///< State of the safety button read from the HW button
 	bool		_safety_disabled;
+	int8_t		_calibration_phase; // 0 - low pwm, 1 - high pwm
 	orb_advert_t		_to_safety;
 	orb_advert_t      _to_mixer_status; 	///< mixer status flags
 
@@ -315,6 +316,7 @@ PX4FMU::PX4FMU(bool run_as_task) :
 	_safety_off(false),
 	_safety_btn_off(false),
 	_safety_disabled(false),
+	_calibration_phase(-1),
 	_to_safety(nullptr),
 	_to_mixer_status(nullptr),
 	_mot_t_max(0.0f),
@@ -1138,19 +1140,6 @@ PX4FMU::cycle()
 
 						poll_id++;
 					}
-
-					/* During ESC calibration, we overwrite the throttle value. */
-					if (i == 0 && _armed.in_esc_calibration_mode) {
-
-						/* Set all controls to 0 */
-						memset(&_controls[i], 0, sizeof(_controls[i]));
-
-						/* except thrust to maximum. */
-						_controls[i].control[actuator_controls_s::INDEX_THROTTLE] = 1.0f;
-
-						/* Switch off the PWM limit ramp for the calibration. */
-						_pwm_limit.state = PWM_LIMIT_STATE_ON;
-					}
 				}
 			}
 		} // poll_fds
@@ -1189,6 +1178,24 @@ PX4FMU::cycle()
 
 				pwm_limit_calc(_throttle_armed, arm_nothrottle(), mixed_num_outputs, _reverse_pwm_mask,
 					       _disarmed_pwm, _min_pwm, _max_pwm, outputs, pwm_limited, &_pwm_limit);
+
+				/* During ESC calibration, we overwrite the PWM values. */
+				if (_armed.in_esc_calibration_mode) {
+					/* For each channel, set PWM to maximum or minimum depending on the calibration phase. */
+					for (size_t i = 0; i < mixed_num_outputs; i++) {
+						if (_calibration_phase == 1) {
+							pwm_limited[i] = _max_pwm[i];
+
+						} else if (_calibration_phase == 0) {
+							// set PWM a bit smaller than MIN PWM to ensure the motors are spinning at MIN PWM
+							pwm_limited[i] = _min_pwm[i] - 25;
+
+							if (pwm_limited[i] < _disarmed_pwm[i]) {
+								pwm_limited[i] = _disarmed_pwm[i];
+							}
+						}
+					}
+				}
 
 				/* overwrite outputs in case of force_failsafe with _failsafe_pwm PWM values */
 				if (_armed.force_failsafe) {
@@ -1521,6 +1528,14 @@ PX4FMU::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			update_pwm_out_state(false);
 		}
 
+		break;
+
+	case PWM_SERVO_SET_CAL_LOW:
+		_calibration_phase = 0;
+		break;
+
+	case PWM_SERVO_SET_CAL_HIGH:
+		_calibration_phase = 1;
 		break;
 
 	case PWM_SERVO_GET_DEFAULT_UPDATE_RATE:

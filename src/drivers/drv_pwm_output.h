@@ -273,6 +273,12 @@ struct pwm_output_rc_config {
 #define PWM_SERVO_EXIT_TEST_MODE   18
 #define PWM_SERVO_SET_MODE         _PX4_IOC(_PWM_SERVO_BASE, 34)
 
+/** set calibration low pwm */
+#define PWM_SERVO_SET_CAL_LOW			_PX4_IOC(_PWM_SERVO_BASE, 35)
+
+/** set calibration high pwm */
+#define PWM_SERVO_SET_CAL_HIGH			_PX4_IOC(_PWM_SERVO_BASE, 36)
+
 /*
  *
  *

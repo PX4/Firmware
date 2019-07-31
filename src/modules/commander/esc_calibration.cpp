@@ -101,7 +101,8 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *a
 	bool	batt_connected = true;	// for safety resons assume battery is connected, will be cleared below if not the case
 
 	hrt_abstime battery_connect_wait_timeout = 20_s;
-	hrt_abstime pwm_high_timeout = 3_s;
+	hrt_abstime pwm_high_timeout = 5_s;
+	hrt_abstime pwm_low_timeout = 5_s;
 	hrt_abstime timeout_start = 0;
 
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
@@ -154,6 +155,12 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *a
 		goto Error;
 	}
 
+	/* tell IO to switch to the calibration high pwm phase */
+	if (px4_ioctl(fd, PWM_SERVO_SET_CAL_HIGH, 0) != PX4_OK) {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to switch to to calibration high pwm phase");
+		goto Error;
+	}
+
 	calibration_log_info(mavlink_log_pub, "[cal] Connect battery now");
 
 	timeout_start = hrt_absolute_time();
@@ -186,6 +193,30 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *a
 					calibration_log_info(mavlink_log_pub, "[cal] Battery connected");
 				}
 			}
+		}
+
+		px4_usleep(50_ms);
+	}
+
+	/* tell IO to switch to the calibration low pwm phase */
+	if (px4_ioctl(fd, PWM_SERVO_SET_CAL_LOW, 0) != PX4_OK) {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to switch to to calibration low pwm phase");
+		goto Error;
+	}
+
+	timeout_start = hrt_absolute_time();
+
+	while (true) {
+		// We are waiting to let the PWM sit low.
+
+		if (hrt_absolute_time() - timeout_start > pwm_low_timeout) {
+			if (!batt_connected) {
+				calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Timeout waiting for battery");
+				goto Error;
+			}
+
+			// PWM was low long enough
+			break;
 		}
 
 		px4_usleep(50_ms);
