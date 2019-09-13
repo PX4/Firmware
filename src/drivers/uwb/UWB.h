@@ -40,6 +40,8 @@
 #include <sys/time.h>
 #include <px4_module.h>
 #include <perf/perf_counter.h>
+#include <uORB/Publication.hpp>
+#include <uORB/topics/pozyx_report.h>
 
 const uint8_t GRID_UUID[16] = {0x68, 0x91, 0xb6, 0x1c, 0x43, 0xd5, 0xb8, 0x33, 0xb4, 0xec, 0x46, 0x80, 0x7a, 0x31, 0x69, 0xe3};
 const uint8_t BLANK_UUID[16] = {};
@@ -104,6 +106,9 @@ private:
 	perf_counter_t _time_perf;
 	perf_counter_t _read_count_perf;
 	perf_counter_t _read_err_perf;
+
+	uORB::Publication<pozyx_report_s> _pozyx_pub{ORB_ID(pozyx_report)};
+	pozyx_report_s _pozyx_report{};
 };
 
 

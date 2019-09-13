@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <systemlib/err.h>
+#include <drivers/drv_hrt.h>
 
 extern "C" __EXPORT int uwb_main(int argc, char *argv[]);
 
@@ -119,24 +120,14 @@ UWB::~UWB()
 
 void UWB::run()
 {
-
-	for (int i = 3; i > 0; i--) {
-		PX4_INFO("%d...", i);
-		px4_sleep(1);
-	}
-
-//	printf("UUID Reversed: [");
-//	uint8_t grid_uuid_reversed[sizeof(GRID_UUID)];
-//	for(size_t i = 0; i < sizeof(GRID_UUID); i++){
-//		grid_uuid_reversed[i] = GRID_UUID[sizeof(GRID_UUID) - i - 1];
-//		printf("0x%02X, ", grid_uuid_reversed[i]);
-//	}
-//	printf("]\n");
-
 	uint8_t command[sizeof(CMD_START_RANGING) + sizeof(GRID_UUID)];
 	memcpy(&command[0], CMD_PURE_RANGING, sizeof(CMD_START_RANGING));
 	memcpy(&command[sizeof(CMD_START_RANGING)], GRID_UUID, sizeof(GRID_UUID));
-	write(_uart, command, sizeof(command));
+	int written = write(_uart, command, sizeof(command));
+
+	if (written < (int) sizeof(command)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(command));
+	}
 
 	px4_sleep(1);
 
@@ -148,7 +139,6 @@ void UWB::run()
 	perf_begin(_time_perf);
 
 	while (!should_exit()) {
-		//write(_uart, command, sizeof(command));
 
 		FD_ZERO(&_uart_set);
 		FD_SET(_uart, &_uart_set);
@@ -157,8 +147,17 @@ void UWB::run()
 
 		size_t buffer_location = 0;
 
-		// Experimentally I get one message about every 37ms.
-		while (buffer_location < sizeof(data.buffer) - 1
+		// Messages are only delimited by time. There is a chance that this driver starts up in the middle
+		// of a message, with no way to know this other than time. There is also always the possibility of
+		// transmission errors causing a dropped byte.
+		// Here is the process for dealing with that:
+		//  - Wait up to 1 second to start receiving a message
+		//  - Once receiving a message, keep going until EITHER:
+		//    - There is too large of a gap between bytes (Currently set to 5ms).
+		//      This means the message is incomplete. Throw it out and start over.
+		//    - 51 bytes are received (the size of the whole message).
+		//
+		while (buffer_location < sizeof(data.buffer)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
 			int bytes_read = read(_uart, &data.buffer[buffer_location], sizeof(data.buffer) - buffer_location);
 			buffer_location += bytes_read;
@@ -166,20 +165,34 @@ void UWB::run()
 			FD_ZERO(&_uart_set);
 			FD_SET(_uart, &_uart_set);
 			_uart_timeout.tv_sec = 0;
-			//_uart_timeout.tv_usec = 70; // In an ideal world...
-			_uart_timeout.tv_usec = 10000;
+			// Setting this timeout too high (> 37ms) will cause problems because the next message will start
+			//  coming in, and overlap with the current message.
+			// Setting this timeout too low (< 1ms) will cause problems because there is some delay between
+			//  the individual bytes of a message, and a too-short timeout will cause the message to be truncated.
+			// The current value of 5ms was found experimentally to never cut off a message prematurely.
+			// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
+			// because if this process is waiting, it means that the last message was incomplete, so there is no current
+			// data waiting to be published. But we would rather set this timeout lower in case the UWB board is
+			// updated to publish data faster.
+			_uart_timeout.tv_usec = 5000;
 		}
 
 		perf_count(_read_count_perf);
 
-		if (buffer_location == sizeof(position_msg_t)) {
+		if (buffer_location == sizeof(position_msg_t) && data.msg.status == 0x00) {
 
-			PX4_INFO("Total bytes read: %d", (int) buffer_location);
-			PX4_INFO("Status: 0x%02X. Pos: (%.4f, %.4f, %.4f)", data.msg.status, (double) data.msg.pos_x, (double) data.msg.pos_y,
-				 (double) data.msg.pos_z);
+//			PX4_INFO("Total bytes read: %d", (int) buffer_location);
+//			PX4_INFO("Status: 0x%02X. Pos: (%.4f, %.4f, %.4f)", data.msg.status, (double) data.msg.pos_x, (double) data.msg.pos_y,
+//				 (double) data.msg.pos_z);
+
+			_pozyx_report.pos_x = data.msg.pos_x / 100.0f;
+			_pozyx_report.pos_y = data.msg.pos_y / 100.0f;
+			_pozyx_report.pos_z = data.msg.pos_z / 100.0f;
+			_pozyx_report.timestamp = hrt_absolute_time();
+			_pozyx_pub.publish(_pozyx_report);
 
 		} else {
-			PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));
+			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));
 			perf_count(_read_err_perf);
 		}
 
@@ -189,7 +202,12 @@ void UWB::run()
 	perf_end(_time_perf);
 
 	memcpy(&command[0], CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
-	write(_uart, &command[0], sizeof(command));
+	written = write(_uart, &command[0], sizeof(command));
+
+	if (written < (int) sizeof(command)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(command));
+	}
+
 }
 
 int UWB::custom_command(int argc, char *argv[])
