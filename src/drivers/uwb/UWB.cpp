@@ -137,6 +137,7 @@ void UWB::run()
 	} data;
 
 	perf_begin(_time_perf);
+	perf_end(_time_perf);
 
 	while (!should_exit()) {
 
@@ -179,7 +180,13 @@ void UWB::run()
 
 		perf_count(_read_count_perf);
 
-		if (buffer_location == sizeof(position_msg_t) && data.msg.status == 0x00) {
+		bool ok = buffer_location == sizeof(position_msg_t) && data.msg.status == 0x00;
+
+		ok &= abs(data.msg.pos_x) < 100000.0f;
+		ok &= abs(data.msg.pos_y) < 100000.0f;
+		ok &= abs(data.msg.pos_z) < 100000.0f;
+
+		if (ok) {
 
 //			PX4_INFO("Total bytes read: %d", (int) buffer_location);
 //			PX4_INFO("Status: 0x%02X. Pos: (%.4f, %.4f, %.4f)", data.msg.status, (double) data.msg.pos_x, (double) data.msg.pos_y,
@@ -199,7 +206,7 @@ void UWB::run()
 		//px4_sleep(1);
 	}
 
-	perf_end(_time_perf);
+	//perf_end(_time_perf);
 
 	memcpy(&command[0], CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
 	written = write(_uart, &command[0], sizeof(command));
