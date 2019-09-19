@@ -43,9 +43,6 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/pozyx_report.h>
 
-// TODO: This UUID was used for testing. It should be removed before this driver is finished.
-//const uint8_t GRID_UUID[16] = {0x68, 0x91, 0xb6, 0x1c, 0x43, 0xd5, 0xb8, 0x33, 0xb4, 0xec, 0x46, 0x80, 0x7a, 0x31, 0x69, 0xe3};
-
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
 // is unused. In the following constants, the UUID is automatically initialized to all 0s.
 const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
@@ -56,6 +53,7 @@ const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
 // TODO: Determine how to fill the UUID field in this command.
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
 
+// This is the message sent back from the UWB module, as defined in the documentation.
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for position result message
 	uint8_t sub_cmd;  	// Should be 0x01 for position result message
@@ -76,7 +74,7 @@ typedef struct {
 class UWB : public ModuleBase<UWB>
 {
 public:
-	UWB(const char *device_name, int baudrate);
+	UWB(const char *device_name);
 
 	~UWB();
 
@@ -103,10 +101,7 @@ private:
 
 	int _uart;
 	fd_set _uart_set;
-	struct timeval _uart_timeout {
-		.tv_sec = 1,
-		.tv_usec = 0
-	};
+	struct timeval _uart_timeout {};
 
 	perf_counter_t _read_count_perf;
 	perf_counter_t _read_err_perf;

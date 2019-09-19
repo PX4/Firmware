@@ -51,53 +51,16 @@
 #define MESSAGE_TIMEOUT_US 1000000
 
 // The current version of the UWB software is locked to 115200 baud.
-#define DEFAULT_BAUD 115200
+#define DEFAULT_BAUD B115200
 
 extern "C" __EXPORT int uwb_main(int argc, char *argv[]);
 
-UWB::UWB(const char *device_name, int baudrate):
+UWB::UWB(const char *device_name):
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_err"))
 {
 
-	speed_t baud = B115200;
-
-	switch (baudrate) {
-	case 9600:
-		baud = B9600;
-		break;
-
-	case 19200:
-		baud = B19200;
-		break;
-
-	case 38400:
-		baud = B38400;
-		break;
-
-	case 57600:
-		baud = B57600;
-		break;
-
-	case 115200:
-		baud = B115200;
-		break;
-
-	case 460800:
-		baud = B460800;
-		break;
-
-	case 500000:
-		baud = B500000;
-		break;
-
-	case 921600:
-		baud = B921600;
-		break;
-
-	default:
-		err(1, "%d is not a valid baud rate.", baudrate);
-	}
+	speed_t baud = DEFAULT_BAUD;
 
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
@@ -247,16 +210,11 @@ whenever the RDDrone has a position measurement available.
 
 ### Example
 
-Start the driver with a given baud rate:
+Start the driver with a given device:
 
-$ uwb start -b 115200 -d /dev/ttyS2
-
-Start the driver with the value of the `TELEM2_BAUD` parameter:
-
-$ uwb start -b p:TELEM2_BAUD -d /dev/ttyS2
+$ uwb start -d /dev/ttyS2
 	)DESC_STR");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_PARAM_INT('b', DEFAULT_BAUD, 9600, 921600, "Baud rate for serial communication with UWB", true);
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("status");
@@ -290,18 +248,9 @@ UWB *UWB::instantiate(int argc, char *argv[])
 	const char *option_arg;
 	const char *device_name = nullptr;
 	bool error_flag = false;
-	int baudrate = DEFAULT_BAUD;
 
-	while ((ch = px4_getopt(argc, argv, "b:d:", &option_index, &option_arg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "d:", &option_index, &option_arg)) != EOF) {
 		switch (ch) {
-		case 'b':
-			if (px4_get_parameter_value(option_arg, baudrate) != 0) {
-				PX4_ERR("Error parsing \"%s\"", option_arg);
-				error_flag = true;
-			}
-
-			break;
-
 		case 'd':
 			device_name = option_arg;
 			break;
@@ -318,26 +267,13 @@ UWB *UWB::instantiate(int argc, char *argv[])
 		error_flag = true;
 	}
 
-	if (!error_flag && baudrate == 0) {
-		print_usage("Baudrate not provided.");
-		error_flag = true;
-	}
-
-	// Right now, the UWB board runs at 115200 baud, with no option to change.
-	// However, the way other serial drivers are configured, they take a baudrate argument.
-	// To keep this consistent, I accept that parameter, but give an error if it is set wrong.
-	// TODO: To whomever reviews this: Is it better to just not accept this command line parameter at all?
-	if (baudrate != DEFAULT_BAUD) {
-		PX4_WARN("Starting UWB driver with baudrate other than default %d", DEFAULT_BAUD);
-	}
-
 	if (error_flag) {
 		PX4_WARN("Failed to start UWB driver.");
 		return nullptr;
 
 	} else {
-		PX4_INFO("Constructing UWB. Device: %s, Baud: %d", device_name, baudrate);
-		return new UWB(device_name, baudrate);
+		PX4_INFO("Constructing UWB. Device: %s", device_name);
+		return new UWB(device_name);
 	}
 }
 
