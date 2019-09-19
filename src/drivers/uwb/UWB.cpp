@@ -40,10 +40,22 @@
 #include <systemlib/err.h>
 #include <drivers/drv_hrt.h>
 
+// Timeout between bytes. If there is more time than this between bytes, then this driver assumes
+// that it is the boundary between messages.
+// See UWB::run() for more detailed explanation.
+#define BYTE_TIMEOUT_US 5000
+
+// Amount of time to wait for a new message. If more time than this passes between messages, then this
+// driver assumes that the UWB module is disconnected.
+// (Right now it does not do anything about this)
+#define MESSAGE_TIMEOUT_US 1000000
+
+// The current version of the UWB software is locked to 115200 baud.
+#define DEFAULT_BAUD 115200
+
 extern "C" __EXPORT int uwb_main(int argc, char *argv[]);
 
 UWB::UWB(const char *device_name, int baudrate):
-	_time_perf(perf_alloc(PC_ELAPSED, "uwb_time")),
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_err"))
 {
@@ -115,36 +127,30 @@ UWB::UWB(const char *device_name, int baudrate):
 
 UWB::~UWB()
 {
+	perf_free(_read_err_perf);
+	perf_free(_read_count_perf);
 
+	close(_uart);
 }
 
 void UWB::run()
 {
-	uint8_t command[sizeof(CMD_START_RANGING) + sizeof(GRID_UUID)];
-	memcpy(&command[0], CMD_PURE_RANGING, sizeof(CMD_START_RANGING));
-	memcpy(&command[sizeof(CMD_START_RANGING)], GRID_UUID, sizeof(GRID_UUID));
-	int written = write(_uart, command, sizeof(command));
+	int written = write(_uart, CMD_PURE_RANGING, sizeof(CMD_PURE_RANGING));
 
-	if (written < (int) sizeof(command)) {
-		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(command));
+	if (written < (int) sizeof(CMD_PURE_RANGING)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_PURE_RANGING));
 	}
 
-	px4_sleep(1);
+	position_msg_t msg;
+	uint8_t *buffer = (uint8_t *) &msg;
 
-	union {
-		position_msg_t msg;
-		uint8_t buffer[sizeof(position_msg_t)];
-	} data;
-
-	perf_begin(_time_perf);
-	perf_end(_time_perf);
 
 	while (!should_exit()) {
 
 		FD_ZERO(&_uart_set);
 		FD_SET(_uart, &_uart_set);
-		_uart_timeout.tv_sec = 1;
-		_uart_timeout.tv_usec = 0;
+		_uart_timeout.tv_sec = 0;
+		_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
 
 		size_t buffer_location = 0;
 
@@ -157,11 +163,16 @@ void UWB::run()
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
 		//    - 51 bytes are received (the size of the whole message).
-		//
-		while (buffer_location < sizeof(data.buffer)
+		while (buffer_location < sizeof(msg)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
-			int bytes_read = read(_uart, &data.buffer[buffer_location], sizeof(data.buffer) - buffer_location);
-			buffer_location += bytes_read;
+			int bytes_read = read(_uart, &buffer[buffer_location], sizeof(msg) - buffer_location);
+
+			if (bytes_read > 0) {
+				buffer_location += bytes_read;
+
+			} else {
+				break;
+			}
 
 			FD_ZERO(&_uart_set);
 			FD_SET(_uart, &_uart_set);
@@ -175,44 +186,43 @@ void UWB::run()
 			// because if this process is waiting, it means that the last message was incomplete, so there is no current
 			// data waiting to be published. But we would rather set this timeout lower in case the UWB board is
 			// updated to publish data faster.
-			_uart_timeout.tv_usec = 5000;
+			_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
 		}
 
 		perf_count(_read_count_perf);
 
-		bool ok = buffer_location == sizeof(position_msg_t) && data.msg.status == 0x00;
+		// All of the following criteria must be met for the message to be acceptable:
+		//  - Size of message == sizeof(position_msg_t) (51 bytes)
+		//  - status == 0x00
+		//  - Values of all 3 position measurements are reasonable
+		//      (If one or more anchors is missed, then position might be an unreasonably large number.)
+		bool ok = buffer_location == sizeof(position_msg_t) && msg.status == 0x00;
 
-		ok &= abs(data.msg.pos_x) < 100000.0f;
-		ok &= abs(data.msg.pos_y) < 100000.0f;
-		ok &= abs(data.msg.pos_z) < 100000.0f;
+		ok &= abs(msg.pos_x) < 100000.0f;
+		ok &= abs(msg.pos_y) < 100000.0f;
+		ok &= abs(msg.pos_z) < 100000.0f;
 
 		if (ok) {
-
-//			PX4_INFO("Total bytes read: %d", (int) buffer_location);
-//			PX4_INFO("Status: 0x%02X. Pos: (%.4f, %.4f, %.4f)", data.msg.status, (double) data.msg.pos_x, (double) data.msg.pos_y,
-//				 (double) data.msg.pos_z);
-
-			_pozyx_report.pos_x = data.msg.pos_x / 100.0f;
-			_pozyx_report.pos_y = data.msg.pos_y / 100.0f;
-			_pozyx_report.pos_z = data.msg.pos_z / 100.0f;
+			_pozyx_report.pos_x = msg.pos_x / 100.0f;
+			_pozyx_report.pos_y = msg.pos_y / 100.0f;
+			_pozyx_report.pos_z = msg.pos_z / 100.0f;
 			_pozyx_report.timestamp = hrt_absolute_time();
 			_pozyx_pub.publish(_pozyx_report);
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));
 			perf_count(_read_err_perf);
-		}
 
-		//px4_sleep(1);
+			if (buffer_location == 0) {
+				PX4_WARN("UWB module is not responding.");
+			}
+		}
 	}
 
-	//perf_end(_time_perf);
+	written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
 
-	memcpy(&command[0], CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
-	written = write(_uart, &command[0], sizeof(command));
-
-	if (written < (int) sizeof(command)) {
-		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(command));
+	if (written < (int) sizeof(CMD_STOP_RANGING)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_STOP_RANGING));
 	}
 
 }
@@ -228,8 +238,28 @@ int UWB::print_usage(const char *reason)
 		printf("%s\n\n", reason);
 	}
 
-	//TODO: Print module usage and whatnot, which is also documentation
+	PRINT_MODULE_USAGE_NAME("uwb", "driver");
+	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
+### Description
 
+Driver for NXP RDDrone UWB positioning system. This driver publishes a `pozyx_report` message
+whenever the RDDrone has a position measurement available.
+
+### Example
+
+Start the driver with a given baud rate:
+
+$ uwb start -b 115200 -d /dev/ttyS2
+
+Start the driver with the value of the `TELEM2_BAUD` parameter:
+
+$ uwb start -b p:TELEM2_BAUD -d /dev/ttyS2
+	)DESC_STR");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAM_INT('b', DEFAULT_BAUD, 9600, 921600, "Baud rate for serial communication with UWB", true);
+	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
+	PRINT_MODULE_USAGE_COMMAND("stop");
+	PRINT_MODULE_USAGE_COMMAND("status");
 	return 0;
 }
 
@@ -260,7 +290,7 @@ UWB *UWB::instantiate(int argc, char *argv[])
 	const char *option_arg;
 	const char *device_name = nullptr;
 	bool error_flag = false;
-	int baudrate = 115200;
+	int baudrate = DEFAULT_BAUD;
 
 	while ((ch = px4_getopt(argc, argv, "b:d:", &option_index, &option_arg)) != EOF) {
 		switch (ch) {
@@ -291,6 +321,14 @@ UWB *UWB::instantiate(int argc, char *argv[])
 	if (!error_flag && baudrate == 0) {
 		print_usage("Baudrate not provided.");
 		error_flag = true;
+	}
+
+	// Right now, the UWB board runs at 115200 baud, with no option to change.
+	// However, the way other serial drivers are configured, they take a baudrate argument.
+	// To keep this consistent, I accept that parameter, but give an error if it is set wrong.
+	// TODO: To whomever reviews this: Is it better to just not accept this command line parameter at all?
+	if (baudrate != DEFAULT_BAUD) {
+		PX4_WARN("Starting UWB driver with baudrate other than default %d", DEFAULT_BAUD);
 	}
 
 	if (error_flag) {

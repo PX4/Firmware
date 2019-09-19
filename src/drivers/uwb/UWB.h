@@ -43,11 +43,18 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/pozyx_report.h>
 
-const uint8_t GRID_UUID[16] = {0x68, 0x91, 0xb6, 0x1c, 0x43, 0xd5, 0xb8, 0x33, 0xb4, 0xec, 0x46, 0x80, 0x7a, 0x31, 0x69, 0xe3};
-const uint8_t BLANK_UUID[16] = {};
-const uint8_t CMD_START_RANGING[4] = {0x8e, 0x00, 0x11, 0x01};
-const uint8_t CMD_STOP_RANGING[4] = {0x8e, 0x00, 0x11, 0x00};
-const uint8_t CMD_PURE_RANGING[4] = {0x8e, 0x00, 0x11, 0x02};
+// TODO: This UUID was used for testing. It should be removed before this driver is finished.
+//const uint8_t GRID_UUID[16] = {0x68, 0x91, 0xb6, 0x1c, 0x43, 0xd5, 0xb8, 0x33, 0xb4, 0xec, 0x46, 0x80, 0x7a, 0x31, 0x69, 0xe3};
+
+// These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
+// is unused. In the following constants, the UUID is automatically initialized to all 0s.
+const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
+const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
+
+// Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
+// for populating the UUID field.
+// TODO: Determine how to fill the UUID field in this command.
+// const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
 
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for position result message
@@ -94,8 +101,6 @@ public:
 
 private:
 
-	bool _error = false;
-
 	int _uart;
 	fd_set _uart_set;
 	struct timeval _uart_timeout {
@@ -103,7 +108,6 @@ private:
 		.tv_usec = 0
 	};
 
-	perf_counter_t _time_perf;
 	perf_counter_t _read_count_perf;
 	perf_counter_t _read_err_perf;
 
