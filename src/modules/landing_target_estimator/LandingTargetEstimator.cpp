@@ -226,47 +226,49 @@ void LandingTargetEstimator::_update_topics()
 	_vehicle_acceleration_valid = _vehicle_acceleration_sub.update(&_vehicle_acceleration);
 	_sensorBias_valid = _sensorBiasSub.update(&_sensorBias);
 
-	if (_irlockReportSub.update(&_irlockReport)) {
-		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid || !_vehicleLocalPosition.dist_bottom_valid) {
-			// don't have the data needed for an update
-			return;
-		}
-
-		if (!PX4_ISFINITE(_irlockReport.pos_y) || !PX4_ISFINITE(_irlockReport.pos_x)) {
-			return;
-		}
-
-		// TODO account for sensor orientation as set by parameter
-		// default orientation has camera x pointing in body y, camera y in body -x
-
-		matrix::Vector<float, 3> sensor_ray; // ray pointing towards target in body frame
-		sensor_ray(0) = -_irlockReport.pos_y * _params.scale_y; // forward
-		sensor_ray(1) = _irlockReport.pos_x * _params.scale_x; // right
-		sensor_ray(2) = 1.0f;
-
-		// rotate the unit ray into the navigation frame, assume sensor frame = body frame
-		matrix::Quaternion<float> q_att(&_vehicleAttitude.q[0]);
-		_R_att = matrix::Dcm<float>(q_att);
-		sensor_ray = _R_att * sensor_ray;
-
-		if (fabsf(sensor_ray(2)) < 1e-6f) {
-			// z component of measurement unsafe, don't use this measurement
-			return;
-		}
-
-		_new_sensorReport = true;
-		_uncertainty_scale = _vehicleLocalPosition.dist_bottom;
-
-		// scale the ray s.t. the z component has length of dist
-		_sensor_report.timestamp = _irlockReport.timestamp;
-		_sensor_report.rel_pos_x = sensor_ray(0) / sensor_ray(2) * _uncertainty_scale;
-		_sensor_report.rel_pos_y = sensor_ray(1) / sensor_ray(2) * _uncertainty_scale;
-		_sensor_report.rel_pos_z = _uncertainty_scale;
-	}
+	//TODO: Uncomment this so it still works with both IRLock and Pozyx
+//	if (_irlockReportSub.update(&_irlockReport)) {
+//		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid || !_vehicleLocalPosition.dist_bottom_valid) {
+//			// don't have the data needed for an update
+//			return;
+//		}
+//
+//		if (!PX4_ISFINITE(_irlockReport.pos_y) || !PX4_ISFINITE(_irlockReport.pos_x)) {
+//			return;
+//		}
+//
+//		// TODO account for sensor orientation as set by parameter
+//		// default orientation has camera x pointing in body y, camera y in body -x
+//
+//		matrix::Vector<float, 3> sensor_ray; // ray pointing towards target in body frame
+//		sensor_ray(0) = -_irlockReport.pos_y * _params.scale_y; // forward
+//		sensor_ray(1) = _irlockReport.pos_x * _params.scale_x; // right
+//		sensor_ray(2) = 1.0f;
+//
+//		// rotate the unit ray into the navigation frame, assume sensor frame = body frame
+//		matrix::Quaternion<float> q_att(&_vehicleAttitude.q[0]);
+//		_R_att = matrix::Dcm<float>(q_att);
+//		sensor_ray = _R_att * sensor_ray;
+//
+//		if (fabsf(sensor_ray(2)) < 1e-6f) {
+//			// z component of measurement unsafe, don't use this measurement
+//			return;
+//		}
+//
+//		_new_sensorReport = true;
+//		_uncertainty_scale = _vehicleLocalPosition.dist_bottom;
+//
+//		// scale the ray s.t. the z component has length of dist
+//		_sensor_report.timestamp = _irlockReport.timestamp;
+//		_sensor_report.rel_pos_x = sensor_ray(0) / sensor_ray(2) * _uncertainty_scale;
+//		_sensor_report.rel_pos_y = sensor_ray(1) / sensor_ray(2) * _uncertainty_scale;
+//		_sensor_report.rel_pos_z = _uncertainty_scale;
+//	}
 
 	if (_pozyxReportSub.update(&_pozyxReport)) {
 		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid) {
 			// don't have the data needed for an update
+			//PX4_INFO("Attitude: %d, Local pos: %d", _vehicleAttitude_valid, _vehicleLocalPosition_valid);
 			return;
 		}
 
@@ -288,19 +290,6 @@ void LandingTargetEstimator::_update_topics()
 		//PX4_WARN("data from pozyx x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
 		//	 (double)_sensor_report.rel_pos_y);
 	}
-}
-
-
-bool LandingTargetEstimator::_orb_update(const struct orb_metadata *meta, int handle, void *buffer)
-{
-	bool newData = false;
-
-	// check if there is new data to grab
-	if (orb_check(handle, &newData) != OK) {
-		return false;
-	}
-
-	_new_irlockReport = _irlockReportSub.update(&_irlockReport);
 }
 
 void LandingTargetEstimator::_update_params()
