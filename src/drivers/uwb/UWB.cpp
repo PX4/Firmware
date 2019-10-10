@@ -48,7 +48,7 @@
 // Amount of time to wait for a new message. If more time than this passes between messages, then this
 // driver assumes that the UWB module is disconnected.
 // (Right now it does not do anything about this)
-#define MESSAGE_TIMEOUT_US 1000000
+#define MESSAGE_TIMEOUT_US 10000000
 
 // The current version of the UWB software is locked to 115200 baud.
 #define DEFAULT_BAUD B115200
@@ -165,11 +165,12 @@ void UWB::run()
 		ok &= abs(_message.pos_z) < 100000.0f;
 
 		if (ok) {
-//			_pozyx_report.pos_x = msg.pos_x / 100.0f;
-//			_pozyx_report.pos_y = msg.pos_y / 100.0f;
-//			_pozyx_report.pos_z = msg.pos_z / 100.0f;
-//			_pozyx_report.timestamp = hrt_absolute_time();
-//			_pozyx_pub.publish(_pozyx_report);
+			_pozyx_report.pos_x = _message.pos_x ;// / 100.0f;
+			_pozyx_report.pos_y = _message.pos_y ;// / 100.0f;
+			_pozyx_report.pos_z = _message.pos_z ;// / 100.0f;
+			_pozyx_report.timestamp = hrt_absolute_time();
+			_pozyx_pub.publish(_pozyx_report);
+			_attitude_sub.update(&_vehicle_attitude);
 
 			// The end goal of this math is to get the position relative to the landing point in the NED frame.
 			// Current position, in UWB frame
@@ -184,6 +185,16 @@ void UWB::run()
 			//  - Rotate by _uwb_to_nwu to get into the NWU frame
 			//  - Rotate by _nwu_to_ned to get into the NED frame
 			_current_position_ned = _nwu_to_ned * _uwb_to_nwu * (_current_position_uwb - _landing_point);
+
+			_landing_target.timestamp = hrt_absolute_time();
+			_landing_target.rel_pos_valid = true;
+			_landing_target.rel_vel_valid = false;
+			_landing_target.is_static = true;
+			_landing_target.x_rel = -_current_position_ned(0);
+			_landing_target.y_rel = -_current_position_ned(1);
+			_landing_target.z_rel = -_current_position_ned(2);
+
+			_landing_target_pub.publish(_landing_target);
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));

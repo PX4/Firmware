@@ -71,4 +71,4 @@ mc_pos_control start
 land_detector start multicopter
 
 # TODO: Delete this. This is only here for testing.
-landing_target_estimator start
+#landing_target_estimator start

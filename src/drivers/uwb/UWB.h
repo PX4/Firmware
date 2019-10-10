@@ -42,6 +42,9 @@
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/pozyx_report.h>
+#include <uORB/topics/landing_target_pose.h>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/vehicle_attitude.h>
 #include <matrix/math.hpp>
 #include <matrix/Matrix.hpp>
 
@@ -111,11 +114,18 @@ private:
 	uORB::Publication<pozyx_report_s> _pozyx_pub{ORB_ID(pozyx_report)};
 	pozyx_report_s _pozyx_report{};
 
+	uORB::Publication<landing_target_pose_s> _landing_target_pub{ORB_ID(landing_target_pose)};
+	landing_target_pose_s _landing_target{};
+
+	uORB::Subscription _attitude_sub{ORB_ID(vehicle_attitude)};
+	vehicle_attitude_s _vehicle_attitude{};
+
 	position_msg_t _message{};
 
 	matrix::Dcmf _uwb_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	matrix::Vector3f _landing_point{0.0f, 0.0f, 0.0f};
+	// TODO: Delete _landing_point: It should come from the UWB module
+	matrix::Vector3f _landing_point{1.5f, 1.5f, 0.0f};
 	matrix::Vector3f _current_position_uwb;
 	matrix::Vector3f _current_position_ned;
 };
