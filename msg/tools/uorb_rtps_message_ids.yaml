@@ -262,6 +262,8 @@ rtps:
     id: 114
   - msg: airspeed_validated
     id: 115
+  - msg: actuator_status
+    id: 116
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150

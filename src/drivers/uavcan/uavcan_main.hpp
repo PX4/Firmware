@@ -64,6 +64,7 @@
 
 #include "actuators/esc.hpp"
 #include "actuators/hardpoint.hpp"
+#include "actuators/servo.hpp"
 #include "sensors/sensor_bridge.hpp"
 
 #include "uavcan_servers.hpp"
@@ -185,6 +186,7 @@ private:
 	px4_sem_t			_server_command_sem;
 	UavcanEscController		_esc_controller;
 	UavcanHardpointController	_hardpoint_controller;
+	UavcanServoController           _servo_controller;
 	uavcan::GlobalTimeSyncMaster	_time_sync_master;
 	uavcan::GlobalTimeSyncSlave	_time_sync_slave;
 	uavcan::NodeStatusMonitor	_node_status_monitor;
@@ -233,4 +235,7 @@ private:
 	void cb_opcode(const uavcan::ServiceCallResult<uavcan::protocol::param::ExecuteOpcode> &result);
 	void cb_restart(const uavcan::ServiceCallResult<uavcan::protocol::RestartNode> &result);
 
+	void get_mixer_mapping();
+	int _esc_channel_map {0};
+	int _servo_channel_map {0};
 };
