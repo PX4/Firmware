@@ -42,6 +42,8 @@
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/pozyx_report.h>
+#include <matrix/math.hpp>
+#include <matrix/Matrix.hpp>
 
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
 // is unused. In the following constants, the UUID is automatically initialized to all 0s.
@@ -108,6 +110,14 @@ private:
 
 	uORB::Publication<pozyx_report_s> _pozyx_pub{ORB_ID(pozyx_report)};
 	pozyx_report_s _pozyx_report{};
+
+	position_msg_t _message{};
+
+	matrix::Dcmf _uwb_to_nwu;
+	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
+	matrix::Vector3f _landing_point{0.0f, 0.0f, 0.0f};
+	matrix::Vector3f _current_position_uwb;
+	matrix::Vector3f _current_position_ned;
 };
 
 

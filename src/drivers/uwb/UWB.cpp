@@ -104,8 +104,7 @@ void UWB::run()
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_PURE_RANGING));
 	}
 
-	position_msg_t msg;
-	uint8_t *buffer = (uint8_t *) &msg;
+	uint8_t *buffer = (uint8_t *) &_message;
 
 
 	while (!should_exit()) {
@@ -126,9 +125,9 @@ void UWB::run()
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
 		//    - 51 bytes are received (the size of the whole message).
-		while (buffer_location < sizeof(msg)
+		while (buffer_location < sizeof(_message)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
-			int bytes_read = read(_uart, &buffer[buffer_location], sizeof(msg) - buffer_location);
+			int bytes_read = read(_uart, &buffer[buffer_location], sizeof(_message) - buffer_location);
 
 			if (bytes_read > 0) {
 				buffer_location += bytes_read;
@@ -159,18 +158,32 @@ void UWB::run()
 		//  - status == 0x00
 		//  - Values of all 3 position measurements are reasonable
 		//      (If one or more anchors is missed, then position might be an unreasonably large number.)
-		bool ok = buffer_location == sizeof(position_msg_t) && msg.status == 0x00;
+		bool ok = buffer_location == sizeof(position_msg_t) && _message.status == 0x00;
 
-		ok &= abs(msg.pos_x) < 100000.0f;
-		ok &= abs(msg.pos_y) < 100000.0f;
-		ok &= abs(msg.pos_z) < 100000.0f;
+		ok &= abs(_message.pos_x) < 100000.0f;
+		ok &= abs(_message.pos_y) < 100000.0f;
+		ok &= abs(_message.pos_z) < 100000.0f;
 
 		if (ok) {
-			_pozyx_report.pos_x = msg.pos_x / 100.0f;
-			_pozyx_report.pos_y = msg.pos_y / 100.0f;
-			_pozyx_report.pos_z = msg.pos_z / 100.0f;
-			_pozyx_report.timestamp = hrt_absolute_time();
-			_pozyx_pub.publish(_pozyx_report);
+//			_pozyx_report.pos_x = msg.pos_x / 100.0f;
+//			_pozyx_report.pos_y = msg.pos_y / 100.0f;
+//			_pozyx_report.pos_z = msg.pos_z / 100.0f;
+//			_pozyx_report.timestamp = hrt_absolute_time();
+//			_pozyx_pub.publish(_pozyx_report);
+
+			// The end goal of this math is to get the position relative to the landing point in the NED frame.
+			// Current position, in UWB frame
+			_current_position_uwb = matrix::Vector3f(_message.pos_x, _message.pos_y, _message.pos_z);
+			// TODO: Landing point?
+			// Construct the rotation from the UWB frame to the NWU frame.
+			// The UWB frame is just the NWU, rotated by some amount about the Z (up) axis.
+			// To get back to NWU, just rotate by negative this amount about Z.
+			_uwb_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_message.yaw_offset * M_PI_F / 180.0f)));
+			// The actual conversion:
+			//  - Subtract _landing_point to get the position relative to the landing point, in UWB frame
+			//  - Rotate by _uwb_to_nwu to get into the NWU frame
+			//  - Rotate by _nwu_to_ned to get into the NED frame
+			_current_position_ned = _nwu_to_ned * _uwb_to_nwu * (_current_position_uwb - _landing_point);
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));
