@@ -48,6 +48,8 @@
 #include <matrix/math.hpp>
 #include <matrix/Matrix.hpp>
 
+
+
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
 // is unused. In the following constants, the UUID is automatically initialized to all 0s.
 const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
@@ -56,6 +58,8 @@ const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
 // Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
 // for populating the UUID field.
 // TODO: Determine how to fill the UUID field in this command.
+// Suggestion from Gerald: Make a file on the SD card with the grid UUIDs.
+// Would probably make use of PX4_STORAGEDIR "/rddrone_config.txt"
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
 
 // This is the message sent back from the UWB module, as defined in the documentation.
