@@ -175,16 +175,15 @@ void UWB::run()
 			// The end goal of this math is to get the position relative to the landing point in the NED frame.
 			// Current position, in UWB frame
 			_current_position_uwb = matrix::Vector3f(_message.pos_x, _message.pos_y, _message.pos_z);
-			// TODO: Landing point?
 			// Construct the rotation from the UWB frame to the NWU frame.
-			// The UWB frame is just the NWU, rotated by some amount about the Z (up) axis.
+			// The UWB frame is just NWU, rotated by some amount about the Z (up) axis.
 			// To get back to NWU, just rotate by negative this amount about Z.
 			_uwb_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_message.yaw_offset * M_PI_F / 180.0f)));
 			// The actual conversion:
 			//  - Subtract _landing_point to get the position relative to the landing point, in UWB frame
 			//  - Rotate by _uwb_to_nwu to get into the NWU frame
 			//  - Rotate by _nwu_to_ned to get into the NED frame
-			_current_position_ned = _nwu_to_ned * _uwb_to_nwu * (_current_position_uwb - _landing_point);
+			_current_position_ned = _nwu_to_ned * _uwb_to_nwu * _current_position_uwb;
 
 			_landing_target.timestamp = hrt_absolute_time();
 			_landing_target.rel_pos_valid = true;

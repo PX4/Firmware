@@ -124,8 +124,6 @@ private:
 
 	matrix::Dcmf _uwb_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	// TODO: Delete _landing_point: It should come from the UWB module
-	matrix::Vector3f _landing_point{1.5f, 1.5f, 0.0f};
 	matrix::Vector3f _current_position_uwb;
 	matrix::Vector3f _current_position_ned;
 };
