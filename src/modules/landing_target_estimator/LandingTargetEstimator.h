@@ -54,7 +54,8 @@
 #include <uORB/topics/irlock_report.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/landing_target_innovations.h>
-#include <uORB/topics/pozyx_report.h>
+#include <uORB/topics/uwb_report.h>
+#include <uORB/topics/sensor_bias.h>
 #include <uORB/topics/parameter_update.h>
 #include <matrix/math.hpp>
 #include <mathlib/mathlib.h>
@@ -150,13 +151,15 @@ private:
 	uORB::Subscription _attitudeSub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 	uORB::Subscription _irlockReportSub{ORB_ID(irlock_report)};
-	uORB::Subscription _pozyxReportSub{ORB_ID(pozyx_report)};
+	uORB::Subscription _sensorBiasSub{ORB_ID(sensor_bias)};
+	uORB::Subscription _uwbReportSub{ORB_ID(uwb_report)};
 
 	vehicle_local_position_s	_vehicleLocalPosition{};
 	vehicle_attitude_s		_vehicleAttitude{};
 	vehicle_acceleration_s		_vehicle_acceleration{};
 	irlock_report_s			_irlockReport{};
-	pozyx_report_s 			_pozyxReport{};
+	uwb_report_s		_uwbReport{};
+	sensor_bias_s       _sensorBias{};
 
 	// keep track of which topics we have received
 	bool _vehicleLocalPosition_valid{false};

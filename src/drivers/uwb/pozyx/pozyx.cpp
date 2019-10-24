@@ -49,7 +49,7 @@
 #include <drivers/drv_pozyx.h>
 #include <drivers/device/device.h>
 
-#include <uORB/topics/pozyx_report.h>
+#include <uORB/topics/uwb_report.h>
 
 #define DEFAULT_PORT		"/dev/ttyS2"	// telem2 on Pixhawk
 
@@ -255,10 +255,10 @@ Pozyx::init()
 
 		_class_instance = register_class_devname(POZYX_BASE_DEVICE_PATH);
 
-		struct pozyx_report_s pozyx_report = {};
+		struct uwb_report_s pozyx_report = {};
 		pozyx_report.timestamp = hrt_absolute_time();
 
-		_pozyx_report_topic = orb_advertise_multi(ORB_ID(pozyx_report), &pozyx_report,
+		_pozyx_report_topic = orb_advertise_multi(ORB_ID(uwb_report), &pozyx_report,
 				      &_orb_class_instance, ORB_PRIO_HIGH);
 
 		if (_pozyx_report_topic == nullptr) {
@@ -454,13 +454,13 @@ Pozyx::read_and_parse(uint8_t *buf, int len)
 void
 Pozyx::send_pozyx_report(struct pozyx_position_s &pozyx_position)
 {
-	struct pozyx_report_s pozyx_report = {};
+	struct uwb_report_s pozyx_report = {};
 	pozyx_report.timestamp = hrt_absolute_time();
 	pozyx_report.pos_x = 0.001f * pozyx_position.x;
 	pozyx_report.pos_y = 0.001f * pozyx_position.y;
 	pozyx_report.pos_z = 0.001f * pozyx_position.z;
 	pozyx_report.cov_xy = pozyx_position.position_error;
-	orb_publish(ORB_ID(pozyx_report), _pozyx_report_topic, &pozyx_report);
+	orb_publish(ORB_ID(uwb_report), _pozyx_report_topic, &pozyx_report);
 }
 
 void

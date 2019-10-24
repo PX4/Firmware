@@ -31,5 +31,14 @@
 #
 ############################################################################
 
-add_subdirectory(pozyx)
-add_subdirectory(rddrone)
+px4_add_module(
+		MODULE drivers__rddrone
+		MAIN rddrone
+		SRCS
+		rddrone.cpp
+		rddrone.h
+		MODULE_CONFIG
+			module.yaml
+		DEPENDS
+			px4_work_queue
+)

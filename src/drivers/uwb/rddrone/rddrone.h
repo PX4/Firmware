@@ -31,8 +31,8 @@
  *
  ****************************************************************************/
 
-#ifndef PX4_UWB_H
-#define PX4_UWB_H
+#ifndef PX4_RDDRONE_H
+#define PX4_RDDRONE_H
 
 #include <termios.h>
 #include <poll.h>
@@ -41,7 +41,7 @@
 #include <px4_module.h>
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/pozyx_report.h>
+#include <uORB/topics/uwb_report.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_attitude.h>
@@ -80,12 +80,12 @@ typedef struct {
 	float landing_point_alt;
 } __attribute__((packed)) position_msg_t;
 
-class UWB : public ModuleBase<UWB>
+class RDDrone : public ModuleBase<RDDrone>
 {
 public:
-	UWB(const char *device_name, speed_t baudrate);
+	RDDrone(const char *device_name, speed_t baudrate);
 
-	~UWB();
+	~RDDrone();
 
 	/**
 	 * @see ModuleBase::custom_command
@@ -102,7 +102,7 @@ public:
 	 */
 	static int task_spawn(int argc, char *argv[]);
 
-	static UWB *instantiate(int argc, char *argv[]);
+	static RDDrone *instantiate(int argc, char *argv[]);
 
 	void run() override;
 
@@ -115,8 +115,8 @@ private:
 	perf_counter_t _read_count_perf;
 	perf_counter_t _read_err_perf;
 
-	uORB::Publication<pozyx_report_s> _pozyx_pub{ORB_ID(pozyx_report)};
-	pozyx_report_s _pozyx_report{};
+	uORB::Publication<uwb_report_s> _uwb_pub{ORB_ID(uwb_report)};
+	uwb_report_s _uwb_report{};
 
 	uORB::Publication<landing_target_pose_s> _landing_target_pub{ORB_ID(landing_target_pose)};
 	landing_target_pose_s _landing_target{};
@@ -126,11 +126,11 @@ private:
 
 	position_msg_t _message{};
 
-	matrix::Dcmf _uwb_to_nwu;
+	matrix::Dcmf _rddrone_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	matrix::Vector3f _current_position_uwb;
+	matrix::Vector3f _current_position_rddrone;
 	matrix::Vector3f _current_position_ned;
 };
 
 
-#endif //PX4_UWB_H
+#endif //PX4_RDDRONE_H

@@ -499,7 +499,7 @@ void Logger::add_default_topics()
 	add_topic("vehicle_status", 200);
 	add_topic("vehicle_status_flags");
 	add_topic("vtol_vehicle_status", 200);
-	add_topic("pozyx_report");
+	add_topic("uwb_report");
 	add_topic("landing_target_pose");
 
 	add_topic_multi("actuator_outputs", 100);

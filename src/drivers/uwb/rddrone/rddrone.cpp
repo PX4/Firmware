@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "UWB.h"
+#include "rddrone.h"
 #include <px4_log.h>
 #include <px4_getopt.h>
 #include <px4_cli.h>
@@ -42,22 +42,22 @@
 
 // Timeout between bytes. If there is more time than this between bytes, then this driver assumes
 // that it is the boundary between messages.
-// See UWB::run() for more detailed explanation.
+// See RDDrone::run() for more detailed explanation.
 #define BYTE_TIMEOUT_US 5000
 
 // Amount of time to wait for a new message. If more time than this passes between messages, then this
-// driver assumes that the UWB module is disconnected.
+// driver assumes that the RDDrone module is disconnected.
 // (Right now it does not do anything about this)
 #define MESSAGE_TIMEOUT_US 10000000
 
-// The current version of the UWB software is locked to 115200 baud.
+// The default baudrate of the RDDrone module before configuration
 #define DEFAULT_BAUD B115200
 
-extern "C" __EXPORT int uwb_main(int argc, char *argv[]);
+extern "C" __EXPORT int rddrone_main(int argc, char *argv[]);
 
-UWB::UWB(const char *device_name, speed_t baudrate):
-	_read_count_perf(perf_alloc(PC_COUNT, "uwb_count")),
-	_read_err_perf(perf_alloc(PC_COUNT, "uwb_err"))
+RDDrone::RDDrone(const char *device_name, speed_t baudrate):
+	_read_count_perf(perf_alloc(PC_COUNT, "rddrone_count")),
+	_read_err_perf(perf_alloc(PC_COUNT, "rddrone_err"))
 {
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
@@ -85,7 +85,7 @@ UWB::UWB(const char *device_name, speed_t baudrate):
 
 }
 
-UWB::~UWB()
+RDDrone::~RDDrone()
 {
 	perf_free(_read_err_perf);
 	perf_free(_read_count_perf);
@@ -93,7 +93,7 @@ UWB::~UWB()
 	close(_uart);
 }
 
-void UWB::run()
+void RDDrone::run()
 {
 	int written = write(_uart, CMD_PURE_RANGING, sizeof(CMD_PURE_RANGING));
 
@@ -143,7 +143,7 @@ void UWB::run()
 			// The current value of 5ms was found experimentally to never cut off a message prematurely.
 			// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
 			// because if this process is waiting, it means that the last message was incomplete, so there is no current
-			// data waiting to be published. But we would rather set this timeout lower in case the UWB board is
+			// data waiting to be published. But we would rather set this timeout lower in case the RDDrone board is
 			// updated to publish data faster.
 			_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
 		}
@@ -162,25 +162,25 @@ void UWB::run()
 		ok &= abs(_message.pos_z) < 100000.0f;
 
 		if (ok) {
-			_pozyx_report.pos_x = _message.pos_x ;// / 100.0f;
-			_pozyx_report.pos_y = _message.pos_y ;// / 100.0f;
-			_pozyx_report.pos_z = _message.pos_z ;// / 100.0f;
-			_pozyx_report.timestamp = hrt_absolute_time();
-			_pozyx_pub.publish(_pozyx_report);
+			_uwb_report.pos_x = _message.pos_x ;// / 100.0f;
+			_uwb_report.pos_y = _message.pos_y ;// / 100.0f;
+			_uwb_report.pos_z = _message.pos_z ;// / 100.0f;
+			_uwb_report.timestamp = hrt_absolute_time();
+			_uwb_pub.publish(_uwb_report);
 			_attitude_sub.update(&_vehicle_attitude);
 
 			// The end goal of this math is to get the position relative to the landing point in the NED frame.
-			// Current position, in UWB frame
-			_current_position_uwb = matrix::Vector3f(_message.pos_x, _message.pos_y, _message.pos_z);
-			// Construct the rotation from the UWB frame to the NWU frame.
-			// The UWB frame is just NWU, rotated by some amount about the Z (up) axis.
+			// Current position, in RDDrone frame
+			_current_position_rddrone = matrix::Vector3f(_message.pos_x, _message.pos_y, _message.pos_z);
+			// Construct the rotation from the RDDrone frame to the NWU frame.
+			// The RDDrone frame is just NWU, rotated by some amount about the Z (up) axis.
 			// To get back to NWU, just rotate by negative this amount about Z.
-			_uwb_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_message.yaw_offset * M_PI_F / 180.0f)));
+			_rddrone_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_message.yaw_offset * M_PI_F / 180.0f)));
 			// The actual conversion:
-			//  - Subtract _landing_point to get the position relative to the landing point, in UWB frame
-			//  - Rotate by _uwb_to_nwu to get into the NWU frame
+			//  - Subtract _landing_point to get the position relative to the landing point, in RDDrone frame
+			//  - Rotate by _rddrone_to_nwu to get into the NWU frame
 			//  - Rotate by _nwu_to_ned to get into the NED frame
-			_current_position_ned = _nwu_to_ned * _uwb_to_nwu * _current_position_uwb;
+			_current_position_ned = _nwu_to_ned * _rddrone_to_nwu * _current_position_rddrone;
 
 			_landing_target.timestamp = hrt_absolute_time();
 			_landing_target.rel_pos_valid = true;
@@ -210,12 +210,12 @@ void UWB::run()
 
 }
 
-int UWB::custom_command(int argc, char *argv[])
+int RDDrone::custom_command(int argc, char *argv[])
 {
 	return print_usage("Unrecognized command.");
 }
 
-int UWB::print_usage(const char *reason)
+int RDDrone::print_usage(const char *reason)
 {
 	if (reason) {
 		printf("%s\n\n", reason);
@@ -225,7 +225,7 @@ int UWB::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
 ### Description
 
-Driver for NXP RDDrone UWB positioning system. This driver publishes a `pozyx_report` message
+Driver for NXP RDDrone UWB positioning system. This driver publishes a `uwb_report` message
 whenever the RDDrone has a position measurement available.
 
 ### Example
@@ -236,12 +236,13 @@ $ uwb start -d /dev/ttyS2
 	)DESC_STR");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
+	PRINT_MODULE_USAGE_PARAM_STRING('b', nullptr, "<int>", "Baudrate for serial communication", false);
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("status");
 	return 0;
 }
 
-int UWB::task_spawn(int argc, char *argv[])
+int RDDrone::task_spawn(int argc, char *argv[])
 {
 	int task_id = px4_task_spawn_cmd(
 			      "uwb_driver",
@@ -284,7 +285,7 @@ speed_t int_to_speed(int baud)
 	}
 }
 
-UWB *UWB::instantiate(int argc, char *argv[])
+RDDrone *RDDrone::instantiate(int argc, char *argv[])
 {
 	int ch;
 	int option_index = 1;
@@ -325,12 +326,12 @@ UWB *UWB::instantiate(int argc, char *argv[])
 		return nullptr;
 
 	} else {
-		PX4_INFO("Constructing UWB. Device: %s", device_name);
-		return new UWB(device_name, int_to_speed(baudrate));
+		PX4_INFO("Constructing RDDrone. Device: %s", device_name);
+		return new RDDrone(device_name, int_to_speed(baudrate));
 	}
 }
 
-int uwb_main(int argc, char *argv[])
+int rddrone_main(int argc, char *argv[])
 {
-	return UWB::main(argc, argv);
+	return RDDrone::main(argc, argv);
 }
