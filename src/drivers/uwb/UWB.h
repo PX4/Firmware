@@ -83,7 +83,7 @@ typedef struct {
 class UWB : public ModuleBase<UWB>
 {
 public:
-	UWB(const char *device_name);
+	UWB(const char *device_name, speed_t baudrate);
 
 	~UWB();
 

@@ -55,13 +55,10 @@
 
 extern "C" __EXPORT int uwb_main(int argc, char *argv[]);
 
-UWB::UWB(const char *device_name):
+UWB::UWB(const char *device_name, speed_t baudrate):
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_err"))
 {
-
-	speed_t baud = DEFAULT_BAUD;
-
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
 
@@ -74,11 +71,11 @@ UWB::UWB(const char *device_name):
 	if (ret < 0) { err(1, "failed to get attr"); }
 
 	uart_config.c_oflag &= ~ONLCR; // no CR for every LF
-	ret = cfsetispeed(&uart_config, baud);
+	ret = cfsetispeed(&uart_config, baudrate);
 
 	if (ret < 0) { err(1, "failed to set input speed"); }
 
-	ret = cfsetospeed(&uart_config, baud);
+	ret = cfsetospeed(&uart_config, baudrate);
 
 	if (ret < 0) { err(1, "failed to set output speed"); }
 
@@ -264,6 +261,29 @@ int UWB::task_spawn(int argc, char *argv[])
 	}
 }
 
+speed_t int_to_speed(int baud)
+{
+	switch (baud) {
+	case 9600:
+		return B9600;
+
+	case 19200:
+		return B19200;
+
+	case 38400:
+		return B38400;
+
+	case 57600:
+		return B57600;
+
+	case 115200:
+		return B115200;
+
+	default:
+		return DEFAULT_BAUD;
+	}
+}
+
 UWB *UWB::instantiate(int argc, char *argv[])
 {
 	int ch;
@@ -271,11 +291,16 @@ UWB *UWB::instantiate(int argc, char *argv[])
 	const char *option_arg;
 	const char *device_name = nullptr;
 	bool error_flag = false;
+	int baudrate = 0;
 
-	while ((ch = px4_getopt(argc, argv, "d:", &option_index, &option_arg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "d:b:", &option_index, &option_arg)) != EOF) {
 		switch (ch) {
 		case 'd':
 			device_name = option_arg;
+			break;
+
+		case 'b':
+			px4_get_parameter_value(option_arg, baudrate);
 			break;
 
 		default:
@@ -290,13 +315,18 @@ UWB *UWB::instantiate(int argc, char *argv[])
 		error_flag = true;
 	}
 
+	if (!error_flag && baudrate == 0) {
+		print_usage("Baudrate not provided.");
+		error_flag = true;
+	}
+
 	if (error_flag) {
 		PX4_WARN("Failed to start UWB driver.");
 		return nullptr;
 
 	} else {
 		PX4_INFO("Constructing UWB. Device: %s", device_name);
-		return new UWB(device_name);
+		return new UWB(device_name, int_to_speed(baudrate));
 	}
 }
 
