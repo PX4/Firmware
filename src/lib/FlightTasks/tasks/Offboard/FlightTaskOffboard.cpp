@@ -171,6 +171,17 @@ bool FlightTaskOffboard::update()
 	const bool feedforward_ctrl_z = position_ctrl_z && velocity_ctrl_z;
 	const bool acceleration_ctrl = _sub_triplet_setpoint.get().current.acceleration_valid;
 
+	//When velocity setpoint is given in Body-coordinate, transform it to Local(NED) coordinate.
+	Vector3f vel_setpoint_local;
+	if((_sub_triplet_setpoint.get().current.velocity_frame == position_setpoint_s::VELOCITY_FRAME_BODY_NED)
+	    && (velocity_ctrl_xy || velocity_ctrl_z)) {
+		const matrix::Dcmf R_to_local(matrix::Quatf(_sub_attitude.get().q));
+		const Vector3f vel_valid_setpoints = Vector3f(velocity_ctrl_xy ? (_sub_triplet_setpoint.get().current.vx) : 0.0f,
+						     velocity_ctrl_xy ? (_sub_triplet_setpoint.get().current.vy) : 0.0f,
+						     velocity_ctrl_z ? (_sub_triplet_setpoint.get().current.vz) : 0.0f);
+		vel_setpoint_local = R_to_local * vel_valid_setpoints;
+	}
+
 	// if nothing is valid in xy, then exit offboard
 	if (!(position_ctrl_xy || velocity_ctrl_xy || acceleration_ctrl)) {
 		return false;
@@ -200,12 +211,8 @@ bool FlightTaskOffboard::update()
 			_velocity_setpoint(1) = _sub_triplet_setpoint.get().current.vy;
 
 		} else if (_sub_triplet_setpoint.get().current.velocity_frame == position_setpoint_s::VELOCITY_FRAME_BODY_NED) {
-			// in body frame: need to transorm first
-			// Note, this transformation is wrong because body-xy is not neccessarily on the same plane as locale-xy
-			_velocity_setpoint(0) = cosf(_yaw) * _sub_triplet_setpoint.get().current.vx - sinf(
-							_yaw) * _sub_triplet_setpoint.get().current.vy;
-			_velocity_setpoint(1) = sinf(_yaw) * _sub_triplet_setpoint.get().current.vx + cosf(
-							_yaw) * _sub_triplet_setpoint.get().current.vy;
+			_velocity_setpoint(0) = vel_setpoint_local(0);
+			_velocity_setpoint(1) = vel_setpoint_local(1);
 
 		} else {
 			// no valid frame
@@ -222,7 +229,7 @@ bool FlightTaskOffboard::update()
 		_position_setpoint(2) = _sub_triplet_setpoint.get().current.z;
 
 	} else if (velocity_ctrl_z) {
-		_velocity_setpoint(2) = _sub_triplet_setpoint.get().current.vz;
+		_velocity_setpoint(2) = vel_setpoint_local(2);
 	}
 
 	// Acceleration
