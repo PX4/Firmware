@@ -32,9 +32,9 @@
  ****************************************************************************/
 
 #include "rddrone.h"
-#include <px4_log.h>
-#include <px4_getopt.h>
-#include <px4_cli.h>
+#include <px4_platform_common/log.h>
+#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/cli.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <systemlib/err.h>

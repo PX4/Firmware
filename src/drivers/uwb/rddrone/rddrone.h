@@ -38,7 +38,7 @@
 #include <poll.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include <px4_module.h>
+#include <px4_platform_common/module.h>
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/uwb_report.h>
