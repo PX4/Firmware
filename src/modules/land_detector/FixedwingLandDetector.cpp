@@ -55,6 +55,16 @@ void FixedwingLandDetector::_update_topics()
 {
 	LandDetector::_update_topics();
 	_airspeed_sub.update(&_airspeed);
+	_controller_sub.update(&_status);
+	_attitude_sub.update(&_attitude);
+}
+void FixedwingLandDetector::vehicle_calcPitch()
+{
+	// This will calculate the current pitch of the vehicle.
+	// This is used for limiting the pitch of a fixedwing vehicle in a launch state.
+	_PQ = Quatf(_attitude.q);
+	Eulerf euler_angles(_PQ);
+	_pitch = euler_angles(1);
 }
 
 bool FixedwingLandDetector::_get_landed_state()
@@ -92,11 +102,17 @@ bool FixedwingLandDetector::_get_landed_state()
 
 		_xy_accel_filtered = _xy_accel_filtered * 0.8f + acc_hor * 0.18f;
 
-		// Crude land detector for fixedwing.
-		landDetected = _airspeed_filtered       < _param_lndfw_airspd.get()
-			       && _velocity_xy_filtered < _param_lndfw_vel_xy_max.get()
-			       && _velocity_z_filtered  < _param_lndfw_vel_z_max.get()
-			       && _xy_accel_filtered    < _param_lndfw_xyaccel_max.get();
+		// Crude land detector for fixedwing that changes values based on launch state of the vehicle.
+		if (_status.launch_detection_running) {
+			vehicle_calcPitch();
+			landDetected = accel(0) < _param_laun_cat_accel.get() || fabsf(_pitch) > (float)radians(_param_laun_cat_pmax.get());
+
+		} else {
+			landDetected = _airspeed_filtered       < _param_lndfw_airspd.get()
+				       && _velocity_xy_filtered < _param_lndfw_vel_xy_max.get()
+				       && _velocity_z_filtered  < _param_lndfw_vel_z_max.get()
+				       && _xy_accel_filtered    < _param_lndfw_xyaccel_max.get();
+		}
 
 	} else {
 		// Control state topic has timed out and we need to assume we're landed.

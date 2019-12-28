@@ -534,6 +534,12 @@ FixedwingPositionControl::status_publish()
 
 	pos_ctrl_status.yaw_acceptance = NAN;
 
+	pos_ctrl_status.launch_detection_running = _launch_detection_state == LAUNCHDETECTION_RES_NONE
+			&& _control_mode.flag_armed
+			&& _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF
+			&& _pos_sp_triplet.current.valid
+			&& _launchDetector.launchDetectionEnabled();
+
 	pos_ctrl_status.timestamp = hrt_absolute_time();
 
 	_pos_ctrl_status_pub.publish(pos_ctrl_status);

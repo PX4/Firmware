@@ -110,6 +110,7 @@ static struct actuator_armed_s armed = {};
 
 static struct vehicle_status_flags_s status_flags = {};
 
+static struct position_controller_status_s controller_status = {}; //Struct for holding controller status
 /**
  * Loop that runs at a lower rate and priority for calibration and parameter tasks.
  */
@@ -1547,9 +1548,12 @@ Commander::run()
 			_was_falling = _land_detector.freefall;
 		}
 
+		if (_controller_status_sub.updated()) {
+			_controller_status_sub.copy(&controller_status);
+		}
 
-		// Auto disarm when landed or kill switch engaged
-		if (armed.armed) {
+		// Auto disarm when landed or kill switch engaged and do not auto-disarm if launch detection is running
+		if (armed.armed && !controller_status.launch_detection_running) {
 
 			// Check for auto-disarm on landing or pre-flight
 			if (_param_com_disarm_land.get() > 0 || _param_com_disarm_preflight.get() > 0) {
