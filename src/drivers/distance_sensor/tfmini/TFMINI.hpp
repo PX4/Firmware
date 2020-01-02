@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,7 @@
 #include <termios.h>
 
 #include <drivers/drv_hrt.h>
+#include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/module.h>
@@ -60,6 +61,45 @@
 
 using namespace time_literals;
 
+enum class TFMINI_SETUP_STEP {
+	STEP0_UNCONFIGURED = 0,
+	STEP1_ENTER_CONFIRMED = 1,
+	STEP2_MODE_CONFIRMED = 2,
+	STEP3_UNIT_CONFIRMED = 3,
+	STEP4_SAVE_CONFIRMED = 4
+};
+
+class TFMINI_SETUP
+{
+public:
+	uint8_t _counter{0};
+	TFMINI_SETUP_STEP _setup_step{TFMINI_SETUP_STEP::STEP0_UNCONFIGURED};
+	uint8_t _com_enter[8] {0x42, 0x57, 0x02, 0x00, 0x00, 0x00, 0x01, 0x02}; //Enter configuration mode
+	uint8_t _com_mode[8] {0x42, 0x57, 0x02, 0x00, 0x00, 0x00, 0x01, 0x06}; //Configure "Standard format, as show in in Table 6"
+	uint8_t _com_unit[8] {0x42, 0x57, 0x02, 0x00, 0x00, 0x00, 0x01, 0x1A}; //Configure "Output unit of distance data is cm"
+	uint8_t _com_save[8] {0x42, 0x57, 0x02, 0x00, 0x00, 0x00, 0x00, 0x02}; //Exit configuration mode
+};
+
+enum class TFMINIPLUS_SETUP_STEP {
+	STEP0_UNCONFIGURED = 0,
+	STEP1_VERSION_CONFIRMED = 1,
+	STEP2_MODE_CONFIRMED = 2,
+	STEP3_ENABLE_CONFIRMED = 3,
+	STEP4_SAVE_CONFIRMED = 4
+};
+
+class TFMINIPLUS_SETUP
+{
+public:
+	uint8_t _counter{0};
+	TFMINIPLUS_SETUP_STEP _setup_step{TFMINIPLUS_SETUP_STEP::STEP0_UNCONFIGURED};
+	uint8_t _com_version[4] {0x5A, 0x04, 0x01, 0x5F};
+	uint8_t _version[3] {0, 0, 0};
+	uint8_t _com_mode[5] {0x5A, 0x05, 0x05, 0x01, 0x65};
+	uint8_t _com_enable[5] {0x5A, 0x05, 0x07, 0x01, 0x67};
+	uint8_t _com_save[4] {0X5A, 0x04, 0x11, 0x6F};
+};
+
 class TFMINI : public px4::ScheduledWorkItem
 {
 public:
@@ -67,6 +107,10 @@ public:
 	virtual ~TFMINI();
 
 	int init();
+
+	int write_command(uint8_t *command, uint8_t framelen);
+	bool get_command_result();
+	uint8_t *get_command_response(uint8_t *response_size);
 
 	void print_info();
 
@@ -78,13 +122,27 @@ private:
 
 	void start();
 	void stop();
+	void autosetup_tfmini();
+	void autosetup_tfmini_process();
+	void autosetup_tfminiplus();
+	void autosetup_tfminiplus_process();
 
 	PX4Rangefinder	_px4_rangefinder;
 
+	TFMINI_MODEL _hw_model {TFMINI_MODEL::MODEL_UNKNOWN};
 	TFMINI_PARSE_STATE _parse_state {TFMINI_PARSE_STATE::STATE0_UNSYNC};
-
-	char _linebuf[10] {};
+	uint8_t _linebuf[10] {};
 	char _port[20] {};
+
+	bool _command_result{false};
+	uint8_t _command_buf[10] {};
+	uint8_t _command_size{0};
+	uint8_t _command_response[10] {};
+	uint8_t _command_response_size{0};
+	uint8_t _command_retry{0};
+
+	TFMINI_SETUP _tfmini_setup;
+	TFMINIPLUS_SETUP _tfminiplus_setup;
 
 	static constexpr int kCONVERSIONINTERVAL{9_ms};
 

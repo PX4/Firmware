@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,23 +72,37 @@ TFMINI::~TFMINI()
 int
 TFMINI::init()
 {
-	int32_t hw_model = 1; // only one model so far...
+	int hw_model = 0;
+	param_get(param_find("SENS_EN_TFMINI"), &hw_model);
 
-	switch (hw_model) {
-	case 1: // TFMINI (12m, 100 Hz)
-		// Note:
-		// Sensor specification shows 0.3m as minimum, but in practice
-		// 0.3 is too close to minimum so chattering of invalid sensor decision
+	_hw_model = static_cast<TFMINI_MODEL>(hw_model);
+
+	switch (_hw_model) {
+	case TFMINI_MODEL::MODEL_UNKNOWN: // Other TFMINI models (12m, 100 Hz, FOV 2.3)
+		// Note: Sensor specification shows 0.3m as minimum, but in practice
+		// 0.3m is too close to minimum so chattering of invalid sensor decision
 		// is happening sometimes. this cause EKF to believe inconsistent range readings.
-		// So we set 0.4 as valid minimum.
+		// So we set 0.4m as valid minimum.
+		_px4_rangefinder.set_min_distance(0.4f);
 		_px4_rangefinder.set_min_distance(0.4f);
 		_px4_rangefinder.set_max_distance(12.0f);
-		_px4_rangefinder.set_fov(math::radians(1.15f));
+		_px4_rangefinder.set_fov(math::radians(2.3f));
+		break;
 
+	case TFMINI_MODEL::MODEL_TFMINI: // TFMINI (12m, 100 Hz, FOV 2.3)
+		_px4_rangefinder.set_min_distance(0.4f);
+		_px4_rangefinder.set_max_distance(12.0f);
+		_px4_rangefinder.set_fov(math::radians(2.3f));
+		break;
+
+	case TFMINI_MODEL::MODEL_TFMINIPLUS: // TFMINI-PLUS (12m, 100 Hz, FOV 3.6)
+		_px4_rangefinder.set_min_distance(0.1f);
+		_px4_rangefinder.set_max_distance(12.0f);
+		_px4_rangefinder.set_fov(math::radians(3.6f));
 		break;
 
 	default:
-		PX4_ERR("invalid HW model %d.", hw_model);
+		PX4_ERR("invalid HW model %u.", (uint8_t)_hw_model);
 		return -1;
 	}
 
@@ -168,6 +182,272 @@ TFMINI::init()
 	return ret;
 }
 
+void
+TFMINI::autosetup_tfmini_process()
+{
+	if (_hw_model != TFMINI_MODEL::MODEL_TFMINI) {
+		return;
+	}
+
+	if (_tfmini_setup._setup_step == TFMINI_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		return;
+	}
+
+	_tfmini_setup._counter = 0;
+
+	// informations about commands and responses to/from TFMini has been found in SJ-PM-TFmini-T-01_A05 Product Mannual_EN.pdf
+	switch (_tfmini_setup._setup_step) {
+	case TFMINI_SETUP_STEP::STEP0_UNCONFIGURED:
+
+		// we have written _tfmini_setup._com_enter and we expect reading 42 57 02 01 00 00 01 02
+		if (_command_response[3] == 0x01 && _command_response[6] == 0x01 && _command_response[7] == 0x02) {
+			_tfmini_setup._setup_step = TFMINI_SETUP_STEP::STEP1_ENTER_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINI_SETUP_STEP::STEP1_ENTER_CONFIRMED:
+
+		// we have written _tfmini_setup._com_mode and we expect reading 42 57 02 01 00 00 01 06
+		if (_command_response[3] == 0x01 && _command_response[6] == 0x01 && _command_response[7] == 0x06) {
+			_tfmini_setup._setup_step = TFMINI_SETUP_STEP::STEP2_MODE_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINI_SETUP_STEP::STEP2_MODE_CONFIRMED:
+
+		// we have written _tfmini_setup._com_unit and we expect reading 42 57 02 01 00 00 01 1A
+		if (_command_response[3] == 0x01 && _command_response[6] == 0x01 && _command_response[7] == 0x1A) {
+			_tfmini_setup._setup_step = TFMINI_SETUP_STEP::STEP3_UNIT_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINI_SETUP_STEP::STEP3_UNIT_CONFIRMED:
+
+		// we have written _tfmini_setup._com_save and we expect reading 42 57 02 01 00 00 00 02
+		if (_command_response[3] == 0x01 && _command_response[6] == 0x00 && _command_response[7] == 0x02) {
+			_tfmini_setup._setup_step = TFMINI_SETUP_STEP::STEP4_SAVE_CONFIRMED;
+		}
+
+		break;
+
+	default:
+		break;
+	}
+}
+
+void
+TFMINI::autosetup_tfmini()
+{
+	if (_hw_model != TFMINI_MODEL::MODEL_TFMINI) {
+		return;
+	}
+
+	if (_tfmini_setup._setup_step == TFMINI_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		return;
+	}
+
+	if (_fd < 0) {
+		return;
+	}
+
+	_tfmini_setup._counter++;
+
+	if (_tfmini_setup._counter != 1) {
+		return;
+	}
+
+	int ret = 0;
+
+	// informations about commands and responses to/from TFMini- has been found in SJ-PM-TFmini-T-01_A05 Product Mannual_EN.pdf
+	switch (_tfmini_setup._setup_step) {
+	case TFMINI_SETUP_STEP::STEP0_UNCONFIGURED:
+		ret = ::write(_fd, _tfmini_setup._com_enter, sizeof(_tfmini_setup._com_enter));
+		break;
+
+	case TFMINI_SETUP_STEP::STEP1_ENTER_CONFIRMED:
+		ret = ::write(_fd, _tfmini_setup._com_mode, sizeof(_tfmini_setup._com_mode));
+		break;
+
+	case TFMINI_SETUP_STEP::STEP2_MODE_CONFIRMED:
+		ret = ::write(_fd, _tfmini_setup._com_unit, sizeof(_tfmini_setup._com_unit));
+		break;
+
+	case TFMINI_SETUP_STEP::STEP3_UNIT_CONFIRMED:
+		ret = ::write(_fd, _tfmini_setup._com_save, sizeof(_tfmini_setup._com_save));
+		break;
+
+	default:
+		break;
+	}
+
+	if (ret < 0) {
+		perf_count(_comms_errors);
+	}
+}
+
+void
+TFMINI::autosetup_tfminiplus_process()
+{
+	if (_hw_model != TFMINI_MODEL::MODEL_TFMINIPLUS) {
+		return;
+	}
+
+	if (_tfminiplus_setup._setup_step == TFMINIPLUS_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		return;
+	}
+
+	_tfminiplus_setup._counter = 0;
+
+	// informations about commands and responses to/from TFMini-plus has been found in TFmini-Plus A04-Product Mannual_EN.pdf
+	switch (_tfminiplus_setup._setup_step) {
+	case TFMINIPLUS_SETUP_STEP::STEP0_UNCONFIGURED:
+
+		// we have written _tfminiplus_setup._com_version and we expect reading 5A 07 01 V1 V2 V3 SU
+		if (_command_response[1] == 0x07 && _command_response[2] == 0x01) {
+			_tfminiplus_setup._version[0] = _command_response[3];
+			_tfminiplus_setup._version[1] = _command_response[4];
+			_tfminiplus_setup._version[2] = _command_response[5];
+			_tfminiplus_setup._setup_step = TFMINIPLUS_SETUP_STEP::STEP1_VERSION_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP1_VERSION_CONFIRMED:
+
+		// we have written _tfminiplus_setup._com_mode and we expect reading 5A 05 05 01 65
+		if (_command_response[1] == 0x05 && _command_response[2] == 0x05 && _command_response[3] == 0x01) {
+			_tfminiplus_setup._setup_step = TFMINIPLUS_SETUP_STEP::STEP2_MODE_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP2_MODE_CONFIRMED:
+
+		// we have written _tfminiplus_setup._com_enable and we expect reading 5A 05 07 01 67
+		if (_command_response[1] == 0x05 && _command_response[2] == 0x07 && _command_response[3] == 0x01) {
+			_tfminiplus_setup._setup_step = TFMINIPLUS_SETUP_STEP::STEP3_ENABLE_CONFIRMED;
+		}
+
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP3_ENABLE_CONFIRMED:
+
+		// we have written _tfminiplus_setup._com_save and we expect reading 5A 05 11 00 6F
+		if (_command_response[1] == 0x05 && _command_response[2] == 0x11 && _command_response[3] == 0x00) {
+			_tfminiplus_setup._setup_step = TFMINIPLUS_SETUP_STEP::STEP4_SAVE_CONFIRMED;
+		}
+
+		break;
+
+	default:
+		break;
+	}
+}
+
+void
+TFMINI::autosetup_tfminiplus()
+{
+	if (_hw_model != TFMINI_MODEL::MODEL_TFMINIPLUS) {
+		return;
+	}
+
+	if (_tfminiplus_setup._setup_step == TFMINIPLUS_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		return;
+	}
+
+	if (_fd < 0) {
+		return;
+	}
+
+	_tfminiplus_setup._counter++;
+
+	if (_tfminiplus_setup._counter != 1) {
+		return;
+	}
+
+	int ret = 0;
+
+	// informations about commands and responses to/from TFMini-plus has been found in TFmini-Plus A04-Product Mannual_EN.pdf
+	switch (_tfminiplus_setup._setup_step) {
+	case TFMINIPLUS_SETUP_STEP::STEP0_UNCONFIGURED:
+		ret = ::write(_fd, _tfminiplus_setup._com_version, sizeof(_tfminiplus_setup._com_version));
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP1_VERSION_CONFIRMED:
+		ret = ::write(_fd, _tfminiplus_setup._com_mode, sizeof(_tfminiplus_setup._com_mode));
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP2_MODE_CONFIRMED:
+		ret = ::write(_fd, _tfminiplus_setup._com_enable, sizeof(_tfminiplus_setup._com_enable));
+		break;
+
+	case TFMINIPLUS_SETUP_STEP::STEP3_ENABLE_CONFIRMED:
+		ret = ::write(_fd, _tfminiplus_setup._com_save, sizeof(_tfminiplus_setup._com_save));
+		break;
+
+	default:
+		break;
+	}
+
+	if (ret < 0) {
+		perf_count(_comms_errors);
+	}
+}
+
+int
+TFMINI::write_command(uint8_t *command, uint8_t framelen)
+{
+	_command_result = false;
+
+	if (_fd < 0) {
+		PX4_ERR("tfmini fd is closed");
+		return PX4_ERROR;
+	}
+
+	if (_hw_model != TFMINI_MODEL::MODEL_TFMINI && _hw_model != TFMINI_MODEL::MODEL_TFMINIPLUS) {
+		PX4_ERR("tfmini model not defined");
+		return PX4_ERROR;
+	}
+
+	if (framelen > 8) {
+		PX4_ERR("invalid command - too long");
+		return PX4_ERROR;
+	}
+
+	if (_hw_model == TFMINI_MODEL::MODEL_TFMINI && (command[0] != TFMINI_CMD_HEADER1 || command[1] != TFMINI_CMD_HEADER2
+			|| framelen != TFMINI_CMD_SIZE)) {
+		PX4_ERR("invalid command - not for tfmini model");
+		return PX4_ERROR;
+	}
+
+	if (_hw_model == TFMINI_MODEL::MODEL_TFMINIPLUS && (command[0] != TFMINIPLUS_CMD_HEADER1 || command[1] != framelen)) {
+		PX4_ERR("invalid command - not for tfmini-plus model");
+		return PX4_ERROR;
+	}
+
+	memcpy(_command_buf, command, framelen);
+	_command_size = framelen;
+	_command_retry = 3;
+
+	return PX4_OK;
+}
+
+bool
+TFMINI::get_command_result()
+{
+	return _command_result;
+}
+
+uint8_t *
+TFMINI::get_command_response(uint8_t *response_size)
+{
+	*response_size = _command_response_size;
+	return _command_response;
+}
+
 int
 TFMINI::collect()
 {
@@ -175,13 +455,28 @@ TFMINI::collect()
 
 	// clear buffer if last read was too long ago
 	int64_t read_elapsed = hrt_elapsed_time(&_last_read);
+	int ret = 0;
+
+	autosetup_tfmini();
+	autosetup_tfminiplus();
+
+	if (_command_result == false && _command_retry > 0) {
+		_command_retry--;
+		ret = ::write(_fd, _command_buf, _command_size);
+
+		if (ret < 0) {
+			PX4_ERR("write err: %d", ret);
+			perf_count(_comms_errors);
+		}
+	}
 
 	// the buffer for read chars is buflen minus null termination
 	char readbuf[sizeof(_linebuf)] {};
 	unsigned readlen = sizeof(readbuf) - 1;
 
-	int ret = 0;
 	float distance_m = -1.0f;
+	uint16_t signal_value = 0;
+	float temperature = -273.0f;
 
 	// Check the number of bytes available in the buffer
 	int bytes_available = 0;
@@ -219,7 +514,19 @@ TFMINI::collect()
 
 		// parse buffer
 		for (int i = 0; i < ret; i++) {
-			tfmini_parse(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, &distance_m);
+			tfmini_parse(readbuf[i], _linebuf, &_linebuf_index, &_parse_state, _hw_model, &distance_m, &signal_value, &temperature,
+				     _command_response, &_command_response_size);
+
+			if (_parse_state == TFMINI_PARSE_STATE::STATE8_GOT_RESPONSE_CHECKSUM) {
+				_command_result = true;
+				_command_retry = 0;
+				autosetup_tfmini_process();
+				autosetup_tfminiplus_process();
+			}
+
+			if (_parse_state == TFMINI_PARSE_STATE::STATE0_UNSYNC) {
+				perf_count(_comms_errors);
+			}
 		}
 
 		// bytes left to parse
@@ -233,8 +540,32 @@ TFMINI::collect()
 		return -EAGAIN;
 	}
 
+	int8_t signal_quality = -1;
+
+	switch (_hw_model) {
+	case TFMINI_MODEL::MODEL_TFMINI: // TFMINI (0 to 3000)
+		// to be implemented
+		break;
+
+	case TFMINI_MODEL::MODEL_TFMINIPLUS: // TFMINI-PLUS (0 to 0xFFFF)
+		if (signal_value < 100 || signal_value == TFMINIPLUS_INVALID_MEASURE) {
+			signal_quality = 0;
+			break;
+		}
+
+		//according to the spec, signal is within [0-0xFFFF]
+		//according to my test, signal is within [0-20000]
+		signal_value = math::min(signal_value, static_cast<uint16_t>(20000));
+		signal_quality = static_cast<int8_t>(static_cast<uint32_t>(signal_value) / 200);  //in percent, ie: x*100/20000 or x/200
+		break;
+
+	case TFMINI_MODEL::MODEL_UNKNOWN: // Other TFMINI models (unknown values)
+	default:
+		break;
+	}
+
 	// publish most recent valid measurement from buffer
-	_px4_rangefinder.update(timestamp_sample, distance_m);
+	_px4_rangefinder.update(timestamp_sample, distance_m, signal_quality);
 
 	perf_end(_sample_perf);
 
@@ -276,6 +607,28 @@ void
 TFMINI::print_info()
 {
 	printf("Using port '%s'\n", _port);
+
+	if (_hw_model == TFMINI_MODEL::MODEL_TFMINIPLUS
+	    && _tfminiplus_setup._setup_step == TFMINIPLUS_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		PX4_INFO("TFMINI-Plus is configured - version = %u.%u.%u\n", _tfminiplus_setup._version[0],
+			 _tfminiplus_setup._version[1],
+			 _tfminiplus_setup._version[2]);
+
+	} else if (_hw_model == TFMINI_MODEL::MODEL_TFMINIPLUS) {
+		PX4_INFO("TFMINI-Plus is being configured(state = %u c = %u) - version = %u.%u.%u\n",
+			 (uint8_t)_tfminiplus_setup._setup_step,
+			 _tfminiplus_setup._counter, _tfminiplus_setup._version[0], _tfminiplus_setup._version[1],
+			 _tfminiplus_setup._version[2]);
+
+	} else if (_hw_model == TFMINI_MODEL::MODEL_TFMINI
+		   && _tfmini_setup._setup_step == TFMINI_SETUP_STEP::STEP4_SAVE_CONFIRMED) {
+		PX4_INFO("TFMINI is configured - version = unknown\n");
+
+	} else if (_hw_model == TFMINI_MODEL::MODEL_TFMINI) {
+		PX4_INFO("TFMINI is being configured(state = %u c = %u) - version = unknown\n", (uint8_t)_tfmini_setup._setup_step,
+			 _tfmini_setup._counter);
+	}
+
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }
