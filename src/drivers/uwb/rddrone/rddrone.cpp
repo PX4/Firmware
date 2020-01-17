@@ -166,7 +166,7 @@ void RDDrone::run()
 			_uwb_report.pos_y = _message.pos_y ;// / 100.0f;
 			_uwb_report.pos_z = _message.pos_z ;// / 100.0f;
 			_uwb_report.timestamp = hrt_absolute_time();
-			_uwb_pub.publish(_uwb_report);
+
 			_attitude_sub.update(&_vehicle_attitude);
 
 			// The end goal of this math is to get the position relative to the landing point in the NED frame.
@@ -182,15 +182,13 @@ void RDDrone::run()
 			//  - Rotate by _nwu_to_ned to get into the NED frame
 			_current_position_ned = _nwu_to_ned * _rddrone_to_nwu * _current_position_rddrone;
 
-			_landing_target.timestamp = hrt_absolute_time();
-			_landing_target.rel_pos_valid = true;
-			_landing_target.rel_vel_valid = false;
-			_landing_target.is_static = true;
-			_landing_target.x_rel = -_current_position_ned(0);
-			_landing_target.y_rel = -_current_position_ned(1);
-			_landing_target.z_rel = -_current_position_ned(2);
+			// Now the position is the vehicle relative to the landing point. We need the landing point relative to
+			// the vehicle. So just negate everything.
+			_uwb_report.target_pos_x = _current_position_ned(0);
+			_uwb_report.target_pos_y = _current_position_ned(1);
+			_uwb_report.target_pos_z = _current_position_ned(2);
 
-			_landing_target_pub.publish(_landing_target);
+			_uwb_pub.publish(_uwb_report);
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));

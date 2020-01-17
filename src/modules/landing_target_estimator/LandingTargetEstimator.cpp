@@ -275,22 +275,24 @@ void LandingTargetEstimator::_update_topics()
 			return;
 		}
 
-		if (!PX4_ISFINITE(_uwbReport.pos_y) || !PX4_ISFINITE(_uwbReport.pos_x) ||
-		    !PX4_ISFINITE(_uwbReport.pos_z)) {
+		if (!PX4_ISFINITE(_uwbReport.target_pos_y) || !PX4_ISFINITE(_uwbReport.target_pos_x) ||
+		    !PX4_ISFINITE(_uwbReport.target_pos_z)) {
 			return;
 		}
 
 		_new_sensorReport = true;
 		_uncertainty_scale = 1.0f;
 
-		// we're assuming the coordinate system is NEU
-		// to get the position relative to use we just need to negate x and y
+		// The coordinate system is NED (north-east-down).
+		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
+		// The UWB report contains the position of the vehicle relative to the landing point.
+		// So, just negate all 3 components.
 		_sensor_report.timestamp = _uwbReport.timestamp;
-		_sensor_report.rel_pos_x = -_uwbReport.pos_x;
-		_sensor_report.rel_pos_y = -_uwbReport.pos_y;
-		_sensor_report.rel_pos_z = _uwbReport.pos_z;
+		_sensor_report.rel_pos_x = -_uwbReport.target_pos_x;
+		_sensor_report.rel_pos_y = -_uwbReport.target_pos_y;
+		_sensor_report.rel_pos_z = -_uwbReport.target_pos_z;
 
-		//PX4_WARN("data from uwb x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
+		//PX4_INFO("data from uwb x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
 		//	 (double)_sensor_report.rel_pos_y);
 	}
 }
