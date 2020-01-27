@@ -176,3 +176,18 @@ PARAM_DEFINE_INT32(CBRK_USB_CHK, 0);
  * @group Circuit Breaker
  */
 PARAM_DEFINE_INT32(CBRK_VELPOSERR, 0);
+
+/**
+ * Circuit breaker to preserve magnetometer calibration
+ *
+ * Setting this parameter to 382716 will ensure that the magnetometer
+ * calibration is preserved when the airframe config is changed.
+ * WARNING: ENABLING THIS CIRCUIT BREAKER IS AT OWN RISK
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 382716
+ * @category Developer
+ * @group Circuit Breaker
+ */
+PARAM_DEFINE_INT32(CBRK_KEEP_MAGCAL, 0);

@@ -152,8 +152,14 @@ else
 	then
 		if param compare SYS_AUTOCONFIG 1
 		then
-			# Wipe out params except RC*, flight modes, total flight time, accel cal, gyro cal, next flight UUID
-			param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
+			if param compare CBRK_KEEP_MAGCAL 382716
+			then
+				# Wipe out params except RC*, flight modes, total flight time, next flight UUID, accel cal, gyro cal, AND mag cal
+				param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* COM_FLIGHT_UUID CAL_ACC* CAL_GYRO* CAL_MAG*
+			else
+				# Wipe out params except RC*, flight modes, total flight time, next flight UUID, accel cal, gyro cal
+				param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* COM_FLIGHT_UUID CAL_ACC* CAL_GYRO*
+			fi
 		fi
 
 		set AUTOCNF yes
