@@ -188,6 +188,10 @@ void RDDrone::run()
 			_uwb_report.target_pos_y = _current_position_ned(1);
 			_uwb_report.target_pos_z = _current_position_ned(2);
 
+			for(int i = 0; i<MAX_ANCHORS; i++){
+				_uwb_report.anchor_distance[i] = _message.anchor_distance[i];
+			}
+
 			_uwb_pub.publish(_uwb_report);
 
 		} else {

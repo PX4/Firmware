@@ -49,7 +49,7 @@
 #include <matrix/Matrix.hpp>
 
 
-
+#define MAX_ANCHORS 9
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
 // is unused. In the following constants, the UUID is automatically initialized to all 0s.
 const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
@@ -78,6 +78,7 @@ typedef struct {
 	float landing_point_lat;
 	float landing_point_lon;
 	float landing_point_alt;
+	uint32_t anchor_distance[MAX_anchor_distanceS]; //Raw anchor_distance distances in CM
 } __attribute__((packed)) position_msg_t;
 
 class RDDrone : public ModuleBase<RDDrone>

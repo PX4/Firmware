@@ -32,3 +32,5 @@ int16 var_z
 int16 cov_xy
 int16 cov_xz
 int16 cov_yz
+
+int32[9] anchor_distance
