@@ -78,7 +78,7 @@ typedef struct {
 	float landing_point_lat;
 	float landing_point_lon;
 	float landing_point_alt;
-	uint32_t anchor_distance[MAX_anchor_distanceS]; //Raw anchor_distance distances in CM
+	uint32_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
 } __attribute__((packed)) position_msg_t;
 
 class RDDrone : public ModuleBase<RDDrone>
