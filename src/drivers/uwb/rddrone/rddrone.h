@@ -43,6 +43,8 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/uwb_report.h>
 #include <uORB/topics/landing_target_pose.h>
+#include <uORB/topics/uwb_grid.h>
+#include <uORB/topics/uwb_distance.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_attitude.h>
 #include <matrix/math.hpp>
@@ -65,20 +67,14 @@ const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
 // This is the message sent back from the UWB module, as defined in the documentation.
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for position result message
-	uint8_t sub_cmd;  	// Should be 0x01 for position result message
+	uint8_t sub_cmd;  	// Should be 0x0A for position result message
 	uint8_t data_len; 	// Should be 0x30 for position result message
 	uint8_t status;   	// 0x00 is no error
-	float pos_x;	  	// X location relative to landing point
-	float pos_y;		// Y location relative to landing point
-	float pos_z;		// Z location relative to landing point
+	uint16_t counter;	// Number of Ranges since last Start of Ranging
+	uint8_t time_offset;	// time measured between ranging
 	float yaw_offset; 	// Yaw offset in degrees
-	uint16_t counter;
-	uint8_t time_offset;
-	uint8_t grid_uuid[16];
-	float landing_point_lat;
-	float landing_point_lon;
-	float landing_point_alt;
-	uint32_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
+	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
+	uint8_t stop; 		// Should be 0x1B
 } __attribute__((packed)) position_msg_t;
 
 class RDDrone : public ModuleBase<RDDrone>
@@ -118,6 +114,12 @@ private:
 
 	uORB::Publication<uwb_report_s> _uwb_pub{ORB_ID(uwb_report)};
 	uwb_report_s _uwb_report{};
+
+	//uORB::Publication<uwb_grid_s> _uwb_pub{ORB_ID(uwb_grid)};
+	//uwb_grid_s _uwb_grid{};
+
+	uORB::Publication<uwb_distance_s> _uwb_distance_pub{ORB_ID(uwb_distance)};
+	uwb_distance_s _uwb_distance{};
 
 	uORB::Publication<landing_target_pose_s> _landing_target_pub{ORB_ID(landing_target_pose)};
 	landing_target_pose_s _landing_target{};

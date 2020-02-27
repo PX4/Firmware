@@ -122,8 +122,10 @@ void RDDrone::run()
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
 		//    - 51 bytes are received (the size of the whole message).
+		// TODO add second message
 		while (buffer_location < sizeof(_message)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
+
 			int bytes_read = read(_uart, &buffer[buffer_location], sizeof(_message) - buffer_location);
 
 			if (bytes_read > 0) {
@@ -155,20 +157,18 @@ void RDDrone::run()
 		//  - status == 0x00
 		//  - Values of all 3 position measurements are reasonable
 		//      (If one or more anchors is missed, then position might be an unreasonably large number.)
-		bool ok = buffer_location == sizeof(position_msg_t) && _message.status == 0x00;
-
-		ok &= abs(_message.pos_x) < 100000.0f;
-		ok &= abs(_message.pos_y) < 100000.0f;
-		ok &= abs(_message.pos_z) < 100000.0f;
+		bool ok = buffer_location == sizeof(position_msg_t) && _message.stop == 0x1b;
 
 		if (ok) {
-			_uwb_report.pos_x = _message.pos_x ;// / 100.0f;
-			_uwb_report.pos_y = _message.pos_y ;// / 100.0f;
-			_uwb_report.pos_z = _message.pos_z ;// / 100.0f;
-			_uwb_report.timestamp = hrt_absolute_time();
+			_uwb_distance.timestamp = hrt_absolute_time();
 
 			_attitude_sub.update(&_vehicle_attitude);
+			_uwb_distance.status = _message.status;
+			_uwb_distance.counter = _message.counter;
+			_uwb_distance.yaw_offset = _message.yaw_offset;
+			_uwb_distance.time_offset= _message.time_offset;
 
+/*
 			// The end goal of this math is to get the position relative to the landing point in the NED frame.
 			// Current position, in RDDrone frame
 			_current_position_rddrone = matrix::Vector3f(_message.pos_x, _message.pos_y, _message.pos_z);
@@ -184,15 +184,15 @@ void RDDrone::run()
 
 			// Now the position is the vehicle relative to the landing point. We need the landing point relative to
 			// the vehicle. So just negate everything.
-			_uwb_report.target_pos_x = _current_position_ned(0);
-			_uwb_report.target_pos_y = _current_position_ned(1);
-			_uwb_report.target_pos_z = _current_position_ned(2);
-
+			_uwb_distance.target_pos_x = _current_position_ned(0);
+			_uwb_distance.target_pos_y = _current_position_ned(1);
+			_uwb_distance.target_pos_z = _current_position_ned(2);
+*/
 			for(int i = 0; i<MAX_ANCHORS; i++){
-				_uwb_report.anchor_distance[i] = _message.anchor_distance[i];
+				_uwb_distance.anchor_distance[i] = _message.anchor_distance[i];
 			}
 
-			_uwb_pub.publish(_uwb_report);
+			_uwb_distance_pub.publish(_uwb_distance);
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(position_msg_t));
@@ -227,7 +227,7 @@ int RDDrone::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
 ### Description
 
-Driver for NXP RDDrone UWB positioning system. This driver publishes a `uwb_report` message
+Driver for NXP RDDrone UWB positioning system. This driver publishes a `uwb_distance` message
 whenever the RDDrone has a position measurement available.
 
 ### Example
