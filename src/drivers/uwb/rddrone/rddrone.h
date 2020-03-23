@@ -57,12 +57,43 @@
 const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
 const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
 
+const uint8_t CMD_DISTANCE_RESULT[20] = {0x8e, 0x0A, 0x11, 0x02};
+const uint8_t CMD_GRID_SURVEY[4] = {0x8e, 0x01, 0x01, 0x00};
+
 // Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
 // for populating the UUID field.
 // TODO: Determine how to fill the UUID field in this command.
 // Suggestion from Gerald: Make a file on the SD card with the grid UUIDs.
 // Would probably make use of PX4_STORAGEDIR "/rddrone_config.txt"
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
+
+
+typedef struct {
+	float lat;
+	float lon;
+	float alt;
+	float yaw;
+}gps_pos_t;
+
+typedef struct {
+	int32_t x;
+	int32_t y;
+	int32_t z;
+}position_t;
+
+typedef union {
+	uint8_t all_flags; /**/
+	struct {
+		uint8_t spare7 :1, /* Unused */
+		grid_moving :1, /* Explanation of bar */
+		yaw_data :1, /* yaw y/n */
+		gps_data :1, /* gps data y/n*/
+		spare3 :1, /* Grid ok */
+		spare2 :1, /* Grid info send*/
+		grid_found :1, /* Grid found*/
+		uwb_flag_status :1; /* Correctly send Grid info */
+	};
+} uwb_grid_flags;
 
 // This is the message sent back from the UWB module, as defined in the documentation.
 typedef struct {
@@ -76,6 +107,39 @@ typedef struct {
 	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
 	uint8_t stop; 		// Should be 0x1B
 } __attribute__((packed)) position_msg_t;
+
+typedef struct {
+	uint8_t cmd;      	// Should be 0x8E for grid result message
+	uint8_t sub_cmd;  	// Should be 0x0A for grid result message
+	uint8_t data_len; 	// Should be 0x157 for grid result message
+	uint8_t status;   	// 0x00 is no error
+	uint32_t initator_time;  	//timestamp of init
+	uwb_grid_flags	flag; 	//grid info flags ()
+	uint8_t	grid_uuid[16];// Same UUID as for anchor 0
+	uint8_t	anchor_nr;
+	uint8_t preamble_id; 	//TODO Do this
+	uint8_t	channel_id; 	//TODO Do this
+	gps_pos_t gps;  	// GPS Position of grid
+	position_t target_pos; //target
+	position_t anchor_pos[MAX_ANCHORS];
+	uint8_t stop; 		// Should be 27
+
+} __attribute__((packed)) grid_msg_t;
+
+
+typedef struct {
+	uint8_t cmd;      	// Should be 0x8E for distance result message
+	uint8_t sub_cmd;  	// Should be 0x0A for distance result message
+	uint8_t data_len; 	// Should be 0x30 for distance result message
+	uint8_t status;   	// 0x00 is no error
+	uint16_t counter;	// Number of Ranges since last Start of Ranging
+	uint8_t time_offset;	// time measured between ranging
+	float yaw_offset; 	// Yaw offset in degrees
+	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM 2*9
+	uint8_t stop; 		// Should be 0x1B
+} __attribute__((packed)) distance_msg_t;
+
+
 
 class RDDrone : public ModuleBase<RDDrone>
 {
@@ -115,8 +179,8 @@ private:
 	uORB::Publication<uwb_report_s> _uwb_pub{ORB_ID(uwb_report)};
 	uwb_report_s _uwb_report{};
 
-	//uORB::Publication<uwb_grid_s> _uwb_pub{ORB_ID(uwb_grid)};
-	//uwb_grid_s _uwb_grid{};
+	uORB::Publication<uwb_grid_s> _uwb_grid_pub{ORB_ID(uwb_grid)};
+	uwb_grid_s _uwb_grid{};
 
 	uORB::Publication<uwb_distance_s> _uwb_distance_pub{ORB_ID(uwb_distance)};
 	uwb_distance_s _uwb_distance{};
@@ -127,7 +191,8 @@ private:
 	uORB::Subscription _attitude_sub{ORB_ID(vehicle_attitude)};
 	vehicle_attitude_s _vehicle_attitude{};
 
-	position_msg_t _message{};
+	grid_msg_t _grid_survey_msg{};
+	position_msg_t _distance_result_msg{};
 
 	matrix::Dcmf _rddrone_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
