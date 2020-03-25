@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -100,9 +100,9 @@ void RDDrone::run()
 	/* Grid Survey */
 
 	uint8_t *grid_buffer = (uint8_t *) &_grid_survey_msg;
-	bool grid_found = 0;
+	bool grid_found = false;
 
-	while (grid_found == 0) {
+	while (!grid_found) {
 
 		int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY));
 
@@ -126,8 +126,7 @@ void RDDrone::run()
 		//  - Once receiving a message, keep going until EITHER:
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
-		//    - 51 bytes are received (the size of the whole message).
-		// TODO add second message
+		//    - 165 bytes are received (the size of the whole message).
 
 		while (grid_buffer_location < sizeof(_grid_survey_msg)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
@@ -157,7 +156,8 @@ void RDDrone::run()
 		}
 
 		// All of the following criteria must be met for the message to be acceptable:
-		//  - Size of message == sizeof(grid_msg_t) (163)
+		//  - Size of message == sizeof(grid_msg_t) (165)
+		//  - Data Len == 0xA1
 		//  - status == 0x00
 		//  - Stop Byte == 0x1b
 		//  - Values of all 3 position measurements are reasonable
@@ -167,21 +167,19 @@ void RDDrone::run()
 
 	}
 
+	/* Grid Survey Message*/
 	_uwb_grid.timestamp = hrt_absolute_time();
 	_attitude_sub.update(&_vehicle_attitude);
-
 	memcpy(&_uwb_grid.grid_uuid, &_grid_survey_msg.grid_uuid, sizeof(_uwb_grid.grid_uuid));
 	_uwb_grid.initator_time = _grid_survey_msg.initator_time;
-	_uwb_grid.anchor_nr = _grid_survey_msg.anchor_nr;
-
-
+	_uwb_grid.num_anchors = _grid_survey_msg.num_anchors;
 	memcpy(&_uwb_grid.gps, &_grid_survey_msg.gps, sizeof(gps_pos_t));
 	memcpy(&_uwb_grid.target_pos, &_grid_survey_msg.target_pos, sizeof(position_t));
 
 	//for (int i = 0; i < MAX_ANCHORS; i++) {
-	memcpy(&_uwb_grid.anchor_pos_0, &_grid_survey_msg.anchor_pos[0], sizeof(position_t)); //how can i do this with a Loop?
+	memcpy(&_uwb_grid.anchor_pos_0, &_grid_survey_msg.anchor_pos[0], sizeof(position_t)); //how can i do this with a Loop? Can i just pointer loop over?
 	memcpy(&_uwb_grid.anchor_pos_1, &_grid_survey_msg.anchor_pos[1],
-	       sizeof(position_t)); //the Source Data is Structured but the Tartget Data not
+	       sizeof(position_t)); //the Source Data is Structured but the Tartget Data is not
 	memcpy(&_uwb_grid.anchor_pos_2, &_grid_survey_msg.anchor_pos[2], sizeof(position_t));
 	memcpy(&_uwb_grid.anchor_pos_3, &_grid_survey_msg.anchor_pos[3], sizeof(position_t));
 	memcpy(&_uwb_grid.anchor_pos_4, &_grid_survey_msg.anchor_pos[4], sizeof(position_t));
@@ -197,12 +195,11 @@ void RDDrone::run()
 	printf("GRID FOUND.\t\n");
 
 
-
-	sleep(1);
-
 	// After Grid Survey the Drone Starts to Range
 
 	/* Ranging */
+
+	/* Ranging  Command */
 	int written = write(_uart, CMD_DISTANCE_RESULT, sizeof(CMD_DISTANCE_RESULT));
 
 	if (written < (int) sizeof(CMD_DISTANCE_RESULT)) {
@@ -220,6 +217,7 @@ void RDDrone::run()
 
 		size_t buffer_location = 0;
 
+		// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
 		// Messages are only delimited by time. There is a chance that this driver starts up in the middle
 		// of a message, with no way to know this other than time. There is also always the possibility of
 		// transmission errors causing a dropped byte.
@@ -228,8 +226,8 @@ void RDDrone::run()
 		//  - Once receiving a message, keep going until EITHER:
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
-		//    - 51 bytes are received (the size of the whole message).
-		// TODO add second message
+		//    - 30 bytes are received (the size of the whole message).
+
 		while (buffer_location < sizeof(_distance_result_msg)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
 
@@ -272,6 +270,7 @@ void RDDrone::run()
 
 
 		if (ok) {
+			/* Ranging Message*/
 			_uwb_distance.timestamp = hrt_absolute_time();
 
 			_attitude_sub.update(&_vehicle_attitude);
@@ -280,31 +279,20 @@ void RDDrone::run()
 			_uwb_distance.yaw_offset = _distance_result_msg.yaw_offset;
 			_uwb_distance.time_offset = _distance_result_msg.time_offset;
 
-			/*
-						// The end goal of this math is to get the position relative to the landing point in the NED frame.
-						// Current position, in RDDrone frame
-						_current_position_rddrone = matrix::Vector3f(_distance_result_msg.pos_x, _distance_result_msg.pos_y, _distance_result_msg.pos_z);
-						// Construct the rotation from the RDDrone frame to the NWU frame.
-						// The RDDrone frame is just NWU, rotated by some amount about the Z (up) axis.
-						// To get back to NWU, just rotate by negative this amount about Z.
-						_rddrone_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_distance_result_msg.yaw_offset * M_PI_F / 180.0f)));
-						// The actual conversion:
-						//  - Subtract _landing_point to get the position relative to the landing point, in RDDrone frame
-						//  - Rotate by _rddrone_to_nwu to get into the NWU frame
-						//  - Rotate by _nwu_to_ned to get into the NED frame
-						_current_position_ned = _nwu_to_ned * _rddrone_to_nwu * _current_position_rddrone;
-
-						// Now the position is the vehicle relative to the landing point. We need the landing point relative to
-						// the vehicle. So just negate everything.
-						_uwb_distance.target_pos_x = _current_position_ned(0);
-						_uwb_distance.target_pos_y = _current_position_ned(1);
-						_uwb_distance.target_pos_z = _current_position_ned(2);
-			*/
 			for (int i = 0; i < MAX_ANCHORS; i++) {
 				_uwb_distance.anchor_distance[i] = _distance_result_msg.anchor_distance[i];
 			}
 
+
+			// Algorithm goes here
+			int position_bool = RDDrone::localization();
+			if(position_bool == 0) printf("Position Calculated");
+			_uwb_distance.position = position;
+
+
 			_uwb_distance_pub.publish(_uwb_distance);
+
+
 
 		} else {
 			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(distance_msg_t));
@@ -315,6 +303,7 @@ void RDDrone::run()
 			}
 
 		}
+
 	}
 
 
@@ -451,4 +440,262 @@ RDDrone *RDDrone::instantiate(int argc, char *argv[])
 int rddrone_main(int argc, char *argv[])
 {
 	return RDDrone::main(argc, argv);
+}
+
+int RDDrone::localization()
+{
+
+// 			WIP
+/******************************************************
+ ****************** 3D Localization *******************
+ *****************************************************/
+
+/*!@brief: This function calculates the 3D position of the initiator from the anchor distances and positions using least squared errors.
+ *	 	   The function expects more than 4 anchors. The used equation system looks like follows:\n
+ \verbatim
+  		    -					-
+  		   | M_11	M_12	M_13 |	 x	  b_1
+  		   | M_12	M_22	M_23 | * y	= b_2
+  		   | M_23	M_13	M_33 |	 z	  b_3
+  		    -					-
+ \endverbatim
+ * @param distances_cm_in_pt: 			Pointer to array that contains the distances to the anchors in cm (including invalid results)
+ * @param no_distances: 				Number of valid distances in distance array (it's not the size of the array)
+ * @param anchor_positions_cm_in_pt: 	Pointer to array that contains anchor positions in cm (including positions related to invalid results)
+ * @param no_anc_positions: 			Number of valid anchor positions in the position array (it's not the size of the array)
+ * @param position_result_pt: 			Pointer to position_t variable that holds the result of this calculation
+ * @return: The function returns a status code. */
+
+	/* Matrix components (3*3 Matrix resulting from least square error method) [cm^2] */
+	int64_t M_11 = 0;
+	int64_t M_12 = 0;																						// = M_21
+	int64_t M_13 = 0;																						// = M_31
+	int64_t M_22 = 0;
+	int64_t M_23 = 0;																						// = M_23
+	int64_t M_33 = 0;
+
+	/* Vector components (3*1 Vector resulting from least square error method) [cm^3] */
+	int64_t b_1 = 0;
+	int64_t b_2 = 0;
+	int64_t b_3 = 0;
+
+	/* Miscellaneous variables */
+	int64_t temp;
+	int64_t temp2;
+	int64_t nominator;
+	int64_t denominator;
+	bool	anchors_on_x_y_plane;																			// Is true, if all anchors are on the same height => x-y-plane
+	bool	lin_dep;																						// All vectors are linear dependent, if this variable is true
+	uint8_t ind_y_indi;																						// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
+
+
+	/* Arrays for used distances and anchor positions (without rejected ones) */
+	uint32_t 	distances_cm_pt[_grid_survey_msg.num_anchors];
+	position_t 	anchor_positions_cm_pt[_grid_survey_msg.num_anchors];
+	uint8_t		no_valid_distances = _grid_survey_msg.num_anchors;
+	uint8_t no_distances = _grid_survey_msg.num_anchors;
+
+	/* Reject invalid distances (including related anchor position) */
+	int i2 = 0;
+	for(int i = 0; i < no_distances; i++)
+	{
+		if(_distance_result_msg.anchor_distance[i] != 0xFFFFu)
+		{
+			distances_cm_pt[i2] 		= _distance_result_msg.anchor_distance[i];
+			anchor_positions_cm_pt[i2] 	= _grid_survey_msg.anchor_pos[i];
+			i2++;
+		}
+		else
+		{
+			no_valid_distances--;
+		}
+	}
+
+	/* Check, if there are enough valid results for doing the localization at all */
+	if(no_valid_distances < 3)
+	{
+		PX4_WARN("UWB not enough anchors for doing localization");
+		return 1;
+	}
+
+	/* Check, if anchors are on the same x-y plane */
+	anchors_on_x_y_plane = true;
+	for(int i = 1; i < no_valid_distances; i++)
+	{
+		if(anchor_positions_cm_pt[i].z != anchor_positions_cm_pt[0].z)
+		{
+			anchors_on_x_y_plane = false;
+			break;
+		}
+	}
+
+	/**** Check, if there are enough linear independent anchor positions ****/
+
+	/* Check, if the matrix |(x_1 - x_0) (x_2 - x_0) ... | has rank 2
+	 * 						|(y_1 - y_0) (y_2 - y_0) ... | 				*/
+	lin_dep = true;
+
+	for(ind_y_indi = 2; ((ind_y_indi < no_valid_distances) && (lin_dep == true)); ind_y_indi++)
+	{
+		temp = ((int64_t)anchor_positions_cm_pt[ind_y_indi].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[1].x - (int64_t)anchor_positions_cm_pt[0].x);
+		temp2 = ((int64_t)anchor_positions_cm_pt[1].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[ind_y_indi].x - (int64_t)anchor_positions_cm_pt[0].x);
+
+		if((temp - temp2) != 0)
+		{
+			lin_dep = false;
+			break;
+		}
+	}
+
+
+	/* Leave function, if rank is below 2 */
+	if(lin_dep == true)
+	{
+		PX4_WARN("UWB localization: linear dependant");
+		return 1;
+	}
+
+	/* If the anchors are not on the same plane, three vectors must be independent => check */
+	if(!anchors_on_x_y_plane)
+	{
+		/* Check, if there are enough valid results for doing the localization */
+		if(no_valid_distances < 4)
+		{
+			PX4_WARN("UWB localization: not enough valid results");
+			return 1;
+		}
+
+		/* Check, if the matrix |(x_1 - x_0) (x_2 - x_0) (x_3 - x_0) ... | has rank 3 (Rank y, y already checked)
+		 * 						|(y_1 - y_0) (y_2 - y_0) (y_3 - y_0) ... |
+		 * 						|(z_1 - z_0) (z_2 - z_0) (z_3 - z_0) ... |											*/
+		lin_dep = true;
+		for(int i = 2; ((i < no_valid_distances) && (lin_dep == true)); i++)
+		{
+			if(i != ind_y_indi)
+			{
+				/* (x_1 - x_0)*[(y_2 - y_0)(z_n - z_0) - (y_n - y_0)(z_2 - z_0)] */
+				temp 	= ((int64_t)anchor_positions_cm_pt[ind_y_indi].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[i].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp 	-= ((int64_t)anchor_positions_cm_pt[i].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[ind_y_indi].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp2 	= ((int64_t)anchor_positions_cm_pt[1].x - (int64_t)anchor_positions_cm_pt[0].x)*temp;
+
+				/* Add (x_2 - x_0)*[(y_n - y_0)(z_1 - z_0) - (y_1 - y_0)(z_n - z_0)] */
+				temp 	= ((int64_t)anchor_positions_cm_pt[i].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[1].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp 	-= ((int64_t)anchor_positions_cm_pt[1].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[i].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp2 	+= ((int64_t)anchor_positions_cm_pt[ind_y_indi].x - (int64_t)anchor_positions_cm_pt[0].x)*temp;
+
+				/* Add (x_n - x_0)*[(y_1 - y_0)(z_2 - z_0) - (y_2 - y_0)(z_1 - z_0)] */
+				temp 	= ((int64_t)anchor_positions_cm_pt[1].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[ind_y_indi].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp 	-= ((int64_t)anchor_positions_cm_pt[ind_y_indi].y - (int64_t)anchor_positions_cm_pt[0].y) * ((int64_t)anchor_positions_cm_pt[1].z - (int64_t)anchor_positions_cm_pt[0].z);
+				temp2 	+= ((int64_t)anchor_positions_cm_pt[i].x - (int64_t)anchor_positions_cm_pt[0].x)*temp;
+
+				if(temp2 != 0) lin_dep = false;
+			}
+		}
+
+		/* Leave function, if rank is below 3 */
+		if(lin_dep == true)
+		{
+			PX4_WARN("UWB localization: rank below 3");
+			return 1;
+		}
+	}
+
+	/************************************************** Algorithm ***********************************************************************/
+
+	/* Writing values resulting from least square error method (A_trans*A*x = A_trans*r; row 0 was used to remove x^2,y^2,z^2 entries => index starts at 1) */
+	for(int i = 1; i < no_valid_distances; i++)
+	{
+		/* Matrix (needed to be multiplied with 2, afterwards) */
+		M_11 += (int64_t)pow((int64_t)(anchor_positions_cm_pt[i].x - anchor_positions_cm_pt[0].x), 2);
+		M_12 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].x - anchor_positions_cm_pt[0].x) * (int64_t)(anchor_positions_cm_pt[i].y - anchor_positions_cm_pt[0].y));
+		M_13 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].x - anchor_positions_cm_pt[0].x) * (int64_t)(anchor_positions_cm_pt[i].z - anchor_positions_cm_pt[0].z));
+		M_22 += (int64_t)pow((int64_t)(anchor_positions_cm_pt[i].y - anchor_positions_cm_pt[0].y), 2);
+		M_23 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].y - anchor_positions_cm_pt[0].y) * (int64_t)(anchor_positions_cm_pt[i].z - anchor_positions_cm_pt[0].z));
+		M_33 += (int64_t)pow((int64_t)(anchor_positions_cm_pt[i].z - anchor_positions_cm_pt[0].z), 2);
+
+		/* Vector */
+		temp = (int64_t)((int64_t)pow(distances_cm_pt[0], 2) - (int64_t)pow(distances_cm_pt[i], 2)
+				+ (int64_t)pow(anchor_positions_cm_pt[i].x, 2) + (int64_t)pow(anchor_positions_cm_pt[i].y, 2)
+				+ (int64_t)pow(anchor_positions_cm_pt[i].z, 2) - (int64_t)pow(anchor_positions_cm_pt[0].x, 2)
+				- (int64_t)pow(anchor_positions_cm_pt[0].y, 2) - (int64_t)pow(anchor_positions_cm_pt[0].z, 2));
+
+		b_1 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].x - anchor_positions_cm_pt[0].x) * temp);
+		b_2 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].y - anchor_positions_cm_pt[0].y) * temp);
+		b_3 += (int64_t)((int64_t)(anchor_positions_cm_pt[i].z - anchor_positions_cm_pt[0].z) * temp);
+	}
+	M_11 = 2*M_11;
+	M_12 = 2*M_12;
+	M_13 = 2*M_13;
+	M_22 = 2*M_22;
+	M_23 = 2*M_23;
+	M_33 = 2*M_33;
+
+	/* Calculating the z-position, if calculation is possible (at least one anchor at z != 0) */
+	if(anchors_on_x_y_plane == false)
+	{
+		nominator = b_1*(M_12*M_23 - M_13*M_22) + b_2*(M_12*M_13 - M_11*M_23) + b_3*(M_11*M_22 - M_12*M_12);			// [cm^7]
+		denominator = M_11*(M_33*M_22 - M_23*M_23) + 2*M_12*M_13*M_23 - M_33*M_12*M_12 - M_22*M_13*M_13;				// [cm^6]
+
+		/* Check, if denominator is zero (Rank of matrix not high enough) */
+		if(denominator == 0)
+		{
+			PX4_WARN("UWB localization: rank not high enough");
+			return 1;
+		}
+
+		position.z = (int32_t)(((nominator*10)/denominator + 5)/10);									// [cm]
+	}
+	/* Else prepare for different calculation approach (after x and y were calculated) */
+	else
+	{
+		position.z = 0u;
+	}
+
+	/* Calculating the y-position */
+	nominator = b_2*M_11 - b_1*M_12 - ((int64_t)position.z)*(M_11*M_23 - M_12*M_13);					// [cm^5]
+	denominator = M_11*M_22 - M_12*M_12;																				// [cm^4]
+
+	/* Check, if denominator is zero (Rank of matrix not high enough) */
+	if(denominator == 0)
+	{
+		PX4_WARN("UWB localization: rank is zero");
+		return 1;
+	}
+
+	position.y = (int32_t)(((nominator*10)/denominator + 5)/10);										// [cm]
+
+	/* Calculating the x-position */
+	nominator = b_1 - ((int64_t)position.z)*M_13 - ((int64_t)position.y)*M_12;		// [cm^3]
+	denominator = M_11;																									// [cm^2]
+
+	position.x = (int32_t)(((nominator*10)/denominator + 5)/10);										// [cm]
+
+	/* Calculate z-position form x and y coordinates, if z can't be determined by previous steps (All anchors at z_n = 0) */
+	if(anchors_on_x_y_plane == true)
+	{
+		/* Calculate z-positon relative to the anchor grid's height */
+		for(int i = 0; i < no_distances; i++)
+		{
+			/* z² = dis_meas_n² - (x - x_anc_n)² - (y - y_anc_n)² */
+			temp = (int64_t)((int64_t)pow(distances_cm_pt[i], 2)
+					- (int64_t)pow(((int64_t)position.x - (int64_t)anchor_positions_cm_pt[i].x), 2)
+					- (int64_t)pow(((int64_t)position.y - (int64_t)anchor_positions_cm_pt[i].y), 2));
+
+			/* z² must be positive, else x and y must be wrong => calculate positive sqrt and sum up all calculated heights, if positive */
+			if(temp >= 0)
+			{
+				position.z += (int32_t)sqrt(temp);
+			}
+			else
+			{
+				position.z = 0;
+			}
+		}
+		position.z = position.z / no_distances;										// Divide sum by number of distances to get the average
+
+		/* Add height of the anchor grid's height */
+		position.z += anchor_positions_cm_pt[0].z;
+	}
+
+	return 0;
 }

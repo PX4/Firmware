@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,28 +68,28 @@ const uint8_t CMD_GRID_SURVEY[4] = {0x8e, 0x01, 0x01, 0x00};
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
 
 
-typedef struct {
+typedef struct {  //needs higher accuracy?
 	float lat;
 	float lon;
 	float alt;
-	float yaw;
+	float yaw; //offset to true North
 }gps_pos_t;
 
 typedef struct {
-	int32_t x;
-	int32_t y;
-	int32_t z;
-}position_t;
+	int32_t x; //axis in cm
+	int32_t y; //axis in cm
+	int32_t z; //axis in cm
+}position_t; // Position of a device or target in 3D space
 
 typedef union {
 	uint8_t all_flags; /**/
 	struct {
 		uint8_t spare7 :1, /* Unused */
-		grid_moving :1, /* Explanation of bar */
+		grid_moving :1, /* grid is Moving yes/no? */
 		yaw_data :1, /* yaw y/n */
 		gps_data :1, /* gps data y/n*/
-		spare3 :1, /* Grid ok */
-		spare2 :1, /* Grid info send*/
+		spare3 :1, /*  */
+		spare2 :1, /* */
 		grid_found :1, /* Grid found*/
 		uwb_flag_status :1; /* Correctly send Grid info */
 	};
@@ -116,12 +116,12 @@ typedef struct {
 	uint32_t initator_time;  	//timestamp of init
 	uwb_grid_flags	flag; 	//grid info flags ()
 	uint8_t	grid_uuid[16];// Same UUID as for anchor 0
-	uint8_t	anchor_nr;
+	uint8_t	num_anchors;	//number of anchors
 	uint8_t preamble_id; 	//TODO Do this
 	uint8_t	channel_id; 	//TODO Do this
 	gps_pos_t gps;  	// GPS Position of grid
-	position_t target_pos; //target
-	position_t anchor_pos[MAX_ANCHORS];
+	position_t target_pos; //target position
+	position_t anchor_pos[MAX_ANCHORS]; // Position of each anchor
 	uint8_t stop; 		// Should be 27
 
 } __attribute__((packed)) grid_msg_t;
@@ -159,6 +159,11 @@ public:
 	static int print_usage(const char *reason = nullptr);
 
 	/**
+	 * @see ModuleBase::Multilateration
+	 */
+	int localization();
+
+	/**
 	 * @see ModuleBase::task_spawn
 	 */
 	static int task_spawn(int argc, char *argv[]);
@@ -192,7 +197,8 @@ private:
 	vehicle_attitude_s _vehicle_attitude{};
 
 	grid_msg_t _grid_survey_msg{};
-	position_msg_t _distance_result_msg{};
+	distance_msg_t _distance_result_msg{};
+	position_t position;
 
 	matrix::Dcmf _rddrone_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
