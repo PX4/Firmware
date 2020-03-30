@@ -67,7 +67,3 @@ mc_pos_control start
 # Start Multicopter Land Detector.
 #
 land_detector start multicopter
-
-# TODO: Delete this. This is only here for testing.
-landing_target_estimator start
-rddrone start -b 57600 -d /dev/ttyS3
