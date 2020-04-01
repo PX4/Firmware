@@ -41,7 +41,6 @@
 #include <px4_platform_common/module.h>
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/uwb_report.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/uwb_grid.h>
 #include <uORB/topics/uwb_distance.h>
@@ -49,7 +48,6 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <matrix/math.hpp>
 #include <matrix/Matrix.hpp>
-
 
 #define MAX_ANCHORS 9
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
@@ -64,28 +62,24 @@ const uint8_t CMD_GRID_SURVEY[4] = {0x8e, 0x01, 0x01, 0x00};
 // for populating the UUID field.
 // TODO: Determine how to fill the UUID field in this command.
 // Suggestion from Gerald: Make a file on the SD card with the grid UUIDs.
-// Would probably make use of PX4_STORAGEDIR "/rddrone_config.txt"
+// Would probably make use of PX4_STORAGEDIR "/uwb_r4_config.txt"
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
 
 
 typedef struct {  //needs higher accuracy?
-	float lat;
-	float lon;
-	float alt;
+	float lat, lon, alt;
 	float yaw; //offset to true North
 }gps_pos_t;
 
 typedef struct {
-	int32_t x; //axis in cm
-	int32_t y; //axis in cm
-	int32_t z; //axis in cm
+	int32_t x, y, z; //axis in cm
 }position_t; // Position of a device or target in 3D space
 
 typedef union {
 	uint8_t all_flags; /**/
 	struct {
 		uint8_t spare7 :1, /* Unused */
-		grid_moving :1, /* grid is Moving yes/no? */
+		grid_moving :1, /* grid is Moving y/n? */
 		yaw_data :1, /* yaw y/n */
 		gps_data :1, /* gps data y/n*/
 		spare3 :1, /*  */
@@ -95,6 +89,7 @@ typedef union {
 	};
 } uwb_grid_flags;
 
+/*
 // This is the message sent back from the UWB module, as defined in the documentation.
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for position result message
@@ -106,7 +101,7 @@ typedef struct {
 	float yaw_offset; 	// Yaw offset in degrees
 	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
 	uint8_t stop; 		// Should be 0x1B
-} __attribute__((packed)) position_msg_t;
+} __attribute__((packed)) position_msg_t;*/
 
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for grid result message
@@ -119,7 +114,7 @@ typedef struct {
 	uint8_t	num_anchors;	//number of anchors
 	uint8_t preamble_id; 	//TODO Do this
 	uint8_t	channel_id; 	//TODO Do this
-	gps_pos_t gps;  	// GPS Position of grid
+	gps_pos_t gps_data;  	// GPS Position of grid
 	position_t target_pos; //target position
 	position_t anchor_pos[MAX_ANCHORS]; // Position of each anchor
 	uint8_t stop; 		// Should be 27
@@ -141,12 +136,12 @@ typedef struct {
 
 
 
-class RDDrone : public ModuleBase<RDDrone>
+class UWB_R4 : public ModuleBase<UWB_R4>
 {
 public:
-	RDDrone(const char *device_name, speed_t baudrate);
+	UWB_R4(const char *device_name, speed_t baudrate);
 
-	~RDDrone();
+	~UWB_R4();
 
 	/**
 	 * @see ModuleBase::custom_command
@@ -168,7 +163,7 @@ public:
 	 */
 	static int task_spawn(int argc, char *argv[]);
 
-	static RDDrone *instantiate(int argc, char *argv[]);
+	static UWB_R4 *instantiate(int argc, char *argv[]);
 
 	void run() override;
 
@@ -180,9 +175,6 @@ private:
 
 	perf_counter_t _read_count_perf;
 	perf_counter_t _read_err_perf;
-
-	uORB::Publication<uwb_report_s> _uwb_pub{ORB_ID(uwb_report)};
-	uwb_report_s _uwb_report{};
 
 	uORB::Publication<uwb_grid_s> _uwb_grid_pub{ORB_ID(uwb_grid)};
 	uwb_grid_s _uwb_grid{};
@@ -200,9 +192,9 @@ private:
 	distance_msg_t _distance_result_msg{};
 	position_t position;
 
-	matrix::Dcmf _rddrone_to_nwu;
+	matrix::Dcmf _uwb_r4_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	matrix::Vector3f _current_position_rddrone;
+	matrix::Vector3f _current_position_uwb_r4;
 	matrix::Vector3f _current_position_ned;
 };
 

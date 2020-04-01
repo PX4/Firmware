@@ -31,7 +31,13 @@
  *
  ****************************************************************************/
 
-#include "rddrone.h"
+
+/* This is a driver for the NXP S32_UWB_R1 Board
+ *	This Driver handles the Communication to the UWB Board.
+ *
+ * */
+
+#include "uwb_r4.h"
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/cli.h>
@@ -42,23 +48,23 @@
 
 // Timeout between bytes. If there is more time than this between bytes, then this driver assumes
 // that it is the boundary between messages.
-// See RDDrone::run() for more detailed explanation.
+// See uwb_r4::run() for more detailed explanation.
 #define BYTE_TIMEOUT_US 5000
 
 // Amount of time to wait for a new message. If more time than this passes between messages, then this
-// driver assumes that the RDDrone module is disconnected.
+// driver assumes that the UWB_R4 module is disconnected.
 // (Right now it does not do anything about this)
 #define MESSAGE_TIMEOUT_S 10  //wait 10 seconds.
 #define MESSAGE_TIMEOUT_US 1
 
-// The default baudrate of the RDDrone module before configuration
+// The default baudrate of the UWB_R4 module before configuration
 #define DEFAULT_BAUD B115200
 
-extern "C" __EXPORT int rddrone_main(int argc, char *argv[]);
+extern "C" __EXPORT int uwb_r4_main(int argc, char *argv[]);
 
-RDDrone::RDDrone(const char *device_name, speed_t baudrate):
-	_read_count_perf(perf_alloc(PC_COUNT, "rddrone_count")),
-	_read_err_perf(perf_alloc(PC_COUNT, "rddrone_err"))
+UWB_R4::UWB_R4(const char *device_name, speed_t baudrate):
+	_read_count_perf(perf_alloc(PC_COUNT, "uwb_r4_count")),
+	_read_err_perf(perf_alloc(PC_COUNT, "uwb_r4_err"))
 {
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
@@ -86,7 +92,7 @@ RDDrone::RDDrone(const char *device_name, speed_t baudrate):
 
 }
 
-RDDrone::~RDDrone()
+UWB_R4::~UWB_R4()
 {
 	perf_free(_read_err_perf);
 	perf_free(_read_count_perf);
@@ -94,7 +100,7 @@ RDDrone::~RDDrone()
 	close(_uart);
 }
 
-void RDDrone::run()
+void UWB_R4::run()
 {
 
 	/* Grid Survey */
@@ -150,7 +156,7 @@ void RDDrone::run()
 			// The current value of 5ms was found experimentally to never cut off a message prematurely.
 			// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
 			// because if this process is waiting, it means that the last message was incomplete, so there is no current
-			// data waiting to be published. But we would rather set this timeout lower in case the RDDrone board is
+			// data waiting to be published. But we would rather set this timeout lower in case the UWB_R4 board is
 			// updated to publish data faster.
 			_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
 		}
@@ -173,7 +179,7 @@ void RDDrone::run()
 	memcpy(&_uwb_grid.grid_uuid, &_grid_survey_msg.grid_uuid, sizeof(_uwb_grid.grid_uuid));
 	_uwb_grid.initator_time = _grid_survey_msg.initator_time;
 	_uwb_grid.num_anchors = _grid_survey_msg.num_anchors;
-	memcpy(&_uwb_grid.gps, &_grid_survey_msg.gps, sizeof(gps_pos_t));
+	memcpy(&_uwb_grid.gps_data, &_grid_survey_msg.gps_data, sizeof(gps_pos_t));
 	memcpy(&_uwb_grid.target_pos, &_grid_survey_msg.target_pos, sizeof(position_t));
 
 	//for (int i = 0; i < MAX_ANCHORS; i++) {
@@ -251,7 +257,7 @@ void RDDrone::run()
 			// The current value of 5ms was found experimentally to never cut off a message prematurely.
 			// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
 			// because if this process is waiting, it means that the last message was incomplete, so there is no current
-			// data waiting to be published. But we would rather set this timeout lower in case the RDDrone board is
+			// data waiting to be published. But we would rather set this timeout lower in case the UWB_R4 board is
 			// updated to publish data faster.
 			_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
 		}
@@ -286,7 +292,12 @@ void RDDrone::run()
 
 
 			// Algorithm goes here
-			int position_bool = RDDrone::localization();
+			int position_bool = UWB_R4::localization();
+
+			// The coordinate system is NED (north-east-down).
+			// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
+			// The UWB report contains the position of the vehicle relative to the landing point.
+			// So, just negate all 3 components.
 
 			if (position_bool == 0) { memcpy(&_uwb_distance.position, &position, sizeof(position_t)); }
 
@@ -317,12 +328,12 @@ void RDDrone::run()
 
 }
 
-int RDDrone::custom_command(int argc, char *argv[])
+int UWB_R4::custom_command(int argc, char *argv[])
 {
 	return print_usage("Unrecognized command.");
 }
 
-int RDDrone::print_usage(const char *reason)
+int UWB_R4::print_usage(const char *reason)
 {
 	if (reason) {
 		printf("%s\n\n", reason);
@@ -332,8 +343,8 @@ int RDDrone::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
 ### Description
 
-Driver for NXP RDDrone UWB positioning system. This driver publishes a `uwb_distance` message
-whenever the RDDrone has a position measurement available.
+Driver for NXP UWB_R4 UWB positioning system. This driver publishes a `uwb_distance` message
+whenever the UWB_R4 has a position measurement available.
 
 ### Example
 
@@ -349,7 +360,7 @@ $ uwb start -d /dev/ttyS2
 	return 0;
 }
 
-int RDDrone::task_spawn(int argc, char *argv[])
+int UWB_R4::task_spawn(int argc, char *argv[])
 {
 	int task_id = px4_task_spawn_cmd(
 			      "uwb_driver",
@@ -392,7 +403,7 @@ speed_t int_to_speed(int baud)
 	}
 }
 
-RDDrone *RDDrone::instantiate(int argc, char *argv[])
+UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 {
 	int ch;
 	int option_index = 1;
@@ -433,17 +444,17 @@ RDDrone *RDDrone::instantiate(int argc, char *argv[])
 		return nullptr;
 
 	} else {
-		PX4_INFO("Constructing RDDrone. Device: %s", device_name);
-		return new RDDrone(device_name, int_to_speed(baudrate));
+		PX4_INFO("Constructing UWB_R4. Device: %s", device_name);
+		return new UWB_R4(device_name, int_to_speed(baudrate));
 	}
 }
 
-int rddrone_main(int argc, char *argv[])
+int uwb_r4_main(int argc, char *argv[])
 {
-	return RDDrone::main(argc, argv);
+	return UWB_R4::main(argc, argv);
 }
 
-int RDDrone::localization()
+int UWB_R4::localization()
 {
 
 // 			WIP
@@ -455,9 +466,9 @@ int RDDrone::localization()
 	 *	 	   The function expects more than 4 anchors. The used equation system looks like follows:\n
 	 \verbatim
 	  		    -					-
-	  		   | M_11	M_12	M_13 |	 x	  b_1
-	  		   | M_12	M_22	M_23 | * y	= b_2
-	  		   | M_23	M_13	M_33 |	 z	  b_3
+	  		   | M_11	M_12	M_13 |	 x	  b[0]
+	  		   | M_12	M_22	M_23 | * y	= b[1]
+	  		   | M_23	M_13	M_33 |	 z	  b[2]
 	  		    -					-
 	 \endverbatim
 	 * @param distances_cm_in_pt: 			Pointer to array that contains the distances to the anchors in cm (including invalid results)
@@ -470,6 +481,7 @@ int RDDrone::localization()
 	/* 		Algorithm used:
 	 *		Linear Least Sqaures to solve Multilateration
 	 * 		with a Special case if there are only 3 Anchors.
+	 * 		Output is the Coordinates of the Initiator in relation to Anchor 0 in NEU (North-East-Up) Framing
 	 */
 
 		/* Matrix components (3*3 Matrix resulting from least square error method) [cm^2] */
@@ -481,39 +493,35 @@ int RDDrone::localization()
 	int64_t M_33 = 0;
 
 	/* Vector components (3*1 Vector resulting from least square error method) [cm^3] */
-	int64_t b_1 = 0;
-	int64_t b_2 = 0;
-	int64_t b_3 = 0;
+	int64_t b[3] = {0};
 
 	/* Miscellaneous variables */
-	int64_t temp;
-	int64_t temp2;
-	int64_t nominator;
-	int64_t denominator;
-	bool	anchors_on_x_y_plane;																			// Is true, if all anchors are on the same height => x-y-plane
-	bool	lin_dep;																						// All vectors are linear dependent, if this variable is true
-	uint8_t ind_y_indi;																						// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
+	int64_t temp = 0;
+	int64_t temp2 = 0;
+	int64_t nominator = 0;
+	int64_t denominator = 0;
+	bool	anchors_on_x_y_plane = true;																		// Is true, if all anchors are on the same height => x-y-plane
+	bool	lin_dep = true;																						// All vectors are linear dependent, if this variable is true
+	uint8_t ind_y_indi = 0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
 
 
 	/* Arrays for used distances and anchor positions (without rejected ones) */
 	uint32_t 	distances_cm_pt[_grid_survey_msg.num_anchors];
 	position_t 	anchor_pos[_grid_survey_msg.num_anchors]; //position in CM
-	uint8_t		no_valid_distances = _grid_survey_msg.num_anchors;
+	uint8_t		no_valid_distances = 0;
 	uint8_t no_distances = _grid_survey_msg.num_anchors;
 
 	/* Reject invalid distances (including related anchor position) */
-	int i2 = 0;
-
 	for (int i = 0; i < no_distances; i++) {
 		if (_distance_result_msg.anchor_distance[i] != 0xFFFFu) {
-			distances_cm_pt[i2] 		= _distance_result_msg.anchor_distance[i];
-			anchor_pos[i2] 	= _grid_survey_msg.anchor_pos[i];
-			i2++;
-
-		} else {
-			no_valid_distances--;
+			//exlcudes any distance that is 0xFFFFU (int16 Maximum Value)
+			distances_cm_pt[no_valid_distances] 		= _distance_result_msg.anchor_distance[i];
+			anchor_pos[no_valid_distances] 	= _grid_survey_msg.anchor_pos[i];
+			no_valid_distances++;
 		}
 	}
+
+
 
 	/* Check, if there are enough valid results for doing the localization at all */
 	if (no_valid_distances < 3) {
@@ -522,8 +530,6 @@ int RDDrone::localization()
 	}
 
 	/* Check, if anchors are on the same x-y plane */
-	anchors_on_x_y_plane = true;
-
 	for (int i = 1; i < no_valid_distances; i++) {
 		if (anchor_pos[i].z != anchor_pos[0].z) {
 			anchors_on_x_y_plane = false;
@@ -534,8 +540,7 @@ int RDDrone::localization()
 	/**** Check, if there are enough linear independent anchor positions ****/
 
 	/* Check, if the matrix |(x_1 - x_0) (x_2 - x_0) ... | has rank 2
-	 * 						|(y_1 - y_0) (y_2 - y_0) ... | 				*/
-	lin_dep = true;
+	 * 			|(y_1 - y_0) (y_2 - y_0) ... | 				*/
 
 	for (ind_y_indi = 2; ((ind_y_indi < no_valid_distances) && (lin_dep == true)); ind_y_indi++) {
 		temp = ((int64_t)anchor_pos[ind_y_indi].y - (int64_t)anchor_pos[0].y) * ((int64_t)anchor_pos[1].x -
@@ -549,7 +554,6 @@ int RDDrone::localization()
 		}
 	}
 
-
 	/* Leave function, if rank is below 2 */
 	if (lin_dep == true) {
 		PX4_WARN("UWB localization: linear dependant");
@@ -560,13 +564,13 @@ int RDDrone::localization()
 	if (!anchors_on_x_y_plane) {
 		/* Check, if there are enough valid results for doing the localization */
 		if (no_valid_distances < 4) {
-			PX4_WARN("UWB localization: not enough valid results");
+			PX4_WARN("UWB localization: Anchors are on a X,Y Plane and there are not enought Anchors");
 			return 1;
 		}
 
 		/* Check, if the matrix |(x_1 - x_0) (x_2 - x_0) (x_3 - x_0) ... | has rank 3 (Rank y, y already checked)
-		 * 						|(y_1 - y_0) (y_2 - y_0) (y_3 - y_0) ... |
-		 * 						|(z_1 - z_0) (z_2 - z_0) (z_3 - z_0) ... |											*/
+		 * 			|(y_1 - y_0) (y_2 - y_0) (y_3 - y_0) ... |
+		 * 			|(z_1 - z_0) (z_2 - z_0) (z_3 - z_0) ... |											*/
 		lin_dep = true;
 
 		for (int i = 2; ((i < no_valid_distances) && (lin_dep == true)); i++) {
@@ -619,9 +623,9 @@ int RDDrone::localization()
 				 + (int64_t)pow(anchor_pos[i].z, 2) - (int64_t)pow(anchor_pos[0].x, 2)
 				 - (int64_t)pow(anchor_pos[0].y, 2) - (int64_t)pow(anchor_pos[0].z, 2));
 
-		b_1 += (int64_t)((int64_t)(anchor_pos[i].x - anchor_pos[0].x) * temp);
-		b_2 += (int64_t)((int64_t)(anchor_pos[i].y - anchor_pos[0].y) * temp);
-		b_3 += (int64_t)((int64_t)(anchor_pos[i].z - anchor_pos[0].z) * temp);
+		b[0] += (int64_t)((int64_t)(anchor_pos[i].x - anchor_pos[0].x) * temp);
+		b[1] += (int64_t)((int64_t)(anchor_pos[i].y - anchor_pos[0].y) * temp);
+		b[2] += (int64_t)((int64_t)(anchor_pos[i].z - anchor_pos[0].z) * temp);
 	}
 
 	M_11 = 2 * M_11;
@@ -633,7 +637,7 @@ int RDDrone::localization()
 
 	/* Calculating the z-position, if calculation is possible (at least one anchor at z != 0) */
 	if (anchors_on_x_y_plane == false) {
-		nominator = b_1 * (M_12 * M_23 - M_13 * M_22) + b_2 * (M_12 * M_13 - M_11 * M_23) + b_3 *
+		nominator = b[0] * (M_12 * M_23 - M_13 * M_22) + b[1] * (M_12 * M_13 - M_11 * M_23) + b[2] *
 			    (M_11 * M_22 - M_12 * M_12);			// [cm^7]
 		denominator = M_11 * (M_33 * M_22 - M_23 * M_23) + 2 * M_12 * M_13 * M_23 - M_33 * M_12 * M_12 - M_22 * M_13 *
 			      M_13;				// [cm^6]
@@ -653,7 +657,7 @@ int RDDrone::localization()
 	}
 
 	/* Calculating the y-position */
-	nominator = b_2 * M_11 - b_1 * M_12 - ((int64_t)position.z) * (M_11 * M_23 - M_12 * M_13);					// [cm^5]
+	nominator = b[1] * M_11 - b[0] * M_12 - ((int64_t)position.z) * (M_11 * M_23 - M_12 * M_13);					// [cm^5]
 	denominator = M_11 * M_22 - M_12 * M_12;																				// [cm^4]
 
 	/* Check, if denominator is zero (Rank of matrix not high enough) */
@@ -665,7 +669,7 @@ int RDDrone::localization()
 	position.y = (int32_t)(((nominator * 10) / denominator + 5) / 10);										// [cm]
 
 	/* Calculating the x-position */
-	nominator = b_1 - ((int64_t)position.z) * M_13 - ((int64_t)position.y) * M_12;		// [cm^3]
+	nominator = b[0] - ((int64_t)position.z) * M_13 - ((int64_t)position.y) * M_12;		// [cm^3]
 	denominator = M_11;																									// [cm^2]
 
 	position.x = (int32_t)(((nominator * 10) / denominator + 5) / 10);										// [cm]
@@ -693,6 +697,15 @@ int RDDrone::localization()
 		/* Add height of the anchor grid's height */
 		position.z += anchor_pos[0].z;
 	}
+
+
+	/*	Coordinate Frame	*/
+	//	Changes the Coordinate Frame from Anchor 0 to Target Position
+	//
+	position.x -= _uwb_grid.target_pos[0];
+	position.z -= _uwb_grid.target_pos[1];
+	position.y -= _uwb_grid.target_pos[2];
+
 
 	return 0;
 }

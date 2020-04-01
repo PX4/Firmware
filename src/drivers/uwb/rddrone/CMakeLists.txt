@@ -32,11 +32,11 @@
 ############################################################################
 
 px4_add_module(
-		MODULE drivers__rddrone
-		MAIN rddrone
+		MODULE drivers__uwb_r4
+		MAIN uwb_r4
 		SRCS
-		rddrone.cpp
-		rddrone.h
+		uwb_r4.cpp
+		uwb_r4.h
 		MODULE_CONFIG
 			module.yaml
 		DEPENDS
