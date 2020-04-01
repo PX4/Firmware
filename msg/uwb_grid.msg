@@ -9,7 +9,7 @@ uint8 num_anchors	 	# Number of anchors
 
 # GPS:
 #Latitude of the point (0, 0, 0) of the UWB system
-float32[4] gps #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
+float32[4] gps_data #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
 		#todo Improve accuracy to float64
 		#yaw offset does not need this accuracy
 
