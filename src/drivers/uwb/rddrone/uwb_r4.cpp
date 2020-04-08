@@ -45,7 +45,7 @@
 #include <fcntl.h>
 #include <systemlib/err.h>
 #include <drivers/drv_hrt.h>
-
+#include <ctype.h>
 // Timeout between bytes. If there is more time than this between bytes, then this driver assumes
 // that it is the boundary between messages.
 // See uwb_r4::run() for more detailed explanation.
@@ -63,8 +63,10 @@
 extern "C" __EXPORT int uwb_r4_main(int argc, char *argv[]);
 
 UWB_R4::UWB_R4(const char *device_name, speed_t baudrate):
+	ModuleParams(nullptr),
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_r4_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_r4_err"))
+
 {
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
@@ -102,7 +104,208 @@ UWB_R4::~UWB_R4()
 
 void UWB_R4::run()
 {
+	_check_params(false);
+	//uint8_t Distance_cmd[20] = {0};
+	//memcpy(&Distance_cmd, &CMD_DISTANCE_RESULT_CMD, sizeof(CMD_DISTANCE_RESULT_CMD));
 
+	/* Grid Survey*/
+	int ok = UWB_R4::grid_survey();
+
+	if (ok) { printf("GRID FOUND.\t\n"); }
+
+
+
+	// After Grid Survey the Drone Starts to Range
+
+	/* Ranging */
+	printf("UWB: Starting Ranging \n");
+	/* Read UUID here */
+
+	uint8_t Distance_cmd[20] = {0}; //populate the CMD
+	memcpy(&Distance_cmd, CMD_START_RANGING, sizeof(CMD_START_RANGING));
+
+	if (_param_uwb_uuid_on_sd.get()) {
+
+		uint8_t string[32] = {0};
+		FILE *file;
+		file = fopen(CONF_FILE, "r");
+		int bread = fread(&string, 1, 2 * GRID_UUID, file); //try 3
+
+		if (bread != 2 * GRID_UUID) {
+			PX4_WARN("GRID UUID MISSING! bytes read: %d \t\n", bread); // or to short.
+			return;
+
+		} else {
+			//Convert string to Hex
+			char upper, lower;
+
+			for (int i = 0; i < GRID_UUID; i++) {
+				upper     = (isdigit(string[2 * i]))   ? string[2 * i]   - 0x30 : 10 + (string[2 * i]   & ~0x20) - 0x41;
+				lower     = (isdigit(string[2 * i + 1])) ? string[2 * i + 1] - 0x30 : 10 + (string[2 * i + 1] & ~0x20) - 0x41;
+
+				Distance_cmd[4 + i] = (upper << 4) | lower;
+			}
+
+			printf("test: %x", Distance_cmd);
+		}
+
+		fclose(file);
+
+	} else {
+		memcpy(&Distance_cmd[4], &_uwb_grid.grid_uuid, sizeof(_uwb_grid.grid_uuid));
+	}
+
+	/* Ranging  Command */
+	int written = write(_uart, Distance_cmd, sizeof(uint8_t) * 20);
+
+	if (written < (int) sizeof(Distance_cmd)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(uint8_t) * 20);
+	}
+
+
+
+	while (!should_exit()) {
+		ok = UWB_R4::distance();
+	}
+
+
+	if (!ok) { printf("ERROR: Distance Failed"); }
+
+	//Stop. This should not be reachable
+	written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
+
+	if (written < (int) sizeof(CMD_STOP_RANGING)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_STOP_RANGING));
+	}
+
+}
+
+int UWB_R4::custom_command(int argc, char *argv[])
+{
+	return print_usage("Unrecognized command.");
+}
+
+int UWB_R4::print_usage(const char *reason)
+{
+	if (reason) {
+		printf("%s\n\n", reason);
+	}
+
+	PRINT_MODULE_USAGE_NAME("uwb", "driver");
+	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
+### Description
+
+Driver for NXP UWB_R4 UWB positioning system. This driver publishes a `uwb_distance` message
+whenever the UWB_R4 has a position measurement available.
+
+### Example
+
+Start the driver with a given device:
+
+$ uwb start -d /dev/ttyS2
+	)DESC_STR");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
+	PRINT_MODULE_USAGE_PARAM_STRING('b', nullptr, "<int>", "Baudrate for serial communication", false);
+	PRINT_MODULE_USAGE_COMMAND("stop");
+	PRINT_MODULE_USAGE_COMMAND("status");
+	PRINT_MODULE_USAGE_COMMAND("grid survey");
+	return 0;
+}
+
+int UWB_R4::task_spawn(int argc, char *argv[])
+{
+	int task_id = px4_task_spawn_cmd(
+			      "uwb_driver",
+			      SCHED_DEFAULT,
+			      SCHED_PRIORITY_DEFAULT,
+			      2048,
+			      &run_trampoline,
+			      argv
+		      );
+
+	if (task_id < 0) {
+		return -errno;
+
+	} else {
+		_task_id = task_id;
+		return 0;
+	}
+}
+
+speed_t int_to_speed(int baud)
+{
+	switch (baud) {
+	case 9600:
+		return B9600;
+
+	case 19200:
+		return B19200;
+
+	case 38400:
+		return B38400;
+
+	case 57600:
+		return B57600;
+
+	case 115200:
+		return B115200;
+
+	default:
+		return DEFAULT_BAUD;
+	}
+}
+
+UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
+{
+	int ch;
+	int option_index = 1;
+	const char *option_arg;
+	const char *device_name = nullptr;
+	bool error_flag = false;
+	int baudrate = 0;
+
+	while ((ch = px4_getopt(argc, argv, "d:b:", &option_index, &option_arg)) != EOF) {
+		switch (ch) {
+		case 'd':
+			device_name = option_arg;
+			break;
+
+		case 'b':
+			px4_get_parameter_value(option_arg, baudrate);
+			break;
+
+		default:
+			PX4_WARN("Unrecognized flag: %c", ch);
+			error_flag = true;
+			break;
+		}
+	}
+
+	if (!error_flag && device_name == nullptr) {
+		print_usage("Device name not provided.");
+		error_flag = true;
+	}
+
+	if (!error_flag && baudrate == 0) {
+		printf("Baudrate not provided. Using default B115200\n");
+		baudrate = 115200;
+	}
+
+	if (error_flag) {
+		PX4_WARN("Failed to start UWB driver.");
+		return nullptr;
+
+	} else {
+		PX4_INFO("Constructing UWB_R4. Device: %s", device_name);
+		return new UWB_R4(device_name, int_to_speed(baudrate));
+	}
+}
+
+
+/*	does one grid_survey*/
+int UWB_R4::grid_survey()
+{
 	/* Grid Survey */
 
 	uint8_t *grid_buffer = (uint8_t *) &_grid_survey_msg;
@@ -196,263 +399,122 @@ void UWB_R4::run()
 	memcpy(&_uwb_grid.anchor_pos_8, &_grid_survey_msg.anchor_pos[8], sizeof(position_t));
 	//}
 
-
 	_uwb_grid_pub.publish(_uwb_grid);
 
-	printf("GRID FOUND.\t\n");
+	return 1;
+}
 
 
-	// After Grid Survey the Drone Starts to Range
-
-	/* Ranging */
-
-	/* Ranging  Command */
-	int written = write(_uart, CMD_DISTANCE_RESULT, sizeof(CMD_DISTANCE_RESULT));
-
-	if (written < (int) sizeof(CMD_DISTANCE_RESULT)) {
-		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_DISTANCE_RESULT));
-	}
+int UWB_R4::distance()
+{
 
 	uint8_t *buffer = (uint8_t *) &_distance_result_msg;
 
-	while (!should_exit()) {
+	FD_ZERO(&_uart_set);
+	FD_SET(_uart, &_uart_set);
+	_uart_timeout.tv_sec = MESSAGE_TIMEOUT_S ;
+	_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
+
+	size_t buffer_location = 0;
+
+	// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
+	// Messages are only delimited by time. There is a chance that this driver starts up in the middle
+	// of a message, with no way to know this other than time. There is also always the possibility of
+	// transmission errors causing a dropped byte.
+	// Here is the process for dealing with that:
+	//  - Wait up to 1 second to start receiving a message
+	//  - Once receiving a message, keep going until EITHER:
+	//    - There is too large of a gap between bytes (Currently set to 5ms).
+	//      This means the message is incomplete. Throw it out and start over.
+	//    - 30 bytes are received (the size of the whole message).
+
+	while (buffer_location < sizeof(_distance_result_msg)
+	       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
+
+		int bytes_read = read(_uart, &buffer[buffer_location], sizeof(_distance_result_msg) - buffer_location);
+
+		if (bytes_read > 0) {
+			buffer_location += bytes_read;
+
+		} else {
+			break;
+		}
 
 		FD_ZERO(&_uart_set);
 		FD_SET(_uart, &_uart_set);
-		_uart_timeout.tv_sec = MESSAGE_TIMEOUT_S ;
-		_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
+		_uart_timeout.tv_sec = 0;
+		// Setting this timeout too high (> 37ms) will cause problems because the next message will start
+		//  coming in, and overlap with the current message.
+		// Setting this timeout too low (< 1ms) will cause problems because there is some delay between
+		//  the individual bytes of a message, and a too-short timeout will cause the message to be truncated.
+		// The current value of 5ms was found experimentally to never cut off a message prematurely.
+		// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
+		// because if this process is waiting, it means that the last message was incomplete, so there is no current
+		// data waiting to be published. But we would rather set this timeout lower in case the UWB_R4 board is
+		// updated to publish data faster.
+		_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
+	}
 
-		size_t buffer_location = 0;
+	perf_count(_read_count_perf);
 
-		// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
-		// Messages are only delimited by time. There is a chance that this driver starts up in the middle
-		// of a message, with no way to know this other than time. There is also always the possibility of
-		// transmission errors causing a dropped byte.
-		// Here is the process for dealing with that:
-		//  - Wait up to 1 second to start receiving a message
-		//  - Once receiving a message, keep going until EITHER:
-		//    - There is too large of a gap between bytes (Currently set to 5ms).
-		//      This means the message is incomplete. Throw it out and start over.
-		//    - 30 bytes are received (the size of the whole message).
 
-		while (buffer_location < sizeof(_distance_result_msg)
-		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
 
-			int bytes_read = read(_uart, &buffer[buffer_location], sizeof(_distance_result_msg) - buffer_location);
+	// All of the following criteria must be met for the message to be acceptable:
+	//  - Size of message == sizeof(distance_msg_t) (51 bytes)
+	//  - status == 0x00
+	//  - Values of all 3 position measurements are reasonable
+	//      (If one or more anchors is missed, then position might be an unreasonably large number.)
+	bool ok = (buffer_location == sizeof(distance_msg_t) && _distance_result_msg.stop == 0x1b); //||
+	//(buffer_location == sizeof(grid_msg_t) && _distance_result_msg.stop == 0x1b)
+	//);
 
-			if (bytes_read > 0) {
-				buffer_location += bytes_read;
 
-			} else {
-				break;
-			}
+	if (ok) {
+		/* Ranging Message*/
+		_uwb_distance.timestamp = hrt_absolute_time();
 
-			FD_ZERO(&_uart_set);
-			FD_SET(_uart, &_uart_set);
-			_uart_timeout.tv_sec = 0;
-			// Setting this timeout too high (> 37ms) will cause problems because the next message will start
-			//  coming in, and overlap with the current message.
-			// Setting this timeout too low (< 1ms) will cause problems because there is some delay between
-			//  the individual bytes of a message, and a too-short timeout will cause the message to be truncated.
-			// The current value of 5ms was found experimentally to never cut off a message prematurely.
-			// Strictly speaking, there are no downsides to setting this timeout as high as possible (Just under 37ms),
-			// because if this process is waiting, it means that the last message was incomplete, so there is no current
-			// data waiting to be published. But we would rather set this timeout lower in case the UWB_R4 board is
-			// updated to publish data faster.
-			_uart_timeout.tv_usec = BYTE_TIMEOUT_US;
+		_attitude_sub.update(&_vehicle_attitude);
+		_uwb_distance.status = _distance_result_msg.status;
+		_uwb_distance.counter = _distance_result_msg.counter;
+		_uwb_distance.yaw_offset = _distance_result_msg.yaw_offset;
+		_uwb_distance.time_offset = _distance_result_msg.time_offset;
+
+		for (int i = 0; i < MAX_ANCHORS; i++) {
+			_uwb_distance.anchor_distance[i] = _distance_result_msg.anchor_distance[i];
 		}
 
-		perf_count(_read_count_perf);
+
+		// Algorithm goes here
+		int position_bool = UWB_R4::localization();
+
+		// The coordinate system is NED (north-east-down).
+		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
+		// The UWB report contains the position of the vehicle relative to the landing point.
+		// So, just negate all 3 components.
+
+		if (position_bool == 0) { memcpy(&_uwb_distance.position, &position, sizeof(position_t)); }
 
 
-
-		// All of the following criteria must be met for the message to be acceptable:
-		//  - Size of message == sizeof(distance_msg_t) (51 bytes)
-		//  - status == 0x00
-		//  - Values of all 3 position measurements are reasonable
-		//      (If one or more anchors is missed, then position might be an unreasonably large number.)
-		bool ok = (buffer_location == sizeof(distance_msg_t) && _distance_result_msg.stop == 0x1b); //||
-		//(buffer_location == sizeof(grid_msg_t) && _distance_result_msg.stop == 0x1b)
-		//);
+		_uwb_distance_pub.publish(_uwb_distance);
 
 
-		if (ok) {
-			/* Ranging Message*/
-			_uwb_distance.timestamp = hrt_absolute_time();
-
-			_attitude_sub.update(&_vehicle_attitude);
-			_uwb_distance.status = _distance_result_msg.status;
-			_uwb_distance.counter = _distance_result_msg.counter;
-			_uwb_distance.yaw_offset = _distance_result_msg.yaw_offset;
-			_uwb_distance.time_offset = _distance_result_msg.time_offset;
-
-			for (int i = 0; i < MAX_ANCHORS; i++) {
-				_uwb_distance.anchor_distance[i] = _distance_result_msg.anchor_distance[i];
-			}
-
-
-			// Algorithm goes here
-			int position_bool = UWB_R4::localization();
-
-			// The coordinate system is NED (north-east-down).
-			// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
-			// The UWB report contains the position of the vehicle relative to the landing point.
-			// So, just negate all 3 components.
-
-			if (position_bool == 0) { memcpy(&_uwb_distance.position, &position, sizeof(position_t)); }
-
-
-			_uwb_distance_pub.publish(_uwb_distance);
-
-
-
-		} else {
-			//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(distance_msg_t));
-			perf_count(_read_err_perf);
-
-			if (buffer_location == 0) {
-				PX4_WARN("UWB module is not responding.");
-			}
-
-		}
-
-	}
-
-
-	//Stop. This should not be reachable
-	written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
-
-	if (written < (int) sizeof(CMD_STOP_RANGING)) {
-		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_STOP_RANGING));
-	}
-
-}
-
-int UWB_R4::custom_command(int argc, char *argv[])
-{
-	return print_usage("Unrecognized command.");
-}
-
-int UWB_R4::print_usage(const char *reason)
-{
-	if (reason) {
-		printf("%s\n\n", reason);
-	}
-
-	PRINT_MODULE_USAGE_NAME("uwb", "driver");
-	PRINT_MODULE_DESCRIPTION(R"DESC_STR(
-### Description
-
-Driver for NXP UWB_R4 UWB positioning system. This driver publishes a `uwb_distance` message
-whenever the UWB_R4 has a position measurement available.
-
-### Example
-
-Start the driver with a given device:
-
-$ uwb start -d /dev/ttyS2
-	)DESC_STR");
-	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
-	PRINT_MODULE_USAGE_PARAM_STRING('b', nullptr, "<int>", "Baudrate for serial communication", false);
-	PRINT_MODULE_USAGE_COMMAND("stop");
-	PRINT_MODULE_USAGE_COMMAND("status");
-	return 0;
-}
-
-int UWB_R4::task_spawn(int argc, char *argv[])
-{
-	int task_id = px4_task_spawn_cmd(
-			      "uwb_driver",
-			      SCHED_DEFAULT,
-			      SCHED_PRIORITY_DEFAULT,
-			      2048,
-			      &run_trampoline,
-			      argv
-		      );
-
-	if (task_id < 0) {
-		return -errno;
 
 	} else {
-		_task_id = task_id;
-		return 0;
-	}
-}
+		//PX4_ERR("Read %d bytes instead of %d.", (int) buffer_location, (int) sizeof(distance_msg_t));
+		perf_count(_read_err_perf);
 
-speed_t int_to_speed(int baud)
-{
-	switch (baud) {
-	case 9600:
-		return B9600;
-
-	case 19200:
-		return B19200;
-
-	case 38400:
-		return B38400;
-
-	case 57600:
-		return B57600;
-
-	case 115200:
-		return B115200;
-
-	default:
-		return DEFAULT_BAUD;
-	}
-}
-
-UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
-{
-	int ch;
-	int option_index = 1;
-	const char *option_arg;
-	const char *device_name = nullptr;
-	bool error_flag = false;
-	int baudrate = 0;
-
-	while ((ch = px4_getopt(argc, argv, "d:b:", &option_index, &option_arg)) != EOF) {
-		switch (ch) {
-		case 'd':
-			device_name = option_arg;
-			break;
-
-		case 'b':
-			px4_get_parameter_value(option_arg, baudrate);
-			break;
-
-		default:
-			PX4_WARN("Unrecognized flag: %c", ch);
-			error_flag = true;
-			break;
+		if (buffer_location == 0) {
+			PX4_WARN("UWB module is not responding.");
 		}
+
 	}
 
-	if (!error_flag && device_name == nullptr) {
-		print_usage("Device name not provided.");
-		error_flag = true;
-	}
 
-	if (!error_flag && baudrate == 0) {
-		print_usage("Baudrate not provided.");
-		error_flag = true;
-	}
 
-	if (error_flag) {
-		PX4_WARN("Failed to start UWB driver.");
-		return nullptr;
-
-	} else {
-		PX4_INFO("Constructing UWB_R4. Device: %s", device_name);
-		return new UWB_R4(device_name, int_to_speed(baudrate));
-	}
+	return 1;
 }
 
-int uwb_r4_main(int argc, char *argv[])
-{
-	return UWB_R4::main(argc, argv);
-}
+
 
 int UWB_R4::localization()
 {
@@ -484,7 +546,7 @@ int UWB_R4::localization()
 	 * 		Output is the Coordinates of the Initiator in relation to Anchor 0 in NEU (North-East-Up) Framing
 	 */
 
-		/* Matrix components (3*3 Matrix resulting from least square error method) [cm^2] */
+	/* Matrix components (3*3 Matrix resulting from least square error method) [cm^2] */
 	int64_t M_11 = 0;
 	int64_t M_12 = 0;																						// = M_21
 	int64_t M_13 = 0;																						// = M_31
@@ -502,7 +564,8 @@ int UWB_R4::localization()
 	int64_t denominator = 0;
 	bool	anchors_on_x_y_plane = true;																		// Is true, if all anchors are on the same height => x-y-plane
 	bool	lin_dep = true;																						// All vectors are linear dependent, if this variable is true
-	uint8_t ind_y_indi = 0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
+	uint8_t ind_y_indi =
+		0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
 
 
 	/* Arrays for used distances and anchor positions (without rejected ones) */
@@ -708,4 +771,29 @@ int UWB_R4::localization()
 
 
 	return 0;
+}
+
+
+
+int uwb_r4_main(int argc, char *argv[])
+{
+	return UWB_R4::main(argc, argv);
+}
+
+void UWB_R4::_check_params(const bool force)
+{
+	bool updated = _parameterSub.updated();
+
+	if (updated) {
+		parameter_update_s paramUpdate;
+		_parameterSub.copy(&paramUpdate);
+	}
+
+	if (updated || force) {
+		_update_params();
+	}
+}
+void UWB_R4::_update_params()
+{
+	param_get(_param_handles.uwb_uuid_on_sd, &_params.uwb_uuid_on_sd);
 }

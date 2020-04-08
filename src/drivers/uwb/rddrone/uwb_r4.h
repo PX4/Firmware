@@ -38,6 +38,9 @@
 #include <poll.h>
 #include <sys/select.h>
 #include <sys/time.h>
+
+#include <px4_platform_common/module_params.h>
+#include <uORB/topics/parameter_update.h>
 #include <px4_platform_common/module.h>
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
@@ -50,13 +53,23 @@
 #include <matrix/Matrix.hpp>
 
 #define MAX_ANCHORS 9
+#define GRID_UUID 16
+#define OFFSET 0 //to support multiple grids
 // These commands all require a 16-byte UUID. However, with the "pure ranging" and "stop ranging" commands, this UUID
 // is unused. In the following constants, the UUID is automatically initialized to all 0s.
-const uint8_t CMD_STOP_RANGING[20] = {0x8e, 0x00, 0x11, 0x00};
-const uint8_t CMD_PURE_RANGING[20] = {0x8e, 0x00, 0x11, 0x02};
 
-const uint8_t CMD_DISTANCE_RESULT[20] = {0x8e, 0x0A, 0x11, 0x02};
-const uint8_t CMD_GRID_SURVEY[4] = {0x8e, 0x01, 0x01, 0x00};
+#define UWB_CMD  0x8e
+#define UWB_CMD_GRID  0x01
+#define UWB_CMD_DISTANCE 0x0A
+#define UWB_CMD_START  0x01
+#define UWB_CMD_STOP  0x00
+#define UWB_CMD_DEBUG  0x02
+#define UWB_CMD_DEBUG  0x02
+
+const uint8_t CMD_STOP_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_STOP};
+const uint8_t CMD_START_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_START};
+const uint8_t CMD_DISTANCE_RESULT[20] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //example UUID
+const uint8_t CMD_GRID_SURVEY[4] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00};
 
 // Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
 // for populating the UUID field.
@@ -64,44 +77,30 @@ const uint8_t CMD_GRID_SURVEY[4] = {0x8e, 0x01, 0x01, 0x00};
 // Suggestion from Gerald: Make a file on the SD card with the grid UUIDs.
 // Would probably make use of PX4_STORAGEDIR "/uwb_r4_config.txt"
 // const uint8_t CMD_START_RANGING[20] = {0x8e, 0x00, 0x11, 0x01};
-
+#define CONF_FILE "/fs/microsd/etc/uwb_r4_config.txt"
 
 typedef struct {  //needs higher accuracy?
 	float lat, lon, alt;
 	float yaw; //offset to true North
-}gps_pos_t;
+} gps_pos_t;
 
 typedef struct {
 	int32_t x, y, z; //axis in cm
-}position_t; // Position of a device or target in 3D space
+} position_t; // Position of a device or target in 3D space
 
 typedef union {
 	uint8_t all_flags; /**/
 	struct {
-		uint8_t spare7 :1, /* Unused */
-		grid_moving :1, /* grid is Moving y/n? */
-		yaw_data :1, /* yaw y/n */
-		gps_data :1, /* gps data y/n*/
-		spare3 :1, /*  */
-		spare2 :1, /* */
-		grid_found :1, /* Grid found*/
-		uwb_flag_status :1; /* Correctly send Grid info */
+		uint8_t spare7 : 1, /* Unused */
+			grid_moving : 1, /* grid is Moving y/n? */
+			yaw_data : 1, /* yaw y/n */
+			gps_data : 1, /* gps data y/n*/
+			spare3 : 1, /*  */
+			spare2 : 1, /* */
+			grid_found : 1, /* Grid found*/
+			uwb_flag_status : 1; /* Correctly send Grid info */
 	};
 } uwb_grid_flags;
-
-/*
-// This is the message sent back from the UWB module, as defined in the documentation.
-typedef struct {
-	uint8_t cmd;      	// Should be 0x8E for position result message
-	uint8_t sub_cmd;  	// Should be 0x0A for position result message
-	uint8_t data_len; 	// Should be 0x30 for position result message
-	uint8_t status;   	// 0x00 is no error
-	uint16_t counter;	// Number of Ranges since last Start of Ranging
-	uint8_t time_offset;	// time measured between ranging
-	float yaw_offset; 	// Yaw offset in degrees
-	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM
-	uint8_t stop; 		// Should be 0x1B
-} __attribute__((packed)) position_msg_t;*/
 
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for grid result message
@@ -136,7 +135,7 @@ typedef struct {
 
 
 
-class UWB_R4 : public ModuleBase<UWB_R4>
+class UWB_R4 : public ModuleBase<UWB_R4>, public ModuleParams
 {
 public:
 	UWB_R4(const char *device_name, speed_t baudrate);
@@ -159,6 +158,17 @@ public:
 	int localization();
 
 	/**
+	 * @see ModuleBase::Grid Survey Result
+	 */
+	int grid_survey();
+
+	/**
+	 * @see ModuleBase::Distance Result
+	 */
+	int distance();
+
+
+	/**
 	 * @see ModuleBase::task_spawn
 	 */
 	static int task_spawn(int argc, char *argv[]);
@@ -167,7 +177,35 @@ public:
 
 	void run() override;
 
+protected:
+	/*
+	 * Update Params
+	 * */
+
+	void _update_params();
+
 private:
+
+
+	DEFINE_PARAMETERS(
+		(ParamInt<px4::params::UWB_UUID_ON_SD>) _param_uwb_uuid_on_sd	/**< UUID on SD card  */
+	)
+
+	uORB::Subscription _parameterSub{ORB_ID(parameter_update)};	/**< param update subscription */
+	/*
+	 *	Handle Params
+	 * */
+	struct {
+		bool uwb_uuid_on_sd;
+	} _params ;
+	struct {
+		param_t uwb_uuid_on_sd;
+	} _param_handles ;
+
+	void _check_params(const bool force);
+
+
+
 
 	int _uart;
 	fd_set _uart_set;
@@ -192,10 +230,10 @@ private:
 	distance_msg_t _distance_result_msg{};
 	position_t position;
 
-	matrix::Dcmf _uwb_r4_to_nwu;
-	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	matrix::Vector3f _current_position_uwb_r4;
-	matrix::Vector3f _current_position_ned;
+	//matrix::Dcmf _uwb_r4_to_nwu;
+	//matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
+	//matrix::Vector3f _current_position_uwb_r4;
+	//matrix::Vector3f _current_position_ned;
 };
 
 
