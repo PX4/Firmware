@@ -45,6 +45,10 @@
 #include <px4_daemon/server_io.h>
 #endif
 
+#ifdef __PX4_LINUX_CONSOLE
+#include <px4_daemon/px4_console.h>
+#endif
+
 #include <uORB/uORB.h>
 #include <uORB/topics/log_message.h>
 #include <drivers/drv_hrt.h>
@@ -91,21 +95,33 @@ __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *
 		if (use_color) { fputs(__px4_log_level_color[level], out); }
 
 		fprintf(out, __px4__log_level_fmt __px4__log_level_arg(level));
+#ifdef __PX4_LINUX_CONSOLE
+		dprintf(from_console_output_fd(1), __px4__log_level_fmt __px4__log_level_arg(level));
+#endif
 
 		if (use_color) { fputs(PX4_ANSI_COLOR_GRAY, out); }
 
 		fprintf(out, __px4__log_modulename_pfmt, moduleName);
+#ifdef __PX4_LINUX_CONSOLE
+		dprintf(from_console_output_fd(1), __px4__log_modulename_pfmt, moduleName);
+#endif
 
 		if (use_color) { fputs(__px4_log_level_color[level], out); }
 
 		va_list argptr;
 		va_start(argptr, fmt);
 		vfprintf(out, fmt, argptr);
+#ifdef __PX4_LINUX_CONSOLE
+		vdprintf(from_console_output_fd(1), fmt, argptr);
+#endif
 		va_end(argptr);
 
 		if (use_color) { fputs(PX4_ANSI_COLOR_RESET, out); }
 
 		fputc('\n', out);
+#ifdef __PX4_LINUX_CONSOLE
+		dprintf(from_console_output_fd(1), "\n");
+#endif
 	}
 
 	/* publish an orb log message */
@@ -157,6 +173,9 @@ __EXPORT void px4_log_raw(int level, const char *fmt, ...)
 		va_list argptr;
 		va_start(argptr, fmt);
 		vfprintf(out, fmt, argptr);
+#ifdef __PX4_LINUX_CONSOLE
+		vdprintf(from_console_output_fd(1), fmt, argptr);
+#endif
 		va_end(argptr);
 
 		if (use_color) { fputs(PX4_ANSI_COLOR_RESET, out); }

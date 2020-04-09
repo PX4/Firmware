@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015 Mark Charlebois. All rights reserved.
+ *   Copyright (C) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,71 +30,31 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
-
 /**
- * @file px4_posix_impl.cpp
+ * @file px4_console.h
  *
- * PX4 Middleware Wrapper Linux Implementation
+ * This interface is designed for MavlinkShell on Linux
+ *
+ * @author SalimTerryLi <lhf2613@gmail.com>
  */
-
-#include <px4_platform_common/defines.h>
-#include <px4_platform_common/workqueue.h>
-#include <px4_platform_common/defines.h>
-#include <px4_platform_common/time.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <signal.h>
-#include <errno.h>
-#include <unistd.h>
-#include <parameters/param.h>
-#include "hrt_work.h"
-#include <drivers/drv_hrt.h>
-#include <pthread.h>
-#include <px4_platform_common/init.h>
-
-extern pthread_t _shell_task_id;
+#pragma once
 
 __BEGIN_DECLS
 
-long PX4_TICKS_PER_SEC = sysconf(_SC_CLK_TCK);
+/**
+ * Read from the fd returned by this call.
+ * Data from PX4_XXXX() will be stored in this pipe until MavlinkShell reads.
+ *
+ * @return The fd which acts as stdout.
+ */
+__EXPORT int from_console_output_fd(int index);
+
+/**
+ * Write to the fd returned by this call.
+ * Data will be stored in this pipe until pxh processes.
+ *
+ * @return The fd which acts as stdin.
+ */
+__EXPORT int to_console_input_fd(int index);
 
 __END_DECLS
-
-namespace px4
-{
-
-void init_once();
-
-void init_once()
-{
-	_shell_task_id = pthread_self();
-
-	work_queues_init();
-	hrt_work_queue_init();
-
-	px4_platform_init();
-}
-
-void init(int argc, char *argv[], const char *app_name)
-{
-	PX4_INFO_RAW("\n");
-	PX4_INFO_RAW("______  __   __    ___ \n");
-	PX4_INFO_RAW("| ___ \\ \\ \\ / /   /   |\n");
-	PX4_INFO_RAW("| |_/ /  \\ V /   / /| |\n");
-	PX4_INFO_RAW("|  __/   /   \\  / /_| |\n");
-	PX4_INFO_RAW("| |     / /^\\ \\ \\___  |\n");
-	PX4_INFO_RAW("\\_|     \\/   \\/     |_/\n");
-	PX4_INFO_RAW("\n");
-	PX4_INFO_RAW("%s starting.\n", app_name);
-	PX4_INFO_RAW("\n");
-
-	// set the threads name
-#ifdef __PX4_DARWIN
-	(void)pthread_setname_np(app_name);
-#else
-	(void)pthread_setname_np(pthread_self(), app_name);
-#endif
-}
-
-}
-

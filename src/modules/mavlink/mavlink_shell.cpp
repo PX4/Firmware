@@ -50,12 +50,18 @@
 #include <nshlib/nshlib.h>
 #endif /* __PX4_NUTTX */
 
+#ifdef __PX4_LINUX_CONSOLE
+#include <px4_daemon/px4_console.h>
+#endif
+
 #ifdef __PX4_CYGWIN
 #include <asm/socket.h>
 #endif
 
 MavlinkShell::~MavlinkShell()
 {
+#ifndef __PX4_LINUX_CONSOLE
+
 	//closing the pipes will stop the thread as well
 	if (_to_shell_fd >= 0) {
 		PX4_INFO("Stopping mavlink shell");
@@ -65,16 +71,17 @@ MavlinkShell::~MavlinkShell()
 	if (_from_shell_fd >= 0) {
 		close(_from_shell_fd);
 	}
+
+#else
+	_to_shell_fd = -1;
+	_from_shell_fd = -1;
+#endif
 }
 
 int MavlinkShell::start()
 {
 	//this currently only works for NuttX
-#ifndef __PX4_NUTTX
-	return -1;
-#endif /* __PX4_NUTTX */
-
-
+#ifdef __PX4_NUTTX
 	PX4_INFO("Starting mavlink shell");
 
 	int p1[2], p2[2];
@@ -145,11 +152,21 @@ int MavlinkShell::start()
 	close(_shell_fds[1]);
 
 	return ret;
+#endif /* __PX4_NUTTX */
+
+#ifdef __PX4_LINUX_CONSOLE
+	_to_shell_fd = to_console_input_fd(1);
+	_from_shell_fd = from_console_output_fd(0);
+	return 0;
+#endif
+	return -1;
 }
 
 int MavlinkShell::shell_start_thread(int argc, char *argv[])
 {
+#ifndef __PX4_LINUX_CONSOLE
 	dup2(1, 2); //redirect stderror to stdout
+#endif
 
 #ifdef __PX4_NUTTX
 	nsh_consolemain(0, NULL);

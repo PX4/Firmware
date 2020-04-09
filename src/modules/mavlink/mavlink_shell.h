@@ -81,8 +81,10 @@ private:
 
 	int _to_shell_fd = -1; /** fd to write to the shell */
 	int _from_shell_fd = -1; /** fd to read from the shell */
+#ifdef __PX4_NUTTX
 	int _shell_fds[2] = { -1, -1}; /** stdin & out used by the shell */
 	px4_task_t _task;
+#endif
 
 	static int shell_start_thread(int argc, char *argv[]);
 

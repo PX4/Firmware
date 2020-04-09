@@ -2,6 +2,7 @@ add_definitions(
 	-D__PX4_LINUX
 
 	-DRC_AUTOPILOT_EXT  # Enable extensions in Robotics Cape Library, TODO: remove
+	-D__PX4_LINUX_CONSOLE
 )
 
 px4_add_board(

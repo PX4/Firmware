@@ -38,5 +38,6 @@ px4_add_library(px4_daemon
 		server.cpp
 		server_io.cpp
 		sock_protocol.cpp
+		console.cpp
 	)
 
