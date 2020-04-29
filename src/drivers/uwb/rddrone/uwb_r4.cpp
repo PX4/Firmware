@@ -118,7 +118,6 @@ void UWB_R4::run()
 	// After Grid Survey the Drone Starts to Range
 
 	/* Ranging */
-	printf("UWB: Starting Ranging \n");
 	/* Read UUID here */
 
 	uint8_t Distance_cmd[20] = {0}; //populate the CMD
@@ -132,7 +131,7 @@ void UWB_R4::run()
 		int bread = fread(&string, 1, 2 * GRID_UUID, file); //try 3
 
 		if (bread != 2 * GRID_UUID) {
-			PX4_WARN("GRID UUID MISSING! bytes read: %d \t\n", bread); // or to short.
+			PX4_INFO("GRID UUID MISSING! bytes read: %d \t\n", bread); // or to short.
 			return;
 
 		} else {
@@ -145,8 +144,6 @@ void UWB_R4::run()
 
 				Distance_cmd[4 + i] = (upper << 4) | lower;
 			}
-
-			printf("test: %x", Distance_cmd);
 		}
 
 		fclose(file);
@@ -156,13 +153,12 @@ void UWB_R4::run()
 	}
 
 	/* Ranging  Command */
-	int written = write(_uart, Distance_cmd, sizeof(uint8_t) * 20);
+	int written = write(_uart, Distance_cmd,
+			    sizeof(uint8_t) * 20); //there should be something to check if the command went through.
 
 	if (written < (int) sizeof(Distance_cmd)) {
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(uint8_t) * 20);
 	}
-
-
 
 	while (!should_exit()) {
 		ok = UWB_R4::distance();
@@ -264,8 +260,9 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 	const char *device_name = nullptr;
 	bool error_flag = false;
 	int baudrate = 0;
+	bool uwb_pos_debug = false;
 
-	while ((ch = px4_getopt(argc, argv, "d:b:", &option_index, &option_arg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "d:b:p", &option_index, &option_arg)) != EOF) {
 		switch (ch) {
 		case 'd':
 			device_name = option_arg;
@@ -273,6 +270,10 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 
 		case 'b':
 			px4_get_parameter_value(option_arg, baudrate);
+			break;
+
+		case 'p':
+			uwb_pos_debug = true;
 			break;
 
 		default:
@@ -289,6 +290,11 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 
 	if (!error_flag && baudrate == 0) {
 		printf("Baudrate not provided. Using default B115200\n");
+		baudrate = 115200;
+	}
+
+	if (!error_flag && uwb_pos_debug == true) {
+		printf("UWB Position Algortihm Debugging");
 		baudrate = 115200;
 	}
 
@@ -371,7 +377,7 @@ int UWB_R4::grid_survey()
 		//  - Stop Byte == 0x1b
 		//  - Values of all 3 position measurements are reasonable
 		//      (If one or more anchors is missed, then position might be an unreasonably large number.)
-		grid_found = (grid_buffer_location == sizeof(grid_msg_t) && _grid_survey_msg.stop == 0x1b);
+		grid_found = (grid_buffer_location == sizeof(grid_msg_t) && _grid_survey_msg.stop == STOP_B);
 		perf_count(_read_count_perf);
 
 	}
@@ -416,7 +422,6 @@ int UWB_R4::distance()
 	_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
 
 	size_t buffer_location = 0;
-
 	// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
 	// Messages are only delimited by time. There is a chance that this driver starts up in the middle
 	// of a message, with no way to know this other than time. There is also always the possibility of
@@ -485,15 +490,47 @@ int UWB_R4::distance()
 
 
 		// Algorithm goes here
-		int position_bool = UWB_R4::localization();
+		UWB_POS_ERROR_CODES UWB_POS_ERROR = UWB_R4::localization();
+		bool uwb_pos_debug = false;
+
 
 		// The coordinate system is NED (north-east-down).
 		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
 		// The UWB report contains the position of the vehicle relative to the landing point.
 		// So, just negate all 3 components.
+		if (UWB_OK == UWB_POS_ERROR) {
+			memcpy(&_uwb_distance.position, &position, sizeof(position_t));
 
-		if (position_bool == 0) { memcpy(&_uwb_distance.position, &position, sizeof(position_t)); }
+		} else {
+			//only print the error if debug is enabled
+			if (uwb_pos_debug == true) {
+				switch (UWB_POS_ERROR) { //UWB POSITION ALGORItHM Errors
+				case UWB_ANC_BELOW_THREE:
+					PX4_INFO("UWB not enough anchors for doing localization");
+					break;
 
+				case UWB_LIN_DEP_FOR_THREE:
+					PX4_INFO("UWB localization: linear dependant with 3 Anchors");
+					break;
+
+				case UWB_ANC_ON_ONE_LEVEL:
+					PX4_INFO("UWB localization: Anchors are on a X,Y Plane and there are not enought Anchors");
+					break;
+
+				case UWB_LIN_DEP_FOR_FOUR:
+					PX4_INFO("UWB localization: linear dependant with four or more Anchors");
+					break;
+
+				case UWB_RANK_ZERO:
+					PX4_INFO("UWB localization: rank is zero");
+					break;
+
+				default:
+					PX4_INFO("UWB localization: Unknown failure in Position Algorithm");
+					break;
+				}
+			}
+		}
 
 		_uwb_distance_pub.publish(_uwb_distance);
 
@@ -516,7 +553,7 @@ int UWB_R4::distance()
 
 
 
-int UWB_R4::localization()
+UWB_POS_ERROR_CODES UWB_R4::localization()
 {
 
 // 			WIP
@@ -588,8 +625,7 @@ int UWB_R4::localization()
 
 	/* Check, if there are enough valid results for doing the localization at all */
 	if (no_valid_distances < 3) {
-		PX4_WARN("UWB not enough anchors for doing localization");
-		return 1;
+		return UWB_ANC_BELOW_THREE;
 	}
 
 	/* Check, if anchors are on the same x-y plane */
@@ -619,16 +655,15 @@ int UWB_R4::localization()
 
 	/* Leave function, if rank is below 2 */
 	if (lin_dep == true) {
-		PX4_WARN("UWB localization: linear dependant");
-		return 1;
+		return UWB_LIN_DEP_FOR_THREE;
 	}
 
 	/* If the anchors are not on the same plane, three vectors must be independent => check */
 	if (!anchors_on_x_y_plane) {
 		/* Check, if there are enough valid results for doing the localization */
 		if (no_valid_distances < 4) {
-			PX4_WARN("UWB localization: Anchors are on a X,Y Plane and there are not enought Anchors");
-			return 1;
+			;
+			return UWB_ANC_ON_ONE_LEVEL;
 		}
 
 		/* Check, if the matrix |(x_1 - x_0) (x_2 - x_0) (x_3 - x_0) ... | has rank 3 (Rank y, y already checked)
@@ -663,8 +698,8 @@ int UWB_R4::localization()
 
 		/* Leave function, if rank is below 3 */
 		if (lin_dep == true) {
-			PX4_WARN("UWB localization: rank below 3");
-			return 1;
+			//PX4_INFO("UWB localization: rank below 3");
+			return UWB_LIN_DEP_FOR_FOUR;
 		}
 	}
 
@@ -707,8 +742,7 @@ int UWB_R4::localization()
 
 		/* Check, if denominator is zero (Rank of matrix not high enough) */
 		if (denominator == 0) {
-			PX4_WARN("UWB localization: rank not high enough");
-			return 1;
+			return UWB_RANK_ZERO;
 		}
 
 		position.z = (int32_t)(((nominator * 10) / denominator + 5) / 10);									// [cm]
@@ -725,8 +759,7 @@ int UWB_R4::localization()
 
 	/* Check, if denominator is zero (Rank of matrix not high enough) */
 	if (denominator == 0) {
-		PX4_WARN("UWB localization: rank is zero");
-		return 1;
+		return UWB_RANK_ZERO;
 	}
 
 	position.y = (int32_t)(((nominator * 10) / denominator + 5) / 10);										// [cm]
@@ -770,7 +803,7 @@ int UWB_R4::localization()
 	position.y -= _uwb_grid.target_pos[2];
 
 
-	return 0;
+	return UWB_OK;
 }
 
 

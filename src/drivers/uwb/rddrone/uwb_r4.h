@@ -65,11 +65,12 @@
 #define UWB_CMD_STOP  0x00
 #define UWB_CMD_DEBUG  0x02
 #define UWB_CMD_DEBUG  0x02
+#define STOP_B 0x1b
 
 const uint8_t CMD_STOP_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_STOP};
 const uint8_t CMD_START_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_START};
 const uint8_t CMD_DISTANCE_RESULT[20] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //example UUID
-const uint8_t CMD_GRID_SURVEY[4] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00};
+const uint8_t CMD_GRID_SURVEY[5] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00, STOP_B};
 
 // Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
 // for populating the UUID field.
@@ -101,6 +102,15 @@ typedef union {
 			uwb_flag_status : 1; /* Correctly send Grid info */
 	};
 } uwb_grid_flags;
+
+enum UWB_POS_ERROR_CODES{
+	UWB_OK,
+	UWB_ANC_BELOW_THREE,
+	UWB_LIN_DEP_FOR_THREE,
+	UWB_ANC_ON_ONE_LEVEL,
+	UWB_LIN_DEP_FOR_FOUR,
+	UWB_RANK_ZERO
+};
 
 typedef struct {
 	uint8_t cmd;      	// Should be 0x8E for grid result message
@@ -155,7 +165,7 @@ public:
 	/**
 	 * @see ModuleBase::Multilateration
 	 */
-	int localization();
+	UWB_POS_ERROR_CODES localization();
 
 	/**
 	 * @see ModuleBase::Grid Survey Result
