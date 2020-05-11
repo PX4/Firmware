@@ -131,6 +131,10 @@ private:
 	float _rtl_alt{0.0f};	// AMSL altitude at which the vehicle should return to the home position
 	bool _rtl_alt_min{false};
 
+	bool _rtl_failed{false};
+	bool _warned{false};
+	hrt_abstime rtl_failure_time{0};
+
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::RTL_RETURN_ALT>) _param_rtl_return_alt,
 		(ParamFloat<px4::params::RTL_DESCEND_ALT>) _param_rtl_descend_alt,

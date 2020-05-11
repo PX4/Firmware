@@ -58,6 +58,8 @@ RTL::on_inactive()
 	// Reset RTL state.
 	_rtl_state = RTL_STATE_NONE;
 
+	_warned = false;
+
 	find_RTL_destination();
 
 }
@@ -192,6 +194,9 @@ RTL::on_activation()
 		break;
 	}
 
+	_rtl_failed = false;
+	rtl_failure_time = 0;
+
 	const vehicle_global_position_s &global_position = *_navigator->get_global_position();
 
 	_rtl_alt = calculate_return_alt_from_cone_half_angle((float)_param_rtl_cone_half_angle_deg.get());
@@ -224,6 +229,15 @@ RTL::on_active()
 		advance_rtl();
 		set_rtl_item();
 	}
+
+	if (_rtl_failed && !_navigator->get_land_detected()->landed) {
+		if (hrt_elapsed_time(&rtl_failure_time) > 30e6) {
+
+			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Upload a valid mission to use mission landing");
+
+			rtl_failure_time = hrt_absolute_time();
+		}
+	}
 }
 
 void
@@ -238,16 +252,24 @@ RTL::set_rtl_item()
 	// RTL_TYPE: mission landing.
 	// Landing using planned mission landing, fly to DO_LAND_START instead of returning _destination.
 	// After reaching DO_LAND_START, do nothing, let navigator takeover with mission landing.
-	if (_destination.type == RTL_DESTINATION_MISSION_LANDING) {
-		if (_rtl_state > RTL_STATE_CLIMB) {
-			if (_navigator->start_mission_landing()) {
-				mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: using mission landing");
-				return;
+	if (_destination.type == RTL_DESTINATION_MISSION_LANDING && _rtl_state > RTL_STATE_CLIMB
+	    && _navigator->start_mission_landing()) {
+		mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "RTL: using mission landing");
+		_rtl_failed = false;
+		return;
 
-			} else {
-				// Otherwise use regular RTL.
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "RTL: unable to use mission landing");
-			}
+	}
+
+
+
+	// Otherwise use regular RTL.
+	if (rtl_type() == 1) {
+		_rtl_failed = true;
+		rtl_failure_time = hrt_absolute_time();
+
+		if (!_warned) {
+			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "RTL: unable to use mission landing");
+			_warned = true;
 		}
 	}
 
@@ -406,12 +428,12 @@ RTL::set_rtl_item()
 
 	reset_mission_item_reached();
 
-	// Execute command if set. This is required for commands like VTOL transition.
+// Execute command if set. This is required for commands like VTOL transition.
 	if (!item_contains_position(_mission_item)) {
 		issue_command(_mission_item);
 	}
 
-	// Convert mission item to current position setpoint and make it valid.
+// Convert mission item to current position setpoint and make it valid.
 	mission_apply_limitation(_mission_item);
 
 	if (mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current)) {
