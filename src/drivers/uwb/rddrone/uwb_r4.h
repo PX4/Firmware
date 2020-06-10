@@ -148,7 +148,7 @@ typedef struct {
 class UWB_R4 : public ModuleBase<UWB_R4>, public ModuleParams
 {
 public:
-	UWB_R4(const char *device_name, speed_t baudrate);
+	UWB_R4(const char *device_name, speed_t baudrate, bool uwb_pos_debug);
 
 	~UWB_R4();
 
@@ -198,7 +198,8 @@ private:
 
 
 	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::UWB_UUID_ON_SD>) _param_uwb_uuid_on_sd	/**< UUID on SD card  */
+		(ParamInt<px4::params::UWB_UUID_ON_SD>) _param_uwb_uuid_on_sd,	/**< UUID on SD card  */
+		(ParamInt<px4::params::UWB_POS_DEBUG>) _param_uwb_pos_debug	/**< Debug POS */
 	)
 
 	uORB::Subscription _parameterSub{ORB_ID(parameter_update)};	/**< param update subscription */
@@ -207,9 +208,11 @@ private:
 	 * */
 	struct {
 		bool uwb_uuid_on_sd;
+		bool uwb_pos_debug;
 	} _params ;
 	struct {
 		param_t uwb_uuid_on_sd;
+		param_t uwb_pos_debug;
 	} _param_handles ;
 
 	void _check_params(const bool force);
@@ -240,10 +243,10 @@ private:
 	distance_msg_t _distance_result_msg{};
 	position_t position;
 
-	//matrix::Dcmf _uwb_r4_to_nwu;
-	//matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
-	//matrix::Vector3f _current_position_uwb_r4;
-	//matrix::Vector3f _current_position_ned;
+	matrix::Dcmf _uwb_r4_to_nwu;
+	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
+	matrix::Vector3f _current_position_uwb_r4;
+	matrix::Vector3f _current_position_ned;
 };
 
 

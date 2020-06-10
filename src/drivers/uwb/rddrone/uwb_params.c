@@ -49,3 +49,17 @@
  * @boolean
  */
 PARAM_DEFINE_INT32(UWB_UUID_ON_SD,0);
+
+
+/**
+ * UWB Position Debug option
+ *
+ * Prints all error messages for the Position Algorithm
+ *
+ *
+ *
+ *
+ * @group UWB
+ * @boolean
+ */
+PARAM_DEFINE_INT32(UWB_POS_DEBUG,0);

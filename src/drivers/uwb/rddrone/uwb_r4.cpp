@@ -34,7 +34,7 @@
 
 /* This is a driver for the NXP S32_UWB_R1 Board
  *	This Driver handles the Communication to the UWB Board.
- *
+ *	Todo: implement a stop function.
  * */
 
 #include "uwb_r4.h"
@@ -62,7 +62,7 @@
 
 extern "C" __EXPORT int uwb_r4_main(int argc, char *argv[]);
 
-UWB_R4::UWB_R4(const char *device_name, speed_t baudrate):
+UWB_R4::UWB_R4(const char *device_name, speed_t baudrate, bool  uwb_pos_debug):
 	ModuleParams(nullptr),
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_r4_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_r4_err"))
@@ -109,22 +109,21 @@ void UWB_R4::run()
 	//memcpy(&Distance_cmd, &CMD_DISTANCE_RESULT_CMD, sizeof(CMD_DISTANCE_RESULT_CMD));
 
 	/* Grid Survey*/
-	int ok = UWB_R4::grid_survey();
+	int ok = UWB_R4::grid_survey(); //asks the Initiator to look for a grid
 
 	if (ok) { printf("GRID FOUND.\t\n"); }
 
 
-
-	// After Grid Survey the Drone Starts to Range
-
 	/* Ranging */
-	/* Read UUID here */
 
+	/* Read UUID here */
 	uint8_t Distance_cmd[20] = {0}; //populate the CMD
 	memcpy(&Distance_cmd, CMD_START_RANGING, sizeof(CMD_START_RANGING));
 
+	//Param to decide on wich UUID to Range.
 	if (_param_uwb_uuid_on_sd.get()) {
 
+		PX4_INFO("Reading UWB GRID from SD... \t\n");
 		uint8_t string[32] = {0};
 		FILE *file;
 		file = fopen(CONF_FILE, "r");
@@ -152,22 +151,22 @@ void UWB_R4::run()
 		memcpy(&Distance_cmd[4], &_uwb_grid.grid_uuid, sizeof(_uwb_grid.grid_uuid));
 	}
 
+
 	/* Ranging  Command */
-	int written = write(_uart, Distance_cmd,
-			    sizeof(uint8_t) * 20); //there should be something to check if the command went through.
+	int written = write(_uart, Distance_cmd, sizeof(uint8_t) * 20); //there should be something to check if the command went through.
 
 	if (written < (int) sizeof(Distance_cmd)) {
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(uint8_t) * 20);
 	}
 
 	while (!should_exit()) {
-		ok = UWB_R4::distance();
+		ok = UWB_R4::distance(); //evaluate Ranging Messages until Stop
 	}
 
 
 	if (!ok) { printf("ERROR: Distance Failed"); }
 
-	//Stop. This should not be reachable
+	// Automatic Stop. This should not be reachable
 	written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
 
 	if (written < (int) sizeof(CMD_STOP_RANGING)) {
@@ -272,7 +271,7 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 			px4_get_parameter_value(option_arg, baudrate);
 			break;
 
-		case 'p':
+		case 'p': //todo enable this option so error codes of the Multilateration Algorithm are displayed
 			uwb_pos_debug = true;
 			break;
 
@@ -304,12 +303,12 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 
 	} else {
 		PX4_INFO("Constructing UWB_R4. Device: %s", device_name);
-		return new UWB_R4(device_name, int_to_speed(baudrate));
+		return new UWB_R4(device_name, int_to_speed(baudrate),  uwb_pos_debug);
 	}
 }
 
 
-/*	does one grid_survey*/
+/*	Does grid_survey until the grid is found and the Initiator responds back*/
 int UWB_R4::grid_survey()
 {
 	/* Grid Survey */
@@ -317,13 +316,16 @@ int UWB_R4::grid_survey()
 	uint8_t *grid_buffer = (uint8_t *) &_grid_survey_msg;
 	bool grid_found = false;
 
+
+	int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY));
+
+	if (written < (int) sizeof(CMD_GRID_SURVEY)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_GRID_SURVEY));
+	}
+
 	while (!grid_found) {
 
-		int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY));
 
-		if (written < (int) sizeof(CMD_GRID_SURVEY)) {
-			PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_GRID_SURVEY));
-		}
 
 		/*Do Grid Survey:*/
 
@@ -491,19 +493,15 @@ int UWB_R4::distance()
 
 		// Algorithm goes here
 		UWB_POS_ERROR_CODES UWB_POS_ERROR = UWB_R4::localization();
-		bool uwb_pos_debug = false;
 
 
-		// The coordinate system is NED (north-east-down).
-		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
-		// The UWB report contains the position of the vehicle relative to the landing point.
-		// So, just negate all 3 components.
+
 		if (UWB_OK == UWB_POS_ERROR) {
 			memcpy(&_uwb_distance.position, &position, sizeof(position_t));
 
 		} else {
 			//only print the error if debug is enabled
-			if (uwb_pos_debug == true) {
+			if ( _param_uwb_uuid_on_sd.get()) {
 				switch (UWB_POS_ERROR) { //UWB POSITION ALGORItHM Errors
 				case UWB_ANC_BELOW_THREE:
 					PX4_INFO("UWB not enough anchors for doing localization");
@@ -662,7 +660,6 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 	if (!anchors_on_x_y_plane) {
 		/* Check, if there are enough valid results for doing the localization */
 		if (no_valid_distances < 4) {
-			;
 			return UWB_ANC_ON_ONE_LEVEL;
 		}
 
@@ -698,7 +695,6 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 
 		/* Leave function, if rank is below 3 */
 		if (lin_dep == true) {
-			//PX4_INFO("UWB localization: rank below 3");
 			return UWB_LIN_DEP_FOR_FOUR;
 		}
 	}
@@ -745,7 +741,7 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 			return UWB_RANK_ZERO;
 		}
 
-		position.z = (int32_t)(((nominator * 10) / denominator + 5) / 10);									// [cm]
+		position.z = (int32_t)(((nominator * 10) / denominator + 5) / 10);	// [cm]
 	}
 
 	/* Else prepare for different calculation approach (after x and y were calculated) */
@@ -754,21 +750,21 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 	}
 
 	/* Calculating the y-position */
-	nominator = b[1] * M_11 - b[0] * M_12 - ((int64_t)position.z) * (M_11 * M_23 - M_12 * M_13);					// [cm^5]
-	denominator = M_11 * M_22 - M_12 * M_12;																				// [cm^4]
+	nominator = b[1] * M_11 - b[0] * M_12 - ((int64_t)position.z) * (M_11 * M_23 - M_12 * M_13);	// [cm^5]
+	denominator = M_11 * M_22 - M_12 * M_12;// [cm^4]
 
 	/* Check, if denominator is zero (Rank of matrix not high enough) */
 	if (denominator == 0) {
 		return UWB_RANK_ZERO;
 	}
 
-	position.y = (int32_t)(((nominator * 10) / denominator + 5) / 10);										// [cm]
+	position.y = (int32_t)(((nominator * 10) / denominator + 5) / 10);	// [cm]
 
 	/* Calculating the x-position */
-	nominator = b[0] - ((int64_t)position.z) * M_13 - ((int64_t)position.y) * M_12;		// [cm^3]
-	denominator = M_11;																									// [cm^2]
+	nominator = b[0] - ((int64_t)position.z) * M_13 - ((int64_t)position.y) * M_12;	// [cm^3]
+	denominator = M_11;	// [cm^2]
 
-	position.x = (int32_t)(((nominator * 10) / denominator + 5) / 10);										// [cm]
+	position.x = (int32_t)(((nominator * 10) / denominator + 5) / 10);// [cm]
 
 	/* Calculate z-position form x and y coordinates, if z can't be determined by previous steps (All anchors at z_n = 0) */
 	if (anchors_on_x_y_plane == true) {
@@ -801,6 +797,26 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 	position.x -= _uwb_grid.target_pos[0];
 	position.z -= _uwb_grid.target_pos[1];
 	position.y -= _uwb_grid.target_pos[2];
+
+
+	// The end goal of this math is to get the position relative to the landing point in the NED frame.
+	// Current position, in RDDrone frame
+	_current_position_uwb_r4 = matrix::Vector3f(position.x, position.y, position.z);
+	// Construct the rotation from the RDDrone frame to the NWU frame.
+	// The RDDrone frame is just NWU, rotated by some amount about the Z (up) axis.
+	// To get back to NWU, just rotate by negative this amount about Z.
+	_uwb_r4_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_uwb_distance.yaw_offset * M_PI_F / 180.0f)));
+	// The actual conversion:
+	//  - Subtract _landing_point to get the position relative to the landing point, in RDDrone frame
+	//  - Rotate by _rddrone_to_nwu to get into the NWU frame
+	//  - Rotate by _nwu_to_ned to get into the NED frame
+	_current_position_ned = _nwu_to_ned * _uwb_r4_to_nwu * _current_position_uwb_r4;
+
+	// Now the position is the vehicle relative to the landing point. We need the landing point relative to
+	// the vehicle. So just negate everything.
+	position.x = _current_position_ned(0);
+	position.y = _current_position_ned(1);
+	position.z = _current_position_ned(2);
 
 
 	return UWB_OK;
