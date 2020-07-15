@@ -41,9 +41,31 @@ then
 	param set VT_TYPE 2
 	param set VT_B_TRANS_DUR 8
 
+	param set CA_AIRFRAME 1
+
+	param set CA_ACT0_MIN 0.0
+	param set CA_ACT1_MIN 0.0
+	param set CA_ACT2_MIN 0.0
+	param set CA_ACT3_MIN 0.0
+	param set CA_ACT0_MAX 1.0
+	param set CA_ACT1_MAX 1.0
+	param set CA_ACT2_MAX 1.0
+	param set CA_ACT3_MAX 1.0
+
+	param set CA_ACT4_MIN 0.0
+	param set CA_ACT4_MAX 1.0
+
+	param set CA_ACT5_MIN -1.0
+	param set CA_ACT5_MAX 1.0
+	param set CA_ACT6_MIN -1.0
+	param set CA_ACT6_MAX 1.0
+	param set CA_ACT7_MIN -1.0
+	param set CA_ACT7_MAX 1.0
+
 fi
 
 set MAV_TYPE 22
 
-set MIXER_FILE etc/mixers-sitl/standard_vtol_sitl.main.mix
-set MIXER custom
+# set MIXER_FILE etc/mixers-sitl/standard_vtol_sitl.main.mix
+# set MIXER custom
+set MIXER direct

@@ -48,6 +48,7 @@ set(msg_files
 	collision_constraints.msg
 	collision_report.msg
 	commander_state.msg
+	control_allocator_status.msg
 	cpuload.msg
 	debug_array.msg
 	debug_key_value.msg
@@ -138,8 +139,10 @@ set(msg_files
 	ulog_stream.msg
 	ulog_stream_ack.msg
 	vehicle_acceleration.msg
+	vehicle_actuator_setpoint.msg
 	vehicle_air_data.msg
 	vehicle_angular_acceleration.msg
+	vehicle_angular_acceleration_setpoint.msg
 	vehicle_angular_velocity.msg
 	vehicle_attitude.msg
 	vehicle_attitude_setpoint.msg
@@ -160,6 +163,8 @@ set(msg_files
 	vehicle_roi.msg
 	vehicle_status.msg
 	vehicle_status_flags.msg
+	vehicle_thrust_setpoint.msg
+	vehicle_torque_setpoint.msg
 	vehicle_trajectory_bezier.msg
 	vehicle_trajectory_waypoint.msg
 	vtol_vehicle_status.msg

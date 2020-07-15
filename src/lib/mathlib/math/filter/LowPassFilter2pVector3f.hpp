@@ -74,12 +74,16 @@ public:
 	// Return the cutoff frequency
 	float get_cutoff_freq() const { return _cutoff_freq; }
 
+	// Return the sample frequency
+	float get_sample_freq() const { return _sample_freq; }
+
 	// Reset the filter state to this value
 	matrix::Vector3f reset(const matrix::Vector3f &sample);
 
 private:
 
 	float _cutoff_freq{0.0f};
+	float _sample_freq{0.0f};
 
 	float _a1{0.0f};
 	float _a2{0.0f};

@@ -1,0 +1,75 @@
+#!/bin/sh
+#
+# @name Typhoon H480 SITL
+#
+# @type Hexarotor x
+#
+
+sh /etc/init.d/rc.mc_defaults
+sh /etc/init.d/rc.ctrlalloc
+
+if [ $AUTOCNF = yes ]
+then
+	param set MPC_XY_VEL_I_ACC 4
+	param set MPC_XY_VEL_P_ACC 3
+
+	param set RTL_DESCEND_ALT 10
+	param set RTL_LAND_DELAY 0
+
+	param set TRIG_INTERFACE 3
+	param set TRIG_MODE 4
+	param set MNT_MODE_IN 0
+	param set MAV_PROTO_VER 2
+
+	param set MPC_USE_HTE 0
+
+	param set VM_MASS 2.66
+	param set VM_INERTIA_XX 0.06
+	param set VM_INERTIA_YY 0.06
+	param set VM_INERTIA_ZZ 0.10
+
+	param set CA_AIRFRAME 0
+	param set CA_METHOD 1
+	param set CA_ACT0_MIN 0.0
+	param set CA_ACT1_MIN 0.0
+	param set CA_ACT2_MIN 0.0
+	param set CA_ACT3_MIN 0.0
+	param set CA_ACT4_MIN 0.0
+	param set CA_ACT5_MIN 0.0
+	param set CA_ACT0_MAX 1.0
+	param set CA_ACT1_MAX 1.0
+	param set CA_ACT2_MAX 1.0
+	param set CA_ACT3_MAX 1.0
+	param set CA_ACT4_MAX 1.0
+	param set CA_ACT5_MAX 1.0
+
+	param set CA_MC_R0_PX 0.0
+	param set CA_MC_R0_PY 1.0
+	param set CA_MC_R0_CT 9.5
+	param set CA_MC_R0_KM -0.05
+	param set CA_MC_R1_PX 0.0
+	param set CA_MC_R1_PY -1.0
+	param set CA_MC_R1_CT 9.5
+	param set CA_MC_R1_KM 0.05
+	param set CA_MC_R2_PX 0.866025
+	param set CA_MC_R2_PY -0.5
+	param set CA_MC_R2_CT 9.5
+	param set CA_MC_R2_KM -0.05
+	param set CA_MC_R3_PX -0.866025
+	param set CA_MC_R3_PY 0.5
+	param set CA_MC_R3_CT 9.5
+	param set CA_MC_R3_KM 0.05
+	param set CA_MC_R4_PX 0.866025
+	param set CA_MC_R4_PY 0.5
+	param set CA_MC_R4_CT 9.5
+	param set CA_MC_R4_KM 0.05
+	param set CA_MC_R5_PX -0.866025
+	param set CA_MC_R5_PY -0.5
+	param set CA_MC_R5_CT 9.5
+	param set CA_MC_R5_KM -0.05
+fi
+
+set MAV_TYPE 13
+
+# set MIXER hexa_x
+set MIXER direct

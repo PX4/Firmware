@@ -295,6 +295,16 @@ rtps:
     id: 131
   - msg: yaw_estimator_status
     id: 132
+  - msg: vehicle_angular_acceleration_setpoint
+    id: 133
+  - msg: vehicle_torque_setpoint
+    id: 134
+  - msg: vehicle_thrust_setpoint
+    id: 135
+  - msg: vehicle_actuator_setpoint
+    id: 136
+  - msg: control_allocator_status
+    id: 137
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150

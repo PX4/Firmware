@@ -96,7 +96,7 @@ def main():
                     # handle mixer files differently than startup files
                     if file_path.endswith(".mix"):
                         if line.startswith(("Z:", "M:", "R: ", "O:", "S:",
-                                            "H:", "T:", "P:")):
+                                            "H:", "T:", "P:", "A:")):
                             # reduce multiple consecutive spaces into a
                             # single space
                             line_reduced = re.sub(' +', ' ', line)

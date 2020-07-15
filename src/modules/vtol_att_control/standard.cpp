@@ -311,6 +311,9 @@ void Standard::update_transition_state()
 		}
 	}
 
+
+	_v_att_sp->thrust_body[0] = _pusher_throttle;
+
 	mc_weight = math::constrain(mc_weight, 0.0f, 1.0f);
 
 	_mc_roll_weight = mc_weight;
