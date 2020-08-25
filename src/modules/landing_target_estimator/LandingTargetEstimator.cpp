@@ -228,7 +228,7 @@ void LandingTargetEstimator::_update_topics()
 	_vehicleLocalPosition_valid = _vehicleLocalPositionSub.update(&_vehicleLocalPosition);
 	_vehicleAttitude_valid = _attitudeSub.update(&_vehicleAttitude);
 	_vehicle_acceleration_valid = _vehicle_acceleration_sub.update(&_vehicle_acceleration);
-	_sensorBiasSub.update(&_sensorBias);
+	_estimatorSensorBiasSub.update(&_estimatorsensorBias);
 
 	//TODO: Uncomment this so it still works with both IRLock and uwb
 
