@@ -56,7 +56,7 @@
 #include <uORB/topics/landing_target_innovations.h>
 #include <uORB/topics/uwb_distance.h>
 #include <uORB/topics/uwb_grid.h>
-#include <uORB/topics/sensor_bias.h>
+#include <uORB/topics/estimator_sensor_bias.h>
 #include <uORB/topics/parameter_update.h>
 #include <matrix/math.hpp>
 #include <mathlib/mathlib.h>
@@ -125,7 +125,7 @@ private:
 		param_t offset_y;
 		param_t sensor_offset_x;
 		param_t sensor_offset_y;
-	} _paramHandle;
+		} _paramHandle;
 
 	struct {
 		float acc_unc;
@@ -152,7 +152,7 @@ private:
 	uORB::Subscription _attitudeSub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 	uORB::Subscription _irlockReportSub{ORB_ID(irlock_report)};
-	uORB::Subscription _sensorBiasSub{ORB_ID(sensor_bias)};
+	uORB::Subscription _estimatorSensorBiasSub{ORB_ID(estimator_sensor_bias)};
 	uORB::Subscription _uwbGridSub{ORB_ID(uwb_grid)};
 	uORB::Subscription _uwbDistanceSub{ORB_ID(uwb_distance)};
 
@@ -162,7 +162,7 @@ private:
 	irlock_report_s			_irlockReport{};
 	uwb_grid_s		_uwbGrid{};
 	uwb_distance_s		_uwbDistance{};
-	sensor_bias_s       _sensorBias{};
+	estimator_sensor_bias_s       _estimatorsensorBias{};
 
 	// keep track of which topics we have received
 	bool _vehicleLocalPosition_valid{false};
