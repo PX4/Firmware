@@ -34,16 +34,31 @@
 find_program(LCOV_PATH lcov)
 find_program(GENHTML_PATH genhtml)
 
+message(STATUS "Building for code coverage")
+
 # add code coverage build type
+if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "AppleClang"))
+	set(CMAKE_C_FLAGS_COVERAGE "--coverage -ftest-coverage -fdiagnostics-absolute-paths -O0 -fprofile-arcs -fno-inline-functions"
+		CACHE STRING "Flags used by the C compiler during coverage builds" FORCE)
 
-set(CMAKE_C_FLAGS_COVERAGE "--coverage -ftest-coverage -fprofile-arcs -O0 -fno-default-inline -fno-inline"
-        CACHE STRING "Flags used by the C compiler during coverage builds" FORCE)
+	set(CMAKE_CXX_FLAGS_COVERAGE "--coverage -ftest-coverage -fdiagnostics-absolute-paths -O0-fprofile-arcs -fno-inline-functions -fno-elide-constructors"
+		CACHE STRING "Flags used by the C++ compiler during coverage builds" FORCE)
 
-set(CMAKE_CXX_FLAGS_COVERAGE "--coverage -ftest-coverage -fprofile-arcs -O0 -fno-default-inline -fno-inline -fno-elide-constructors"
-        CACHE STRING "Flags used by the C++ compiler during coverage builds" FORCE)
-
-set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "--coverage -ftest-coverage -lgcov"
+	set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "-ftest-coverage -fdiagnostics-absolute-paths"
         CACHE STRING "Flags used for linking binaries during coverage builds" FORCE)
+
+else()
+	# Add  -fprofile-abs-path for GCC v8/9 later on
+	set(CMAKE_C_FLAGS_COVERAGE "--coverage -ftest-coverage -fprofile-arcs -O0 -fno-default-inline -fno-inline"
+		CACHE STRING "Flags used by the C compiler during coverage builds" FORCE)
+
+	# Add  -fprofile-abs-path for GCC v8/9 later on
+	set(CMAKE_CXX_FLAGS_COVERAGE "--coverage -ftest-coverage -fprofile-arcs -O0 -fno-default-inline -fno-inline -fno-elide-constructors"
+		CACHE STRING "Flags used by the C++ compiler during coverage builds" FORCE)
+
+	set(CMAKE_EXE_LINKER_FLAGS_COVERAGE "--coverage -ftest-coverage -lgcov"
+        CACHE STRING "Flags used for linking binaries during coverage builds" FORCE)
+endif()
 
 mark_as_advanced(CMAKE_CXX_FLAGS_COVERAGE CMAKE_C_FLAGS_COVERAGE CMAKE_EXE_LINKER_FLAGS_COVERAGE)
 

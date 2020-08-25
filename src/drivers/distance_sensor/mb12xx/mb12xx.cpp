@@ -63,7 +63,8 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/module.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/distance_sensor.h>
 
@@ -72,7 +73,6 @@ using namespace time_literals;
 /* Configuration Constants */
 #define MB12XX_BASE_ADDR                        0x70   // 7-bit address is 0x70 = 112. 8-bit address is 0xE0 = 224.
 #define MB12XX_MIN_ADDR                         0x5A   // 7-bit address is 0x5A = 90.  8-bit address is 0xB4 = 180.
-#define MB12XX_BUS_DEFAULT                      PX4_I2C_BUS_EXPANSION
 #define MB12XX_BUS_SPEED                        100000 // 100kHz bus speed.
 #define MB12XX_DEVICE_PATH                      "/dev/mb12xx"
 
@@ -88,18 +88,22 @@ using namespace time_literals;
 #define MB12XX_MEASURE_INTERVAL                 100_ms // 60ms minimum for one sonar.
 #define MB12XX_INTERVAL_BETWEEN_SUCCESIVE_FIRES 100_ms // 30ms minimum between each sonar measurement (watch out for interference!).
 
-class MB12XX : public device::I2C, public ModuleParams, public px4::ScheduledWorkItem
+class MB12XX : public device::I2C, public ModuleParams, public I2CSPIDriver<MB12XX>
 {
 public:
-	MB12XX(const int bus = MB12XX_BUS_DEFAULT);
+	MB12XX(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address);
 	virtual ~MB12XX();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	virtual int init() override;
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
 	 */
-	void print_info();
+	void print_status() override;
 
 	/**
 	 * Sets a new device address.
@@ -117,11 +121,13 @@ public:
 	void start();
 
 	/**
-	 * Stop the automatic measurement state machine.
+	 * Perform a poll cycle; collect from the previous measurement
+	 * and start a new one.
 	 */
-	void stop();
+	void RunImpl();
 
 protected:
+	void custom_method(const BusCLIArguments &cli) override;
 
 private:
 
@@ -139,12 +145,6 @@ private:
 	 * Sends an i2c measure command to start the next sonar ping.
 	 */
 	int measure();
-
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 */
-	void Run() override;
 
 	px4::Array<uint8_t, RANGE_FINDER_MAX_SENSORS> _sensor_addresses {};
 	px4::Array<uint8_t, RANGE_FINDER_MAX_SENSORS> _sensor_rotations {};
@@ -178,18 +178,15 @@ private:
 	);
 };
 
-MB12XX::MB12XX(const int bus) :
-	I2C("MB12xx", MB12XX_DEVICE_PATH, bus, MB12XX_BASE_ADDR, MB12XX_BUS_SPEED),
+MB12XX::MB12XX(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address) :
+	I2C("MB12xx", MB12XX_DEVICE_PATH, bus, address, bus_frequency),
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id()))
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
 }
 
 MB12XX::~MB12XX()
 {
-	// Ensure we are truly inactive.
-	stop();
-
 	// Unadvertise the distance sensor topic.
 	if (_distance_sensor_topic != nullptr) {
 		orb_unadvertise(_distance_sensor_topic);
@@ -344,8 +341,9 @@ MB12XX::measure()
 }
 
 void
-MB12XX::print_info()
+MB12XX::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_error);
 	PX4_INFO("poll interval:  %ums", _measure_interval / 1000);
@@ -356,7 +354,7 @@ MB12XX::print_info()
 }
 
 void
-MB12XX::Run()
+MB12XX::RunImpl()
 {
 	// Collect the sensor data.
 	if (collect() != PX4_OK) {
@@ -406,267 +404,76 @@ MB12XX::start()
 }
 
 void
-MB12XX::stop()
+MB12XX::custom_method(const BusCLIArguments &cli)
 {
-	ScheduleClear();
+	set_address(cli.i2c_address);
 }
 
-/**
- * Local functions in support of the shell command.
- */
-namespace mb12xx
+I2CSPIDriverBase *MB12XX::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
 {
+	MB12XX *instance = new MB12XX(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency, cli.i2c_address);
 
-MB12XX	*g_dev;
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
 
-int reset();
-int set_address(const uint8_t address = MB12XX_BASE_ADDR);
-int start();
-int start_bus(const int i2c_bus = MB12XX_BUS_DEFAULT);
-int status();
-int stop();
-int test();
-int usage();
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
 
-/**
- * Reset the driver.
- */
-int
-reset()
-{
-	PX4_INFO("driver resetting");
-	stop();
-	start();
-	return PX4_OK;
+	instance->start();
+	return instance;
 }
 
-int
-set_address(const uint8_t address)
-{
-	if (g_dev != nullptr) {
-		if (g_dev->set_address(address) != PX4_OK) {
-			PX4_ERR("address not set");
-			return PX4_ERROR;
-		}
-	}
 
-	reset();
-	return PX4_OK;
+void
+MB12XX::print_usage()
+{
+	PRINT_MODULE_USAGE_NAME("mb12xx", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x70);
+	PRINT_MODULE_USAGE_COMMAND("set_address");
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x70);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-/**
- * Attempt to start driver on all available I2C busses.
- *
- * This function will return as soon as the first sensor
- * is detected on one of the available busses or if no
- * sensors are detected.
- */
-int
-start()
-{
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_ERROR;
-	}
-
-	for (unsigned i = 0; i < NUM_I2C_BUS_OPTIONS; i++) {
-		if (start_bus(i2c_bus_options[i]) == PX4_OK) {
-			return PX4_OK;
-		}
-	}
-
-	return PX4_ERROR;
-}
-
-/**
- * Start the driver on a specific bus.
- *
- * This function only returns if the sensor is up and running
- * or could not be detected successfully.
- */
-int
-start_bus(const int i2c_bus)
-{
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_OK;
-	}
-
-	// Instantiate the driver.
-	g_dev = new MB12XX(i2c_bus);
-
-	if (g_dev == nullptr) {
-		delete g_dev;
-		return PX4_ERROR;
-	}
-
-	// Initialize the sensor.
-	if (g_dev->init() != PX4_OK) {
-		delete g_dev;
-		g_dev = nullptr;
-		return PX4_ERROR;
-	}
-
-	// Start the driver.
-	g_dev->start();
-
-	PX4_INFO("driver started");
-	return PX4_OK;
-}
-
-/**
- * Print the driver status.
- */
-int
-status()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	g_dev->print_info();
-
-	return PX4_OK;
-}
-
-/**
- * Stop the driver.
- */
-int
-stop()
-{
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	PX4_INFO("driver stopped");
-	return PX4_OK;
-}
-
-/**
- * Perform some basic functional tests on the driver;
- * make sure we can collect data from the sensor in polled
- * and automatic modes.
- */
-int
-test()
-{
-	int fd = px4_open(MB12XX_DEVICE_PATH, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("%s open failed (try 'mb12xx start' if the driver is not running)", MB12XX_DEVICE_PATH);
-		return PX4_ERROR;
-	}
-
-	// Perform a simple demand read.
-	distance_sensor_s report {};
-	ssize_t sz = read(fd, &report, sizeof(report));
-
-	if (sz != sizeof(report)) {
-		PX4_ERR("immediate read failed");
-		return PX4_ERROR;
-	}
-
-	print_message(report);
-
-	PX4_INFO("PASS");
-	return PX4_OK;
-}
-
-/**
- * Print information about the driver usage.
- */
-int
-usage()
-{
-	PX4_INFO("usage: mb12xx <command> [options]");
-	PX4_INFO("options:");
-	PX4_INFO("\t-a --all available busses");
-	PX4_INFO("\t-b --bus i2cbus (%d)", MB12XX_BUS_DEFAULT);
-	PX4_INFO("\t-A --set device address (0-112, 0x00-0x70)");
-	PX4_INFO("command:");
-	PX4_INFO("\treset|set_address|start|status|stop|test|usage");
-	return PX4_OK;
-}
-
-} // namespace mb12xx
-
-/**
- * Driver 'main' command.
- */
 extern "C" __EXPORT int mb12xx_main(int argc, char *argv[])
 {
-	const char *myoptarg = nullptr;
+	using ThisDriver = MB12XX;
+	BusCLIArguments cli{true, false};
+	cli.i2c_address = MB12XX_BASE_ADDR;
+	cli.default_i2c_frequency = MB12XX_BUS_SPEED;
 
-	int ch = 0;
-	int i2c_bus = MB12XX_BUS_DEFAULT;
-	int myoptind = 1;
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-	uint8_t address = MB12XX_BASE_ADDR;
-
-	bool start_all = false;
-
-	while ((ch = px4_getopt(argc, argv, "abs:", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'a':
-			start_all = true;
-			break;
-
-		case 'b':
-			i2c_bus = atoi(myoptarg);
-			break;
-
-		case 's':
-			address = (uint8_t)atoi(myoptarg);
-			break;
-
-		default:
-			PX4_WARN("Unknown option!");
-			return mb12xx::usage();
-		}
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	if (myoptind >= argc) {
-		return mb12xx::usage();
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_DIST_DEVTYPE_MB12XX);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	// Reset the driver.
-	if (!strcmp(argv[myoptind], "reset")) {
-		return mb12xx::reset();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	// Set the device I2C address.
-	if (!strcmp(argv[myoptind], "set_address")) {
-		return mb12xx::set_address(address);
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	// Start/load the driver.
-	if (!strcmp(argv[myoptind], "start")) {
-		if (start_all) {
-			return mb12xx::start();
-
-		} else {
-			return mb12xx::start_bus(i2c_bus);
-		}
+	if (!strcmp(verb, "set_address")) {
+		return ThisDriver::module_custom_method(cli, iterator);
 	}
 
-	// Print the driver status.
-	if (!strcmp(argv[myoptind], "status")) {
-		return mb12xx::status();
-	}
-
-	// Stop the driver.
-	if (!strcmp(argv[myoptind], "stop")) {
-		return mb12xx::stop();
-	}
-
-	// Test the driver/device.
-	if (!strcmp(argv[myoptind], "test")) {
-		return mb12xx::test();
-	}
-
-	// Print driver usage information.
-	return mb12xx::usage();
+	ThisDriver::print_usage();
+	return -1;
 }

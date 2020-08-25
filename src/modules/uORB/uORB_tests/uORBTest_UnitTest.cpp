@@ -37,24 +37,8 @@
 #include <px4_platform_common/time.h>
 #include <stdio.h>
 #include <errno.h>
-#include <poll.h>
 #include <math.h>
 #include <lib/cdev/CDev.hpp>
-
-ORB_DEFINE(orb_test, struct orb_test, sizeof(orb_test), "ORB_TEST:int val;hrt_abstime time;");
-ORB_DEFINE(orb_multitest, struct orb_test, sizeof(orb_test), "ORB_MULTITEST:int val;hrt_abstime time;");
-
-ORB_DEFINE(orb_test_medium, struct orb_test_medium, sizeof(orb_test_medium),
-	   "ORB_TEST_MEDIUM:int val;hrt_abstime time;char[64] junk;");
-ORB_DEFINE(orb_test_medium_multi, struct orb_test_medium, sizeof(orb_test_medium),
-	   "ORB_TEST_MEDIUM_MULTI:int val;hrt_abstime time;char[64] junk;");
-ORB_DEFINE(orb_test_medium_queue, struct orb_test_medium, sizeof(orb_test_medium),
-	   "ORB_TEST_MEDIUM_MULTI:int val;hrt_abstime time;char[64] junk;");
-ORB_DEFINE(orb_test_medium_queue_poll, struct orb_test_medium, sizeof(orb_test_medium),
-	   "ORB_TEST_MEDIUM_MULTI:int val;hrt_abstime time;char[64] junk;");
-
-ORB_DEFINE(orb_test_large, struct orb_test_large, sizeof(orb_test_large),
-	   "ORB_TEST_LARGE:int val;hrt_abstime time;char[512] junk;");
 
 uORBTest::UnitTest &uORBTest::UnitTest::instance()
 {
@@ -74,7 +58,7 @@ int uORBTest::UnitTest::pubsublatency_main()
 	int test_multi_sub_medium = orb_subscribe_multi(ORB_ID(orb_test_medium), 0);
 	int test_multi_sub_large = orb_subscribe_multi(ORB_ID(orb_test_large), 0);
 
-	orb_test_large t{};
+	orb_test_large_s t{};
 
 	/* clear all ready flags */
 	orb_copy(ORB_ID(orb_test), test_multi_sub, &t);
@@ -94,7 +78,7 @@ int uORBTest::UnitTest::pubsublatency_main()
 	int num_missed = 0;
 
 	// timings has to be on the heap to keep frame size below 2048 bytes
-	unsigned *timings = new unsigned[maxruns];
+	unsigned *timings = new unsigned[maxruns] {};
 	unsigned timing_min = 9999999, timing_max = 0;
 
 	for (unsigned i = 0; i < maxruns; i++) {
@@ -122,7 +106,7 @@ int uORBTest::UnitTest::pubsublatency_main()
 		num_missed += t.val - current_value - 1;
 		current_value = t.val;
 
-		unsigned elt = (unsigned)hrt_elapsed_time_atomic(&t.time);
+		unsigned elt = (unsigned)hrt_elapsed_time_atomic(&t.timestamp);
 		latency_integral += elt;
 		timings[i] = elt;
 
@@ -242,7 +226,7 @@ int uORBTest::UnitTest::test_unadvertise()
 
 	//try to advertise and see whether we get the right instance
 	int instance_test[4] {};
-	orb_test t{};
+	orb_test_s t{};
 
 	for (int i = 0; i < 4; ++i) {
 		_pfd[i] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance_test[i], ORB_PRIO_MAX);
@@ -269,8 +253,8 @@ int uORBTest::UnitTest::test_single()
 {
 	test_note("try single-topic support");
 
-	orb_test t{};
-	orb_test u{};
+	orb_test_s t{};
+	orb_test_s u{};
 	int sfd = -1;
 	orb_advert_t ptopic{};
 	bool updated{false};
@@ -347,8 +331,8 @@ int uORBTest::UnitTest::test_multi()
 	/* this routine tests the multi-topic support */
 	test_note("try multi-topic support");
 
-	orb_test t{};
-	orb_test u{};
+	orb_test_s t{};
+	orb_test_s u{};
 
 	int instance0;
 	_pfd[0] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance0, ORB_PRIO_MAX);
@@ -420,7 +404,7 @@ int uORBTest::UnitTest::test_multi()
 		return test_fail("prio: %d", prio);
 	}
 
-	if (PX4_OK != latency_test<struct orb_test>(ORB_ID(orb_test), false)) {
+	if (PX4_OK != latency_test<orb_test_s>(ORB_ID(orb_test), false)) {
 		return test_fail("latency test failed");
 	}
 
@@ -441,7 +425,7 @@ int uORBTest::UnitTest::pub_test_multi2_main()
 	int data_next_idx = 0;
 	const int num_instances = 3;
 	orb_advert_t orb_pub[num_instances] {};
-	orb_test_medium data_topic{};
+	orb_test_medium_s data_topic{};
 
 	for (int i = 0; i < num_instances; ++i) {
 		orb_advert_t &pub = orb_pub[i];
@@ -465,7 +449,7 @@ int uORBTest::UnitTest::pub_test_multi2_main()
 		px4_usleep(2); //make sure the timestamps are different
 		orb_advert_t &pub = orb_pub[data_next_idx];
 
-		data_topic.time = hrt_absolute_time();
+		data_topic.timestamp = hrt_absolute_time();
 		data_topic.val = data_next_idx;
 
 		orb_publish(ORB_ID(orb_test_medium_multi), pub, &data_topic);
@@ -507,7 +491,7 @@ int uORBTest::UnitTest::test_multi2()
 	int pubsub_task = px4_task_spawn_cmd("uorb_test_multi",
 					     SCHED_DEFAULT,
 					     SCHED_PRIORITY_MAX - 5,
-					     2000,
+					     3000,
 					     (px4_main_t)&uORBTest::UnitTest::pub_test_multi2_entry,
 					     args);
 
@@ -526,16 +510,16 @@ int uORBTest::UnitTest::test_multi2()
 		orb_check(orb_data_cur_fd, &updated);
 
 		if (updated) {
-			orb_test_medium msg{};
+			orb_test_medium_s msg{};
 			orb_copy(ORB_ID(orb_test_medium_multi), orb_data_cur_fd, &msg);
 
-			if (last_time >= msg.time && last_time != 0) {
-				return test_fail("Timestamp not increasing! (%" PRIu64 " >= %" PRIu64 ")", last_time, msg.time);
+			if (last_time >= msg.timestamp && last_time != 0) {
+				return test_fail("Timestamp not increasing! (%" PRIu64 " >= %" PRIu64 ")", last_time, msg.timestamp);
 			}
 
-			last_time = msg.time;
+			last_time = msg.timestamp;
 
-			PX4_DEBUG("got message (val=%i, idx=%i, t=%" PRIu64 ")", msg.val, orb_data_next, msg.time);
+			PX4_DEBUG("got message (val=%i, idx=%i, t=%" PRIu64 ")", msg.val, orb_data_next, msg.timestamp);
 			orb_data_next = (orb_data_next + 1) % num_instances;
 		}
 	}
@@ -560,7 +544,8 @@ int uORBTest::UnitTest::test_multi_reversed()
 		return test_fail("sub. id2: ret: %d", sfd2);
 	}
 
-	struct orb_test t {}, u {};
+	orb_test_s t{};
+	orb_test_s u{};
 
 	t.val = 0;
 
@@ -622,17 +607,16 @@ int uORBTest::UnitTest::test_queue()
 {
 	test_note("Testing orb queuing");
 
-	struct orb_test_medium t, u;
-	int sfd;
-	orb_advert_t ptopic;
-	bool updated;
+	orb_test_medium_s t{};
+	orb_test_medium_s u{};
+	orb_advert_t ptopic{nullptr};
+	bool updated{false};
 
-	sfd = orb_subscribe(ORB_ID(orb_test_medium_queue));
+	int sfd = orb_subscribe(ORB_ID(orb_test_medium_queue));
 
 	if (sfd < 0) {
 		return test_fail("subscribe failed: %d", errno);
 	}
-
 
 	const int queue_size = 11;
 	t.val = 0;
@@ -739,17 +723,18 @@ int uORBTest::UnitTest::pub_test_queue_entry(int argc, char *argv[])
 
 int uORBTest::UnitTest::pub_test_queue_main()
 {
-	struct orb_test_medium t;
-	orb_advert_t ptopic;
+	orb_test_medium_s t{};
+	orb_advert_t ptopic{nullptr};
 	const int queue_size = 50;
-	t.val = 0;
 
 	if ((ptopic = orb_advertise_queue(ORB_ID(orb_test_medium_queue_poll), &t, queue_size)) == nullptr) {
 		_thread_should_exit = true;
 		return test_fail("advertise failed: %d", errno);
 	}
 
-	int message_counter = 0, num_messages = 20 * queue_size;
+	int message_counter = 0;
+	int num_messages = 20 * queue_size;
+
 	++t.val;
 
 	while (message_counter < num_messages) {
@@ -778,7 +763,7 @@ int uORBTest::UnitTest::test_queue_poll_notify()
 {
 	test_note("Testing orb queuing (poll & notify)");
 
-	orb_test_medium t{};
+	orb_test_medium_s t{};
 	int sfd = -1;
 
 	if ((sfd = orb_subscribe(ORB_ID(orb_test_medium_queue_poll))) < 0) {
@@ -791,7 +776,7 @@ int uORBTest::UnitTest::test_queue_poll_notify()
 	int pubsub_task = px4_task_spawn_cmd("uorb_test_queue",
 					     SCHED_DEFAULT,
 					     SCHED_PRIORITY_MIN + 5,
-					     1500,
+					     3000,
 					     (px4_main_t)&uORBTest::UnitTest::pub_test_queue_entry,
 					     args);
 

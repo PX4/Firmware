@@ -55,6 +55,7 @@
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/vehicle_air_data.h>
+#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_status.h>
@@ -68,6 +69,7 @@ struct frsky_subscription_data_s {
 	uORB::SubscriptionData<battery_status_s> battery_status_sub{ORB_ID(battery_status)};
 	uORB::SubscriptionData<sensor_combined_s> sensor_combined_sub{ORB_ID(sensor_combined)};
 	uORB::SubscriptionData<vehicle_air_data_s> vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
+	uORB::SubscriptionData<vehicle_local_position_s> vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionData<vehicle_global_position_s> vehicle_global_position_sub{ORB_ID(vehicle_global_position)};
 	uORB::SubscriptionData<vehicle_gps_position_s> vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
 	uORB::SubscriptionData<vehicle_status_s> vehicle_status_sub{ORB_ID(vehicle_status)};
@@ -149,6 +151,7 @@ void frsky_update_topics()
 	subscription_data->battery_status_sub.update();
 	subscription_data->sensor_combined_sub.update();
 	subscription_data->vehicle_air_data_sub.update();
+	subscription_data->vehicle_local_position_sub.update();
 	subscription_data->vehicle_global_position_sub.update();
 	subscription_data->vehicle_gps_position_sub.update();
 	subscription_data->vehicle_status_sub.update();
@@ -199,6 +202,7 @@ static float frsky_format_gps(float dec)
 void frsky_send_frame2(int uart)
 {
 	const vehicle_global_position_s &gpos = subscription_data->vehicle_global_position_sub.get();
+	const vehicle_local_position_s &lpos = subscription_data->vehicle_local_position_sub.get();
 	const battery_status_s &battery_status = subscription_data->battery_status_sub.get();
 	const vehicle_gps_position_s &gps = subscription_data->vehicle_gps_position_sub.get();
 
@@ -218,8 +222,7 @@ void frsky_send_frame2(int uart)
 		lat_ns = (gpos.lat < 0) ? 'S' : 'N';
 		lon    = frsky_format_gps(fabsf(gpos.lon));
 		lon_ew = (gpos.lon < 0) ? 'W' : 'E';
-		speed  = sqrtf(gpos.vel_n * gpos.vel_n + gpos.vel_e * gpos.vel_e)
-			 * 25.0f / 46.0f;
+		speed  = sqrtf(lpos.vx * lpos.vx + lpos.vy * lpos.vy) * 25.0f / 46.0f;
 		alt    = gpos.alt;
 	}
 

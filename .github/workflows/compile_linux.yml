@@ -1,0 +1,39 @@
+name: linux
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-armhf:2020-01-13
+    strategy:
+      matrix:
+        config: [
+          aerotenna_ocpoc_default,
+          beaglebone_blue_default,
+          emlid_navio2_default,
+          px4_raspberrypi_default,
+          ]
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+    - uses: actions/cache@v1.1.0
+      id: ccache-persistence
+      with:
+        path: ~/.ccache
+        key: ccache-linux-${{matrix.config}}
+        restore-keys: |
+          ccache-linux-${{matrix.config}}
+    - name: setup ccache
+      run: mkdir -p ~/.ccache && echo "max_size = 300M" > ~/.ccache/ccache.conf && ccache -z && ccache -s
+    - name: make ${{matrix.config}}
+      run: make ${{matrix.config}}
+    - name: ccache post-run
+      run: ccache -s && ccache -z

@@ -58,6 +58,7 @@ public:
 	void update_mc_state() override;
 	void update_fw_state() override;
 	void waiting_on_tecs() override;
+	float thrust_compensation_for_tilt();
 
 private:
 

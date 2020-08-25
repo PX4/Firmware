@@ -87,9 +87,10 @@
 #define PX4_I2C_BUS_EXPANSION1  2
 #define PX4_I2C_BUS_ONBOARD	3
 
+#include <drivers/drv_sensor.h>
 #define GPIO_SPI_CS_MPU6500	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN4)
 #define PX4_SPI_BUS_SENSORS	1
-#define PX4_SPIDEV_MPU		PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
+#define PX4_SPIDEV_MPU		PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250)
 
 /*
  * STM32 ADC channels
@@ -167,7 +168,6 @@ __BEGIN_DECLS
 
 extern void stm32_spiinitialize(void);
 
-#define board_spi_reset(ms)
 #define board_peripheral_reset(ms)
 
 /************************************************************************************

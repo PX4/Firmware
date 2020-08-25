@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2016-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * @file i2c.h
+ * @file I2C.hpp
  *
  * Base class for devices connected via I2C.
  */
@@ -41,13 +41,6 @@
 #define _DEVICE_I2C_H
 
 #include "../CDev.hpp"
-
-#include <px4_platform_common/i2c.h>
-
-#ifdef __PX4_LINUX
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
-#endif
 
 namespace device __EXPORT
 {
@@ -109,6 +102,7 @@ protected:
 	virtual bool	external() const override { return px4_i2c_bus_external(_device_id.devid_s.bus); }
 
 private:
+	uint32_t		_frequency{0};
 	int			_fd{-1};
 
 };

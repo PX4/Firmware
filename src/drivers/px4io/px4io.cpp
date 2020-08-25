@@ -58,7 +58,7 @@
 #include <math.h>
 #include <crc32.h>
 
-#include <arch/board/board.h>
+
 
 #include <drivers/device/device.h>
 #include <drivers/drv_rc_input.h>
@@ -785,6 +785,7 @@ PX4IO::init()
 		/* send command to arm system via command API */
 		vcmd.timestamp = hrt_absolute_time();
 		vcmd.param1 = 1.0f; /* request arming */
+		vcmd.param3 = 1234.f; /* mark the command coming from IO (for in-air restoring) */
 		vcmd.command = vehicle_command_s::VEHICLE_CMD_COMPONENT_ARM_DISARM;
 
 		/* send command once */
@@ -1306,9 +1307,9 @@ PX4IO::io_set_control_state(unsigned group)
 		controls.control[3] = 1.0f;
 	}
 
-	uint16_t regs[_max_actuators];
+	uint16_t regs[sizeof(controls.control) / sizeof(controls.control[0])] = {};
 
-	for (unsigned i = 0; i < _max_controls; i++) {
+	for (unsigned i = 0; (i < _max_controls) && (i < sizeof(controls.control) / sizeof(controls.control[0])); i++) {
 		/* ensure FLOAT_TO_REG does not produce an integer overflow */
 		const float ctrl = math::constrain(controls.control[i], -1.0f, 1.0f);
 
@@ -1319,12 +1320,12 @@ PX4IO::io_set_control_state(unsigned group)
 			regs[i] = FLOAT_TO_REG(ctrl);
 		}
 
-
 	}
 
 	if (!_test_fmu_fail && !_motor_test.in_test_mode) {
 		/* copy values to registers in IO */
-		return io_reg_set(PX4IO_PAGE_CONTROLS, group * PX4IO_PROTOCOL_MAX_CONTROL_COUNT, regs, _max_controls);
+		return io_reg_set(PX4IO_PAGE_CONTROLS, group * PX4IO_PROTOCOL_MAX_CONTROL_COUNT, regs, math::min(_max_controls,
+				  sizeof(controls.control) / sizeof(controls.control[0])));
 
 	} else {
 		return OK;
@@ -3012,8 +3013,8 @@ start(int argc, char *argv[])
 		} else if (!strcmp(argv[extra_args], "hil")) {
 			hitl_mode = true;
 
-		} else {
-			warnx("unknown argument: %s", argv[1]);
+		} else if (argv[extra_args][0] != '\0') {
+			PX4_WARN("unknown argument: %s", argv[extra_args]);
 		}
 	}
 

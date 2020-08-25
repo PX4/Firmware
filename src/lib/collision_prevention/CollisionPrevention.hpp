@@ -85,6 +85,7 @@ public:
 protected:
 
 	obstacle_distance_s _obstacle_map_body_frame {};
+	bool _data_fov[sizeof(_obstacle_map_body_frame.distances) / sizeof(_obstacle_map_body_frame.distances[0])];
 	uint64_t _data_timestamps[sizeof(_obstacle_map_body_frame.distances) / sizeof(_obstacle_map_body_frame.distances[0])];
 	uint16_t _data_maxranges[sizeof(_obstacle_map_body_frame.distances) / sizeof(
 										    _obstacle_map_body_frame.distances[0])]; /**< in cm */
@@ -137,7 +138,6 @@ private:
 	static constexpr uint64_t RANGE_STREAM_TIMEOUT_US{500_ms};
 	static constexpr uint64_t TIMEOUT_HOLD_US{5_s};
 
-	hrt_abstime	_last_collision_warning{0};
 	hrt_abstime	_last_timeout_warning{0};
 	hrt_abstime	_time_activated{0};
 

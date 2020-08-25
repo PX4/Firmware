@@ -207,11 +207,17 @@
  * is we set aside more DMA channels/streams.
  *
  * SDIO DMA
- *   DMAMAP_SDIO_1 = Channel 4, Stream 3 <- may later be used by SPI DMA
+ *   DMAMAP_SDIO_1 = Channel 4, Stream 3
  *   DMAMAP_SDIO_2 = Channel 4, Stream 6
  */
 
 #define DMAMAP_SDIO DMAMAP_SDIO_1
+
+#define DMACHAN_SPI1_RX DMAMAP_SPI1_RX_1
+#define DMACHAN_SPI1_TX DMAMAP_SPI1_TX_2
+
+#define DMACHAN_SPI2_RX DMAMAP_SPI2_RX
+#define DMACHAN_SPI2_TX DMAMAP_SPI2_TX
 
 /* LED definitions ******************************************************************/
 /* If CONFIG_ARCH_LEDS is not defined, then the user can control the LEDs in any

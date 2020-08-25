@@ -719,7 +719,7 @@ int frsky_telemetry_main(int argc, char *argv[])
 		frsky_task = px4_task_spawn_cmd("frsky_telemetry",
 						SCHED_DEFAULT,
 						SCHED_PRIORITY_DEFAULT + 4,
-						1380,
+						1400,
 						frsky_telemetry_thread_main,
 						(char *const *)argv);
 

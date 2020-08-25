@@ -53,11 +53,11 @@ public:
 	 * Constructor
 	 *
 	 * @param meta The uORB metadata (usually from the ORB_ID() macro) for the topic.
-	 * @param interval_ms The requested maximum update interval in milliseconds.
+	 * @param interval_us The requested maximum update interval in microseconds.
 	 * @param instance The instance for multi sub.
 	 */
-	SubscriptionCallback(const orb_metadata *meta, uint8_t interval_ms = 0, uint8_t instance = 0) :
-		SubscriptionInterval(meta, interval_ms, instance)
+	SubscriptionCallback(const orb_metadata *meta, uint32_t interval_us = 0, uint8_t instance = 0) :
+		SubscriptionInterval(meta, interval_us, instance)
 	{
 	}
 
@@ -68,11 +68,9 @@ public:
 
 	bool registerCallback()
 	{
-		bool ret = false;
-
 		if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
 			// registered
-			ret = true;
+			_registered = true;
 
 		} else {
 			// force topic creation by subscribing with old API
@@ -81,15 +79,14 @@ public:
 			// try to register callback again
 			if (_subscription.subscribe()) {
 				if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
-					ret = true;
+					_registered = true;
 				}
 			}
 
 			orb_unsubscribe(fd);
 		}
 
-
-		return ret;
+		return _registered;
 	}
 
 	void unregisterCallback()
@@ -97,9 +94,15 @@ public:
 		if (_subscription.get_node()) {
 			_subscription.get_node()->unregister_callback(this);
 		}
+
+		_registered = false;
 	}
 
 	virtual void call() = 0;
+
+protected:
+
+	bool _registered{false};
 
 };
 

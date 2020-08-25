@@ -39,6 +39,7 @@
 
 #include <drivers/drv_adc.h>
 #include <px4_arch/adc.h>
+#include <px4_platform_common/micro_hal.h>
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform/board_determine_hw_info.h>
 #include <stdio.h>
@@ -156,29 +157,29 @@ static int read_id_dn(int *id, uint32_t gpio_drive, uint32_t gpio_sense, int adc
 
 	/*  Turn the drive lines to digital inputs with No pull up */
 
-	stm32_configgpio(_MK_GPIO_INPUT(gpio_drive) & ~GPIO_PUPD_MASK);
+	stm32_configgpio(PX4_MAKE_GPIO_INPUT(gpio_drive) & ~GPIO_PUPD_MASK);
 
 	/*  Turn the sense lines to digital outputs LOW */
 
-	stm32_configgpio(_MK_GPIO_OUTPUT(gpio_sense));
+	stm32_configgpio(PX4_MAKE_GPIO_OUTPUT(gpio_sense));
 
 
 	up_udelay(100); /* About 10 TC assuming 485 K */
 
 	/*  Read Drive lines while sense are driven low */
 
-	int low = stm32_gpioread(_MK_GPIO_INPUT(gpio_drive));
+	int low = stm32_gpioread(PX4_MAKE_GPIO_INPUT(gpio_drive));
 
 
 	/*  Write the sense lines HIGH */
 
-	stm32_gpiowrite(_MK_GPIO_OUTPUT(gpio_sense), 1);
+	stm32_gpiowrite(PX4_MAKE_GPIO_OUTPUT(gpio_sense), 1);
 
 	up_udelay(100); /* About 10 TC assuming 485 K */
 
 	/*  Read Drive lines while sense are driven high */
 
-	int high = stm32_gpioread(_MK_GPIO_INPUT(gpio_drive));
+	int high = stm32_gpioread(PX4_MAKE_GPIO_INPUT(gpio_drive));
 
 	/* restore the pins to ANALOG */
 

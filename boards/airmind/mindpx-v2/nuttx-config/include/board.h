@@ -40,6 +40,7 @@
 /************************************************************************************
  * Included Files
  ************************************************************************************/
+#include "board_dma_map.h"
 
 #include <nuttx/config.h>
 #ifndef __ASSEMBLY__
@@ -195,17 +196,6 @@
 #  define SDIO_SDXFR_CLKDIV     (2 << SDIO_CLKCR_CLKDIV_SHIFT)
 #endif
 
-/* DMA Channl/Stream Selections *****************************************************/
-/* Stream selections are arbitrary for now but might become important in the future
- * is we set aside more DMA channels/streams.
- *
- * SDIO DMA
- *   DMAMAP_SDIO_1 = Channel 4, Stream 3 <- may later be used by SPI DMA
- *   DMAMAP_SDIO_2 = Channel 4, Stream 6
- */
-
-#define DMAMAP_SDIO DMAMAP_SDIO_1
-
 /* Alternate function pin selections ************************************************/
 
 /*
@@ -234,10 +224,6 @@
 #define GPIO_UART7_TX	GPIO_UART7_TX_1
 
 /* UART8 has no alternate pin config */
-
-/* UART RX DMA configurations */
-#define DMAMAP_USART1_RX DMAMAP_USART1_RX_2
-#define DMAMAP_USART6_RX DMAMAP_USART6_RX_2
 
 /*
  * CAN
@@ -303,7 +289,7 @@ extern "C" {
  *
  * Description:
  *   All STM32 architectures must provide the following entry point.  This entry point
- *   is called early in the intitialization -- after all memory has been configured
+ *   is called early in the initialization -- after all memory has been configured
  *   and mapped but before any devices have been initialized.
  *
  ************************************************************************************/

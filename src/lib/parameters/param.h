@@ -452,7 +452,7 @@ __END_DECLS
 
 
 
-#ifdef	__cplusplus
+#if defined(__cplusplus) && !defined(PARAM_IMPLEMENTATION)
 #if 0 // set to 1 to debug param type mismatches
 #include <cstdio>
 #define CHECK_PARAM_TYPE(param, type) \
@@ -467,17 +467,19 @@ __END_DECLS
 // param is a C-interface. This means there is no overloading, and thus no type-safety for param_get().
 // So for C++ code we redefine param_get() to inlined overloaded versions, which gives us type-safety
 // w/o having to use a different interface
-static inline int param_get(param_t param, float *val)
+static inline int param_get_cplusplus(param_t param, float *val)
 {
 	CHECK_PARAM_TYPE(param, PARAM_TYPE_FLOAT);
 	return param_get(param, (void *)val);
 }
-static inline int param_get(param_t param, int32_t *val)
+static inline int param_get_cplusplus(param_t param, int32_t *val)
 {
 	CHECK_PARAM_TYPE(param, PARAM_TYPE_INT32);
 	return param_get(param, (void *)val);
 }
 #undef CHECK_PARAM_TYPE
+
+#define param_get(param, val) param_get_cplusplus(param, val)
 
 #endif /* __cplusplus */
 

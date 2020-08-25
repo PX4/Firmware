@@ -1,0 +1,25 @@
+name: Python CI checks
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+    - name: Install Python3
+      run: sudo apt-get install python3 python3-setuptools python3-pip -y
+    - name: Install tools
+      run: pip3 install --user mypy flake8
+    - name: Check MAVSDK test scripts with mypy
+      run: $HOME/.local/bin/mypy --strict test/mavsdk_tests/*.py
+    - name: Check MAVSDK test scripts with flake8
+      run: $HOME/.local/bin/flake8 test/mavsdk_tests/*.py

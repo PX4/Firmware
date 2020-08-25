@@ -41,10 +41,13 @@ endif()
 
 add_library(px4_platform
 	board_identity.c
+	i2c.cpp
+	i2c_spi_buses.cpp
 	module.cpp
 	px4_getopt.c
 	px4_cli.cpp
 	shutdown.cpp
+	spi.cpp
 	${SRCS}
 	)
 add_dependencies(px4_platform prebuild_targets)

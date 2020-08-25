@@ -56,8 +56,6 @@ struct Parameters {
 
 	float board_offset[3];
 
-	float baro_qnh;
-
 	int32_t air_cmodel;
 	float air_tube_length;
 	float air_tube_diameter_mm;
@@ -72,8 +70,6 @@ struct ParameterHandles {
 	param_t board_rotation;
 
 	param_t board_offset[3];
-
-	param_t baro_qnh;
 
 	param_t air_cmodel;
 	param_t air_tube_length;

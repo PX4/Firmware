@@ -42,9 +42,9 @@
 /* Max measurement rate is 25Hz */
 #define LPS22HB_CONVERSION_INTERVAL	(1000000 / 25)	/* microseconds */
 
-LPS22HB::LPS22HB(device::Device *interface, const char *path) :
-	CDev(path),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id())),
+LPS22HB::LPS22HB(I2CSPIBusOption bus_option, int bus, device::Device *interface) :
+	CDev(nullptr),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus),
 	_interface(interface),
 	_sample_perf(perf_alloc(PC_ELAPSED, "lps22hb_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "lps22hb_comms_errors"))
@@ -55,9 +55,6 @@ LPS22HB::LPS22HB(device::Device *interface, const char *path) :
 
 LPS22HB::~LPS22HB()
 {
-	/* make sure we are truly inactive */
-	stop();
-
 	if (_class_instance != -1) {
 		unregister_class_devname(BARO_BASE_DEVICE_PATH, _class_instance);
 	}
@@ -88,7 +85,6 @@ LPS22HB::init()
 
 	ret = OK;
 
-	PX4_INFO("starting");
 	_measure_interval = LPS22HB_CONVERSION_INTERVAL;
 	start();
 
@@ -174,12 +170,6 @@ LPS22HB::start()
 	ScheduleNow();
 }
 
-void
-LPS22HB::stop()
-{
-	ScheduleClear();
-}
-
 int
 LPS22HB::reset()
 {
@@ -191,7 +181,7 @@ LPS22HB::reset()
 }
 
 void
-LPS22HB::Run()
+LPS22HB::RunImpl()
 {
 	/* collection phase? */
 	if (_collect_phase) {
@@ -324,8 +314,9 @@ LPS22HB::read_reg(uint8_t reg, uint8_t &val)
 }
 
 void
-LPS22HB::print_info()
+LPS22HB::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 

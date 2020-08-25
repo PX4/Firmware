@@ -73,27 +73,7 @@ if(NOT PX4_CONFIG_FILE)
 				set(PX4_CONFIG_FILE "${PX4_SOURCE_DIR}/boards/${filename}" CACHE FILEPATH "path to PX4 CONFIG file" FORCE)
 				break()
 			endif()
-
-
-			# LEGACY form
-			# <OS>_<BOARD>_<LABEL> (eg nuttx_px4_fmu-v2_default)
-			string(REGEX REPLACE "^nuttx_|^posix_|^qurt_" "" config_no_os ${CONFIG}) # ignore OS prefix
-
-			if ((${config_no_os} MATCHES "${board}_${label}"))
-				set(PX4_CONFIG_FILE "${PX4_SOURCE_DIR}/boards/${filename}" CACHE FILEPATH "path to PX4 CONFIG file" FORCE)
-				break()
-			endif()
-
-
-			# LEGACY form special case to ease board layout transition (2018-11-18)
-			#  match board with model and label only: eg sitl_default -> px4_sitl_default
-			if ((${config_no_os} MATCHES "${model}_${label}"))
-				set(PX4_CONFIG_FILE "${PX4_SOURCE_DIR}/boards/${filename}" CACHE FILEPATH "path to PX4 CONFIG file" FORCE)
-				break()
-			endif()
-
 		endif()
-
 	endforeach()
 endif()
 

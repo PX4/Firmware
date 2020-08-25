@@ -1,0 +1,6 @@
+module_name: uLanding Radar
+serial_config:
+    - command: ulanding_radar start ${SERIAL_DEV}
+      port_config_param:
+        name: SENS_ULAND_CFG
+        group: Sensors

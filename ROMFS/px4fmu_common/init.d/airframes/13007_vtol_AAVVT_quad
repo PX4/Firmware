@@ -7,6 +7,9 @@
 #
 # @maintainer Sander Smeets <sander@droneslab.com>
 #
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
 
 sh /etc/init.d/rc.vtol_defaults
 

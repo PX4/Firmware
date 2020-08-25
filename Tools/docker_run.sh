@@ -4,19 +4,22 @@ if [ -z ${PX4_DOCKER_REPO+x} ]; then
 	echo "guessing PX4_DOCKER_REPO based on input";
 	if [[ $@ =~ .*px4_fmu.* ]]; then
 		# nuttx-px4fmu-v{1,2,3,4,5}
-		PX4_DOCKER_REPO="px4io/px4-dev-nuttx:2019-10-24"
+		PX4_DOCKER_REPO="px4io/px4-dev-nuttx:2019-11-25"
+	elif [[ $@ =~ .*ocpoc.* ]] || [[ $@ =~ .*navio2.* ]] || [[ $@ =~ .*raspberry.* ]] || [[ $@ =~ .*beaglebone.* ]]; then
+		# aerotenna_ocpoc_default, beaglebone_blue_default, emlid_navio2_default, px4_raspberrypi_default
+		PX4_DOCKER_REPO="px4io/px4-dev-armhf:2019-11-25"
 	elif [[ $@ =~ .*eagle.* ]] || [[ $@ =~ .*excelsior.* ]]; then
 		# eagle, excelsior
-		PX4_DOCKER_REPO="lorenzmeier/px4-dev-snapdragon:2018-09-12"
+		PX4_DOCKER_REPO="lorenzmeier/px4-dev-snapdragon:2020-01-13"
 	elif [[ $@ =~ .*ocpoc.* ]] || [[ $@ =~ .*navio2.* ]] || [[ $@ =~ .*raspberry.* ]] || [[ $@ =~ .*bebop.* ]]; then
 		# aerotenna_ocpoc_default, posix_rpi_cross, posix_bebop_default
-		PX4_DOCKER_REPO="px4io/px4-dev-armhf:2019-10-24"
+		PX4_DOCKER_REPO="px4io/px4-dev-armhf:2019-11-25"
 	elif [[ $@ =~ .*clang.* ]] || [[ $@ =~ .*scan-build.* ]]; then
 		# clang tools
-		PX4_DOCKER_REPO="px4io/px4-dev-clang:2019-10-24"
+		PX4_DOCKER_REPO="px4io/px4-dev-clang:2019-11-25"
 	elif [[ $@ =~ .*tests* ]]; then
 		# run all tests with simulation
-		PX4_DOCKER_REPO="px4io/px4-dev-simulation-bionic:2019-10-24"
+		PX4_DOCKER_REPO="px4io/px4-dev-simulation-bionic:2019-11-25"
 	fi
 else
 	echo "PX4_DOCKER_REPO is set to '$PX4_DOCKER_REPO'";
@@ -24,7 +27,7 @@ fi
 
 # otherwise default to nuttx
 if [ -z ${PX4_DOCKER_REPO+x} ]; then
-	PX4_DOCKER_REPO="px4io/px4-dev-nuttx:2019-10-24"
+	PX4_DOCKER_REPO="px4io/px4-dev-nuttx:2019-11-25"
 fi
 
 # docker hygiene

@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# UUV default parameters.
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+set VEHICLE_TYPE uuv
+
+if [ $AUTOCNF = yes ]
+then
+        param set PWM_MAX 1950
+        param set PWM_MIN 1050
+        param set PWM_DISARMED 1500
+
+fi
+
+#
+# PWM Hz - 50 Hz is the normal rate in RC cars, boats etc,
+# higher rates may damage analog servos.
+#
+set PWM_RATE 50
+
+#
+# Enable servo output on pins 1-4
+set PWM_OUT 1234
+set PWM_DISARMED 1500
+
+
+#
+# This is the gimbal pass mixer.
+#
+set MIXER_AUX pass
+set PWM_AUX_OUT 1234
+set PWM_AUX_RATE 50

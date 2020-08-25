@@ -41,14 +41,14 @@
 
 #include "MPU6000.hpp"
 
-#ifdef USE_I2C
+#ifdef PX4_I2C_MPU6050_ADDR
 
-device::Device *MPU6000_I2C_interface(int bus, int device_type, bool external_bus);
+device::Device *MPU6000_I2C_interface(int bus, uint32_t devid, int device_type, bool external_bus, int bus_frequency);
 
 class MPU6000_I2C : public device::I2C
 {
 public:
-	MPU6000_I2C(int bus, int device_type);
+	MPU6000_I2C(int bus, int device_type, int bus_frequency);
 	~MPU6000_I2C() override = default;
 
 	int	read(unsigned address, void *data, unsigned count) override;
@@ -64,13 +64,13 @@ private:
 
 
 device::Device *
-MPU6000_I2C_interface(int bus, int device_type, bool external_bus)
+MPU6000_I2C_interface(int bus, uint32_t devid, int device_type, bool external_bus, int bus_frequency)
 {
-	return new MPU6000_I2C(bus, device_type);
+	return new MPU6000_I2C(bus, device_type, bus_frequency);
 }
 
-MPU6000_I2C::MPU6000_I2C(int bus, int device_type) :
-	I2C("MPU6000_I2C", nullptr, bus, PX4_I2C_MPU6050_ADDR, 400000),
+MPU6000_I2C::MPU6000_I2C(int bus, int device_type, int bus_frequency) :
+	I2C("MPU6000_I2C", nullptr, bus, PX4_I2C_MPU6050_ADDR, bus_frequency),
 	_device_type(device_type)
 {
 }
@@ -112,4 +112,12 @@ MPU6000_I2C::probe()
 	return (read(MPUREG_WHOAMI, &whoami, 1) > 0 && (whoami == expected)) ? 0 : -EIO;
 
 }
+#else
+
+device::Device *
+MPU6000_I2C_interface(int bus, uint32_t devid, int device_type, bool external_bus, int bus_frequency)
+{
+	return nullptr;
+}
+
 #endif /* USE_I2C */

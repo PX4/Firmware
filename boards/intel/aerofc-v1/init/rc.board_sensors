@@ -5,15 +5,21 @@
 
 aerofc_adc start
 
-ms5611 -T 0 start
+if ! ms5611 -T 5607 start
+then
+	ms5611 start
+fi
 mpu9250 -s -R 14 start
 
 # Possible external compasses
 hmc5883 -X start
 
-ist8310 -C -b 1 -R 4 start
+ist8310 -I -R 4 start
 
-ll40ls start i2c -a
+ll40ls start -X
 
 # Internal SPI (auto detect ms5611 or ms5607)
-ms5611 -T 0 -s start
+if ! ms5611 -T 5607 -s start
+then
+	ms5611 -s start
+fi

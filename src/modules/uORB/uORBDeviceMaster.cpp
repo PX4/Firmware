@@ -43,6 +43,10 @@
 #include <px4_platform_common/sem.hpp>
 #include <systemlib/px4_macros.h>
 
+#ifndef __PX4_QURT // QuRT has no poll()
+#include <poll.h>
+#endif // PX4_QURT
+
 uORB::DeviceMaster::DeviceMaster()
 {
 	px4_sem_init(&_lock, 0, 1);
@@ -138,7 +142,7 @@ uORB::DeviceMaster::advertise(const struct orb_metadata *meta, bool is_advertise
 				if (existing_node != nullptr &&
 				    (!existing_node->is_advertised() || is_single_instance_advertiser || !is_advertiser)) {
 					if (is_advertiser) {
-						existing_node->set_priority(priority);
+						existing_node->set_priority((ORB_PRIO)priority);
 						/* Set as advertised to avoid race conditions (otherwise 2 multi-instance advertisers
 						 * could get the same instance).
 						 */
@@ -159,6 +163,7 @@ uORB::DeviceMaster::advertise(const struct orb_metadata *meta, bool is_advertise
 
 			// add to the node map.
 			_node_list.add(node);
+			_node_exists[node->get_instance()].set((uint8_t)node->id(), true);
 		}
 
 		group_tries++;
@@ -330,7 +335,7 @@ void uORB::DeviceMaster::showTop(char **topic_filter, int num_filters)
 		PX4_ERR("addNewDeviceNodes failed (%i)", ret);
 	}
 
-#ifdef __PX4_QURT //QuRT has no poll()
+#ifdef __PX4_QURT // QuRT has no poll()
 	only_once = true;
 #else
 	const int stdin_fileno = 0;
@@ -448,9 +453,22 @@ uORB::DeviceNode *uORB::DeviceMaster::getDeviceNode(const char *nodepath)
 	return nullptr;
 }
 
+bool uORB::DeviceMaster::deviceNodeExists(ORB_ID id, const uint8_t instance)
+{
+	if ((id == ORB_ID::INVALID) || (instance > ORB_MULTI_MAX_INSTANCES - 1)) {
+		return false;
+	}
+
+	return _node_exists[instance][(uint8_t)id];
+}
+
 uORB::DeviceNode *uORB::DeviceMaster::getDeviceNode(const struct orb_metadata *meta, const uint8_t instance)
 {
 	if (meta == nullptr) {
+		return nullptr;
+	}
+
+	if (!deviceNodeExists(static_cast<ORB_ID>(meta->o_id), instance)) {
 		return nullptr;
 	}
 

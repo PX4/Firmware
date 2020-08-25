@@ -44,8 +44,7 @@ AnalogBattery::AnalogBattery(int index, ModuleParams *parent) :
 
 void
 AnalogBattery::updateBatteryStatusRawADC(hrt_abstime timestamp, int32_t voltage_raw, int32_t current_raw,
-		bool selected_source, int priority, float throttle_normalized,
-		bool armed)
+		bool selected_source, int priority, float throttle_normalized)
 {
 	float voltage_v = (voltage_raw * _analog_params.cnt_v_volt) * _analog_params.v_div;
 	float current_a = ((current_raw * _analog_params.cnt_v_curr) - _analog_params.v_offs_cur) * _analog_params.a_per_v;
@@ -55,13 +54,9 @@ AnalogBattery::updateBatteryStatusRawADC(hrt_abstime timestamp, int32_t voltage_
 
 
 	Battery::updateBatteryStatus(timestamp, voltage_v, current_a, connected,
-				     selected_source, priority, throttle_normalized, armed, _params.source == 0);
+				     selected_source, priority, throttle_normalized, _params.source == 0);
 }
 
-/**
- * Whether the ADC channel for the voltage of this battery is valid.
- * Corresponds to BOARD_BRICK_VALID_LIST
- */
 bool AnalogBattery::is_valid()
 {
 #ifdef BOARD_BRICK_VALID_LIST

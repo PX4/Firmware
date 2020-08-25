@@ -39,18 +39,16 @@
 
 #include "LPS22HB.hpp"
 
-#ifdef PX4_SPIDEV_LPS22HB
-
 /* SPI protocol address bits */
 #define DIR_READ			(1<<7)
 #define DIR_WRITE			(0<<7)
 
-device::Device *LPS22HB_SPI_interface(int bus);
+device::Device *LPS22HB_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
 
 class LPS22HB_SPI : public device::SPI
 {
 public:
-	LPS22HB_SPI(int bus, uint32_t device);
+	LPS22HB_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~LPS22HB_SPI() = default;
 
 	virtual int	init();
@@ -60,12 +58,13 @@ public:
 };
 
 device::Device *
-LPS22HB_SPI_interface(int bus)
+LPS22HB_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new LPS22HB_SPI(bus, PX4_SPIDEV_LPS22HB);
+	return new LPS22HB_SPI(bus, devid, bus_frequency, spi_mode);
 }
 
-LPS22HB_SPI::LPS22HB_SPI(int bus, uint32_t device) : SPI("LPS22HB_SPI", nullptr, bus, device, SPIDEV_MODE3, 10000000)
+LPS22HB_SPI::LPS22HB_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode)
+	: SPI("LPS22HB_SPI", nullptr, bus, device, spi_mode, bus_frequency)
 {
 	_device_id.devid_s.devtype = DRV_BARO_DEVTYPE_LPS22HB;
 }
@@ -126,5 +125,3 @@ LPS22HB_SPI::read(unsigned address, void *data, unsigned count)
 	memcpy(data, &buf[1], count);
 	return ret;
 }
-
-#endif /* PX4_SPIDEV_LPS22HB */

@@ -34,7 +34,8 @@
 px4_add_romfs_files(
 	delta_wing_sitl.main.mix
 	plane_sitl.main.mix
-	over_sitl.main.mix
+	rover_sitl.main.mix
 	standard_vtol_sitl.main.mix
 	tiltrotor_sitl.main.mix
+	uuv_x_sitl.main.mix
 )

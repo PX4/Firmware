@@ -132,7 +132,7 @@ function(px4_add_module)
 			endforeach()
 		endif()
 
-	elseif(DYNAMIC AND MAIN AND (${OS} STREQUAL "posix"))
+	elseif(DYNAMIC AND MAIN AND (${PX4_PLATFORM} STREQUAL "posix"))
 		add_library(${MODULE} SHARED ${SRCS})
 		target_compile_definitions(${MODULE} PRIVATE ${MAIN}_main=px4_module_main)
 		set_target_properties(${MODULE} PROPERTIES

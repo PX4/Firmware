@@ -39,11 +39,8 @@
 #include <systemlib/conversions.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/device/i2c.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
-
-static constexpr auto AK09916_DEVICE_PATH_MAG = "/dev/ak09916_i2c_int";
-static constexpr auto AK09916_DEVICE_PATH_MAG_EXT = "/dev/ak09916_i2c_ext";
 
 // in 16-bit sampling mode the mag resolution is 1.5 milli Gauss per bit.
 static constexpr float AK09916_MAG_RANGE_GA = 1.5e-3f;
@@ -80,23 +77,27 @@ struct ak09916_regs {
 #pragma pack(pop)
 
 
-class AK09916 : public device::I2C, px4::ScheduledWorkItem
+class AK09916 : public device::I2C, public I2CSPIDriver<AK09916>
 {
 public:
-	AK09916(int bus, const char *path, enum Rotation rotation);
-	~AK09916();
+	AK09916(I2CSPIBusOption bus_option, const int bus, int bus_frequency, enum Rotation rotation);
+	virtual ~AK09916();
 
-	virtual int init() override;
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	int init() override;
 	void start();
-	void stop();
-	void print_info();
-	int probe();
+	void print_status() override;
+	int probe() override;
+
+	void RunImpl();
 
 protected:
 	int setup();
 	int setup_master_i2c();
 	bool check_id();
-	void Run();
 	void try_measure();
 	bool is_ready();
 	void measure();
@@ -110,7 +111,7 @@ private:
 
 	PX4Magnetometer _px4_mag;
 
-	uint32_t _cycle_interval{0};
+	static constexpr uint32_t _cycle_interval{AK09916_CONVERSION_INTERVAL_us};
 
 	perf_counter_t _mag_reads;
 	perf_counter_t _mag_errors;

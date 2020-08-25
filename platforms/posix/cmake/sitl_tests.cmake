@@ -4,8 +4,10 @@
 
 # TODO: find a way to keep this in sync with tests_main
 set(tests
+	atomic_bitset
 	autodeclination
 	bezier
+	bitset
 	bson
 	commander
 	controllib
@@ -141,7 +143,10 @@ foreach(cmd_name ${test_cmds})
 	set_tests_properties(posix_${cmd_name} PROPERTIES PASS_REGULAR_EXPRESSION "Shutting down")
 endforeach()
 
-if (CMAKE_BUILD_TYPE STREQUAL Coverage)
+if(CMAKE_BUILD_TYPE STREQUAL Coverage)
 	setup_target_for_coverage(test_coverage "${CMAKE_CTEST_COMMAND} --output-on-failure -T Test" tests)
 	setup_target_for_coverage(generate_coverage "${CMAKE_COMMAND} -E echo" generic)
+
+	# TODO:
+	#setup_target_for_coverage(mavsdk_coverage "${PX4_SOURCE_DIR}/test/mavsdk_tests/mavsdk_test_runner.py --speed-factor 20 --iterations 1 --fail-early" mavsdk)
 endif()

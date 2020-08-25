@@ -36,8 +36,13 @@ px4_add_module(
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		sf0x.cpp
+		SF0X.cpp
+		SF0X.hpp
+		sf0x_main.cpp
 		sf0x_parser.cpp
+	DEPENDS
+		drivers_rangefinder
+		px4_work_queue
 	MODULE_CONFIG
 		module.yaml
 	)

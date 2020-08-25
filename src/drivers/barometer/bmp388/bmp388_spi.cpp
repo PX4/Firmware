@@ -46,8 +46,6 @@
 #define DIR_READ			(1<<7)  //for set
 #define DIR_WRITE			~(1<<7) //for clear
 
-#if defined(PX4_SPIDEV_BARO) || defined(PX4_SPIDEV_EXT_BARO)
-
 #pragma pack(push,1)
 struct spi_data_s {
 	uint8_t addr;
@@ -63,7 +61,7 @@ struct spi_calibration_s {
 class BMP388_SPI: public device::SPI, public IBMP388
 {
 public:
-	BMP388_SPI(uint8_t bus, uint32_t device);
+	BMP388_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~BMP388_SPI() = default;
 
 	int init();
@@ -71,23 +69,22 @@ public:
 	uint8_t get_reg(uint8_t addr);
 	int get_reg_buf(uint8_t addr, uint8_t *buf, uint8_t len);
 	int set_reg(uint8_t value, uint8_t addr);
-	data_s *get_data(uint8_t addr);
 	calibration_s *get_calibration(uint8_t addr);
 
 	uint32_t get_device_id() const override { return device::SPI::get_device_id(); }
 
+	uint8_t get_device_address() const override { return device::SPI::get_device_address(); }
 private:
 	spi_calibration_s _cal;
-	spi_data_s _data;
 };
 
-IBMP388 *bmp388_spi_interface(uint8_t busnum, uint32_t device)
+IBMP388 *bmp388_spi_interface(uint8_t busnum, uint32_t device, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new BMP388_SPI(busnum, device);
+	return new BMP388_SPI(busnum, device, bus_frequency, spi_mode);
 }
 
-BMP388_SPI::BMP388_SPI(uint8_t bus, uint32_t device) :
-	SPI("BMP388_SPI", nullptr, bus, device, SPIDEV_MODE3, 10 * 1000 * 1000)
+BMP388_SPI::BMP388_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("BMP388_SPI", nullptr, bus, device, spi_mode, bus_frequency)
 {
 }
 
@@ -116,18 +113,6 @@ int BMP388_SPI::set_reg(uint8_t value, uint8_t addr)
 	return transfer(&cmd[0], nullptr, 2);
 }
 
-data_s *BMP388_SPI::get_data(uint8_t addr)
-{
-	_data.addr = (uint8_t)(addr | DIR_READ); //set MSB bit
-
-	if (transfer((uint8_t *)&_data, (uint8_t *)&_data, sizeof(struct spi_data_s)) == OK) {
-		return &(_data.data);
-
-	} else {
-		return nullptr;
-	}
-}
-
 calibration_s *BMP388_SPI::get_calibration(uint8_t addr)
 {
 	_cal.addr = addr | DIR_READ;
@@ -139,5 +124,3 @@ calibration_s *BMP388_SPI::get_calibration(uint8_t addr)
 		return nullptr;
 	}
 }
-
-#endif /* PX4_SPIDEV_BARO || PX4_SPIDEV_EXT_BARO */

@@ -9,7 +9,7 @@ set BOARD_RC /etc/init.d/rc.board
 
 uorb start
 
-if rgbled start
+if rgbled start -X
 then
 	led_control on -c blue
 fi

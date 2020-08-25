@@ -13,10 +13,10 @@ pipeline {
         sh 'make distclean'
         sh 'ccache -s'
         sh 'git fetch --tags'
-        sh 'CCACHE_BASEDIR=${WORKSPACE} make emlid_navio2_native'
+        sh 'CCACHE_BASEDIR=${WORKSPACE} make emlid_navio2_default'
         sh 'ccache -s'
         // sanity check
-        sh 'cd build/emlid_navio2_native/ && ./bin/px4 -s ../../posix-configs/rpi/px4_test.config'
+        sh 'cd build/emlid_navio2_default/ && ./bin/px4 -s ../../posix-configs/rpi/px4_test.config'
       }
       post {
         always {

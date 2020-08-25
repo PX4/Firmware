@@ -35,9 +35,10 @@
 
 static constexpr uint32_t TIME_us_TSWW = 11; //  - actually 10.5us
 
-PMW3901::PMW3901(int bus, enum Rotation yaw_rotation) :
-	SPI("PMW3901", PMW3901_DEVICE_PATH, bus, PMW3901_SPIDEV, SPIDEV_MODE0, PMW3901_SPI_BUS_SPEED),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+PMW3901::PMW3901(I2CSPIBusOption bus_option, int bus, int devid, enum Rotation yaw_rotation, int bus_frequency,
+		 spi_mode_e spi_mode) :
+	SPI("PMW3901", PMW3901_DEVICE_PATH, bus, devid, spi_mode, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_sample_perf(perf_alloc(PC_ELAPSED, "pmw3901: read")),
 	_comms_errors(perf_alloc(PC_COUNT, "pmw3901: com err")),
 	_yaw_rotation(yaw_rotation)
@@ -46,9 +47,6 @@ PMW3901::PMW3901(int bus, enum Rotation yaw_rotation) :
 
 PMW3901::~PMW3901()
 {
-	// make sure we are truly inactive
-	stop();
-
 	// free perf counters
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
@@ -296,7 +294,7 @@ PMW3901::writeRegister(unsigned reg, uint8_t data)
 }
 
 void
-PMW3901::Run()
+PMW3901::RunImpl()
 {
 	perf_begin(_sample_perf);
 
@@ -414,8 +412,9 @@ PMW3901::stop()
 }
 
 void
-PMW3901::print_info()
+PMW3901::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }

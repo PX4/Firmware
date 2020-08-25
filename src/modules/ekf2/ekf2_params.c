@@ -645,6 +645,21 @@ PARAM_DEFINE_INT32(EKF2_AID_MASK, 1);
 PARAM_DEFINE_INT32(EKF2_HGT_MODE, 0);
 
 /**
+ * Integer bitmask controlling fusion sources of the terrain estimator
+ *
+ * Set bits in the following positions to enable:
+ * 0 : Set to true to use range finder data if available
+ * 1 : Set to true to use optical flow data if available
+ *
+ * @group EKF2
+ * @min 0
+ * @max 3
+ * @bit 0 use range finder
+ * @bit 1 use optical flow
+ */
+PARAM_DEFINE_INT32(EKF2_TERR_MASK, 3);
+
+/**
  * Maximum lapsed time from last fusion of measurements that constrain velocity drift before the EKF will report the horizontal nav solution as invalid.
  *
  * @group EKF2
@@ -712,7 +727,7 @@ PARAM_DEFINE_FLOAT(EKF2_MIN_RNG, 0.1f);
 PARAM_DEFINE_INT32(EKF2_EV_NOISE_MD, 0);
 
 /**
- * Measurement noise for vision position observations used when the vision system does not supply error estimates
+ * Measurement noise for vision position observations used to lower bound or replace the uncertainty included in the message
  *
  * @group EKF2
  * @min 0.01
@@ -722,7 +737,7 @@ PARAM_DEFINE_INT32(EKF2_EV_NOISE_MD, 0);
 PARAM_DEFINE_FLOAT(EKF2_EVP_NOISE, 0.1f);
 
 /**
- * Measurement noise for vision velocity observations used when the vision system does not supply error estimates
+ * Measurement noise for vision velocity observations used to lower bound or replace the uncertainty included in the message
  *
  * @group EKF2
  * @min 0.01
@@ -732,7 +747,7 @@ PARAM_DEFINE_FLOAT(EKF2_EVP_NOISE, 0.1f);
 PARAM_DEFINE_FLOAT(EKF2_EVV_NOISE, 0.1f);
 
 /**
- * Measurement noise for vision angle observations used when the vision system does not supply error estimates
+ * Measurement noise for vision angle observations used to lower bound or replace the uncertainty included in the message
  *
  * @group EKF2
  * @min 0.01
@@ -806,7 +821,20 @@ PARAM_DEFINE_FLOAT(EKF2_TERR_NOISE, 5.0f);
 PARAM_DEFINE_FLOAT(EKF2_TERR_GRAD, 0.5f);
 
 /**
- * X position of IMU in body frame
+ * Device id of IMU
+ *
+ * Set to 0 to use system selected (sensor_combined) IMU,
+ * otherwise set to the device id of the desired IMU (vehicle_imu).
+ *
+ * @group EKF2
+ * @value 0 System Primary
+ * @category Developer
+ *
+ */
+PARAM_DEFINE_INT32(EKF2_IMU_ID, 0);
+
+/**
+ * X position of IMU in body frame (forward axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -815,7 +843,7 @@ PARAM_DEFINE_FLOAT(EKF2_TERR_GRAD, 0.5f);
 PARAM_DEFINE_FLOAT(EKF2_IMU_POS_X, 0.0f);
 
 /**
- * Y position of IMU in body frame
+ * Y position of IMU in body frame (right axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -824,7 +852,7 @@ PARAM_DEFINE_FLOAT(EKF2_IMU_POS_X, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_IMU_POS_Y, 0.0f);
 
 /**
- * Z position of IMU in body frame
+ * Z position of IMU in body frame (down axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -833,7 +861,7 @@ PARAM_DEFINE_FLOAT(EKF2_IMU_POS_Y, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_IMU_POS_Z, 0.0f);
 
 /**
- * X position of GPS antenna in body frame
+ * X position of GPS antenna in body frame (forward axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -842,7 +870,7 @@ PARAM_DEFINE_FLOAT(EKF2_IMU_POS_Z, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_GPS_POS_X, 0.0f);
 
 /**
- * Y position of GPS antenna in body frame
+ * Y position of GPS antenna in body frame (right axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -851,7 +879,7 @@ PARAM_DEFINE_FLOAT(EKF2_GPS_POS_X, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_GPS_POS_Y, 0.0f);
 
 /**
- * Z position of GPS antenna in body frame
+ * Z position of GPS antenna in body frame (down axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -860,7 +888,7 @@ PARAM_DEFINE_FLOAT(EKF2_GPS_POS_Y, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_GPS_POS_Z, 0.0f);
 
 /**
- * X position of range finder origin in body frame
+ * X position of range finder origin in body frame (forward axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -869,7 +897,7 @@ PARAM_DEFINE_FLOAT(EKF2_GPS_POS_Z, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_RNG_POS_X, 0.0f);
 
 /**
- * Y position of range finder origin in body frame
+ * Y position of range finder origin in body frame (right axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -878,7 +906,7 @@ PARAM_DEFINE_FLOAT(EKF2_RNG_POS_X, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_RNG_POS_Y, 0.0f);
 
 /**
- * Z position of range finder origin in body frame
+ * Z position of range finder origin in body frame (down axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -887,7 +915,7 @@ PARAM_DEFINE_FLOAT(EKF2_RNG_POS_Y, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_RNG_POS_Z, 0.0f);
 
 /**
- * X position of optical flow focal point in body frame
+ * X position of optical flow focal point in body frame (forward axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -896,7 +924,7 @@ PARAM_DEFINE_FLOAT(EKF2_RNG_POS_Z, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_OF_POS_X, 0.0f);
 
 /**
- * Y position of optical flow focal point in body frame
+ * Y position of optical flow focal point in body frame (right axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -905,7 +933,7 @@ PARAM_DEFINE_FLOAT(EKF2_OF_POS_X, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_OF_POS_Y, 0.0f);
 
 /**
- * Z position of optical flow focal point in body frame
+ * Z position of optical flow focal point in body frame (down axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -914,7 +942,7 @@ PARAM_DEFINE_FLOAT(EKF2_OF_POS_Y, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_OF_POS_Z, 0.0f);
 
 /**
-* X position of VI sensor focal point in body frame
+* X position of VI sensor focal point in body frame (forward axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -923,7 +951,7 @@ PARAM_DEFINE_FLOAT(EKF2_OF_POS_Z, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_EV_POS_X, 0.0f);
 
 /**
- * Y position of VI sensor focal point in body frame
+ * Y position of VI sensor focal point in body frame (right axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -932,7 +960,7 @@ PARAM_DEFINE_FLOAT(EKF2_EV_POS_X, 0.0f);
 PARAM_DEFINE_FLOAT(EKF2_EV_POS_Y, 0.0f);
 
 /**
- * Z position of VI sensor focal point in body frame
+ * Z position of VI sensor focal point in body frame (down axis with origin relative to vehicle centre of gravity)
  *
  * @group EKF2
  * @unit m
@@ -1417,3 +1445,15 @@ PARAM_DEFINE_FLOAT(EKF2_REQ_GPS_H, 10.0f);
  * @boolean
  */
 PARAM_DEFINE_INT32(EKF2_MAG_CHECK, 0);
+
+/**
+ * Default value of true airspeed used in EKF-GSF AHRS calculation.
+ * If no airspeed measurements are avalable, the EKF-GSF AHRS calculation will assume this value of true airspeed when compensating for centripetal acceleration during turns. Set to zero to disable centripetal acceleration compensation during fixed wing flight modes.
+ *
+ * @group EKF2
+ * @min 0.0
+ * @unit m/s
+ * @max 100.0
+ * @decimal 1
+ */
+PARAM_DEFINE_FLOAT(EKF2_GSF_TAS, 15.0f);

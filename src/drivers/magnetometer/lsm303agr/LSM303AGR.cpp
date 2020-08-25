@@ -423,7 +423,7 @@ LSM303AGR::collect()
 		/* start the performance counter */
 		perf_begin(_mag_sample_perf);
 
-		mag_report mag_report = {};
+		sensor_mag_s mag_report = {};
 		mag_report.timestamp = hrt_absolute_time();
 
 		// switch to right hand coordinate system in place

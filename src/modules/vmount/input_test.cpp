@@ -65,11 +65,14 @@ int InputTest::update(unsigned int timeout_ms, ControlData **control_data, bool 
 
 	_control_data.type = ControlData::Type::Angle;
 
+	_control_data.type_data.angle.frames[0] = ControlData::TypeData::TypeAngle::Frame::AngleAbsoluteFrame;
+	_control_data.type_data.angle.frames[1] = ControlData::TypeData::TypeAngle::Frame::AngleAbsoluteFrame;
+	_control_data.type_data.angle.frames[2] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
+
 	for (int i = 0; i < 3; ++i) {
-		_control_data.type_data.angle.is_speed[i] = false;
 		_control_data.type_data.angle.angles[i] = _angles[i] * M_DEG_TO_RAD_F;
 
-		_control_data.stabilize_axis[i] = false;
+		_control_data.stabilize_axis[i] = true;
 	}
 
 	_control_data.gimbal_shutter_retract = false;

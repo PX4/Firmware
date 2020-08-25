@@ -79,12 +79,12 @@ bool PreFlightCheck::airspeedCheck(orb_advert_t *mavlink_log_pub, vehicle_status
 		goto out;
 	}
 
-	/**
+	/*
 	 * Check if airspeed is higher than 4m/s (accepted max) while the vehicle is landed / not flying
 	 * Negative and positive offsets are considered. Do not check anymore while arming because pitot cover
 	 * might have been removed.
 	 */
-	if (fabsf(airspeed.indicated_airspeed_m_s) > 4.0f && !prearm) {
+	if (fabsf(airspeed.indicated_airspeed_m_s) > 4.0f && prearm) {
 		if (report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: check Airspeed Cal or Pitot");
 		}

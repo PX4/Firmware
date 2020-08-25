@@ -59,44 +59,17 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/actuator_controls.h>
-#include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/battery_status.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
-#include <DevMgr.hpp>
-
 #include "analog_battery.h"
 
-using namespace DriverFramework;
 using namespace time_literals;
 
 /**
- * Analog layout:
- * FMU:
- * IN2 - battery voltage
- * IN3 - battery current
- * IN4 - 5V sense
- * IN10 - spare (we could actually trim these from the set)
- * IN11 - spare on FMUv2 & v3, RC RSSI on FMUv4
- * IN12 - spare (we could actually trim these from the set)
- * IN13 - aux1 on FMUv2, unavaible on v3 & v4
- * IN14 - aux2 on FMUv2, unavaible on v3 & v4
- * IN15 - pressure sensor on FMUv2, unavaible on v3 & v4
- *
- * IO:
- * IN4 - servo supply rail
- * IN5 - analog RSSI on FMUv2 & v3
- *
  * The channel definitions (e.g., ADC_BATTERY_VOLTAGE_CHANNEL, ADC_BATTERY_CURRENT_CHANNEL, and ADC_AIRSPEED_VOLTAGE_CHANNEL) are defined in board_config.h
  */
-
-/**
- * Battery status app start / stop handling function
- *
- * @ingroup apps
- */
-extern "C" __EXPORT int battery_status_main(int argc, char *argv[]);
 
 #ifndef BOARD_NUMBER_BRICKS
 #error "battery_status module requires power bricks"
@@ -121,20 +94,15 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
 	bool init();
 
-	/** @see ModuleBase::print_status() */
-	int print_status() override;
-
 private:
-	DevHandle 	_h_adc;				/**< ADC driver handle */
+	void Run() override;
 
-	bool		_armed{false};				/**< arming status of the vehicle */
+	int  _adc_fd{-1};			/**< ADC file handle */
 
 	uORB::Subscription	_actuator_ctrl_0_sub{ORB_ID(actuator_controls_0)};		/**< attitude controls sub */
 	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};				/**< notification of parameter updates */
-	uORB::Subscription	_vcontrol_mode_sub{ORB_ID(vehicle_control_mode)};		/**< vehicle control mode subscription */
 
 	AnalogBattery _battery1;
 
@@ -149,16 +117,7 @@ private:
 #endif
 	}; // End _analogBatteries
 
-#if BOARD_NUMBER_BRICKS > 1
-	int 			_battery_pub_intance0ndx {0}; /**< track the index of instance 0 */
-#endif /* BOARD_NUMBER_BRICKS > 1 */
-
 	perf_counter_t	_loop_perf;			/**< loop performance counter */
-
-	/**
-	 * Do adc-related initialisation.
-	 */
-	int		adc_init();
 
 	/**
 	 * Check for changes in parameters.
@@ -191,19 +150,6 @@ BatteryStatus::~BatteryStatus()
 	ScheduleClear();
 }
 
-int
-BatteryStatus::adc_init()
-{
-	DevMgr::getHandle(ADC0_DEVICE_PATH, _h_adc);
-
-	if (!_h_adc.isValid()) {
-		PX4_ERR("no ADC found: %s (%d)", ADC0_DEVICE_PATH, _h_adc.getError());
-		return PX4_ERROR;
-	}
-
-	return OK;
-}
-
 void
 BatteryStatus::parameter_update_poll(bool forced)
 {
@@ -225,7 +171,7 @@ BatteryStatus::adc_poll()
 	px4_adc_msg_t buf_adc[PX4_MAX_ADC_CHANNELS];
 
 	/* read all channels available */
-	int ret = _h_adc.read(&buf_adc, sizeof(buf_adc));
+	int ret = px4_read(_adc_fd, &buf_adc, sizeof(buf_adc));
 
 	/* For legacy support we publish the battery_status for the Battery that is
 	 * associated with the Brick that is the selected source for VDD_5V_IN
@@ -260,17 +206,7 @@ BatteryStatus::adc_poll()
 						 * VDD_5V_IN
 						 */
 						selected_source = b;
-#  if BOARD_NUMBER_BRICKS > 1
 
-						/* Move the selected_source to instance 0 */
-						if (_battery_pub_intance0ndx != selected_source) {
-							_analogBatteries[_battery_pub_intance0ndx]->swapUorbAdvert(
-								*_analogBatteries[selected_source]
-							);
-							_battery_pub_intance0ndx = selected_source;
-						}
-
-#  endif /* BOARD_NUMBER_BRICKS > 1 */
 					}
 
 					/* look for specific channels and process the raw voltage to measurement data */
@@ -296,8 +232,7 @@ BatteryStatus::adc_poll()
 					bat_current_adc_readings[b],
 					selected_source == b,
 					b,
-					ctrl.control[actuator_controls_s::INDEX_THROTTLE],
-					_armed
+					ctrl.control[actuator_controls_s::INDEX_THROTTLE]
 				);
 			}
 		}
@@ -312,17 +247,15 @@ BatteryStatus::Run()
 		return;
 	}
 
-	if (!_h_adc.isValid()) {
-		adc_init();
-	}
-
 	perf_begin(_loop_perf);
 
-	/* check vehicle status for changes to publication state */
-	if (_vcontrol_mode_sub.updated()) {
-		vehicle_control_mode_s vcontrol_mode{};
-		_vcontrol_mode_sub.copy(&vcontrol_mode);
-		_armed = vcontrol_mode.flag_armed;
+	if (_adc_fd < 0) {
+		_adc_fd = px4_open(ADC0_DEVICE_PATH, O_RDONLY);
+
+		if (_adc_fd < 0) {
+			PX4_ERR("unable to open ADC: %s", ADC0_DEVICE_PATH);
+			return;
+		}
 	}
 
 	/* check parameters for updates */
@@ -366,11 +299,6 @@ BatteryStatus::init()
 	return true;
 }
 
-int BatteryStatus::print_status()
-{
-	return 0;
-}
-
 int BatteryStatus::custom_command(int argc, char *argv[])
 {
 	return print_usage("unknown command");
@@ -402,7 +330,7 @@ It runs in its own thread and polls on the currently selected gyro topic.
 	return 0;
 }
 
-int battery_status_main(int argc, char *argv[])
+extern "C" __EXPORT int battery_status_main(int argc, char *argv[])
 {
 	return BatteryStatus::main(argc, argv);
 }

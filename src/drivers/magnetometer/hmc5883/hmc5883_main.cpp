@@ -38,411 +38,109 @@
  */
 
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
 #include "HMC5883.hpp"
 #include "hmc5883.h"
 
-/*
- * Driver 'main' command.
- */
 extern "C" __EXPORT int hmc5883_main(int argc, char *argv[]);
 
-enum HMC5883_BUS {
-	HMC5883_BUS_ALL = 0,
-	HMC5883_BUS_I2C_INTERNAL,
-	HMC5883_BUS_I2C_EXTERNAL,
-	HMC5883_BUS_SPI
-};
-
-/**
- * Local functions in support of the shell command.
- */
-namespace hmc5883
+I2CSPIDriverBase *HMC5883::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
+	device::Device *interface = nullptr;
 
-/*
-  list of supported bus configurations
- */
-struct hmc5883_bus_option {
-	enum HMC5883_BUS busid;
-	const char *devpath;
-	HMC5883_constructor interface_constructor;
-	uint8_t busnum;
-	HMC5883	*dev;
-} bus_options[] = {
-	{ HMC5883_BUS_I2C_EXTERNAL, "/dev/hmc5883_ext", &HMC5883_I2C_interface, PX4_I2C_BUS_EXPANSION, NULL },
-#ifdef PX4_I2C_BUS_EXPANSION1
-	{ HMC5883_BUS_I2C_EXTERNAL, "/dev/hmc5883_ext1", &HMC5883_I2C_interface, PX4_I2C_BUS_EXPANSION1, NULL },
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION2
-	{ HMC5883_BUS_I2C_EXTERNAL, "/dev/hmc5883_ext2", &HMC5883_I2C_interface, PX4_I2C_BUS_EXPANSION2, NULL },
-#endif
-#ifdef PX4_I2C_BUS_ONBOARD
-	{ HMC5883_BUS_I2C_INTERNAL, "/dev/hmc5883_int", &HMC5883_I2C_interface, PX4_I2C_BUS_ONBOARD, NULL },
-#endif
-#ifdef PX4_SPIDEV_HMC
-	{ HMC5883_BUS_SPI, "/dev/hmc5883_spi", &HMC5883_SPI_interface, PX4_SPI_BUS_SENSORS, NULL },
-#endif
-};
-#define NUM_BUS_OPTIONS (sizeof(bus_options)/sizeof(bus_options[0]))
+	if (iterator.busType() == BOARD_I2C_BUS) {
+		interface = HMC5883_I2C_interface(iterator.bus(), cli.bus_frequency);
 
-/**
- * start driver for a specific bus option
- */
-static bool
-start_bus(struct hmc5883_bus_option &bus, enum Rotation rotation)
-{
-	if (bus.dev != nullptr) {
-		PX4_ERR("bus option already started");
+	} else if (iterator.busType() == BOARD_SPI_BUS) {
+		interface = HMC5883_SPI_interface(iterator.bus(), iterator.devid(), cli.bus_frequency, cli.spi_mode);
 	}
 
-	device::Device *interface = bus.interface_constructor(bus.busnum);
+	if (interface == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
 
 	if (interface->init() != OK) {
 		delete interface;
-		PX4_WARN("no device on bus %u (type: %u)", (unsigned)bus.busnum, (unsigned)bus.busid);
-		return false;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
 	}
 
-	bus.dev = new HMC5883(interface, bus.devpath, rotation);
+	HMC5883 *dev = new HMC5883(interface, cli.rotation, iterator.configuredBusOption(), iterator.bus());
 
-	if (bus.dev != nullptr && OK != bus.dev->init()) {
-		delete bus.dev;
-		bus.dev = NULL;
-		return false;
+	if (dev == nullptr) {
+		delete interface;
+		return nullptr;
 	}
 
-	int fd = px4_open(bus.devpath, O_RDONLY);
-
-	if (fd < 0) {
-		return false;
+	if (OK != dev->init()) {
+		delete dev;
+		return nullptr;
 	}
 
-	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		px4_close(fd);
-		PX4_ERR("Failed to setup poll rate");
-		return false;
+	bool enable_temp_compensation = cli.custom1 == 1;
+
+	if (enable_temp_compensation) {
+		dev->set_temperature_compensation(1);
 	}
 
-	px4_close(fd);
-
-	return true;
+	return dev;
 }
 
-/**
- * Start the driver.
- *
- * This function call only returns once the driver
- * is either successfully up and running or failed to start.
- */
-static int
-start(enum HMC5883_BUS busid, enum Rotation rotation)
+void HMC5883::print_usage()
 {
-	bool started = false;
-
-	for (unsigned i = 0; i < NUM_BUS_OPTIONS; i++) {
-		if (busid == HMC5883_BUS_ALL && bus_options[i].dev != NULL) {
-			// this device is already started
-			continue;
-		}
-
-		if (busid != HMC5883_BUS_ALL && bus_options[i].busid != busid) {
-			// not the one that is asked for
-			continue;
-		}
-
-		started |= start_bus(bus_options[i], rotation);
-	}
-
-	if (!started) {
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
+	PRINT_MODULE_USAGE_NAME("hmc5883", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("magnetometer");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('T', "Enable temperature compensation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-static int
-stop()
+extern "C" int hmc5883_main(int argc, char *argv[])
 {
-	bool stopped = false;
-
-	for (unsigned i = 0; i < NUM_BUS_OPTIONS; i++) {
-		if (bus_options[i].dev != nullptr) {
-			bus_options[i].dev->stop();
-			delete bus_options[i].dev;
-			bus_options[i].dev = nullptr;
-			stopped = true;
-		}
-	}
-
-	return !stopped;
-}
-
-/**
- * find a bus structure for a busid
- */
-static struct hmc5883_bus_option *
-find_bus(enum HMC5883_BUS busid)
-{
-	for (unsigned i = 0; i < NUM_BUS_OPTIONS; i++) {
-		if ((busid == HMC5883_BUS_ALL ||
-		     busid == bus_options[i].busid) && bus_options[i].dev != NULL) {
-			return &bus_options[i];
-		}
-	}
-
-	PX4_ERR("bus %u not started", (unsigned)busid);
-	return nullptr;
-}
-
-/**
- * Automatic scale calibration.
- *
- * Basic idea:
- *
- *   output = (ext field +- 1.1 Ga self-test) * scale factor
- *
- * and consequently:
- *
- *   1.1 Ga = (excited - normal) * scale factor
- *   scale factor = (excited - normal) / 1.1 Ga
- *
- *   sxy = (excited - normal) / 766	| for conf reg. B set to 0x60 / Gain = 3
- *   sz  = (excited - normal) / 713	| for conf reg. B set to 0x60 / Gain = 3
- *
- * By subtracting the non-excited measurement the pure 1.1 Ga reading
- * can be extracted and the sensitivity of all axes can be matched.
- *
- * SELF TEST OPERATION
- * To check the HMC5883L for proper operation, a self test feature in incorporated
- * in which the sensor offset straps are excited to create a nominal field strength
- * (bias field) to be measured. To implement self test, the least significant bits
- * (MS1 and MS0) of configuration register A are changed from 00 to 01 (positive bias)
- * or 10 (negetive bias), e.g. 0x11 or 0x12.
- * Then, by placing the mode register into single-measurement mode (0x01),
- * two data acquisition cycles will be made on each magnetic vector.
- * The first acquisition will be a set pulse followed shortly by measurement
- * data of the external field. The second acquisition will have the offset strap
- * excited (about 10 mA) in the positive bias mode for X, Y, and Z axes to create
- * about a ±1.1 gauss self test field plus the external field. The first acquisition
- * values will be subtracted from the second acquisition, and the net measurement
- * will be placed into the data output registers.
- * Since self test adds ~1.1 Gauss additional field to the existing field strength,
- * using a reduced gain setting prevents sensor from being saturated and data registers
- * overflowed. For example, if the configuration register B is set to 0x60 (Gain=3),
- * values around +766 LSB (1.16 Ga * 660 LSB/Ga) will be placed in the X and Y data
- * output registers and around +713 (1.08 Ga * 660 LSB/Ga) will be placed in Z data
- * output register. To leave the self test mode, change MS1 and MS0 bit of the
- * configuration register A back to 00 (Normal Measurement Mode), e.g. 0x10.
- * Using the self test method described above, the user can scale sensor
- */
-static int calibrate(enum HMC5883_BUS busid)
-{
-	struct hmc5883_bus_option *bus = find_bus(busid);
-
-	if (bus == nullptr) {
-		return 0;
-	}
-
-	const char *path = bus->devpath;
-
-	int fd = px4_open(path, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("%s open failed (try 'hmc5883 start' if the driver is not running", path);
-		return PX4_ERROR;
-	}
-
-	int ret = 0;
-
-	if (OK != (ret = px4_ioctl(fd, MAGIOCCALIBRATE, fd))) {
-		PX4_ERR("failed to enable sensor calibration mode");
-	}
-
-	px4_close(fd);
-
-	return ret;
-}
-
-/**
- * enable/disable temperature compensation
- */
-static int
-temp_enable(enum HMC5883_BUS busid, bool enable)
-{
-	struct hmc5883_bus_option *bus = find_bus(busid);
-
-	if (bus == nullptr) {
-		return 0;
-	}
-
-	const char *path = bus->devpath;
-
-	int fd = px4_open(path, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("failed ");
-		return PX4_ERROR;
-	}
-
-	if (px4_ioctl(fd, MAGIOCSTEMPCOMP, (unsigned)enable) < 0) {
-		PX4_ERR("set temperature compensation failed");
-		return PX4_ERROR;
-	}
-
-	px4_close(fd);
-	return 0;
-}
-
-/**
- * Print a little info about the driver.
- */
-static int
-info(enum HMC5883_BUS busid)
-{
-	struct hmc5883_bus_option *bus = find_bus(busid);
-
-	if (bus == nullptr) {
-		return 0;
-	}
-
-	if (bus != nullptr) {
-		PX4_INFO("running on bus: %u (%s)\n", (unsigned)bus->busid, bus->devpath);
-		bus->dev->print_info();
-	}
-
-	return PX4_OK;
-}
-
-static int
-usage()
-{
-	warnx("missing command: try 'start', 'info', 'calibrate'");
-	warnx("options:");
-	warnx("    -R rotation");
-	warnx("    -C calibrate on start");
-	warnx("    -X only external bus");
-#if (PX4_I2C_BUS_ONBOARD || PX4_SPIDEV_HMC)
-	warnx("    -I only internal bus");
-#endif
-	return PX4_OK;
-}
-
-} // namespace
-
-int
-hmc5883_main(int argc, char *argv[])
-{
-	int myoptind = 1;
+	using ThisDriver = HMC5883;
 	int ch;
-	const char *myoptarg = nullptr;
+	BusCLIArguments cli{true, true};
+	cli.default_i2c_frequency = 400000;
+	cli.default_spi_frequency = 11 * 1000 * 1000;
 
-	enum HMC5883_BUS busid = HMC5883_BUS_ALL;
-	enum Rotation rotation = ROTATION_NONE;
-	bool calibrate = false;
-	bool temp_compensation = false;
-
-	if (argc < 2) {
-		return hmc5883::usage();
-	}
-
-	while ((ch = px4_getopt(argc, argv, "XISR:CT", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:T")) != EOF) {
 		switch (ch) {
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
-			break;
-#if (PX4_I2C_BUS_ONBOARD || PX4_SPIDEV_HMC)
-
-		case 'I':
-			busid = HMC5883_BUS_I2C_INTERNAL;
-			break;
-#endif
-
-		case 'X':
-			busid = HMC5883_BUS_I2C_EXTERNAL;
-			break;
-
-		case 'S':
-			busid = HMC5883_BUS_SPI;
-			break;
-
-		case 'C':
-			calibrate = true;
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
 
 		case 'T':
-			temp_compensation = true;
+			cli.custom1 = 1;
 			break;
-
-		default:
-			return hmc5883::usage();
 		}
 	}
 
-	if (myoptind >= argc) {
-		return hmc5883::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_MAG_DEVTYPE_HMC5883);
 
-	/*
-	 * Start/load the driver.
-	 */
 	if (!strcmp(verb, "start")) {
-		hmc5883::start(busid, rotation);
-
-		if (calibrate && hmc5883::calibrate(busid) != 0) {
-			PX4_ERR("calibration failed");
-			return -1;
-		}
-
-		if (temp_compensation) {
-			// we consider failing to setup temperature
-			// compensation as non-fatal
-			hmc5883::temp_enable(busid, true);
-		}
-
-		return 0;
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Stop the driver
-	 */
 	if (!strcmp(verb, "stop")) {
-		return hmc5883::stop();
+		return ThisDriver::module_stop(iterator);
 	}
 
-	/*
-	 * enable/disable temperature compensation
-	 */
-	if (!strcmp(verb, "tempoff")) {
-		return hmc5883::temp_enable(busid, false);
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	if (!strcmp(verb, "tempon")) {
-		return hmc5883::temp_enable(busid, true);
-	}
-
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(verb, "info") || !strcmp(verb, "status")) {
-		return hmc5883::info(busid);
-	}
-
-	/*
-	 * Autocalibrate the scaling
-	 */
-	if (!strcmp(verb, "calibrate")) {
-		if (hmc5883::calibrate(busid) == 0) {
-			PX4_INFO("calibration successful");
-			return 0;
-
-		} else {
-			PX4_ERR("calibration failed");
-			return -1;
-		}
-	}
-
-	return hmc5883::usage();
+	ThisDriver::print_usage();
+	return -1;
 }

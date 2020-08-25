@@ -104,7 +104,12 @@ UWB_R4::~UWB_R4()
 
 void UWB_R4::run()
 {
-	_check_params(false);
+
+	// Subscribe to parameter_update message
+	int parameter_update_sub = orb_subscribe(ORB_ID(parameter_update));
+
+	parameters_update(parameter_update_sub);
+
 	//uint8_t Distance_cmd[20] = {0};
 	//memcpy(&Distance_cmd, &CMD_DISTANCE_RESULT_CMD, sizeof(CMD_DISTANCE_RESULT_CMD));
 
@@ -166,8 +171,11 @@ void UWB_R4::run()
 
 	if (!ok) { printf("ERROR: Distance Failed"); }
 
-	// Automatic Stop. This should not be reachable
+	/* Automatic Stop. This should not be reachable */
+	//Unsubscribe to parameter_update messages
+	orb_unsubscribe(parameter_update_sub);
 	written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
+
 
 	if (written < (int) sizeof(CMD_STOP_RANGING)) {
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_STOP_RANGING));
@@ -422,6 +430,7 @@ int UWB_R4::distance()
 	FD_SET(_uart, &_uart_set);
 	_uart_timeout.tv_sec = MESSAGE_TIMEOUT_S ;
 	_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
+
 
 	size_t buffer_location = 0;
 	// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
@@ -823,26 +832,28 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 }
 
 
-
 int uwb_r4_main(int argc, char *argv[])
 {
 	return UWB_R4::main(argc, argv);
 }
 
-void UWB_R4::_check_params(const bool force)
+void UWB_R4::parameters_update(int parameter_update_sub, bool force)
 {
-	bool updated = _parameterSub.updated();
+	bool updated;
+    	struct parameter_update_s param_upd;
 
-	if (updated) {
-		parameter_update_s paramUpdate;
-		_parameterSub.copy(&paramUpdate);
-	}
+   	// Check if any parameter updated
+	orb_check(parameter_update_sub, &updated);
 
-	if (updated || force) {
-		_update_params();
-	}
-}
-void UWB_R4::_update_params()
-{
-	param_get(_param_handles.uwb_uuid_on_sd, &_params.uwb_uuid_on_sd);
+	// If any parameter updated copy it to: param_upd
+    	if (updated) {
+        	orb_copy(ORB_ID(parameter_update), parameter_update_sub, &param_upd);
+    	}
+
+    	if (force || updated) {
+        	// If any parameter updated, call updateParams() to check if
+        	// this class attributes need updating (and do so).
+       		updateParams();
+    	}
+
 }

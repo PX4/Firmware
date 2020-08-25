@@ -1,0 +1,17 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+config BOARD_HAS_PROBES
+	bool "Board provides GPIO or other Hardware for signaling to timing analyze."
+	default y
+	---help---
+		This board provides GPIO FMU-CH1-6 as PROBE_1-6 to provide timing signals from selected drivers.
+
+config BOARD_USE_PROBES
+	bool "Enable the use the board provided GPIO FMU-CH1-6 as PROBE_1-6 to provide timing signals from selected drivers"
+	default n
+	depends on BOARD_HAS_PROBES
+
+	---help---
+		Select to use GPIO FMU-CH1-6 to provide timing signals from selected drivers.

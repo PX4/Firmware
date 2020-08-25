@@ -37,7 +37,11 @@
 #pragma once
 
 #include <unit_test.h>
+#ifndef MAVLINK_FTP_UNIT_TEST
 #include "../mavlink_bridge_header.h"
+#else
+#include <v2.0/standard/mavlink.h>
+#endif
 #include "../mavlink_ftp.h"
 
 class MavlinkFtpTest : public UnitTest
@@ -76,6 +80,8 @@ private:
 	virtual void _init(void);
 	virtual void _cleanup(void);
 
+	bool _create_test_files(void);
+	bool _remove_test_files(void);
 	bool _ack_test(void);
 	bool _bad_opcode_test(void);
 	bool _bad_datasize_test(void);

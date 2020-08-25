@@ -51,7 +51,7 @@
 
 #include <sys/time.h>
 
-#include <arch/board/board.h>
+
 #include <drivers/drv_hrt.h>
 
 #include "cpuload.h"

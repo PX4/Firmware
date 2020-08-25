@@ -1,0 +1,13 @@
+{
+    "board_id": 136,
+    "magic": "MROX21777",
+    "description": "Firmware for the mRO X2.1-777 board",
+    "image": "",
+    "build_time": 0,
+    "summary": "mRO x2.1-777",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 2080768,
+    "git_identity": "",
+    "board_revision": 0
+}

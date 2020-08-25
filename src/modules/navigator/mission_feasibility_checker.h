@@ -63,13 +63,18 @@ private:
 	bool checkDistanceToFirstWaypoint(const mission_s &mission, float max_distance);
 	bool checkDistancesBetweenWaypoints(const mission_s &mission, float max_distance);
 
+	bool checkTakeoff(const mission_s &mission, float home_alt);
+
 	/* Checks specific to fixedwing airframes */
 	bool checkFixedwing(const mission_s &mission, float home_alt, bool land_start_req);
-	bool checkTakeoff(const mission_s &mission, float home_alt);
 	bool checkFixedWingLanding(const mission_s &mission, bool land_start_req);
 
 	/* Checks specific to rotarywing airframes */
 	bool checkRotarywing(const mission_s &mission, float home_alt);
+
+	/* Checks specific to VTOL airframes */
+	bool checkVTOL(const mission_s &mission, float home_alt, bool land_start_req);
+	bool checkVTOLLanding(const mission_s &mission, bool land_start_req);
 
 public:
 	MissionFeasibilityChecker(Navigator *navigator) : _navigator(navigator) {}

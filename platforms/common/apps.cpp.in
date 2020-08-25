@@ -19,25 +19,17 @@ ${builtin_apps_decl_string}
 int shutdown_main(int argc, char *argv[]);
 int list_tasks_main(int argc, char *argv[]);
 int list_files_main(int argc, char *argv[]);
-int list_devices_main(int argc, char *argv[]);
-int list_topics_main(int argc, char *argv[]);
 int sleep_main(int argc, char *argv[]);
-int wait_for_topic(int argc, char *argv[]);
 
 }
 
-extern void px4_show_devices(void);
-
 void init_app_map(apps_map_type &apps)
 {
-${builtin_apps_string}
+	${builtin_apps_string}
 	apps["shutdown"] = shutdown_main;
 	apps["list_tasks"] = list_tasks_main;
 	apps["list_files"] = list_files_main;
-	apps["list_devices"] = list_devices_main;
-	apps["list_topics"] = list_topics_main;
 	apps["sleep"] = sleep_main;
-	apps["wait_for_topic"] = wait_for_topic;
 }
 
 void list_builtins(apps_map_type &apps)
@@ -60,18 +52,6 @@ int list_tasks_main(int argc, char *argv[])
 	return 0;
 }
 
-int list_devices_main(int argc, char *argv[])
-{
-	px4_show_devices();
-	return 0;
-}
-
-int list_topics_main(int argc, char *argv[])
-{
-	px4_show_topics();
-	return 0;
-}
-
 int list_files_main(int argc, char *argv[])
 {
 	px4_show_files();
@@ -90,32 +70,3 @@ int sleep_main(int argc, char *argv[])
         px4_usleep(usecs);
         return 0;
 }
-
-#include "uORB/uORB.h"
-
-int wait_for_topic(int argc, char *argv[])
-{
-	if (argc < 2 || argc > 3) {
-		printf("Usage: wait_for_topic <topic> [timeout_sec]\n");
-		return 1;
-	}
-
-	struct orb_metadata meta = { .o_name = argv[1],
-				     .o_size = 0,
-				     .o_size_no_padding = 0,
-				     .o_fields = nullptr };
-
-	unsigned int timeout = (argc == 3) ? (unsigned int)atoi(argv[2]) : 0;
-	unsigned int elapsed = 0;
-
-	printf("Waiting for topic %s timeout %u\n", argv[1], timeout);
-
-	while (orb_exists(&meta, 0) != 0 && (timeout && (elapsed < timeout)))
-	{
-		px4_sleep(1);
-		elapsed += 1;
-	}
-
-	return 0;
-}
-

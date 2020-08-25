@@ -42,8 +42,6 @@
 #include <px4_platform_common/px4_config.h>
 #include <drivers/device/spi.h>
 
-#if defined(PX4_SPIDEV_BARO) || defined(PX4_SPIDEV_EXT_BARO)
-
 /* SPI protocol address bits */
 #define DIR_READ			(1<<7)  //for set
 #define DIR_WRITE			~(1<<7) //for clear
@@ -63,7 +61,7 @@ struct spi_calibration_s {
 class BMP280_SPI: public device::SPI, public bmp280::IBMP280
 {
 public:
-	BMP280_SPI(uint8_t bus, uint32_t device);
+	BMP280_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~BMP280_SPI() override = default;
 
 	int init() override { return SPI::init(); }
@@ -76,19 +74,20 @@ public:
 
 	uint32_t get_device_id() const override { return device::SPI::get_device_id(); }
 
+	uint8_t get_device_address() const override { return device::SPI::get_device_address(); }
 private:
 	spi_calibration_s	_cal{};
 	spi_data_s		_data{};
 };
 
 bmp280::IBMP280 *
-bmp280_spi_interface(uint8_t busnum, uint32_t device)
+bmp280_spi_interface(uint8_t busnum, uint32_t device, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new BMP280_SPI(busnum, device);
+	return new BMP280_SPI(busnum, device, bus_frequency, spi_mode);
 }
 
-BMP280_SPI::BMP280_SPI(uint8_t bus, uint32_t device) :
-	SPI("BMP280_SPI", nullptr, bus, device, SPIDEV_MODE3, 10 * 1000 * 1000)
+BMP280_SPI::BMP280_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("BMP280_SPI", nullptr, bus, device, spi_mode, bus_frequency)
 {
 }
 
@@ -133,5 +132,3 @@ BMP280_SPI::get_calibration(uint8_t addr)
 		return nullptr;
 	}
 }
-
-#endif /* PX4_SPIDEV_BARO || PX4_SPIDEV_EXT_BARO */

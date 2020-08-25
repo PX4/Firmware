@@ -72,7 +72,7 @@ ICM20948_I2C_interface(int bus, uint32_t address)
 ICM20948_I2C::ICM20948_I2C(int bus, uint32_t address) :
 	I2C("ICM20948_I2C", nullptr, bus, address, 400000)
 {
-	_device_id.devid_s.devtype = DRV_DEVTYPE_ICM20948;
+	_device_id.devid_s.devtype = DRV_IMU_DEVTYPE_ICM20948;
 }
 
 int

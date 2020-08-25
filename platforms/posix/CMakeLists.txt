@@ -42,7 +42,6 @@ if (("${PX4_BOARD}" MATCHES "atlflight_eagle") OR ("${PX4_BOARD}" MATCHES "atlfl
 				px4_layer
 				parameters
 				${module_libraries}
-				${df_driver_libs}
 				${FASTRPC_ARM_LIBS}
 				pthread m rt
 			-Wl,--end-group
@@ -57,8 +56,6 @@ else()
 	target_link_libraries(px4
 		PRIVATE
 			${module_libraries}
-			${df_driver_libs}
-			df_driver_framework
 			pthread m
 
 			# horrible circular dependencies that need to be teased apart
@@ -67,7 +64,7 @@ else()
 			parameters
 	)
 
-	if (NOT APPLE)
+	if(NOT APPLE)
 		target_link_libraries(px4 PRIVATE rt)
 	endif()
 
@@ -107,10 +104,13 @@ if(EXISTS "${PX4_BOARD_DIR}/cmake/upload.cmake")
 endif()
 
 
-if ("${PX4_BOARD}" MATCHES "beaglebone_blue")
-	target_link_libraries(px4 PRIVATE robotcontrol)
+if("${PX4_BOARD}" MATCHES "beaglebone_blue")
+	target_link_libraries(px4 PRIVATE robotics_cape)
 
-elseif ("${PX4_BOARD}" MATCHES "sitl")
+elseif("${PX4_BOARD}" MATCHES "emlid_navio2")
+	target_link_libraries(px4 PRIVATE atomic)
+
+elseif("${PX4_BOARD}" MATCHES "sitl")
 
 	include(sitl_target)
 	if(BUILD_TESTING)

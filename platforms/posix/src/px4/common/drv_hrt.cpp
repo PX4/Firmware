@@ -43,6 +43,7 @@
 #include <px4_platform_common/workqueue.h>
 #include <px4_platform_common/tasks.h>
 #include <drivers/drv_hrt.h>
+
 #include <semaphore.h>
 #include <time.h>
 #include <string.h>
@@ -57,31 +58,39 @@
 static constexpr unsigned HRT_INTERVAL_MIN = 50;
 static constexpr unsigned HRT_INTERVAL_MAX = 50000000;
 
+/*
+ * Queue of callout entries.
+ */
 static struct sq_queue_s	callout_queue;
+
+/* latency baseline (last compare value applied) */
+static uint64_t			latency_baseline;
+
+/* timer count at interrupt (for latency purposes) */
+static uint64_t			latency_actual;
+
+/* latency histogram */
+const uint16_t latency_bucket_count = LATENCY_BUCKET_COUNT;
+const uint16_t latency_buckets[LATENCY_BUCKET_COUNT] = { 1, 2, 5, 10, 20, 50, 100, 1000 };
+__EXPORT uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
+
 static px4_sem_t 	_hrt_lock;
 static struct work_s	_hrt_work;
 
-#ifndef __PX4_QURT
 static hrt_abstime px4_timestart_monotonic = 0;
-#else
-static int32_t dsp_offset = 0;
-#endif
 
 #if defined(ENABLE_LOCKSTEP_SCHEDULER)
 static LockstepScheduler *lockstep_scheduler = new LockstepScheduler();
 #endif
 
+static void hrt_latency_update();
 
 static void hrt_call_reschedule();
 static void hrt_call_invoke();
 
 hrt_abstime hrt_absolute_time_offset()
 {
-#ifndef __PX4_QURT
 	return px4_timestart_monotonic;
-#else
-	return 0;
-#endif
 }
 
 static void hrt_lock()
@@ -117,34 +126,6 @@ int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
 	/* do nothing right now */
 	return 0;
 }
-
-#elif defined(__PX4_QURT)
-
-#include "dspal_time.h"
-
-int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
-{
-	/* do nothing right now */
-	return 0;
-}
-
-int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
-{
-	return clock_gettime(clk_id, tp);
-}
-
-#endif
-
-#ifndef __PX4_QURT
-/*
- * Get system time in us
- */
-uint64_t hrt_system_time()
-{
-	struct timespec ts;
-	px4_clock_gettime(CLOCK_MONOTONIC, &ts);
-	return ts_to_abstime(&ts);
-}
 #endif
 
 /*
@@ -159,28 +140,8 @@ hrt_abstime hrt_absolute_time()
 #else // defined(ENABLE_LOCKSTEP_SCHEDULER)
 	struct timespec ts;
 	px4_clock_gettime(CLOCK_MONOTONIC, &ts);
-#ifdef __PX4_QURT
-	return ts_to_abstime(&ts) + dsp_offset;
-#else
 	return ts_to_abstime(&ts);
-#endif
 #endif // defined(ENABLE_LOCKSTEP_SCHEDULER)
-}
-
-#ifdef __PX4_QURT
-int hrt_set_absolute_time_offset(int32_t time_diff_us)
-{
-	dsp_offset = time_diff_us;
-	return 0;
-}
-#endif
-
-hrt_abstime hrt_reset()
-{
-#ifndef __PX4_QURT
-	px4_timestart_monotonic = 0;
-#endif
-	return hrt_absolute_time();
 }
 
 /*
@@ -250,6 +211,23 @@ void	hrt_cancel(struct hrt_call *entry)
 	// endif
 }
 
+static void hrt_latency_update()
+{
+	uint16_t latency = latency_actual - latency_baseline;
+	unsigned	index;
+
+	/* bounded buckets */
+	for (index = 0; index < LATENCY_BUCKET_COUNT; index++) {
+		if (latency <= latency_buckets[index]) {
+			latency_counters[index]++;
+			return;
+		}
+	}
+
+	/* catch-all at the end */
+	latency_counters[index]++;
+}
+
 /*
  * initialise a hrt_call structure
  */
@@ -291,7 +269,6 @@ hrt_call_enter(struct hrt_call *entry)
 {
 	struct hrt_call	*call, *next;
 
-	//PX4_INFO("hrt_call_enter");
 	call = (struct hrt_call *)sq_peek(&callout_queue);
 
 	if ((call == nullptr) || (entry->deadline < call->deadline)) {
@@ -311,8 +288,6 @@ hrt_call_enter(struct hrt_call *entry)
 			}
 		} while ((call = next) != nullptr);
 	}
-
-	//PX4_INFO("scheduled");
 }
 
 /**
@@ -323,8 +298,12 @@ hrt_call_enter(struct hrt_call *entry)
 static void
 hrt_tim_isr(void *p)
 {
+	/* grab the timer for latency tracking purposes */
+	latency_actual = hrt_absolute_time();
 
-	//PX4_INFO("hrt_tim_isr");
+	/* do latency calculations */
+	hrt_latency_update();
+
 	/* run any callouts that have met their deadline */
 	hrt_call_invoke();
 
@@ -348,8 +327,6 @@ hrt_call_reschedule()
 	hrt_abstime	delay = HRT_INTERVAL_MAX;
 	struct hrt_call	*next = (struct hrt_call *)sq_peek(&callout_queue);
 	hrt_abstime	deadline = now + HRT_INTERVAL_MAX;
-
-	//PX4_INFO("hrt_call_reschedule");
 
 	/*
 	 * Determine what the next deadline will be.
@@ -375,6 +352,9 @@ hrt_call_reschedule()
 			delay = next->deadline - now;
 		}
 	}
+
+	/* set the new compare value and remember it for latency tracking */
+	latency_baseline = now + delay;
 
 	// There is no timer ISR, so simulate one by putting an event on the
 	// high priority work queue
@@ -527,7 +507,6 @@ void abstime_to_ts(struct timespec *ts, hrt_abstime abstime)
 	ts->tv_nsec = abstime * 1000;
 }
 
-#if !defined(__PX4_QURT)
 int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
 	if (clk_id == CLOCK_MONOTONIC) {
@@ -549,7 +528,6 @@ int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
 		return system_clock_gettime(clk_id, tp);
 	}
 }
-#endif // !defined(__PX4_QURT)
 
 #if defined(ENABLE_LOCKSTEP_SCHEDULER)
 int px4_clock_settime(clockid_t clk_id, const struct timespec *ts)

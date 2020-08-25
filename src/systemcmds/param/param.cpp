@@ -56,8 +56,6 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 
-#include <arch/board/board.h>
-
 #include <parameters/param.h>
 #include "systemlib/err.h"
 

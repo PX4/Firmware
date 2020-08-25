@@ -67,11 +67,9 @@ ADIS16477::ADIS16477(int bus, uint32_t device, enum Rotation rotation) :
 #endif // GPIO_SPI1_RESET_ADIS16477
 
 	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_ADIS16477);
-	_px4_accel.set_sample_rate(ADIS16477_DEFAULT_RATE);
 	_px4_accel.set_scale(1.25f * CONSTANTS_ONE_G / 1000.0f); // accel 1.25 mg/LSB
 
 	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_ADIS16477);
-	_px4_gyro.set_sample_rate(ADIS16477_DEFAULT_RATE);
 	_px4_gyro.set_scale(math::radians(0.025f)); // gyro 0.025 °/sec/LSB
 }
 

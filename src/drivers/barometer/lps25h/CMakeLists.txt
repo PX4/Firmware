@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,12 +31,15 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__lps25h
+	MODULE drivers__barometer__lps25h
 	MAIN lps25h
-	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		lps25h.cpp
+		LPS25H.cpp
+		LPS25H.hpp
+		lps25h_main.cpp
 		lps25h_i2c.cpp
 		lps25h_spi.cpp
+	DEPENDS
+		drivers_barometer
+		px4_work_queue
 	)

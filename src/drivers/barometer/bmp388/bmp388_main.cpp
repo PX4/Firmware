@@ -33,203 +33,88 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
 #include "bmp388.h"
 
-enum class BMP388_BUS {
-	ALL = 0,
-	I2C_INTERNAL,
-	I2C_INTERNAL1,
-	I2C_EXTERNAL,
-	SPI_INTERNAL,
-	SPI_EXTERNAL
-};
-
-namespace bmp388
+void
+BMP388::print_usage()
 {
-
-// list of supported bus configurations
-struct bmp388_bus_option {
-	BMP388_BUS busid;
-	BMP388_constructor interface_constructor;
-	uint8_t busnum;
-	uint32_t address;
-	BMP388 *dev;
-} bus_options[] = {
-#if defined(PX4_SPIDEV_EXT_BARO) && defined(PX4_SPI_BUS_EXT)
-	{ BMP388_BUS::SPI_EXTERNAL, &bmp388_spi_interface, PX4_SPI_BUS_EXT, PX4_SPIDEV_EXT_BARO, nullptr },
-#endif
-#if defined(PX4_SPIDEV_BARO)
-#  if defined(PX4_SPIDEV_BARO_BUS)
-	{ BMP388_BUS::SPI_INTERNAL, &bmp388_spi_interface, PX4_SPIDEV_BARO_BUS, PX4_SPIDEV_BARO, nullptr },
-#  else
-	{ BMP388_BUS::SPI_INTERNAL, &bmp388_spi_interface, PX4_SPI_BUS_SENSORS, PX4_SPIDEV_BARO, nullptr },
-#  endif
-#endif
-#if defined(PX4_I2C_BUS_ONBOARD) && defined(PX4_I2C_OBDEV_BMP388)
-	{ BMP388_BUS::I2C_INTERNAL, &bmp388_i2c_interface, PX4_I2C_BUS_ONBOARD, PX4_I2C_OBDEV_BMP388, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_ONBOARD) && defined(PX4_I2C_OBDEV1_BMP388)
-	{ BMP388_BUS::I2C_INTERNAL1, &bmp388_i2c_interface, PX4_I2C_BUS_ONBOARD, PX4_I2C_OBDEV1_BMP388, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION) && defined(PX4_I2C_OBDEV_BMP388)
-	{ BMP388_BUS::I2C_EXTERNAL, &bmp388_i2c_interface, PX4_I2C_BUS_EXPANSION, PX4_I2C_OBDEV_BMP388, nullptr },
-#endif
-};
-
-// find a bus structure for a busid
-static struct bmp388_bus_option *find_bus(BMP388_BUS busid)
-{
-	for (bmp388_bus_option &bus_option : bus_options) {
-		if ((busid == BMP388_BUS::ALL ||
-		     busid == bus_option.busid) && bus_option.dev != nullptr) {
-
-			return &bus_option;
-		}
-	}
-
-	return nullptr;
+	PRINT_MODULE_USAGE_NAME("bmp388", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("baro");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, true);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x76);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-static bool start_bus(bmp388_bus_option &bus)
+I2CSPIDriverBase *BMP388::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
 {
-	IBMP388 *interface = bus.interface_constructor(bus.busnum, bus.address);
+	IBMP388 *interface = nullptr;
 
-	if ((interface == nullptr) || (interface->init() != PX4_OK)) {
-		PX4_WARN("no device on bus %u", (unsigned)bus.busid);
-		delete interface;
-		return false;
+	if (iterator.busType() == BOARD_I2C_BUS) {
+		interface = bmp388_i2c_interface(iterator.bus(), cli.i2c_address, cli.bus_frequency);
+
+	} else if (iterator.busType() == BOARD_SPI_BUS) {
+		interface = bmp388_spi_interface(iterator.bus(), iterator.devid(), cli.bus_frequency, cli.spi_mode);
 	}
 
-	BMP388 *dev = new BMP388(interface);
+	if (interface == nullptr) {
+		PX4_ERR("failed creating interface for bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
 
-	if (dev == nullptr || (dev->init() != PX4_OK)) {
-		PX4_ERR("driver start failed");
+	if (interface->init() != OK) {
+		delete interface;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	BMP388 *dev = new BMP388(iterator.configuredBusOption(), iterator.bus(), interface);
+
+	if (dev == nullptr) {
+		delete interface;
+		return nullptr;
+	}
+
+	if (OK != dev->init()) {
 		delete dev;
-		delete interface;
-		return false;
+		return nullptr;
 	}
 
-	bus.dev = dev;
-
-	return true;
+	return dev;
 }
-
-static int start(BMP388_BUS busid)
-{
-	for (bmp388_bus_option &bus_option : bus_options) {
-		if (bus_option.dev != nullptr) {
-			// this device is already started
-			PX4_WARN("already started");
-			continue;
-		}
-
-		if (busid != BMP388_BUS::ALL && bus_option.busid != busid) {
-			// not the one that is asked for
-			continue;
-		}
-
-		if (start_bus(bus_option)) {
-			return PX4_OK;
-		}
-	}
-
-	return PX4_ERROR;
-}
-
-static int stop(BMP388_BUS busid)
-{
-	bmp388_bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		delete bus->dev;
-		bus->dev = nullptr;
-
-	} else {
-		PX4_WARN("driver not running");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-static int status(BMP388_BUS busid)
-{
-	bmp388_bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		bus->dev->print_info();
-		return PX4_OK;
-	}
-
-	PX4_WARN("driver not running");
-	return PX4_ERROR;
-}
-
-static int usage()
-{
-	PX4_INFO("missing command: try 'start', 'stop', 'status'");
-	PX4_INFO("options:");
-	PX4_INFO("    -X    (i2c external bus)");
-	PX4_INFO("    -I    (i2c internal bus)");
-	PX4_INFO("    -J    (i2c internal bus 2)");
-	PX4_INFO("    -s    (spi internal bus)");
-	PX4_INFO("    -S    (spi external bus)");
-
-	return 0;
-}
-
-} // namespace
 
 extern "C" int bmp388_main(int argc, char *argv[])
 {
-	int myoptind = 1;
-	int ch;
-	const char *myoptarg = nullptr;
-	BMP388_BUS busid = BMP388_BUS::ALL;
+	using ThisDriver = BMP388;
+	BusCLIArguments cli{true, true};
+	cli.i2c_address = 0x76;
+	cli.default_i2c_frequency = 100 * 1000;
+	cli.default_spi_frequency = 10 * 1000 * 1000;
 
-	while ((ch = px4_getopt(argc, argv, "XIJSs", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'X':
-			busid = BMP388_BUS::I2C_EXTERNAL;
-			break;
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-		case 'I':
-			busid = BMP388_BUS::I2C_INTERNAL;
-			break;
-
-		case 'J':
-			busid = BMP388_BUS::I2C_INTERNAL1;
-			break;
-
-		case 'S':
-			busid = BMP388_BUS::SPI_EXTERNAL;
-			break;
-
-		case 's':
-			busid = BMP388_BUS::SPI_INTERNAL;
-			break;
-
-		default:
-			return bmp388::usage();
-		}
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	if (myoptind >= argc) {
-		return bmp388::usage();
-	}
-
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_BARO_DEVTYPE_BMP388);
 
 	if (!strcmp(verb, "start")) {
-		return bmp388::start(busid);
-
-	} else if (!strcmp(verb, "stop")) {
-		return bmp388::stop(busid);
-
-	} else if (!strcmp(verb, "status")) {
-		return bmp388::status(busid);
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	return bmp388::usage();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

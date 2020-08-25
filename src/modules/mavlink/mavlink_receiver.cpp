@@ -48,6 +48,9 @@
 #include <ecl/geo/geo.h>
 #include <systemlib/px4_macros.h>
 
+#include <math.h>
+#include <poll.h>
+
 #ifdef CONFIG_NET
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -76,6 +79,14 @@
 #endif
 
 using matrix::wrap_2pi;
+
+MavlinkReceiver::~MavlinkReceiver()
+{
+	delete _px4_accel;
+	delete _px4_baro;
+	delete _px4_gyro;
+	delete _px4_mag;
+}
 
 MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	ModuleParams(nullptr),
@@ -228,6 +239,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 
 	case MAVLINK_MSG_ID_OBSTACLE_DISTANCE:
 		handle_message_obstacle_distance(msg);
+		break;
+
+	case MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER:
+		handle_message_trajectory_representation_bezier(msg);
 		break;
 
 	case MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_WAYPOINTS:
@@ -453,7 +468,6 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 		const vehicle_command_s &vehicle_command)
 {
 	bool target_ok = evaluate_target_ok(cmd_mavlink.command, cmd_mavlink.target_system, cmd_mavlink.target_component);
-
 	bool send_ack = true;
 	uint8_t result = vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED;
 
@@ -474,19 +488,37 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 		_mavlink->configure_stream_threadsafe("HOME_POSITION", 0.5f);
 
 	} else if (cmd_mavlink.command == MAV_CMD_SET_MESSAGE_INTERVAL) {
-		if (set_message_interval((int)(cmd_mavlink.param1 + 0.5f), cmd_mavlink.param2, cmd_mavlink.param3)) {
+		if (set_message_interval((int)roundf(cmd_mavlink.param1), cmd_mavlink.param2, cmd_mavlink.param3)) {
 			result = vehicle_command_ack_s::VEHICLE_RESULT_FAILED;
 		}
 
 	} else if (cmd_mavlink.command == MAV_CMD_GET_MESSAGE_INTERVAL) {
-		get_message_interval((int)cmd_mavlink.param1);
+		get_message_interval((int)roundf(cmd_mavlink.param1));
 
 	} else if (cmd_mavlink.command == MAV_CMD_REQUEST_FLIGHT_INFORMATION) {
 		send_flight_information();
 
 	} else if (cmd_mavlink.command == MAV_CMD_REQUEST_STORAGE_INFORMATION) {
-		if ((int)(cmd_mavlink.param2 + 0.5f) == 1) {
-			send_storage_information(cmd_mavlink.param1 + 0.5f);
+		if ((int)roundf(cmd_mavlink.param1) == 1) {
+			send_storage_information((int)roundf(cmd_mavlink.param1));
+		}
+
+	} else if (cmd_mavlink.command == MAV_CMD_REQUEST_MESSAGE) {
+		uint16_t message_id = (uint16_t)roundf(cmd_mavlink.param1);
+		bool stream_found = false;
+
+		for (const auto &stream : _mavlink->get_streams()) {
+			if (stream->get_id() == message_id) {
+				stream->request_message(vehicle_command.param1, vehicle_command.param2, vehicle_command.param3,
+							vehicle_command.param4, vehicle_command.param5, vehicle_command.param6, vehicle_command.param7);
+				stream_found = true;
+				break;
+			}
+		}
+
+		// TODO: Handle the case where a message is requested which could be sent, but for which there is no stream.
+		if (!stream_found) {
+			result = vehicle_command_ack_s::VEHICLE_RESULT_DENIED;
 		}
 
 	} else {
@@ -1246,10 +1278,9 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 	q_body_to_local.copyTo(odometry.q);
 
 	// TODO:
-	// - add a MAV_FRAME_*_OTHER to the Mavlink MAV_FRAME enum IOT define
-	// a frame of reference which is not aligned with NED or ENU
-	// - add usage on the estimator side
-	odometry.local_frame = odometry.LOCAL_FRAME_NED;
+	// add usage of this information on the estimator side
+	// The heading of the local frame is not aligned with north
+	odometry.local_frame = odometry.LOCAL_FRAME_FRD;
 
 	// pose_covariance
 	static constexpr size_t POS_URT_SIZE = sizeof(odometry.pose_covariance) / sizeof(odometry.pose_covariance[0]);
@@ -1261,7 +1292,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 	static_assert(VEL_URT_SIZE == (sizeof(odom.velocity_covariance) / sizeof(odom.velocity_covariance[0])),
 		      "Odometry Velocity Covariance matrix URT array size mismatch");
 
-	// create a method to simplify covariance copy
+	// TODO: create a method to simplify covariance copy
 	for (size_t i = 0; i < POS_URT_SIZE; i++) {
 		odometry.pose_covariance[i] = odom.pose_covariance[i];
 	}
@@ -1277,7 +1308,7 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 		 * Angular velocities are already in the right body frame  */
 		const matrix::Dcmf R_body_to_local = matrix::Dcmf(q_body_to_local);
 
-		/* the linear velocities needs to be transformed to the local NED frame */
+		/* the linear velocities needs to be transformed to the local frame FRD*/
 		matrix::Vector3<float> linvel_local(R_body_to_local * matrix::Vector3<float>(odom.vx, odom.vy, odom.vz));
 
 		odometry.vx = linvel_local(0);
@@ -1288,10 +1319,24 @@ MavlinkReceiver::handle_message_odometry(mavlink_message_t *msg)
 		odometry.pitchspeed = odom.pitchspeed;
 		odometry.yawspeed = odom.yawspeed;
 
-		//TODO: Apply rotation matrix to transform from body-fixed NED to earth-fixed NED frame
+		/* the linear velocity's covariance needs to be transformed to the local frame FRD*/
+		matrix::Matrix3f lin_vel_cov_body;
+		lin_vel_cov_body(0, 0) = odom.velocity_covariance[odometry.COVARIANCE_MATRIX_VX_VARIANCE];
+		lin_vel_cov_body(0, 1) = lin_vel_cov_body(1, 0) = odom.velocity_covariance[1];
+		lin_vel_cov_body(0, 2) = lin_vel_cov_body(2, 0) = odom.velocity_covariance[2];
+		lin_vel_cov_body(1, 1) = odom.velocity_covariance[odometry.COVARIANCE_MATRIX_VY_VARIANCE];
+		lin_vel_cov_body(1, 2) = lin_vel_cov_body(2, 1) = odom.velocity_covariance[7];
+		lin_vel_cov_body(2, 2) = odom.velocity_covariance[odometry.COVARIANCE_MATRIX_VZ_VARIANCE];
+		matrix::Matrix3f lin_vel_cov_local = R_body_to_local * lin_vel_cov_body * R_body_to_local.transpose();
+
+		/* Only the linear velocity variance elements are used */
 		for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-			odometry.velocity_covariance[i] = odom.velocity_covariance[i];
+			odometry.velocity_covariance[i] = NAN;
 		}
+
+		odometry.velocity_covariance[odometry.COVARIANCE_MATRIX_VX_VARIANCE] = lin_vel_cov_local(0, 0);
+		odometry.velocity_covariance[odometry.COVARIANCE_MATRIX_VY_VARIANCE] = lin_vel_cov_local(1, 1);
+		odometry.velocity_covariance[odometry.COVARIANCE_MATRIX_VZ_VARIANCE] = lin_vel_cov_local(2, 2);
 
 	} else {
 		PX4_ERR("Body frame %u not supported. Unable to publish velocity", odom.child_frame_id);
@@ -1327,6 +1372,10 @@ void MavlinkReceiver::fill_thrust(float *thrust_body_array, uint8_t vehicle_type
 	case MAV_TYPE_TRICOPTER:
 	case MAV_TYPE_HELICOPTER:
 		thrust_body_array[2] = -thrust;
+		break;
+
+	case MAV_TYPE_SUBMARINE:
+		thrust_body_array[0] = thrust;
 		break;
 
 	case MAV_TYPE_VTOL_DUOROTOR:
@@ -1446,7 +1495,6 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 					if (!ignore_attitude_msg) { // only copy att sp if message contained new data
 						matrix::Quatf q(set_attitude_target.q);
 						q.copyTo(att_sp.q_d);
-						att_sp.q_d_valid = true;
 
 						matrix::Eulerf euler{q};
 						att_sp.roll_body = euler.phi();
@@ -1733,6 +1781,29 @@ MavlinkReceiver::handle_message_obstacle_distance(mavlink_message_t *msg)
 }
 
 void
+MavlinkReceiver::handle_message_trajectory_representation_bezier(mavlink_message_t *msg)
+{
+	mavlink_trajectory_representation_bezier_t trajectory;
+	mavlink_msg_trajectory_representation_bezier_decode(msg, &trajectory);
+
+	vehicle_trajectory_bezier_s trajectory_bezier{};
+
+	trajectory_bezier.timestamp =  _mavlink_timesync.sync_stamp(trajectory.time_usec);
+
+	for (int i = 0; i < vehicle_trajectory_bezier_s::NUMBER_POINTS; ++i) {
+		trajectory_bezier.control_points[i].position[0] = trajectory.pos_x[i];
+		trajectory_bezier.control_points[i].position[1] = trajectory.pos_y[i];
+		trajectory_bezier.control_points[i].position[2] = trajectory.pos_z[i];
+
+		trajectory_bezier.control_points[i].delta = trajectory.delta[i];
+		trajectory_bezier.control_points[i].yaw = trajectory.pos_yaw[i];
+	}
+
+	trajectory_bezier.bezier_order = math::min(trajectory.valid_points, vehicle_trajectory_bezier_s::NUMBER_POINTS);
+	_trajectory_bezier_pub.publish(trajectory_bezier);
+}
+
+void
 MavlinkReceiver::handle_message_trajectory_representation_waypoints(mavlink_message_t *msg)
 {
 	mavlink_trajectory_representation_waypoints_t trajectory;
@@ -1891,7 +1962,7 @@ MavlinkReceiver::handle_message_manual_control(mavlink_message_t *msg)
 		return;
 	}
 
-	if (_mavlink->get_manual_input_mode_generation()) {
+	if (_mavlink->should_generate_virtual_rc_input()) {
 
 		input_rc_s rc{};
 		rc.timestamp = hrt_absolute_time();
@@ -2052,63 +2123,70 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 
 	/* gyro */
 	{
-		sensor_gyro_s gyro{};
+		if (_px4_gyro == nullptr) {
+			// 2294028: DRV_GYR_DEVTYPE_GYROSIM, BUS: 1, ADDR: 2, TYPE: SIMULATION
+			_px4_gyro = new PX4Gyroscope(2294028);
 
-		gyro.timestamp = timestamp;
-		gyro.x_raw = imu.xgyro * 1000.0f;
-		gyro.y_raw = imu.ygyro * 1000.0f;
-		gyro.z_raw = imu.zgyro * 1000.0f;
-		gyro.x = imu.xgyro;
-		gyro.y = imu.ygyro;
-		gyro.z = imu.zgyro;
-		gyro.temperature = imu.temperature;
+			if (_px4_gyro == nullptr) {
+				PX4_ERR("PX4Gyroscope alloc failed");
+			}
+		}
 
-		_gyro_pub.publish(gyro);
+		if (_px4_gyro != nullptr) {
+			_px4_gyro->set_temperature(imu.temperature);
+			_px4_gyro->update(timestamp, imu.xgyro, imu.ygyro, imu.zgyro);
+		}
 	}
 
 	/* accelerometer */
 	{
-		sensor_accel_s accel{};
+		if (_px4_accel == nullptr) {
+			// 1311244: DRV_ACC_DEVTYPE_ACCELSIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+			_px4_accel = new PX4Accelerometer(1311244);
 
-		accel.timestamp = timestamp;
-		accel.x_raw = imu.xacc / (CONSTANTS_ONE_G / 1000.0f);
-		accel.y_raw = imu.yacc / (CONSTANTS_ONE_G / 1000.0f);
-		accel.z_raw = imu.zacc / (CONSTANTS_ONE_G / 1000.0f);
-		accel.x = imu.xacc;
-		accel.y = imu.yacc;
-		accel.z = imu.zacc;
-		accel.temperature = imu.temperature;
+			if (_px4_accel == nullptr) {
+				PX4_ERR("PX4Accelerometer alloc failed");
+			}
+		}
 
-		_accel_pub.publish(accel);
+		if (_px4_accel != nullptr) {
+			_px4_accel->set_temperature(imu.temperature);
+			_px4_accel->update(timestamp, imu.xacc, imu.yacc, imu.zacc);
+		}
 	}
 
 	/* magnetometer */
 	{
-		sensor_mag_s mag{};
+		if (_px4_mag == nullptr) {
+			// 197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
+			_px4_mag = new PX4Magnetometer(197388);
 
-		mag.timestamp = timestamp;
-		mag.x_raw = imu.xmag * 1000.0f;
-		mag.y_raw = imu.ymag * 1000.0f;
-		mag.z_raw = imu.zmag * 1000.0f;
-		mag.x = imu.xmag;
-		mag.y = imu.ymag;
-		mag.z = imu.zmag;
+			if (_px4_mag == nullptr) {
+				PX4_ERR("PX4Magnetometer alloc failed");
+			}
+		}
 
-		_mag_pub.publish(mag);
+		if (_px4_mag != nullptr) {
+			_px4_mag->set_temperature(imu.temperature);
+			_px4_mag->update(timestamp, imu.xmag, imu.ymag, imu.zmag);
+		}
 	}
 
 	/* baro */
 	{
-		sensor_baro_s baro{};
+		if (_px4_baro == nullptr) {
+			// 6620172: DRV_BARO_DEVTYPE_BAROSIM, BUS: 1, ADDR: 4, TYPE: SIMULATION
+			_px4_baro = new PX4Barometer(6620172);
 
-		baro.timestamp = timestamp;
-		baro.pressure = imu.abs_pressure;
-		baro.temperature = imu.temperature;
+			if (_px4_baro == nullptr) {
+				PX4_ERR("PX4Barometer alloc failed");
+			}
+		}
 
-		/* fake device ID */
-		baro.device_id = 1234567;
-
-		_baro_pub.publish(baro);
+		if (_px4_baro != nullptr) {
+			_px4_baro->set_temperature(imu.temperature);
+			_px4_baro->update(timestamp, imu.abs_pressure);
+		}
 	}
 
 	/* battery status */
@@ -2266,63 +2344,76 @@ MavlinkReceiver::handle_message_utm_global_position(mavlink_message_t *msg)
 	mavlink_utm_global_position_t utm_pos;
 	mavlink_msg_utm_global_position_decode(msg, &utm_pos);
 
-	// Convert cm/s to m/s
-	float vx = utm_pos.vx / 100.0f;
-	float vy = utm_pos.vy / 100.0f;
-	float vz = utm_pos.vz / 100.0f;
+	px4_guid_t px4_guid;
+#ifndef BOARD_HAS_NO_UUID
+	board_get_px4_guid(px4_guid);
+#else
+	// TODO Fill ID with something reasonable
+	memset(&px4_guid[0], 0, sizeof(px4_guid));
+#endif /* BOARD_HAS_NO_UUID */
 
-	transponder_report_s t{};
-	t.timestamp = hrt_absolute_time();
-	// TODO: ID
-	t.lat = utm_pos.lat * 1e-7;
-	t.lon = utm_pos.lon * 1e-7;
-	t.altitude = utm_pos.alt / 1000.0f;
-	t.altitude_type = ADSB_ALTITUDE_TYPE_GEOMETRIC;
-	// UTM_GLOBAL_POSIION uses NED (north, east, down) coordinates for velocity, in cm / s.
-	t.heading = atan2f(vy, vx);
-	t.hor_velocity = sqrtf(vy * vy + vx * vx);
-	t.ver_velocity = -vz;
-	// TODO: Callsign
-	// For now, set it to all 0s. This is a null-terminated string, so not explicitly giving it a null
-	// terminator could cause problems.
-	memset(&t.callsign[0], 0, sizeof(t.callsign));
-	t.emitter_type = ADSB_EMITTER_TYPE_NO_INFO;  // TODO: Is this correct?
 
-	// The Mavlink docs do not specify what to do if tslc (time since last communication) is out of range of
-	// an 8-bit int, or if this is the first communication.
-	// Here, I assume that if this is the first communication, tslc = 0.
-	// If tslc > 255, then tslc = 255.
-	unsigned long time_passed = (t.timestamp - _last_utm_global_pos_com) / 1000000;
+	//Ignore selfpublished UTM messages
+	if (sizeof(px4_guid) == sizeof(utm_pos.uas_id) && memcmp(px4_guid, utm_pos.uas_id, sizeof(px4_guid_t)) != 0) {
 
-	if (_last_utm_global_pos_com == 0) {
-		time_passed = 0;
+		// Convert cm/s to m/s
+		float vx = utm_pos.vx / 100.0f;
+		float vy = utm_pos.vy / 100.0f;
+		float vz = utm_pos.vz / 100.0f;
 
-	} else if (time_passed > UINT8_MAX) {
-		time_passed = UINT8_MAX;
+		transponder_report_s t{};
+		t.timestamp = hrt_absolute_time();
+		mav_array_memcpy(t.uas_id, utm_pos.uas_id, sizeof(px4_guid_t));
+		t.lat = utm_pos.lat * 1e-7;
+		t.lon = utm_pos.lon * 1e-7;
+		t.altitude = utm_pos.alt / 1000.0f;
+		t.altitude_type = ADSB_ALTITUDE_TYPE_GEOMETRIC;
+		// UTM_GLOBAL_POSIION uses NED (north, east, down) coordinates for velocity, in cm / s.
+		t.heading = atan2f(vy, vx);
+		t.hor_velocity = sqrtf(vy * vy + vx * vx);
+		t.ver_velocity = -vz;
+		// TODO: Callsign
+		// For now, set it to all 0s. This is a null-terminated string, so not explicitly giving it a null
+		// terminator could cause problems.
+		memset(&t.callsign[0], 0, sizeof(t.callsign));
+		t.emitter_type = ADSB_EMITTER_TYPE_UAV;  // TODO: Is this correct?x2?
+
+		// The Mavlink docs do not specify what to do if tslc (time since last communication) is out of range of
+		// an 8-bit int, or if this is the first communication.
+		// Here, I assume that if this is the first communication, tslc = 0.
+		// If tslc > 255, then tslc = 255.
+		unsigned long time_passed = (t.timestamp - _last_utm_global_pos_com) / 1000000;
+
+		if (_last_utm_global_pos_com == 0) {
+			time_passed = 0;
+
+		} else if (time_passed > UINT8_MAX) {
+			time_passed = UINT8_MAX;
+		}
+
+		t.tslc = (uint8_t) time_passed;
+
+		t.flags = 0;
+
+		if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_POSITION_AVAILABLE) {
+			t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_COORDS;
+		}
+
+		if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_ALTITUDE_AVAILABLE) {
+			t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_ALTITUDE;
+		}
+
+		if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_HORIZONTAL_VELO_AVAILABLE) {
+			t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_HEADING;
+			t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_VELOCITY;
+		}
+
+		// Note: t.flags has deliberately NOT set VALID_CALLSIGN or VALID_SQUAWK, because UTM_GLOBAL_POSITION does not
+		// provide these.
+		_transponder_report_pub.publish(t);
+
+		_last_utm_global_pos_com = t.timestamp;
 	}
-
-	t.tslc = (uint8_t) time_passed;
-
-	t.flags = 0;
-
-	if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_POSITION_AVAILABLE) {
-		t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_COORDS;
-	}
-
-	if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_ALTITUDE_AVAILABLE) {
-		t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_ALTITUDE;
-	}
-
-	if (utm_pos.flags & UTM_DATA_AVAIL_FLAGS_HORIZONTAL_VELO_AVAILABLE) {
-		t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_HEADING;
-		t.flags |= transponder_report_s::PX4_ADSB_FLAGS_VALID_VELOCITY;
-	}
-
-	// Note: t.flags has deliberately NOT set VALID_CALLSIGN or VALID_SQUAWK, because UTM_GLOBAL_POSITION does not
-	// provide these.
-	_transponder_report_pub.publish(t);
-
-	_last_utm_global_pos_com = t.timestamp;
 }
 
 void
@@ -2401,9 +2492,6 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 		hil_global_pos.lat = hil_state.lat / ((double)1e7);
 		hil_global_pos.lon = hil_state.lon / ((double)1e7);
 		hil_global_pos.alt = hil_state.alt / 1000.0f;
-		hil_global_pos.vel_n = hil_state.vx / 100.0f;
-		hil_global_pos.vel_e = hil_state.vy / 100.0f;
-		hil_global_pos.vel_d = hil_state.vz / 100.0f;
 		hil_global_pos.eph = 2.0f;
 		hil_global_pos.epv = 4.0f;
 
@@ -2458,34 +2546,36 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 
 	/* accelerometer */
 	{
-		sensor_accel_s accel{};
+		if (_px4_accel == nullptr) {
+			// 1311244: DRV_ACC_DEVTYPE_ACCELSIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+			_px4_accel = new PX4Accelerometer(1311244);
 
-		accel.timestamp = timestamp;
-		accel.x_raw = hil_state.xacc / CONSTANTS_ONE_G * 1e3f;
-		accel.y_raw = hil_state.yacc / CONSTANTS_ONE_G * 1e3f;
-		accel.z_raw = hil_state.zacc / CONSTANTS_ONE_G * 1e3f;
-		accel.x = hil_state.xacc;
-		accel.y = hil_state.yacc;
-		accel.z = hil_state.zacc;
-		accel.temperature = 25.0f;
+			if (_px4_accel == nullptr) {
+				PX4_ERR("PX4Accelerometer alloc failed");
+			}
+		}
 
-		_accel_pub.publish(accel);
+		if (_px4_accel != nullptr) {
+			// accel in mG
+			_px4_accel->set_scale(CONSTANTS_ONE_G / 1000.0f);
+			_px4_accel->update(timestamp, hil_state.xacc, hil_state.yacc, hil_state.zacc);
+		}
 	}
 
 	/* gyroscope */
 	{
-		sensor_gyro_s gyro{};
+		if (_px4_gyro == nullptr) {
+			// 2294028: DRV_GYR_DEVTYPE_GYROSIM, BUS: 1, ADDR: 2, TYPE: SIMULATION
+			_px4_gyro = new PX4Gyroscope(2294028);
 
-		gyro.timestamp = timestamp;
-		gyro.x_raw = hil_state.rollspeed * 1e3f;
-		gyro.y_raw = hil_state.pitchspeed * 1e3f;
-		gyro.z_raw = hil_state.yawspeed * 1e3f;
-		gyro.x = hil_state.rollspeed;
-		gyro.y = hil_state.pitchspeed;
-		gyro.z = hil_state.yawspeed;
-		gyro.temperature = 25.0f;
+			if (_px4_gyro == nullptr) {
+				PX4_ERR("PX4Gyroscope alloc failed");
+			}
+		}
 
-		_gyro_pub.publish(gyro);
+		if (_px4_gyro != nullptr) {
+			_px4_gyro->update(timestamp, hil_state.rollspeed, hil_state.pitchspeed, hil_state.yawspeed);
+		}
 	}
 
 	/* battery status */
@@ -2699,18 +2789,8 @@ MavlinkReceiver::Run()
 
 		if (poll(&fds[0], 1, timeout) > 0) {
 			if (_mavlink->get_protocol() == Protocol::SERIAL) {
-
-				/*
-				 * to avoid reading very small chunks wait for data before reading
-				 * this is designed to target one message, so >20 bytes at a time
-				 */
-				const unsigned character_count = 20;
-
 				/* non-blocking read. read may return negative values */
-				if ((nread = ::read(fds[0].fd, buf, sizeof(buf))) < (ssize_t)character_count) {
-					const unsigned sleeptime = character_count * 1000000 / (_mavlink->get_baudrate() / 10);
-					px4_usleep(sleeptime);
-				}
+				nread = ::read(fds[0].fd, buf, sizeof(buf));
 			}
 
 #if defined(MAVLINK_UDP)

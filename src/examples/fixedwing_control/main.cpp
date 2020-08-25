@@ -208,13 +208,7 @@ void control_heading(const struct vehicle_global_position_s *pos, const struct p
 	}
 
 	matrix::Eulerf att_spe(roll_body, 0, bearing);
-
-	matrix::Quatf qd(att_spe);
-
-	att_sp->q_d[0] = qd(0);
-	att_sp->q_d[1] = qd(1);
-	att_sp->q_d[2] = qd(2);
-	att_sp->q_d[3] = qd(3);
+	matrix::Quatf(att_spe).copyTo(att_sp->q_d);
 }
 
 int parameters_init(struct param_handles *handles)

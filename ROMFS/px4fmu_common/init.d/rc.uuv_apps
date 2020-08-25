@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Standard apps for uuvs. Attitude/Position estimator, Attitude/Position control.
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+###############################################################################
+#                       Begin Estimator Group Selection                       #
+###############################################################################
+
+ekf2 start
+
+###############################################################################
+#                        End Estimator Group Selection                        #
+###############################################################################
+
+#
+# Start UUV Attitude Controller.
+#
+uuv_att_control start
+
+#
+# Start UUV Land Detector.
+#
+land_detector start rover

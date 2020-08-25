@@ -67,3 +67,49 @@ posix-configs/SITL/init/test/*_generated
 # KDevelop ignores
 .kdev4/*
 *.kdev4
+
+# cmake in tree (ninja)
+.ninja_deps
+.ninja_log
+bin/
+build.ninja
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles
+compile_commands.json
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+external/
+rules.ninja
+
+# in tree build
+**/*.a
+**/*.px4mod
+**/*.stamp
+/coverage*
+/functional-*
+/generated_params/
+/googletest-*/
+/logs
+/mavsdk_tests
+/test_mixer_multirotor
+/unit-*
+/uORB/
+DartConfiguration.tcl
+msg/tmp/
+msg/topics_sources/
+platforms/posix/apps.cpp
+platforms/posix/apps.h
+src/lib/flight_tasks/FlightTasks_generated.cpp
+src/lib/flight_tasks/FlightTasks_generated.hpp
+src/lib/parameters/px4_parameters.c
+src/lib/parameters/px4_parameters.h
+src/lib/parameters/px4_parameters_public.h
+src/lib/version/build_git_version.h
+src/modules/simulator/simulator_config.h
+src/systemcmds/topic_listener/listener_generated.cpp
+
+# SITL
+dataman
+eeprom/

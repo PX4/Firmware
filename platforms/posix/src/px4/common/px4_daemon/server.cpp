@@ -94,12 +94,12 @@ Server::start()
 	strncpy(addr.sun_path, sock_path.c_str(), sizeof(addr.sun_path) - 1);
 
 	if (bind(_fd, (sockaddr *)&addr, sizeof(addr)) < 0) {
-		PX4_ERR("error binding socket");
+		PX4_ERR("error binding socket %s, error = %s", sock_path.c_str(), strerror(errno));
 		return -1;
 	}
 
 	if (listen(_fd, 10) < 0) {
-		PX4_ERR("error listing to socket");
+		PX4_ERR("error listening to socket: %s", strerror(errno));
 		return -1;
 	}
 

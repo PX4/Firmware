@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,18 +59,15 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 				    vehicle_status_flags_s &status_flags, const bool checkGNSS, bool reportFailures, const bool prearm,
 				    const hrt_abstime &time_since_boot)
 {
-	if (time_since_boot < 2_s) {
-		// the airspeed driver filter doesn't deliver the actual value yet
-		reportFailures = false;
-	}
-
 	const bool hil_enabled = (status.hil_state == vehicle_status_s::HIL_STATE_ON);
 
-	bool checkSensors = !hil_enabled;
+	reportFailures = (reportFailures && status_flags.condition_system_hotplug_timeout
+			  && !status_flags.condition_calibration_enabled);
+
+	const bool checkSensors = !hil_enabled;
 	const bool checkRC = (status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT);
 	const bool checkDynamic = !hil_enabled;
 	const bool checkPower = (status_flags.condition_power_input_valid && !status_flags.circuit_breaker_engaged_power_check);
-	const bool checkFailureDetector = true;
 
 	bool checkAirspeed = false;
 
@@ -81,48 +78,44 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		checkAirspeed = true;
 	}
 
-	reportFailures = (reportFailures && status_flags.condition_system_hotplug_timeout
-			  && !status_flags.condition_calibration_enabled);
-
 	bool failed = false;
 
 	/* ---- MAG ---- */
 	if (checkSensors) {
-		bool prime_found = false;
-
-		int32_t prime_id = -1;
-		param_get(param_find("CAL_MAG_PRIME"), &prime_id);
-
 		int32_t sys_has_mag = 1;
 		param_get(param_find("SYS_HAS_MAG"), &sys_has_mag);
 
-		bool mag_fail_reported = false;
+		if (sys_has_mag == 1) {
 
-		/* check all sensors individually, but fail only for mandatory ones */
-		for (unsigned i = 0; i < max_optional_mag_count; i++) {
-			const bool required = (i < max_mandatory_mag_count) && (sys_has_mag == 1);
-			const bool report_fail = (reportFailures && !failed && !mag_fail_reported);
+			bool prime_found = false;
 
-			int32_t device_id = -1;
+			int32_t prime_id = -1;
+			param_get(param_find("CAL_MAG_PRIME"), &prime_id);
 
-			if (magnometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
+			/* check all sensors individually, but fail only for mandatory ones */
+			for (unsigned i = 0; i < max_optional_mag_count; i++) {
+				const bool required = (i < max_mandatory_mag_count) && (sys_has_mag == 1);
+				const bool report_fail = (reportFailures);
 
-				if ((prime_id > 0) && (device_id == prime_id)) {
-					prime_found = true;
-				}
+				int32_t device_id = -1;
 
-			} else {
-				if (required) {
-					failed = true;
-					mag_fail_reported = true;
+				if (magnometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
+
+					if ((prime_id > 0) && (device_id == prime_id)) {
+						prime_found = true;
+					}
+
+				} else {
+					if (required) {
+						failed = true;
+					}
 				}
 			}
-		}
 
-		if (sys_has_mag == 1) {
+
 			/* check if the primary device is present */
-			if (!prime_found) {
-				if (reportFailures && !failed) {
+			if (!prime_found && prime_id != 0) {
+				if (reportFailures) {
 					mavlink_log_critical(mavlink_log_pub, "Primary compass not found");
 				}
 
@@ -131,7 +124,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			}
 
 			/* mag consistency checks (need to be performed after the individual checks) */
-			if (!magConsistencyCheck(mavlink_log_pub, status, (reportFailures && !failed))) {
+			if (!magConsistencyCheck(mavlink_log_pub, status, (reportFailures))) {
 				failed = true;
 			}
 		}
@@ -143,12 +136,10 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		int32_t prime_id = -1;
 		param_get(param_find("CAL_ACC_PRIME"), &prime_id);
 
-		bool accel_fail_reported = false;
-
 		/* check all sensors individually, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_accel_count; i++) {
 			const bool required = (i < max_mandatory_accel_count);
-			const bool report_fail = (reportFailures && !failed && !accel_fail_reported);
+			const bool report_fail = (reportFailures);
 
 			int32_t device_id = -1;
 
@@ -161,14 +152,13 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			} else {
 				if (required) {
 					failed = true;
-					accel_fail_reported = true;
 				}
 			}
 		}
 
 		/* check if the primary device is present */
-		if (!prime_found) {
-			if (reportFailures && !failed) {
+		if (!prime_found && prime_id != 0) {
+			if (reportFailures) {
 				mavlink_log_critical(mavlink_log_pub, "Primary accelerometer not found");
 			}
 
@@ -183,16 +173,12 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		int32_t prime_id = -1;
 		param_get(param_find("CAL_GYRO_PRIME"), &prime_id);
 
-		bool gyro_fail_reported = false;
-
 		/* check all sensors individually, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_gyro_count; i++) {
 			const bool required = (i < max_mandatory_gyro_count);
-			const bool report_fail = (reportFailures && !failed && !gyro_fail_reported);
-
 			int32_t device_id = -1;
 
-			if (gyroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
+			if (gyroCheck(mavlink_log_pub, status, i, !required, device_id, reportFailures)) {
 
 				if ((prime_id > 0) && (device_id == prime_id)) {
 					prime_found = true;
@@ -201,14 +187,13 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			} else {
 				if (required) {
 					failed = true;
-					gyro_fail_reported = true;
 				}
 			}
 		}
 
 		/* check if the primary device is present */
-		if (!prime_found) {
-			if (reportFailures && !failed) {
+		if (!prime_found && prime_id != 0) {
+			if (reportFailures) {
 				mavlink_log_critical(mavlink_log_pub, "Primary gyro not found");
 			}
 
@@ -219,11 +204,6 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 	/* ---- BARO ---- */
 	if (checkSensors) {
-		//bool prime_found = false;
-
-		int32_t prime_id = -1;
-		param_get(param_find("CAL_BARO_PRIME"), &prime_id);
-
 		int32_t sys_has_baro = 1;
 		param_get(param_find("SYS_HAS_BARO"), &sys_has_baro);
 
@@ -232,39 +212,22 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		/* check all sensors, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_baro_count; i++) {
 			const bool required = (i < max_mandatory_baro_count) && (sys_has_baro == 1);
-			const bool report_fail = (reportFailures && !failed && !baro_fail_reported);
+			const bool report_fail = (reportFailures && !baro_fail_reported);
 
 			int32_t device_id = -1;
 
-			if (baroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
-				if ((prime_id > 0) && (device_id == prime_id)) {
-					//prime_found = true;
-				}
-
-			} else {
+			if (!baroCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 				if (required) {
-					failed = true;
 					baro_fail_reported = true;
 				}
 			}
 		}
-
-		// TODO there is no logic in place to calibrate the primary baro yet
-		// // check if the primary device is present
-		// if (false) {
-		// 	if (reportFailures && !failed) {
-		// 		mavlink_log_critical(mavlink_log_pub, "Primary barometer not operational");
-		// 	}
-
-		// 	set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_ABSPRESSURE, false, true, false, status);
-		// 	failed = true;
-		// }
 	}
 
 	/* ---- IMU CONSISTENCY ---- */
 	// To be performed after the individual sensor checks have completed
 	if (checkSensors) {
-		if (!imuConsistencyCheck(mavlink_log_pub, status, (reportFailures && !failed))) {
+		if (!imuConsistencyCheck(mavlink_log_pub, status, reportFailures)) {
 			failed = true;
 		}
 	}
@@ -274,14 +237,14 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		int32_t optional = 0;
 		param_get(param_find("FW_ARSP_MODE"), &optional);
 
-		if (!airspeedCheck(mavlink_log_pub, status, (bool)optional, reportFailures && !failed, prearm) && !(bool)optional) {
+		if (!airspeedCheck(mavlink_log_pub, status, (bool)optional, reportFailures, prearm) && !(bool)optional) {
 			failed = true;
 		}
 	}
 
 	/* ---- RC CALIBRATION ---- */
 	if (checkRC) {
-		if (rcCalibrationCheck(mavlink_log_pub, reportFailures && !failed, status.is_vtol) != OK) {
+		if (rcCalibrationCheck(mavlink_log_pub, reportFailures, status.is_vtol) != OK) {
 			if (reportFailures) {
 				mavlink_log_critical(mavlink_log_pub, "RC calibration check failed");
 			}
@@ -301,7 +264,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 	/* ---- SYSTEM POWER ---- */
 	if (checkPower) {
-		if (!powerCheck(mavlink_log_pub, status, (reportFailures && !failed), prearm)) {
+		if (!powerCheck(mavlink_log_pub, status, reportFailures, prearm)) {
 			failed = true;
 		}
 	}
@@ -322,16 +285,14 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		// don't report ekf failures for the first 10 seconds to allow time for the filter to start
 		bool report_ekf_fail = (time_since_boot > 10_s);
 
-		if (!ekf2Check(mavlink_log_pub, status, false, reportFailures && report_ekf_fail && !failed, checkGNSS)) {
+		if (!ekf2Check(mavlink_log_pub, status, false, reportFailures && report_ekf_fail, checkGNSS)) {
 			failed = true;
 		}
 	}
 
 	/* ---- Failure Detector ---- */
-	if (checkFailureDetector) {
-		if (!failureDetectorCheck(mavlink_log_pub, status, (reportFailures && !failed), prearm)) {
-			failed = true;
-		}
+	if (!failureDetectorCheck(mavlink_log_pub, status, reportFailures, prearm)) {
+		failed = true;
 	}
 
 	/* Report status */

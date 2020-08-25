@@ -44,27 +44,26 @@
 #include <drivers/drv_accel.h>
 #include <drivers/drv_gyro.h>
 #include <drivers/drv_mag.h>
-#include <drivers/drv_baro.h>
 #include <drivers/drv_hrt.h>
 
 #include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
 
 #include <lib/ecl/validation/data_validator.h>
 #include <lib/ecl/validation/data_validator_group.h>
 
 #include <uORB/Publication.hpp>
 #include <uORB/PublicationQueued.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/sensor_accel_integrated.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/sensor_preflight.h>
 #include <uORB/topics/sensor_correction.h>
+#include <uORB/topics/sensor_gyro_integrated.h>
 #include <uORB/topics/sensor_selection.h>
-#include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_magnetometer.h>
 #include <uORB/topics/subsystem_info.h>
 
-#include <DevMgr.hpp>
-
-#include "temperature_compensation.h"
 #include "common.h"
 
 namespace sensors
@@ -111,7 +110,7 @@ public:
 	/**
 	 * read new sensor data
 	 */
-	void sensorsPoll(sensor_combined_s &raw, vehicle_air_data_s &airdata, vehicle_magnetometer_s &magnetometer);
+	void sensorsPoll(sensor_combined_s &raw, vehicle_magnetometer_s &magnetometer);
 
 	/**
 	 * set the relative timestamps of each sensor timestamp, based on the last sensorsPoll,
@@ -124,11 +123,7 @@ public:
 	 */
 	void checkFailover();
 
-	int numGyros() const { return _gyro.subscription_count; }
-
-	int gyroFd(int idx) const { return _gyro.subscription[idx]; }
-
-	int bestGyroFd() const { return _gyro.subscription[_gyro.last_best_vote]; }
+	int bestGyroID() const { return _gyro_device_id[_gyro.last_best_vote]; }
 
 	/**
 	 * Calculates the magnitude in m/s/s of the largest difference between the primary and any other accel sensor
@@ -198,62 +193,24 @@ private:
 	void magPoll(vehicle_magnetometer_s &magnetometer);
 
 	/**
-	 * Poll the barometer for updated data.
-	 *
-	 * @param raw	Combined sensor data structure into which
-	 *		data should be returned.
-	 */
-	void baroPoll(vehicle_air_data_s &airdata);
-
-	/**
 	 * Check & handle failover of a sensor
 	 * @return true if a switch occured (could be for a non-critical reason)
 	 */
 	bool checkFailover(SensorData &sensor, const char *sensor_name, const uint64_t type);
 
-	/**
-	 * Apply a gyro calibration.
-	 *
-	 * @param h: reference to the DevHandle in use
-	 * @param gscale: the calibration data.
-	 * @param device: the device id of the sensor.
-	 * @return: true if config is ok
-	 */
-	bool applyGyroCalibration(DriverFramework::DevHandle &h, const struct gyro_calibration_s *gcal, const int device_id);
-
-	/**
-	 * Apply a accel calibration.
-	 *
-	 * @param h: reference to the DevHandle in use
-	 * @param ascale: the calibration data.
-	 * @param device: the device id of the sensor.
-	 * @return: true if config is ok
-	 */
-	bool applyAccelCalibration(DriverFramework::DevHandle &h, const struct accel_calibration_s *acal,
-				   const int device_id);
-
-	/**
-	 * Apply a mag calibration.
-	 *
-	 * @param h: reference to the DevHandle in use
-	 * @param gscale: the calibration data.
-	 * @param device: the device id of the sensor.
-	 * @return: true if config is ok
-	 */
-	bool applyMagCalibration(DriverFramework::DevHandle &h, const struct mag_calibration_s *mcal, const int device_id);
-
 	SensorData _accel {};
 	SensorData _gyro {};
 	SensorData _mag {};
-	SensorData _baro {};
 
 	orb_advert_t _mavlink_log_pub{nullptr};
 
-	uORB::Publication<sensor_correction_s>	_sensor_correction_pub{ORB_ID(sensor_correction)};	/**< handle to the sensor correction uORB topic */
-	uORB::Publication<sensor_selection_s>	_sensor_selection_pub{ORB_ID(sensor_selection)};	/**< handle to the sensor selection uORB topic */
+	uORB::Publication<sensor_selection_s> _sensor_selection_pub{ORB_ID(sensor_selection)};	/**< handle to the sensor selection uORB topic */
+	uORB::PublicationQueued<subsystem_info_s> _info_pub{ORB_ID(subsystem_info)};	/* subsystem info publication */
+
+	/* sensor thermal compensation */
+	uORB::Subscription _corrections_sub{ORB_ID(sensor_correction)};
 
 	sensor_combined_s _last_sensor_data[SENSOR_COUNT_MAX] {};	/**< latest sensor data from all sensors instances */
-	vehicle_air_data_s _last_airdata[SENSOR_COUNT_MAX] {};		/**< latest sensor data from all sensors instances */
 	vehicle_magnetometer_s _last_magnetometer[SENSOR_COUNT_MAX] {}; /**< latest sensor data from all sensors instances */
 
 	matrix::Dcmf _board_rotation {};		/**< rotation matrix for the orientation that the board is mounted */
@@ -262,7 +219,6 @@ private:
 	const Parameters &_parameters;
 	const bool _hil_enabled{false};			/**< is hardware-in-the-loop mode enabled? */
 
-	bool _corrections_changed{false};
 	bool _selection_changed{false};			/**< true when a sensor selection has changed and not been published */
 
 	float _accel_diff[3][2] {};			/**< filtered accel differences between IMU units (m/s/s) */
@@ -270,7 +226,6 @@ private:
 	float _mag_angle_diff[2] {};			/**< filtered mag angle differences between sensor instances (Ga) */
 
 	uint32_t _accel_device_id[SENSOR_COUNT_MAX] {};	/**< accel driver device id for each uorb instance */
-	uint32_t _baro_device_id[SENSOR_COUNT_MAX] {};	/**< baro driver device id for each uorb instance */
 	uint32_t _gyro_device_id[SENSOR_COUNT_MAX] {};	/**< gyro driver device id for each uorb instance */
 	uint32_t _mag_device_id[SENSOR_COUNT_MAX] {};	/**< mag driver device id for each uorb instance */
 
@@ -279,10 +234,6 @@ private:
 	sensor_correction_s _corrections {};		/**< struct containing the sensor corrections to be published to the uORB */
 	sensor_selection_s _selection {};		/**< struct containing the sensor selection to be published to the uORB */
 	subsystem_info_s _info {};			/**< subsystem info publication */
-
-	TemperatureCompensation _temperature_compensation{}; /**< sensor thermal compensation */
-
-	uORB::PublicationQueued<subsystem_info_s> _info_pub{ORB_ID(subsystem_info)};	/* subsystem info publication */
 };
 
 } /* namespace sensors */

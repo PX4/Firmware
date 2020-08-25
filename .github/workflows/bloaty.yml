@@ -1,0 +1,52 @@
+name: bloaty
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-nuttx:2020-01-13
+    strategy:
+      matrix:
+        config: [
+          px4_fmu-v2_default,
+          px4_fmu-v4_default,
+          px4_fmu-v5_default,
+          px4_fmu-v5x_default,
+          px4_io-v2_default,
+          ]
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+    - uses: actions/cache@v1.1.0
+      id: ccache-persistence
+      with:
+        path: ~/.ccache
+        key: ccache-nuttx-${{matrix.config}}
+        restore-keys: |
+          ccache-nuttx-${{matrix.config}}
+    - name: setup ccache
+      run: mkdir -p ~/.ccache && echo "max_size = 300M" > ~/.ccache/ccache.conf && ccache -z && ccache -s
+    - name: make ${{matrix.config}}
+      run: make ${{matrix.config}}
+    - name: make ${{matrix.config}} bloaty_compileunits
+      run: make ${{matrix.config}} bloaty_compileunits
+    - name: make ${{matrix.config}} bloaty_inlines
+      run: make ${{matrix.config}} bloaty_inlines
+    - name: make ${{matrix.config}} bloaty_segments
+      run: make ${{matrix.config}} bloaty_segments
+    - name: make ${{matrix.config}} bloaty_symbols
+      run: make ${{matrix.config}} bloaty_symbols
+    - name: make ${{matrix.config}} bloaty_templates
+      run: make ${{matrix.config}} bloaty_templates
+    - name: make ${{matrix.config}} bloaty_compare_master
+      run: make ${{matrix.config}} bloaty_compare_master
+    - name: ccache post-run
+      run: ccache -s && ccache -z

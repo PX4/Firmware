@@ -55,7 +55,3 @@ static_assert(led_control_s::ORB_QUEUE_LENGTH >= BOARD_MAX_LEDS, "led_control_s:
 #error "BOARD_MAX_LEDS too large. You need to change the led_mask type in the led_control uorb topic (and where it's used)"
 #endif
 
-// Legacy paths - 2 are need to allow both pwm and i2c drviers to co-exist
-#define RGBLED0_DEVICE_PATH "/dev/rgbled0"         // Primary RGB LED on i2c
-#define RGBLED1_DEVICE_PATH "/dev/rgbled1"	   // Primary RGB LED(NCP5623C) on i2c
-#define RGBLED_PWM0_DEVICE_PATH "/dev/rgbled_pwm0" // Secondary RGB LED on PWM

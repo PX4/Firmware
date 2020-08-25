@@ -39,29 +39,32 @@
 
 #pragma once
 
-#ifndef BOARD_CONFIG_H
-#define BOARD_CONFIG_H
-
 #define BOARD_OVERRIDE_UUID "BBBLUEID00000000" // must be of length 16
 #define PX4_SOC_ARCH_ID     PX4_SOC_ARCH_ID_BBBLUE
 
 #define BOARD_BATTERY1_V_DIV   (11.0f)
-//#define BOARD_BATTERY1_A_PER_V (15.391030303f)
-
-// Battery ADC channels
-#define ADC_BATTERY_VOLTAGE_CHANNEL     5
-#define ADC_BATTERY_CURRENT_CHANNEL     ((uint8_t)(-1))
-#define ADC_AIRSPEED_VOLTAGE_CHANNEL    ((uint8_t)(-1))
 
 #define BOARD_HAS_NO_BOOTLOADER
 
 #define BOARD_MAX_LEDS 4 // Number external of LED's this board has
 
-/*
- * I2C busses
- */
-#define PX4_I2C_BUS_EXPANSION	1
-#define PX4_NUMBER_I2C_BUSES    1
+
+// I2C
+#define PX4_I2C_BUS_EXPANSION   1 // i2c-1: pins P9 17,18
+#define PX4_I2C_BUS_ONBOARD     2 // i2c-2: pins P9 19,20 - bmp280, mpu9250
+
+#define PX4_NUMBER_I2C_BUSES    2
+
+#define PX4_I2C_OBDEV_MPU9250 0x68
+
+
+// ADC channels:
+#define ADC_CHANNELS (1 << 5)
+#define BOARD_ADC_POS_REF_V (1.8f)
+
+#define ADC_BATTERY_VOLTAGE_CHANNEL  5
+#define ADC_BATTERY_CURRENT_CHANNEL  ((uint8_t)(-1))
+
 
 #include <system_config.h>
 #include <px4_platform_common/board_common.h>
@@ -82,10 +85,6 @@ void rc_cleaning(void);
 #define rc_i2c_unlock_bus	rc_i2c_release_bus
 #define rc_i2c_get_lock		rc_i2c_get_in_use_state
 
-#define rc_bmp_init			rc_initialize_barometer
-
-#define rc_adc_read_raw		rc_adc_raw
-
 #define rc_servo_send_pulse_us			rc_send_servo_pulse_us
 
 #define rc_filter_empty					rc_empty_filter
@@ -94,25 +93,5 @@ void rc_cleaning(void);
 #define rc_filter_prefill_outputs		rc_prefill_filter_outputs
 #define rc_filter_butterworth_lowpass	rc_butterworth_lowpass
 
-/**
- * struct to hold the data retreived during one read of the barometer.
- */
-typedef struct rc_bmp_data_t {
-	float temp_c;		///< temperature in degrees celcius
-	float alt_m;		///< altitude in meters
-	float pressure_pa;	///< current pressure in pascals
-} rc_bmp_data_t;
-
-#ifdef  __cplusplus
-extern "C" {
 #endif
 
-int rc_bmp_read(rc_bmp_data_t *data);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-
-#endif // BOARD_CONFIG_H

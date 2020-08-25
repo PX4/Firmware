@@ -52,9 +52,6 @@
  * IOCTLs for individual topics.
  */
 
-/** Fetch the time at which the topic was last updated into *(uint64_t *)arg */
-#define ORBIOCLASTUPDATE	_ORBIOC(10)
-
 /** Check whether the topic has been updated since it was last read, sets *(bool *)arg */
 #define ORBIOCUPDATED		_ORBIOC(11)
 

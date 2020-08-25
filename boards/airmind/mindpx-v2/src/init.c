@@ -73,6 +73,8 @@
 
 #include <px4_platform_common/init.h>
 #include <px4_platform/board_dma_alloc.h>
+#include <drivers/drv_pwm_output.h>
+#include <px4_arch/io_timer.h>
 
 /****************************************************************************
  * Pre-Processor Definitions
@@ -108,14 +110,9 @@ __END_DECLS
 __EXPORT void board_on_reset(int status)
 {
 	/* configure the GPIO pins to outputs and keep them low */
-	stm32_configgpio(GPIO_GPIO0_OUTPUT);
-	stm32_configgpio(GPIO_GPIO1_OUTPUT);
-	stm32_configgpio(GPIO_GPIO2_OUTPUT);
-	stm32_configgpio(GPIO_GPIO3_OUTPUT);
-	stm32_configgpio(GPIO_GPIO4_OUTPUT);
-	stm32_configgpio(GPIO_GPIO5_OUTPUT);
-	stm32_configgpio(GPIO_GPIO6_OUTPUT);
-	stm32_configgpio(GPIO_GPIO7_OUTPUT);
+	for (int i = 0; i < DIRECT_PWM_OUTPUT_CHANNELS; ++i) {
+		px4_arch_configgpio(io_timer_channel_get_gpio_output(i));
+	}
 
 	/**
 	 * On resets invoked from system (not boot) insure we establish a low

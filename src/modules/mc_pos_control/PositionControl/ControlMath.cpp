@@ -1,7 +1,6 @@
-
 /****************************************************************************
  *
- *   Copyright (C) 2018 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2018 - 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,46 +41,46 @@
 #include <mathlib/mathlib.h>
 
 using namespace matrix;
+
 namespace ControlMath
 {
 void thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp, vehicle_attitude_setpoint_s &att_sp)
 {
-	att_sp.yaw_body = yaw_sp;
+	bodyzToAttitude(-thr_sp, yaw_sp, att_sp);
+	att_sp.thrust_body[2] = -thr_sp.length();
+}
 
-	// desired body_z axis = -normalize(thrust_vector)
-	Vector3f body_x, body_y, body_z;
-
-	if (thr_sp.length() > 0.00001f) {
-		body_z = -thr_sp.normalized();
-
-	} else {
-		// no thrust, set Z axis to safe value
-		body_z = Vector3f(0.f, 0.f, 1.f);
+void bodyzToAttitude(Vector3f body_z, const float yaw_sp, vehicle_attitude_setpoint_s &att_sp)
+{
+	// zero vector, no direction, set safe level value
+	if (body_z.norm_squared() < FLT_EPSILON) {
+		body_z(2) = 1.f;
 	}
 
+	body_z.normalize();
+
 	// vector of desired yaw direction in XY plane, rotated by PI/2
-	Vector3f y_C(-sinf(att_sp.yaw_body), cosf(att_sp.yaw_body), 0.0f);
+	Vector3f y_C(-sinf(yaw_sp), cosf(yaw_sp), 0.0f);
 
-	if (fabsf(body_z(2)) > 0.000001f) {
-		// desired body_x axis, orthogonal to body_z
-		body_x = y_C % body_z;
+	// desired body_x axis, orthogonal to body_z
+	Vector3f body_x = y_C % body_z;
 
-		// keep nose to front while inverted upside down
-		if (body_z(2) < 0.0f) {
-			body_x = -body_x;
-		}
+	// keep nose to front while inverted upside down
+	if (body_z(2) < 0.0f) {
+		body_x = -body_x;
+	}
 
-		body_x.normalize();
-
-	} else {
+	if (fabsf(body_z(2)) < 0.000001f) {
 		// desired thrust is in XY plane, set X downside to construct correct matrix,
 		// but yaw component will not be used actually
 		body_x.zero();
 		body_x(2) = 1.0f;
 	}
 
+	body_x.normalize();
+
 	// desired body_y axis
-	body_y = body_z % body_x;
+	Vector3f body_y = body_z % body_x;
 
 	Dcmf R_sp;
 
@@ -92,16 +91,15 @@ void thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp, vehicle_attitu
 		R_sp(i, 2) = body_z(i);
 	}
 
-	//copy quaternion setpoint to attitude setpoint topic
+	// copy quaternion setpoint to attitude setpoint topic
 	Quatf q_sp = R_sp;
 	q_sp.copyTo(att_sp.q_d);
-	att_sp.q_d_valid = true;
 
 	// calculate euler angles, for logging only, must not be used for control
 	Eulerf euler = R_sp;
 	att_sp.roll_body = euler(0);
 	att_sp.pitch_body = euler(1);
-	att_sp.thrust_body[2] = -thr_sp.length();
+	att_sp.yaw_body = euler(2);
 }
 
 Vector2f constrainXY(const Vector2f &v0, const Vector2f &v1, const float &max)
@@ -160,7 +158,6 @@ Vector2f constrainXY(const Vector2f &v0, const Vector2f &v1, const float &max)
 		// notes:
 		// 	- s (=scaling factor) needs to be positive
 		// 	- (max - ||v||) always larger than zero, otherwise it never entered this if-statement
-
 		Vector2f u1 = v1.normalized();
 		float m = u1.dot(v0);
 		float c = v0.dot(v0) - max * max;
@@ -216,4 +213,32 @@ bool cross_sphere_line(const Vector3f &sphere_c, const float sphere_r,
 		return false;
 	}
 }
+
+void addIfNotNan(float &setpoint, const float addition)
+{
+	if (PX4_ISFINITE(setpoint) && PX4_ISFINITE(addition)) {
+		// No NAN, add to the setpoint
+		setpoint += addition;
+
+	} else if (!PX4_ISFINITE(setpoint)) {
+		// Setpoint NAN, take addition
+		setpoint = addition;
+	}
+
+	// Addition is NAN or both are NAN, nothing to do
 }
+
+void addIfNotNanVector3f(Vector3f &setpoint, const Vector3f &addition)
+{
+	for (int i = 0; i < 3; i++) {
+		addIfNotNan(setpoint(i), addition(i));
+	}
+}
+
+void setZeroIfNanVector3f(Vector3f &vector)
+{
+	// Adding zero vector overwrites elements that are NaN with zero
+	addIfNotNanVector3f(vector, Vector3f());
+}
+
+} // ControlMath

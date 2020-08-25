@@ -305,11 +305,6 @@ int uORB::Manager::orb_check(int handle, bool *updated)
 	return px4_ioctl(handle, ORBIOCUPDATED, (unsigned long)(uintptr_t)updated);
 }
 
-int uORB::Manager::orb_stat(int handle, uint64_t *time)
-{
-	return px4_ioctl(handle, ORBIOCLASTUPDATE, (unsigned long)(uintptr_t)time);
-}
-
 int uORB::Manager::orb_priority(int handle, int32_t *priority)
 {
 	return px4_ioctl(handle, ORBIOCGPRIORITY, (unsigned long)(uintptr_t)priority);

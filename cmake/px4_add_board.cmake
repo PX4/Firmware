@@ -55,9 +55,9 @@
 #			[ SYSTEMCMDS <list> ]
 #			[ EXAMPLES <list> ]
 #			[ SERIAL_PORTS <list> ]
-#			[ DF_DRIVERS <list> ]
 #			[ CONSTRAINED_FLASH ]
 #			[ TESTING ]
+#			[ LINKER_PREFIX <string> ]
 #			)
 #
 #	Input:
@@ -77,9 +77,9 @@
 #		SYSTEMCMDS		: list of system commands to build for this board (relative to src/systemcmds)
 #		EXAMPLES		: list of example modules to build for this board (relative to src/examples)
 #		SERIAL_PORTS		: mapping of user configurable serial ports and param facing name
-#		DF_DRIVERS		: list of DriverFramework device drivers (includes DriverFramework driver and wrapper)
 #		CONSTRAINED_FLASH	: flag to enable constrained flash options (eg limit init script status text)
 #		TESTING			: flag to enable automatic inclusion of PX4 testing modules
+#		LINKER_PREFIX	: optional to prefix on the Linker script.
 #
 #
 #	Example:
@@ -142,13 +142,13 @@ function(px4_add_board)
 			IO
 			BOOTLOADER
 			UAVCAN_INTERFACES
+			LINKER_PREFIX
 		MULTI_VALUE
 			DRIVERS
 			MODULES
 			SYSTEMCMDS
 			EXAMPLES
 			SERIAL_PORTS
-			DF_DRIVERS
 		OPTIONS
 			BUILD_BOOTLOADER
 			CONSTRAINED_FLASH
@@ -232,6 +232,12 @@ function(px4_add_board)
 		set(PX4_TESTING "1" CACHE INTERNAL "testing enabled" FORCE)
 	endif()
 
+	if(LINKER_PREFIX)
+		set(PX4_BOARD_LINKER_PREFIX ${LINKER_PREFIX} CACHE STRING "PX4 board linker prefix" FORCE)
+	else()
+		set(PX4_BOARD_LINKER_PREFIX "" CACHE STRING "PX4 board linker prefix" FORCE)
+	endif()
+
 	include(px4_impl_os)
 	px4_os_prebuild_targets(OUT prebuild_targets BOARD ${PX4_BOARD})
 
@@ -262,19 +268,6 @@ function(px4_add_board)
 		foreach(example ${EXAMPLES})
 			list(APPEND config_module_list examples/${example})
 		endforeach()
-	endif()
-
-	# DriverFramework drivers
-	if(DF_DRIVERS)
-		set(config_df_driver_list)
-		foreach(driver ${DF_DRIVERS})
-			list(APPEND config_df_driver_list ${driver})
-
-			if(EXISTS "${PX4_SOURCE_DIR}/src/drivers/driver_framework_wrapper/df_${driver}_wrapper")
-				list(APPEND config_module_list drivers/driver_framework_wrapper/df_${driver}_wrapper)
-			endif()
-		endforeach()
-		set(config_df_driver_list ${config_df_driver_list} PARENT_SCOPE)
 	endif()
 
 	# add board config directory src to build modules

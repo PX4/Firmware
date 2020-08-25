@@ -78,19 +78,19 @@ public:
 	*   true if the system power should be checked
 	**/
 	static bool preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status,
-				   vehicle_status_flags_s &status_flags,
-				   const bool checkGNSS, bool reportFailures, const bool prearm, const hrt_abstime &time_since_boot);
+				   vehicle_status_flags_s &status_flags, const bool checkGNSS, bool reportFailures, const bool prearm,
+				   const hrt_abstime &time_since_boot);
+
+	struct arm_requirements_t {
+		bool arm_authorization = false;
+		bool esc_check = false;
+		bool global_position = false;
+		bool mission = false;
+	};
 
 	static bool preArmCheck(orb_advert_t *mavlink_log_pub, const vehicle_status_flags_s &status_flags,
-				const safety_s &safety, const uint8_t arm_requirements);
-
-	typedef enum {
-		ARM_REQ_NONE = 0,
-		ARM_REQ_MISSION_BIT = (1 << 0),
-		ARM_REQ_ARM_AUTH_BIT = (1 << 1),
-		ARM_REQ_GPS_BIT = (1 << 2),
-		ARM_REQ_ESCS_CHECK_BIT = (1 << 3)
-	} arm_requirements_t;
+				const safety_s &safety, const arm_requirements_t &arm_requirements, vehicle_status_s &status,
+				bool report_fail = true);
 
 private:
 	static bool magnometerCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,

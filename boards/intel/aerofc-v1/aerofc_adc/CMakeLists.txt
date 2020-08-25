@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (C) 2016  Intel Corporation. All rights reserved.
+#   Copyright (C) 2016 Intel Corporation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,11 +31,13 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__aerofc_adc
+	MODULE aerofc_adc
 	MAIN aerofc_adc
-	COMPILE_FLAGS
 	SRCS
-		aerofc_adc.cpp
+		aerofc_adc_main.cpp
+		AEROFC_ADC.cpp
+		AEROFC_ADC.hpp
 	DEPENDS
 		drivers__device
+		px4_work_queue
 	)

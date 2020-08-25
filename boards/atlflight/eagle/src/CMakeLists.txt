@@ -32,5 +32,8 @@
 ############################################################################
 
 add_library(drivers_board
-	sitl_led.c
+	board_config.h
+	i2c.cpp
+	init.c
+	spi.cpp
 )

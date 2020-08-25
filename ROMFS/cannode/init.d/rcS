@@ -1,0 +1,106 @@
+#!/bin/sh
+# Un comment and use set +e to ignore and set -e to enable 'exit on error control'
+set +e
+# Un comment the line below to help debug scripts by printing a trace of the script commands
+#set -x
+# PX4FMU startup script.
+#
+# NOTE: environment variable references:
+#    If the dollar sign ('$') is followed by a left bracket ('{') then the
+#    variable name is terminated with the right bracket character ('}').
+#    Otherwise, the variable name goes to the end of the argument.
+#
+#
+# NOTE: COMMENT LINES ARE REMOVED BEFORE STORED IN ROMFS.
+#
+#------------------------------------------------------------------------------
+
+#
+# Mount the procfs.
+#
+mount -t procfs /proc
+
+#
+# Start CDC/ACM serial driver.
+#
+sercon
+
+#
+# Print full system version.
+#
+ver all
+
+#
+# Start the ORB (first app to start)
+# tone_alarm and tune_control
+# is dependent.
+#
+uorb start
+
+#
+# Set the parameter file if mtd starts successfully.
+#
+if mtd start
+then
+	set PARAM_FILE /fs/mtd_params
+fi
+
+#
+# Load parameters.
+#
+param select $PARAM_FILE
+if ! param load
+then
+	param reset
+fi
+
+#
+# Optional board defaults: rc.board_defaults
+#
+set BOARD_RC_DEFAULTS /etc/init.d/rc.board_defaults
+if [ -f $BOARD_RC_DEFAULTS ]
+then
+	echo "Board defaults: ${BOARD_RC_DEFAULTS}"
+	sh $BOARD_RC_DEFAULTS
+fi
+unset BOARD_RC_DEFAULTS
+
+#
+# Start system state indicator.
+#
+rgbled start -X
+rgbled_ncp5623c start -X
+rgbled_pwm start
+
+if param greater LIGHT_EN_BLINKM 0
+then
+	if blinkm start -X
+	then
+		blinkm systemstate
+	fi
+fi
+
+#
+# board sensors: rc.sensors
+#
+set BOARD_RC_SENSORS /etc/init.d/rc.board_sensors
+if [ -f $BOARD_RC_SENSORS ]
+then
+	echo "Board sensors: ${BOARD_RC_SENSORS}"
+	sh $BOARD_RC_SENSORS
+fi
+unset BOARD_RC_SENSORS
+
+#
+# Start UART/Serial device drivers.
+# Note: rc.serial is auto-generated from Tools/serial/generate_config.py
+#
+sh /etc/init.d/rc.serial
+
+# Check for flow sensor
+if param compare SENS_EN_PX4FLOW 1
+then
+	px4flow start -X
+fi
+
+uavcannode start

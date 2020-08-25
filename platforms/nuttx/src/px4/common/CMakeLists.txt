@@ -40,7 +40,7 @@ if (NOT ${PX4_BOARD} MATCHES "px4_io")
 		board_fat_dma_alloc.c
 		console_buffer.cpp
 		gpio.c
-		px4_nuttx_tasks.c
+		tasks.cpp
 		px4_nuttx_impl.cpp
 		px4_init.cpp
 	)

@@ -17,7 +17,7 @@ class MarkdownTablesOutput():
             result += '   <tr><th>Name</th><th>Description</th><th>Min > Max (Incr.)</th><th>Default</th><th>Units</th></tr>\n'
             result += ' </thead>\n'
             result += '<tbody>\n'
-            
+
             for param in group.GetParams():
                 code = param.GetName()
                 name = param.GetFieldValue("short_desc") or ''
@@ -32,7 +32,7 @@ class MarkdownTablesOutput():
                 reboot_required = param.GetFieldValue("reboot_required") or ''
                 #board = param.GetFieldValue("board") or '' ## Disabled as no board values are defined in any parameters!
                 #decimal = param.GetFieldValue("decimal") or '' #Disabled as is intended for GCS not people
-                #field_codes = param.GetFieldCodes() ## Disabled as not needed for display. 
+                #field_codes = param.GetFieldCodes() ## Disabled as not needed for display.
                 #boolean = param.GetFieldValue("boolean") # or '' # Disabled - does not appear useful.
 
 
@@ -48,7 +48,7 @@ class MarkdownTablesOutput():
                 if increment:
                     max_min_combined+='(%s)' % increment
 
-                if long_desc is not '':
+                if long_desc != '':
                     long_desc = '<p><strong>Comment:</strong> %s</p>' % long_desc
 
                 if name == code:
@@ -60,14 +60,14 @@ class MarkdownTablesOutput():
 
                 enum_codes=param.GetEnumCodes() or '' # Gets numerical values for parameter.
                 enum_output=''
-                # Format codes and their descriptions for display. 
+                # Format codes and their descriptions for display.
                 if enum_codes:
                     enum_output+='<strong>Values:</strong><ul>'
                     enum_codes=sorted(enum_codes,key=float)
                     for item in enum_codes:
                         enum_output+='\n<li><strong>%s:</strong> %s</li> \n' % (item, param.GetEnumValue(item))
                     enum_output+='</ul>\n'
-                    
+
 
                 bitmask_list=param.GetBitmaskList() #Gets bitmask values for parameter
                 bitmask_output=''
@@ -83,7 +83,7 @@ class MarkdownTablesOutput():
                     def_val='Enabled (1)'
                 if is_boolean and def_val=='0':
                     def_val='Disabled (0)'
-                    
+
                 result += '<tr>\n <td style="vertical-align: top;">%s (%s)</td>\n <td style="vertical-align: top;"><p>%s</p>%s %s %s %s</td>\n <td style="vertical-align: top;">%s</td>\n <td style="vertical-align: top;">%s</td>\n <td style="vertical-align: top;">%s</td>\n</tr>\n' % (code, type, name, long_desc, enum_output, bitmask_output, reboot_required, max_min_combined, def_val, unit)
 
             #Close the table.

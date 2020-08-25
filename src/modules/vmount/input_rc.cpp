@@ -132,7 +132,7 @@ bool InputRC::_read_control_data_from_subscription(ControlData &control_data, bo
 		_first_time = false;
 
 		for (int i = 0; i < 3; ++i) {
-			control_data.type_data.angle.is_speed[i] = false;
+			control_data.type_data.angle.frames[i] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
 			control_data.type_data.angle.angles[i] = new_aux_values[i] * M_PI_F;
 			control_data.stabilize_axis[i] = _do_stabilization;
 

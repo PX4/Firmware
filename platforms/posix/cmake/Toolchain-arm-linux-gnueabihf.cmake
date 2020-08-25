@@ -1,6 +1,7 @@
 # arm-linux-gnueabihf-gcc toolchain
 
 set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR arm)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(triple arm-linux-gnueabihf)
@@ -13,16 +14,18 @@ set(CMAKE_C_COMPILER_TARGET ${triple})
 set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}-g++)
 set(CMAKE_CXX_COMPILER_TARGET ${triple})
 
-set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER})
+set(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}-gcc)
 
 # compiler tools
-foreach(tool nm ld objcopy ranlib strip)
-	string(TOUPPER ${tool} TOOL)
-	find_program(CMAKE_${TOOL} ${TOOLCHAIN_PREFIX}-${tool})
-	if(CMAKE-${TOOL} MATCHES "NOTFOUND")
-		message(FATAL_ERROR "could not find ${TOOLCHAIN_PREFIX}-${tool}")
-	endif()
-endforeach()
+find_program(CMAKE_AR ${TOOLCHAIN_PREFIX}-gcc-ar)
+find_program(CMAKE_GDB ${TOOLCHAIN_PREFIX}-gdb)
+find_program(CMAKE_LD ${TOOLCHAIN_PREFIX}-ld)
+find_program(CMAKE_LINKER ${TOOLCHAIN_PREFIX}-ld)
+find_program(CMAKE_NM ${TOOLCHAIN_PREFIX}-gcc-nm)
+find_program(CMAKE_OBJCOPY ${TOOLCHAIN_PREFIX}-objcopy)
+find_program(CMAKE_OBJDUMP ${TOOLCHAIN_PREFIX}-objdump)
+find_program(CMAKE_RANLIB ${TOOLCHAIN_PREFIX}-gcc-ranlib)
+find_program(CMAKE_STRIP ${TOOLCHAIN_PREFIX}-strip)
 
 set(CMAKE_FIND_ROOT_PATH get_file_component(${CMAKE_C_COMPILER} PATH))
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
@@ -36,10 +39,4 @@ foreach(tool grep make)
 	if(NOT ${TOOL})
 		message(FATAL_ERROR "could not find ${tool}")
 	endif()
-endforeach()
-
-# optional compiler tools
-foreach(tool gdb gdbtui)
-	string(TOUPPER ${tool} TOOL)
-	find_program(${TOOL} ${TOOLCHAIN_PREFIX}-${tool})
 endforeach()

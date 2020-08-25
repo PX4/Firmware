@@ -63,13 +63,15 @@
 #include <drivers/device/i2c.h>
 #include <perf/perf_counter.h>
 
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 #include <battery/battery.h>
 
 #include <uORB/PublicationMulti.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/power_monitor.h>
+#include <uORB/topics/parameter_update.h>
 
 /*
  * Note that these are unshifted addresses.
@@ -142,29 +144,33 @@ enum VOXLPM_CH_TYPE {
 	VOXLPM_CH_TYPE_P5VDC
 };
 
-class VOXLPM : public device::I2C, public px4::ScheduledWorkItem
+class VOXLPM : public device::I2C, public ModuleParams, public I2CSPIDriver<VOXLPM>
 {
 public:
-	VOXLPM(const char *path, int bus, int address, VOXLPM_CH_TYPE ch_type);
+	VOXLPM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, VOXLPM_CH_TYPE ch_type);
 	virtual ~VOXLPM();
 
-	virtual int		init();
-	void			print_info();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
+	virtual int		init();
+	void			print_status() override;
+
+	void 			RunImpl();
 private:
-	unsigned 		_meas_interval{100000}; // 100ms
-	void 			Run() override;
 	void 			start();
-	void 			stop();
 	int 			measure();
 
+	static constexpr unsigned 		_meas_interval{100000}; // 100ms
 	perf_counter_t		_sample_perf;
 
 	uORB::PublicationMulti<power_monitor_s>		_pm_pub_topic{ORB_ID(power_monitor)};
+	uORB::Subscription _parameter_sub{ORB_ID(parameter_update)};
 
 	power_monitor_s 	_pm_status{};
 
-	VOXLPM_CH_TYPE		_ch_type;
+	const VOXLPM_CH_TYPE	_ch_type;
 	float			_voltage{0.0f};
 	float			_amperage{0.0f};
 	float			_rsense{0.0f};

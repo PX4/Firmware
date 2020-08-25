@@ -31,11 +31,16 @@
  *
  ****************************************************************************/
 
+#include <drivers/drv_tone_alarm.h>
 #include "SafetyButton.hpp"
+
+#ifndef GPIO_BTN_SAFETY
+#error "board needs to define a safety button gpio pin to use this module"
+#endif
 
 using namespace time_literals;
 
-static constexpr uint8_t CYCLE_COUNT{10}; /* safety switch must be held for 1 second to activate */
+static constexpr uint8_t CYCLE_COUNT{30}; /* safety switch must be held for 1 second to activate */
 
 // Define the various LED flash sequences for each system state.
 enum class LED_PATTERN : uint16_t {
@@ -46,6 +51,16 @@ enum class LED_PATTERN : uint16_t {
 	IO_FMU_ARMED		= 0xffff,	/**< constantly on */
 };
 
+SafetyButton::SafetyButton() :
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default)
+{
+	_safety_disabled = circuit_breaker_enabled("CBRK_IO_SAFETY", CBRK_IO_SAFETY_KEY);
+
+	if (_safety_disabled) {
+		_safety_btn_off = true;
+	}
+}
+
 SafetyButton::~SafetyButton()
 {
 	ScheduleClear();
@@ -54,8 +69,7 @@ SafetyButton::~SafetyButton()
 void
 SafetyButton::CheckButton()
 {
-	// Debounce the safety button, change state if it has been held for long enough.
-	bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
+	const bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
 
 	/*
 	 * Keep pressed for a while to arm.
@@ -89,6 +103,63 @@ SafetyButton::CheckButton()
 	} else {
 		_button_counter = 0;
 	}
+
+	CheckPairingRequest(safety_button_pressed);
+
+	_safety_btn_prev_sate = safety_button_pressed;
+}
+
+void
+SafetyButton::CheckPairingRequest(bool button_pressed)
+{
+	// Need to press the button 3 times within 2 seconds
+	const hrt_abstime now = hrt_absolute_time();
+
+	if (now - _pairing_start > 2_s) {
+		// reset state
+		_pairing_start = 0;
+		_pairing_button_counter = 0;
+	}
+
+	if (!_safety_btn_prev_sate && button_pressed) {
+		if (_pairing_start == 0) {
+			_pairing_start = now;
+		}
+
+		++_pairing_button_counter;
+	}
+
+
+	if (_pairing_button_counter == 3) {
+
+
+		vehicle_command_s vcmd{};
+		vcmd.command = vehicle_command_s::VEHICLE_CMD_START_RX_PAIR;
+		vcmd.timestamp = now;
+		vcmd.param1 = 10.f; // GCS pairing request handled by a companion.
+		_to_command.publish(vcmd);
+		PX4_DEBUG("Sending GCS pairing request");
+
+		led_control_s led_control{};
+		led_control.led_mask = 0xff;
+		led_control.mode = led_control_s::MODE_BLINK_FAST;
+		led_control.color = led_control_s::COLOR_GREEN;
+		led_control.num_blinks = 1;
+		led_control.priority = 0;
+		led_control.timestamp = hrt_absolute_time();
+		_to_led_control.publish(led_control);
+
+		tune_control_s tune_control{};
+		tune_control.tune_id = TONE_NOTIFY_POSITIVE_TUNE;
+		tune_control.volume = tune_control_s::VOLUME_LEVEL_DEFAULT;
+		tune_control.tune_override = 0;
+		tune_control.timestamp = hrt_absolute_time();
+		_to_tune_control.publish(tune_control);
+
+		// reset state
+		_pairing_start = 0;
+		_pairing_button_counter = 0;
+	}
 }
 
 void
@@ -101,7 +172,7 @@ SafetyButton::FlashButton()
 		// Select the appropriate LED flash pattern depending on the current arm state
 		LED_PATTERN pattern = LED_PATTERN::FMU_REFUSE_TO_ARM;
 
-		// cycle the blink state machine at 10Hz
+		// cycle the blink state machine
 		if (_safety_btn_off) {
 			if (armed.armed) {
 				pattern = LED_PATTERN::IO_FMU_ARMED;
@@ -118,9 +189,9 @@ SafetyButton::FlashButton()
 		}
 
 		// Turn the LED on if we have a 1 at the current bit position
-		px4_arch_gpiowrite(GPIO_LED_SAFETY, !((uint16_t)pattern & (1 << _blink_counter++)));
+		px4_arch_gpiowrite(GPIO_LED_SAFETY, !((uint16_t)pattern & (1 << (_blink_counter++ / 3))));
 
-		if (_blink_counter > 15) {
+		if (_blink_counter > 45) {
 			_blink_counter = 0;
 		}
 	}
@@ -133,62 +204,52 @@ SafetyButton::Run()
 {
 	if (should_exit()) {
 		exit_and_cleanup();
+		return;
 	}
 
-	// read safety switch input and control safety switch LED at 10Hz
 	CheckButton();
 
-	// Make the safety button flash anyway, no matter if it's used or not.
-	FlashButton();
+	// control safety switch LED & publish safety topic
+	if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
+		FlashButton();
 
-	safety_s safety{};
-	safety.timestamp = hrt_absolute_time();
-	safety.safety_switch_available = true;
-	safety.safety_off = _safety_btn_off;
+		safety_s safety{};
+		safety.timestamp = hrt_absolute_time();
+		safety.safety_switch_available = true;
+		safety.safety_off = _safety_btn_off || _safety_disabled;
 
-	// publish the safety status
-	_to_safety.publish(safety);
+		// publish the safety status
+		_to_safety.publish(safety);
+	}
 }
 
 int
 SafetyButton::task_spawn(int argc, char *argv[])
 {
-	if (PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
-		PX4_ERR("not starting (use px4io for safety button)");
+	SafetyButton *instance = new SafetyButton();
 
-		return PX4_ERROR;
-
-	} else if (circuit_breaker_enabled("CBRK_IO_SAFETY", CBRK_IO_SAFETY_KEY)) {
-		PX4_WARN("disabled by CBRK_IO_SAFETY, exiting");
-		return PX4_ERROR;
-
-	} else {
-		SafetyButton *instance = new SafetyButton();
-
-		if (instance) {
-			_object.store(instance);
-			_task_id = task_id_is_work_queue;
-
-			if (instance->Start() == PX4_OK) {
-				return PX4_OK;
-			}
-
-		} else {
-			PX4_ERR("alloc failed");
-		}
-
-		delete instance;
-		_object.store(nullptr);
-		_task_id = -1;
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return -1;
 	}
 
-	return PX4_ERROR;
+	int ret = instance->Start();
+
+	if (ret != PX4_OK) {
+		delete instance;
+		return ret;
+	}
+
+	_object.store(instance);
+	_task_id = task_id_is_work_queue;
+
+	return ret;
 }
 
 int
 SafetyButton::Start()
 {
-	ScheduleOnInterval(100_ms); // run at 10 Hz
+	ScheduleOnInterval(33_ms); // run at 30 Hz
 
 	return PX4_OK;
 }
@@ -197,6 +258,15 @@ int
 SafetyButton::custom_command(int argc, char *argv[])
 {
 	return print_usage("unknown command");
+}
+
+int
+SafetyButton::print_status()
+{
+	PX4_INFO("Safety Disabled: %s", _safety_disabled ? "yes" : "no");
+	PX4_INFO("Safety State (from button): %s", _safety_btn_off ? "off" : "on");
+
+	return 0;
 }
 
 int
@@ -210,16 +280,21 @@ SafetyButton::print_usage(const char *reason)
 		R"DESCR_STR(
 ### Description
 This module is responsible for the safety button.
+Pressing the safety button 3 times quickly will trigger a GCS pairing request.
 
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("safety_button", "driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start the safety button driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
 }
 
-extern "C" __EXPORT int safety_button_main(int argc, char *argv[])
+extern "C" __EXPORT int safety_button_main(int argc, char *argv[]);
+
+int
+safety_button_main(int argc, char *argv[])
 {
 	return SafetyButton::main(argc, argv);
 }

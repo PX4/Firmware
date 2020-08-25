@@ -67,6 +67,21 @@ PARAM_DEFINE_INT32(SDLOG_UTC_OFFSET, 0);
 PARAM_DEFINE_INT32(SDLOG_MODE, 0);
 
 /**
+ * Battery-only Logging
+ *
+ * When enabled, logging will not start from boot if battery power is not detected
+ * (e.g. powered via USB on a test bench). This prevents extraneous flight logs from
+ * being created during bench testing.
+ *
+ * Note that this only applies to log-from-boot modes. This has no effect on arm-based
+ * modes.
+ *
+ * @boolean
+ * @group SD Logging
+ */
+PARAM_DEFINE_INT32(SDLOG_BOOT_BAT, 0);
+
+/**
  * Mission Log
  *
  * If enabled, a small additional "mission" log file will be written to the SD card.

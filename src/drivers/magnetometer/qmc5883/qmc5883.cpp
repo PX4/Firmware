@@ -181,7 +181,7 @@ private:
 
 	enum Rotation		_rotation;
 
-	struct mag_report	_last_report {};         /**< used for info() */
+	sensor_mag_s	_last_report {};         /**< used for info() */
 
 	uint8_t			_range_bits;
 	uint8_t			_conf_reg;
@@ -330,7 +330,7 @@ QMC5883::init()
 	}
 
 	/* allocate basic report buffers */
-	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
+	_reports = new ringbuffer::RingBuffer(2, sizeof(sensor_mag_s));
 
 	if (_reports == nullptr) {
 		goto out;
@@ -378,8 +378,8 @@ void QMC5883::check_conf(void)
 ssize_t
 QMC5883::read(struct file *filp, char *buffer, size_t buflen)
 {
-	unsigned count = buflen / sizeof(struct mag_report);
-	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
+	unsigned count = buflen / sizeof(sensor_mag_s);
+	sensor_mag_s *mag_buf = reinterpret_cast<sensor_mag_s *>(buffer);
 	int ret = 0;
 
 	/* buffer must be large enough */
@@ -396,7 +396,7 @@ QMC5883::read(struct file *filp, char *buffer, size_t buflen)
 		 */
 		while (count--) {
 			if (_reports->get(mag_buf)) {
-				ret += sizeof(struct mag_report);
+				ret += sizeof(sensor_mag_s);
 				mag_buf++;
 			}
 		}
@@ -420,7 +420,7 @@ QMC5883::read(struct file *filp, char *buffer, size_t buflen)
 		}
 
 		if (_reports->get(mag_buf)) {
-			ret = sizeof(struct mag_report);
+			ret = sizeof(sensor_mag_s);
 		}
 	} while (0);
 
@@ -617,7 +617,7 @@ QMC5883::collect()
 	uint8_t check_counter;
 
 	perf_begin(_sample_perf);
-	struct mag_report new_report;
+	sensor_mag_s new_report;
 	bool sensor_is_onboard = false;
 
 	float xraw_f;
@@ -953,7 +953,7 @@ void
 test(enum QMC5883_BUS busid)
 {
 	struct qmc5883_bus_option &bus = find_bus(busid);
-	struct mag_report report;
+	sensor_mag_s report;
 	ssize_t sz;
 	int ret;
 	const char *path = bus.devpath;

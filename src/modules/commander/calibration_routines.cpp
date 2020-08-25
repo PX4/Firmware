@@ -45,7 +45,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <float.h>
-#include <poll.h>
 #include <drivers/drv_hrt.h>
 #include <systemlib/mavlink_log.h>
 #include <lib/ecl/geo/geo.h>

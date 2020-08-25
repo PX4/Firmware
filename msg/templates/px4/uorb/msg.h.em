@@ -54,7 +54,7 @@
 
 @{
 import genmsg.msgs
-import gencpp
+
 
 native_type = '%s_s'%spec.short_name
 topic_name = spec.short_name

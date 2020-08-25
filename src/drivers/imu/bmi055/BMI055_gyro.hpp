@@ -131,30 +131,29 @@
 
 #define BMI055_ACC_TEMP             0x08
 
-class BMI055_gyro : public BMI055, public px4::ScheduledWorkItem
+class BMI055_gyro : public BMI055
 {
 public:
-	BMI055_gyro(int bus, const char *path_gyro, uint32_t device, enum Rotation rotation);
+	BMI055_gyro(I2CSPIBusOption bus_option, int bus, const char *path_accel, uint32_t device, enum Rotation rotation,
+		    int bus_frequency, spi_mode_e spi_mode);
 	virtual ~BMI055_gyro();
 
-	virtual int     init();
+	int init() override;
 
-	// Start automatic measurement.
-	void            start();
+	/// Start automatic measurement.
+	void start() override;
 
-	/**
-	* Diagnostics - print some basic information about the driver.
-	*/
-	void            print_info();
+	void print_status() override;
 
-	void            print_registers();
+	void print_registers() override;
 
-	// deliberately cause a sensor error
-	void            test_error();
+	/// deliberately cause a sensor error
+	void test_error() override;
 
+	void RunImpl() override;
 protected:
 
-	virtual int     probe();
+	int probe() override;
 
 private:
 
@@ -173,23 +172,11 @@ private:
 	uint8_t         _checked_bad[BMI055_GYRO_NUM_CHECKED_REGISTERS];
 
 	/**
-	 * Stop automatic measurement.
-	 */
-	void            stop();
-
-	/**
 	 * Reset chip.
 	 *
 	 * Resets the chip and measurements ranges, but not scale and offset.
 	 */
 	int         reset();
-
-	void     Run() override;
-
-	/**
-	 * Fetch measurements from the sensor and update the report buffers.
-	 */
-	void            measure();
 
 	/**
 	 * Modify a register in the BMI055_gyro

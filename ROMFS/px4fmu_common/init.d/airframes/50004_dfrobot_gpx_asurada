@@ -1,0 +1,85 @@
+#!/bin/sh
+#
+# @name DF Robot GPX:Asurada
+
+#
+# @type Rover
+# @class Rover
+#
+# @board px4_fmu-v2 exclude
+#
+# @output MAIN2 Steering servo
+# @output MAIN3 Speed of left wheels
+# @output MAIN4 Speed of right wheels
+#
+# @maintainer Katrin Moritz
+#
+# @board px4_fmu-v2 exclude
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+sh /etc/init.d/rc.rover_defaults
+
+if [ $AUTOCNF = yes ]
+then
+	param set BAT_N_CELLS 2
+
+	param set EKF2_GBIAS_INIT 0.01
+	param set EKF2_ANGERR_INIT 0.01
+	param set EKF2_MAG_TYPE 1
+
+	param set FW_AIRSPD_MIN 0
+	param set FW_AIRSPD_TRIM 1
+	param set FW_AIRSPD_MAX 3
+
+	param set GND_THR_IDLE 0
+	param set GND_THR_CRUISE 0
+	param set GND_THR_MAX 0.5
+
+	# Because this is differential drive, it can make a turn with radius 0.
+	# This corresponds to a turn angle of pi radians.
+	# If a special case is made for differential-drive, this will need to change.
+	param set GND_MAX_ANG 3.142
+	param set GND_WHEEL_BASE 0.3
+
+	# TODO: Set to -1.0, to allow reversing. This will require many changes in the codebase
+	# to support negative throttle.
+	param set GND_THR_MIN 0.0
+	param set GND_SPEED_P 0.25
+	param set GND_SPEED_I 0.001
+	param set GND_SPEED_D 3
+	param set GND_SPEED_IMAX 0.125
+	param set GND_SPEED_THR_SC 1
+
+	param set MIS_LTRMIN_ALT 0.01
+	param set MIS_TAKEOFF_ALT 0.01
+
+	param set NAV_ACC_RAD 0.5
+
+	# Provide ESC a constant 1500 us pulse to idle
+	param set PWM_DISARMED 1500
+	param set PWM_MAIN_DIS3 1485
+	param set PWM_MAIN_DIS4 1485
+	param set PWM_MAIN_FAIL3 1485
+	param set PWM_MAIN_FAIL4 1485
+	param set PWM_MAX 2000
+	param set PWM_MIN 1000
+	param set PWM_MAIN_MIN3 970
+	param set PWM_MAIN_MIN4 970
+
+	# Enable Airspeed check circuit breaker because Rovers will have no airspeed sensor
+	param set CBRK_AIRSPD_CHK 162128
+
+	# Differential drive acts like ackermann steering with a maximum turn angle of 180 degrees, or pi radians
+	param set GND_MAX_ANG 3.1415
+
+fi
+
+# Configure this as rover
+set MAV_TYPE 10
+
+# Set mixer
+set MIXER rover_diff_and_servo
+
+set PWM_MAIN_REV2 1

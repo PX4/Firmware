@@ -38,6 +38,7 @@
 /************************************************************************************
  * Included Files
  ************************************************************************************/
+#include "board_dma_map.h"
 
 #include <nuttx/config.h>
 
@@ -242,20 +243,6 @@
 #  define STM32_SDMMC_SDXFR_CLKDIV      (2 << STM32_SDMMC_CLKCR_CLKDIV_SHIFT)
 #endif
 
-/* DMA Channel/Stream Selections *****************************************************/
-/* Stream selections are arbitrary for now but might become important in the future
- * if we set aside more DMA channels/streams.
- *
- * SDMMC RX and TX DMA is on DMA2
- *
- * SDMMC2 DMA
- *   DMAMAP_SDMMC2_1 = Channel 11, Stream 0
- *   DMAMAP_SDMMC2_2 = Channel 11, Stream 5 <- Free for other devices
- */
-
-#define DMAMAP_SDMMC2  DMAMAP_SDMMC2_1
-
-
 /* FLASH wait states
  *
  *  --------- ---------- -----------
@@ -355,17 +342,6 @@
  *      GPIO_UART8_TX                          PE1
  */
 
-/* U[x]ART DMA configurations */
-
-// #define DMAMAP_UART5_RX - DMA1, STREAM 0, Chan 4 - not remapable
-// #define DMAMAP_UART5_TX - DMA1, STREAM 7, Chan 4 - not remapable
-
-#define DMAMAP_USART6_RX DMAMAP_USART6_RX_1 /* DMA2, STREAM 1, Chan 5 */
-#define DMAMAP_USART6_TX DMAMAP_USART6_TX_2 /* DMA2, STREAM 7, Chan 5 */
-
-// #define DMAMAP_UART7_RX - DMA1, STREAM 3, Chan 5 - not remapable
-
-// #define DMAMAP_UART8_RX - DMA1, STREAM 6, Chan 5 - not remapable
 
 /* CAN
  *

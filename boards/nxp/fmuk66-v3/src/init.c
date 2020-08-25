@@ -74,6 +74,7 @@
 
 #include <systemlib/px4_macros.h>
 
+#include <px4_arch/io_timer.h>
 #include <px4_platform_common/init.h>
 #include <px4_platform/board_dma_alloc.h>
 
@@ -114,10 +115,12 @@ __END_DECLS
 
 void board_on_reset(int status)
 {
-	/* configure the GPIO pins to outputs and keep them low */
+	for (int i = 0; i < 6; ++i) {
+		px4_arch_configgpio(PX4_MAKE_GPIO_INPUT(io_timer_channel_get_as_pwm_input(i)));
+	}
 
-	const uint32_t gpio[] = PX4_GPIO_PWM_INIT_LIST;
-	px4_gpio_init(gpio, arraySize(gpio));
+	px4_arch_configgpio(io_timer_channel_get_gpio_output(6)); // Echo trigger pin
+	px4_arch_configgpio(PX4_MAKE_GPIO_INPUT(io_timer_channel_get_as_pwm_input(7)));
 
 	if (status >= 0) {
 		up_mdelay(6);

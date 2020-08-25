@@ -91,7 +91,7 @@ class VtolAttitudeControl : public ModuleBase<VtolAttitudeControl>, public px4::
 public:
 
 	VtolAttitudeControl();
-	~VtolAttitudeControl();
+	~VtolAttitudeControl() override;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -101,8 +101,6 @@ public:
 
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
-
-	void Run() override;
 
 	bool init();
 
@@ -129,6 +127,8 @@ public:
 	struct Params 					*get_params() {return &_params;}
 
 private:
+
+	void Run() override;
 
 	uORB::SubscriptionCallbackWorkItem _actuator_inputs_fw{this, ORB_ID(actuator_controls_virtual_fw)};
 	uORB::SubscriptionCallbackWorkItem _actuator_inputs_mc{this, ORB_ID(actuator_controls_virtual_mc)};
@@ -201,6 +201,8 @@ private:
 		param_t fw_motors_off;
 		param_t diff_thrust;
 		param_t diff_thrust_scale;
+		param_t down_pitch_max;
+		param_t forward_thrust_scale;
 	} _params_handles{};
 
 	/* for multicopters it is usual to have a non-zero idle speed of the engines

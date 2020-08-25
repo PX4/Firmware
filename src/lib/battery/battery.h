@@ -63,7 +63,9 @@
 class Battery : public ModuleParams
 {
 public:
-	Battery(int index = 1, ModuleParams *parent = nullptr);
+	Battery(int index, ModuleParams *parent);
+
+	~Battery();
 
 	/**
 	 * Reset all battery stats and report invalid/nothing.
@@ -96,25 +98,15 @@ public:
 	 * @param selected_source: This battery is on the brick that the selected source for selected_source
 	 * @param priority: The brick number -1. The term priority refers to the Vn connection on the LTC4417
 	 * @param throttle_normalized: Throttle of the vehicle, between 0 and 1
-	 * @param armed: Arming state of the vehicle
 	 * @param should_publish If True, this function published a battery_status uORB message.
 	 */
 	void updateBatteryStatus(hrt_abstime timestamp, float voltage_v, float current_a, bool connected,
-				 bool selected_source, int priority, float throttle_normalized, bool armed, bool should_publish);
+				 bool selected_source, int priority, float throttle_normalized, bool should_publish);
 
 	/**
 	 * Publishes the uORB battery_status message with the most recently-updated data.
 	 */
 	void publish();
-
-	/**
-	 * Some old functionality expects the primary battery to be published on instance 0. To maintain backwards
-	 * compatibility, this function allows the advertisements (and therefore instances) of 2 batteries to be swapped.
-	 * However, this should not be relied upon anywhere, and should be considered for all intents deprecated.
-	 *
-	 * The proper way to uniquely identify batteries is by the `id` field in the `battery_status` message.
-	 */
-	void swapUorbAdvert(Battery &other);
 
 protected:
 	struct {
@@ -200,19 +192,12 @@ protected:
 		if (!firstcall) {
 			if ((float) fabs((float) *old_val - (float) previous_old_val) > FLT_EPSILON
 			    && (float) fabs((float) *old_val - (float) *new_val) > FLT_EPSILON) {
-				// TODO fix this error message. I was getting hardfaults while using this message, but they stopped
-				//  after removing this message. I was unable to determine why I was getting them.
-				PX4_WARN("Detected change of deprecated parameter %s. Please use the new parameter %s instead. "
-					 "The new value of the deprecated parameter will be copied to the new parameter.",
-					 param_name(old_param), param_name(new_param));
 				param_set_no_notification(new_param, old_val);
 				param_get(new_param, new_val);
 				return true;
 
 			} else if ((float) fabs((float) *new_val - (float) previous_new_val) > FLT_EPSILON
 				   && (float) fabs((float) *old_val - (float) *new_val) > FLT_EPSILON) {
-				PX4_INFO("Copying new value for %s to deprecated parameter %s.",
-					 param_name(new_param), param_name(old_param));
 				param_set_no_notification(old_param, new_val);
 				param_get(old_param, old_val);
 				return true;
@@ -220,9 +205,6 @@ protected:
 
 		} else {
 			if ((float) fabs((float) *old_val - (float) *new_val) > FLT_EPSILON) {
-				PX4_WARN("At boot, deprecated parameter %s is different from its replacement %s."
-					 " The new value will be overwritten by the old one. This should happen only once.",
-					 param_name(old_param), param_name(new_param));
 				param_set_no_notification(new_param, old_val);
 				param_get(new_param, new_val);
 				return true;
@@ -237,7 +219,7 @@ private:
 	void filterThrottle(float throttle);
 	void filterCurrent(float current_a);
 	void sumDischarged(hrt_abstime timestamp, float current_a);
-	void estimateRemaining(float voltage_v, float current_a, float throttle, bool armed);
+	void estimateRemaining(float voltage_v, float current_a, float throttle);
 	void determineWarning(bool connected);
 	void computeScale();
 

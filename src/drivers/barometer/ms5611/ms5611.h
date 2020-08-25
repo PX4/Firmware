@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012-2013 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2012-2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,12 +43,8 @@
 
 #include <drivers/device/i2c.h>
 #include <drivers/device/device.h>
-#include <drivers/device/ringbuffer.h>
 #include <drivers/device/spi.h>
-#include <drivers/drv_baro.h>
 #include <lib/cdev/CDev.hpp>
-#include <lib/perf/perf_counter.h>
-#include <px4_platform_common/getopt.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <systemlib/err.h>
 #include <uORB/uORB.h>
@@ -94,7 +90,9 @@ extern bool crc4(uint16_t *n_prom);
 } /* namespace */
 
 /* interface factories */
-extern device::Device *MS5611_spi_interface(ms5611::prom_u &prom_buf, uint8_t busnum);
-extern device::Device *MS5611_i2c_interface(ms5611::prom_u &prom_buf, uint8_t busnum);
-extern device::Device *MS5611_sim_interface(ms5611::prom_u &prom_buf, uint8_t busnum);
-typedef device::Device *(*MS5611_constructor)(ms5611::prom_u &prom_buf, uint8_t busnum);
+extern device::Device *MS5611_spi_interface(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum, int bus_frequency,
+		spi_mode_e spi_mode);
+extern device::Device *MS5611_i2c_interface(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum,
+		int bus_frequency);
+
+typedef device::Device *(*MS5611_constructor)(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum);

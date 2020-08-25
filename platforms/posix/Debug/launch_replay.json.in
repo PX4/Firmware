@@ -1,0 +1,63 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "EKF2 replay",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "${workspaceFolder}/ROMFS/px4fmu_common",
+                "-s",
+                "etc/init.d-posix/rcS",
+                "-t",
+                "${workspaceFolder}/test_data"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.buildDirectory}/tmp",
+            "environment": [
+                {
+                    "name": "replay",
+                    "value": "${input:setReplayLog}"
+                },
+                {
+                    "name": "replay_mode",
+                    "value": "ekf2"
+                }
+            ],
+            "externalConsole": false,
+            "linux": {
+                "MIMode": "gdb",
+                "externalConsole": false,
+                "setupCommands": [
+                    {
+                        "description": "Enable pretty-printing for gdb",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    },
+                    {
+                        "description": "PX4 ignore wq signals",
+                        "text": "handle SIGCONT nostop noprint nopass",
+                        "ignoreFailures": true
+                    }
+                ]
+            },
+            "osx": {
+                "MIMode": "lldb",
+                "externalConsole": true,
+                "setupCommands": [
+                    {
+                        "text": "pro hand -p true -s false -n false SIGCONT",
+                    }
+                ]
+            }
+        },
+    ],
+    "inputs": [
+        {
+          "type": "promptString",
+          "id": "setReplayLog",
+          "description": "Input the path to ulog file",
+        }
+    ]
+}

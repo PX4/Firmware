@@ -52,7 +52,6 @@ public:
 	void reActivate() override;
 
 protected:
-
 	virtual void _updateSetpoints() override;
 
 	/** Reset position or velocity setpoints in case of EKF reset event */
@@ -66,7 +65,6 @@ protected:
 	)
 
 private:
-
 	void checkSetpoints(vehicle_local_position_setpoint_s &setpoints);
 
 	void _updateTrajConstraints();

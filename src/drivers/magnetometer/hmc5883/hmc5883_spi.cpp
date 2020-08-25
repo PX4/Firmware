@@ -44,8 +44,6 @@
 
 #include "hmc5883.h"
 
-#ifdef PX4_SPIDEV_HMC
-
 /* SPI protocol address bits */
 #define DIR_READ			(1<<7)
 #define DIR_WRITE			(0<<7)
@@ -54,12 +52,12 @@
 #define HMC_MAX_SEND_LEN		4
 #define HMC_MAX_RCV_LEN			8
 
-device::Device *HMC5883_SPI_interface(int bus);
+device::Device *HMC5883_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
 
 class HMC5883_SPI : public device::SPI
 {
 public:
-	HMC5883_SPI(int bus, uint32_t device);
+	HMC5883_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~HMC5883_SPI() = default;
 
 	virtual int	init();
@@ -71,13 +69,13 @@ public:
 };
 
 device::Device *
-HMC5883_SPI_interface(int bus)
+HMC5883_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new HMC5883_SPI(bus, PX4_SPIDEV_HMC);
+	return new HMC5883_SPI(bus, devid, bus_frequency, spi_mode);
 }
 
-HMC5883_SPI::HMC5883_SPI(int bus, uint32_t device) :
-	SPI("HMC5883_SPI", nullptr, bus, device, SPIDEV_MODE3, 11 * 1000 * 1000 /* will be rounded to 10.4 MHz */)
+HMC5883_SPI::HMC5883_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("HMC5883_SPI", nullptr, bus, device, spi_mode, bus_frequency)
 {
 	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_HMC5883;
 }
@@ -169,5 +167,3 @@ HMC5883_SPI::read(unsigned address, void *data, unsigned count)
 	memcpy(data, &buf[1], count);
 	return ret;
 }
-
-#endif /* PX4_SPIDEV_HMC */

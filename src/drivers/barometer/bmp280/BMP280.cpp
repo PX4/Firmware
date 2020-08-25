@@ -33,21 +33,20 @@
 
 #include "BMP280.hpp"
 
-BMP280::BMP280(bmp280::IBMP280 *interface) :
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id())),
+BMP280::BMP280(I2CSPIBusOption bus_option, int bus, bmp280::IBMP280 *interface) :
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus,
+		     interface->get_device_address()),
 	_px4_baro(interface->get_device_id()),
 	_interface(interface),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample")),
 	_measure_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": measure")),
 	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comms errors"))
 {
+	_px4_baro.set_device_type(DRV_BARO_DEVTYPE_BMP280);
 }
 
 BMP280::~BMP280()
 {
-	// make sure we are truly inactive
-	Stop();
-
 	// free perf counters
 	perf_free(_sample_perf);
 	perf_free(_measure_perf);
@@ -108,13 +107,7 @@ BMP280::Start()
 }
 
 void
-BMP280::Stop()
-{
-	ScheduleClear();
-}
-
-void
-BMP280::Run()
+BMP280::RunImpl()
 {
 	if (_collect_phase) {
 		collect();
@@ -193,8 +186,9 @@ BMP280::collect()
 }
 
 void
-BMP280::print_info()
+BMP280::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_measure_perf);
 	perf_print_counter(_comms_errors);

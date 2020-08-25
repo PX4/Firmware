@@ -32,16 +32,3 @@
 ############################################################################
 
 add_subdirectory(aerofc_adc)
-
-
-
-############################################################################
-# Upload
-############################################################################
-
-add_custom_target(upload
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/scripts/aero_upload.sh $<TARGET_FILE:px4>
-	DEPENDS px4
-	COMMENT "uploading px4"
-	USES_TERMINAL
-)

@@ -7,12 +7,16 @@
 # @type Rover
 # @class Rover
 #
+# @board px4_fmu-v2 exclude
+#
 # @output MAIN0 Speed of left wheels
 # @output MAIN1 Speed of right wheels
 #
 # @maintainer Timothy Scott
 #
 # @board px4_fmu-v2 exclude
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
 #
 
 sh /etc/init.d/rc.rover_defaults

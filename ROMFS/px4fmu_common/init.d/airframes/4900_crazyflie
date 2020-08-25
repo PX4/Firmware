@@ -2,6 +2,11 @@
 #
 # @name Crazyflie 2
 #
+# @type Quadrotor x
+# @class Copter
+#
+# @maintainer Dennis Shtatov <densht@gmail.com>
+#
 # @board px4_fmu-v2 exclude
 # @board px4_fmu-v3 exclude
 # @board px4_fmu-v4 exclude
@@ -10,14 +15,9 @@
 # @board px4_fmu-v5x exclude
 # @board intel_aerofc-v1 exclude
 #
-# @type Quadrotor x
-# @class Copter
-#
-# @maintainer Dennis Shtatov <densht@gmail.com>
-#
 sh /etc/init.d/rc.mc_defaults
 
-set MIXER quad_x
+set MIXER quad_x_cw
 set PWM_OUT 1234
 if [ $AUTOCNF = yes ]
 then
@@ -39,7 +39,7 @@ then
 	param set IMU_ACCEL_CUTOFF 30
 
 	param set MC_AIRMODE 1
-	param set MC_DTERM_CUTOFF 70
+	param set IMU_DGYRO_CUTOFF 70
 	param set MC_PITCHRATE_D 0.002
 	param set MC_PITCHRATE_I 0.2
 	param set MC_PITCHRATE_P 0.07

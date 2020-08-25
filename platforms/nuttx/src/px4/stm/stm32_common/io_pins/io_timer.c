@@ -31,8 +31,10 @@
  *
  ****************************************************************************/
 
-/*
- * @file drv_io_timer.c
+/**
+ * @file io_timer.c
+ *
+ * Servo driver supporting PWM servos connected to STM32 timer blocks.
  */
 
 #include <px4_platform_common/px4_config.h>
@@ -58,6 +60,16 @@
 
 #include <stm32_gpio.h>
 #include <stm32_tim.h>
+
+
+static int io_timer_handler0(int irq, void *context, void *arg);
+static int io_timer_handler1(int irq, void *context, void *arg);
+static int io_timer_handler2(int irq, void *context, void *arg);
+static int io_timer_handler3(int irq, void *context, void *arg);
+static int io_timer_handler4(int irq, void *context, void *arg);
+static int io_timer_handler5(int irq, void *context, void *arg);
+static int io_timer_handler6(int irq, void *context, void *arg);
+static int io_timer_handler7(int irq, void *context, void *arg);
 
 #if defined(HAVE_GTIM_CCXNP)
 #define HW_GTIM_CCER_CC1NP GTIM_CCER_CC1NP
@@ -138,7 +150,7 @@
 #define TIM_DMABURSTLENGTH_4TRANSFERS	0x00000300U
 
 //												 				  NotUsed   PWMOut  PWMIn Capture OneShot Trigger Dshot
-io_timer_channel_allocation_t channel_allocations[IOTimerChanModeSize] = { UINT8_MAX,   0,  0,  0, 0, 0, 0 };
+io_timer_channel_allocation_t channel_allocations[IOTimerChanModeSize] = { UINT16_MAX,   0,  0,  0, 0, 0, 0 };
 
 typedef uint8_t io_timer_allocation_t; /* big enough to hold MAX_IO_TIMERS */
 
@@ -182,7 +194,10 @@ static int io_timer_handler(uint16_t timer_index)
 
 	/* Iterate over the timer_io_channels table */
 
-	for (unsigned chan_index = tmr->first_channel_index; chan_index <= tmr->last_channel_index; chan_index++) {
+	uint32_t first_channel_index = io_timers_channel_mapping.element[timer_index].first_channel_index;
+	uint32_t last_channel_index = first_channel_index + io_timers_channel_mapping.element[timer_index].channel_count;
+
+	for (unsigned chan_index = first_channel_index; chan_index < last_channel_index; chan_index++) {
 
 		uint16_t masks = timer_io_channels[chan_index].masks;
 
@@ -222,32 +237,42 @@ static int io_timer_handler(uint16_t timer_index)
 
 int io_timer_handler0(int irq, void *context, void *arg)
 {
-
 	return io_timer_handler(0);
 }
 
 int io_timer_handler1(int irq, void *context, void *arg)
 {
 	return io_timer_handler(1);
-
 }
 
 int io_timer_handler2(int irq, void *context, void *arg)
 {
 	return io_timer_handler(2);
-
 }
 
 int io_timer_handler3(int irq, void *context, void *arg)
 {
 	return io_timer_handler(3);
-
 }
 
 int io_timer_handler4(int irq, void *context, void *arg)
 {
 	return io_timer_handler(4);
+}
 
+int io_timer_handler5(int irq, void *context, void *arg)
+{
+	return io_timer_handler(5);
+}
+
+int io_timer_handler6(int irq, void *context, void *arg)
+{
+	return io_timer_handler(6);
+}
+
+int io_timer_handler7(int irq, void *context, void *arg)
+{
+	return io_timer_handler(7);
 }
 
 static inline int validate_timer_index(unsigned timer)
@@ -281,17 +306,6 @@ static inline int channels_timer(unsigned channel)
 	return timer_io_channels[channel].timer_index;
 }
 
-static inline int get_timers_firstchannels(unsigned timer)
-{
-	int channel = -1;
-
-	if (validate_timer_index(timer) == 0) {
-		channel = timer_io_channels[io_timers[timer].first_channel_index].timer_channel;
-	}
-
-	return channel;
-}
-
 static uint32_t get_timer_channels(unsigned timer)
 {
 	uint32_t channels = 0;
@@ -302,11 +316,12 @@ static uint32_t get_timer_channels(unsigned timer)
 
 	} else {
 		if (channels_cache[timer] == 0) {
-			const io_timers_t *tmr = &io_timers[timer];
-
 			/* Gather the channel bits that belong to the timer */
 
-			for (unsigned chan_index = tmr->first_channel_index; chan_index <= tmr->last_channel_index; chan_index++) {
+			uint32_t first_channel_index = io_timers_channel_mapping.element[timer].first_channel_index;
+			uint32_t last_channel_index = first_channel_index + io_timers_channel_mapping.element[timer].channel_count;
+
+			for (unsigned chan_index = first_channel_index; chan_index < last_channel_index; chan_index++) {
 				channels |= 1 << chan_index;
 			}
 
@@ -355,6 +370,30 @@ int io_timer_validate_channel_index(unsigned channel)
 	}
 
 	return rv;
+}
+
+uint32_t io_timer_channel_get_gpio_output(unsigned channel)
+{
+	if (io_timer_validate_channel_index(channel) != 0) {
+		return 0;
+	}
+
+#ifdef CONFIG_STM32_STM32F10XX
+	return (timer_io_channels[channel].gpio_out & (GPIO_PORT_MASK | GPIO_PIN_MASK)) |
+	       (GPIO_OUTPUT | GPIO_CNF_OUTPP | GPIO_MODE_50MHz | GPIO_OUTPUT_CLEAR);
+#else
+	return (timer_io_channels[channel].gpio_out & (GPIO_PORT_MASK | GPIO_PIN_MASK)) |
+	       (GPIO_OUTPUT | GPIO_PUSHPULL | GPIO_SPEED_2MHz | GPIO_OUTPUT_CLEAR);
+#endif
+}
+
+uint32_t io_timer_channel_get_as_pwm_input(unsigned channel)
+{
+	if (io_timer_validate_channel_index(channel) != 0) {
+		return 0;
+	}
+
+	return timer_io_channels[channel].gpio_in;
 }
 
 int io_timer_get_mode_channels(io_timer_channel_mode_t mode)
@@ -527,7 +566,31 @@ int io_timer_set_dshot_mode(uint8_t timer, unsigned dshot_pwm_freq, uint8_t dma_
 		rARR(timer)  = DSHOT_MOTOR_PWM_BIT_WIDTH;
 		rPSC(timer)  = ((int)(io_timers[timer].clock_freq / dshot_pwm_freq) / DSHOT_MOTOR_PWM_BIT_WIDTH) - 1;
 		rEGR(timer)  = ATIM_EGR_UG;
-		rDCR(timer)  = (io_timers[timer].dshot.start_ccr_register | tim_dma_burst_length);
+
+		// find the lowest channel index for the timer (they are not necesarily in ascending order)
+		unsigned lowest_timer_channel = 4;
+		uint32_t first_channel_index = io_timers_channel_mapping.element[timer].first_channel_index;
+		uint32_t last_channel_index = first_channel_index + io_timers_channel_mapping.element[timer].channel_count;
+
+		for (unsigned chan_index = first_channel_index; chan_index < last_channel_index; chan_index++) {
+			if (timer_io_channels[chan_index].timer_channel < lowest_timer_channel) {
+				lowest_timer_channel = timer_io_channels[chan_index].timer_channel;
+			}
+		}
+
+		uint32_t start_ccr_register = 0;
+
+		switch (lowest_timer_channel) {
+		case 1: start_ccr_register = TIM_DMABASE_CCR1; break;
+
+		case 2: start_ccr_register = TIM_DMABASE_CCR2; break;
+
+		case 3: start_ccr_register = TIM_DMABASE_CCR3; break;
+
+		case 4: start_ccr_register = TIM_DMABASE_CCR4; break;
+		}
+
+		rDCR(timer)  = start_ccr_register | tim_dma_burst_length;
 	}
 
 	return ret_val;
@@ -621,10 +684,35 @@ int io_timer_init_timer(unsigned timer)
 		 * Note that the timer is left disabled with IRQ subs installed
 		 * and active but DEIR bits are not set.
 		 */
+		xcpt_t handler;
 
-		irq_attach(io_timers[timer].vectorno, io_timers[timer].handler, NULL);
+		switch (timer) {
+		case 0: handler = io_timer_handler0; break;
 
-		up_enable_irq(io_timers[timer].vectorno);
+		case 1: handler = io_timer_handler1; break;
+
+		case 2: handler = io_timer_handler2; break;
+
+		case 3: handler = io_timer_handler3; break;
+
+		case 4: handler = io_timer_handler4; break;
+
+		case 5: handler = io_timer_handler5; break;
+
+		case 6: handler = io_timer_handler6; break;
+
+		case 7: handler = io_timer_handler7; break;
+
+		default:
+			handler = NULL;
+			rv = -EINVAL;
+			break;
+		}
+
+		if (handler) {
+			irq_attach(io_timers[timer].vectorno, handler, NULL);
+			up_enable_irq(io_timers[timer].vectorno);
+		}
 
 		px4_leave_critical_section(flags);
 	}

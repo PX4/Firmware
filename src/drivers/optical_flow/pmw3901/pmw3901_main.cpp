@@ -32,159 +32,77 @@
  ****************************************************************************/
 
 #include "PMW3901.hpp"
+#include <px4_platform_common/module.h>
 
-/*
- * Driver 'main' command.
- */
 extern "C" __EXPORT int pmw3901_main(int argc, char *argv[]);
 
-/**
- * Local functions in support of the shell command.
- */
-namespace pmw3901
-{
-
-PMW3901	*g_dev;
-
-void	start(int spi_bus);
-void	stop();
-void	test();
-void	reset();
-void	info();
-void	usage();
-
-/**
- * Start the driver.
- */
 void
-start(int spi_bus)
+PMW3901::print_usage()
 {
-	if (g_dev != nullptr) {
-		errx(1, "already started");
-	}
-
-	/* create the driver */
-	g_dev = new PMW3901(spi_bus, (enum Rotation)0);
-
-	if (g_dev == nullptr) {
-		goto fail;
-	}
-
-	if (OK != g_dev->init()) {
-		goto fail;
-	}
-
-	exit(0);
-
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	errx(1, "driver start failed");
+	PRINT_MODULE_USAGE_NAME("pmw3901", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-/**
- * Stop the driver
- */
-void stop()
+I2CSPIDriverBase *PMW3901::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
+	PMW3901 *instance = new PMW3901(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
+					cli.bus_frequency, cli.spi_mode);
 
-	} else {
-		errx(1, "driver not running");
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	exit(0);
-}
-
-/**
- * Print a little info about the driver.
- */
-void
-info()
-{
-	if (g_dev == nullptr) {
-		errx(1, "driver not running");
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
 	}
 
-	printf("state @ %p\n", g_dev);
-	g_dev->print_info();
-
-	exit(0);
+	return instance;
 }
-
-/**
- * Print a little info about how to start/stop/use the driver
- */
-void usage()
-{
-	PX4_INFO("usage: pmw3901 {start|test|reset|info'}");
-	PX4_INFO("    [-b SPI_BUS]");
-}
-
-} // namespace pmw3901
-
 
 int
 pmw3901_main(int argc, char *argv[])
 {
-	if (argc < 2) {
-		pmw3901::usage();
-		return PX4_ERROR;
-	}
-
-	// don't exit from getopt loop to leave getopt global variables in consistent state,
-	// set error flag instead
-	bool err_flag = false;
 	int ch;
-	int myoptind = 1;
-	const char *myoptarg = nullptr;
-	int spi_bus = PMW3901_BUS;
+	using ThisDriver = PMW3901;
+	BusCLIArguments cli{false, true};
+	cli.spi_mode = SPIDEV_MODE0;
+	cli.default_spi_frequency = PMW3901_SPI_BUS_SPEED;
 
-	while ((ch = px4_getopt(argc, argv, "b:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'b':
-			spi_bus = (uint8_t)atoi(myoptarg);
-
-			break;
-
-		default:
-			err_flag = true;
+		case 'R':
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
 		}
 	}
 
-	if (err_flag) {
-		pmw3901::usage();
-		return PX4_ERROR;
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(argv[myoptind], "start")) {
-		pmw3901::start(spi_bus);
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_FLOW_DEVTYPE_PMW3901);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Stop the driver
-	 */
-	if (!strcmp(argv[myoptind], "stop")) {
-		pmw3901::stop();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(argv[myoptind], "info") || !strcmp(argv[myoptind], "status")) {
-		pmw3901::info();
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	pmw3901::usage();
-	return PX4_ERROR;
+	ThisDriver::print_usage();
+	return -1;
 }

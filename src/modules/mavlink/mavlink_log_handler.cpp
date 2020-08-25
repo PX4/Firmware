@@ -349,6 +349,10 @@ LogListHelper::LogListHelper()
 //-------------------------------------------------------------------
 LogListHelper::~LogListHelper()
 {
+	if (current_log_filep) {
+		::fclose(current_log_filep);
+	}
+
 	// Remove log data files (if any)
 	unlink(kLogData);
 	unlink(kTmpData);

@@ -234,6 +234,7 @@ class CanDriver : public uavcan::ICanDriver, uavcan::Noncopyable
 #if UAVCAN_STM32_NUM_IFACES > 1
 	CanIface if1_;
 #endif
+	uint32_t enabledInterfaces_;
 
 	virtual uavcan::int16_t select(uavcan::CanSelectMasks &inout_masks,
 				       const uavcan::CanFrame * (& pending_tx)[uavcan::MaxCanIfaces],
@@ -249,6 +250,7 @@ public:
 #if UAVCAN_STM32_NUM_IFACES > 1
 		, if1_(bxcan::Can[1], update_event_, 1, rx_queue_storage[1], RxQueueCapacity)
 #endif
+		, enabledInterfaces_(0x7)
 	{
 		uavcan::StaticAssert < (RxQueueCapacity <= CanIface::MaxRxQueueCapacity) >::check();
 	}
@@ -267,7 +269,7 @@ public:
 	 * Returns zero if OK.
 	 * Returns negative value if failed (e.g. invalid bitrate).
 	 */
-	int init(const uavcan::uint32_t bitrate, const CanIface::OperatingMode mode);
+	int init(const uavcan::uint32_t bitrate, const CanIface::OperatingMode mode, const uavcan::uint32_t EnabledInterfaces);
 
 	virtual CanIface *getIface(uavcan::uint8_t iface_index);
 
@@ -296,9 +298,11 @@ public:
 	enum { BitRateAutoDetect = 0 };
 
 	CanDriver driver;
+	uint32_t enabledInterfaces_;
 
-	CanInitHelper() :
-		driver(queue_storage_)
+	CanInitHelper(const uavcan::uint32_t EnabledInterfaces = 0x7) :
+		driver(queue_storage_),
+		enabledInterfaces_(EnabledInterfaces)
 	{ }
 
 	/**
@@ -309,7 +313,7 @@ public:
 	 */
 	int init(uavcan::uint32_t bitrate)
 	{
-		return driver.init(bitrate, CanIface::NormalMode);
+		return driver.init(bitrate, CanIface::NormalMode, enabledInterfaces_);
 	}
 
 	/**
@@ -330,7 +334,7 @@ public:
 	int init(DelayCallable delay_callable, uavcan::uint32_t &inout_bitrate = BitRateAutoDetect)
 	{
 		if (inout_bitrate > 0) {
-			return driver.init(inout_bitrate, CanIface::NormalMode);
+			return driver.init(inout_bitrate, CanIface::NormalMode, enabledInterfaces_);
 
 		} else {
 			static const uavcan::uint32_t StandardBitRates[] = {
@@ -343,7 +347,7 @@ public:
 			for (uavcan::uint8_t br = 0; br < sizeof(StandardBitRates) / sizeof(StandardBitRates[0]); br++) {
 				inout_bitrate = StandardBitRates[br];
 
-				const int res = driver.init(inout_bitrate, CanIface::SilentMode);
+				const int res = driver.init(inout_bitrate, CanIface::SilentMode, enabledInterfaces_);
 
 				delay_callable();
 
@@ -351,7 +355,7 @@ public:
 					for (uavcan::uint8_t iface = 0; iface < driver.getNumIfaces(); iface++) {
 						if (!driver.getIface(iface)->isRxBufferEmpty()) {
 							// Re-initializing in normal mode
-							return driver.init(inout_bitrate, CanIface::NormalMode);
+							return driver.init(inout_bitrate, CanIface::NormalMode, enabledInterfaces_);
 						}
 					}
 				}

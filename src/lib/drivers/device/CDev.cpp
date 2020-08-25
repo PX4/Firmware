@@ -53,10 +53,9 @@ CDev::CDev(const char *name, const char *devname) :
 {
 }
 
-int
-CDev::init()
+int CDev::init()
 {
-	DEVICE_DEBUG("CDev::init");
+	PX4_DEBUG("CDev::init");
 
 	// base class init first
 	int ret = Device::init();
@@ -78,29 +77,12 @@ out:
 	return ret;
 }
 
-int
-CDev::ioctl(file_t *filep, int cmd, unsigned long arg)
+int CDev::ioctl(file_t *filep, int cmd, unsigned long arg)
 {
-	DEVICE_DEBUG("CDev::ioctl");
+	PX4_DEBUG("CDev::ioctl");
 	int ret = -ENOTTY;
 
 	switch (cmd) {
-
-	/* fetch a pointer to the driver's private data */
-	case DIOC_GETPRIV:
-		*(void **)(uintptr_t)arg = (void *)this;
-		ret = PX4_OK;
-		break;
-
-	case DEVIOCSPUBBLOCK:
-		_pub_blocked = (arg != 0);
-		ret = PX4_OK;
-		break;
-
-	case DEVIOCGPUBBLOCK:
-		ret = _pub_blocked;
-		break;
-
 	case DEVIOCGDEVICEID:
 		ret = (int)_device_id.devid;
 		break;

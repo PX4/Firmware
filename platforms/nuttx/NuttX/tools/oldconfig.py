@@ -25,12 +25,9 @@ from __future__ import print_function
 
 import sys
 
+from six.moves import input
+
 from kconfiglib import Symbol, Choice, BOOL, TRISTATE, HEX, standard_kconfig
-
-
-# Python 2/3 compatibility hack
-if sys.version_info[0] < 3:
-    input = raw_input
 
 
 # Note: Used as the entry point in setup.py

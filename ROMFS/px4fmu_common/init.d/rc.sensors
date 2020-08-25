@@ -24,7 +24,8 @@ if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
 then
 	if param compare CBRK_AIRSPD_CHK 0
 	then
-		sdp3x_airspeed start -a
+		sdp3x_airspeed start -X
+		sdp3x_airspeed start -X -a 0x22
 
 		# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
 		# detected as MS5525 because the chip manufacturer was so
@@ -32,14 +33,14 @@ then
 		# register.
 		if [ $BOARD_FMUV3 = 21 ]
 		then
-			ms5525_airspeed start -b 2
+			ms5525_airspeed start -X -b 2
 		else
-			ms5525_airspeed start -a
+			ms5525_airspeed start -X
 		fi
 
-		ms4525_airspeed start -a
+		ms4525_airspeed start -X
 
-		ets_airspeed start -a
+		ets_airspeed start -X
 
 	fi
 fi
@@ -54,26 +55,32 @@ if param compare -s SENS_EN_LL40LS 1
 then
 	if pwm_input start
 	then
-		ll40ls start pwm
+		ll40ls_pwm start
 	fi
+fi
+
+# External automatic trigger system
+if param compare FD_EXT_ATS_EN 1
+then
+	pwm_input start
 fi
 
 # Lidar-Lite on I2C
 if param compare -s SENS_EN_LL40LS 2
 then
-	ll40ls start i2c -a
+	ll40ls start -X
 fi
 
 # mappydot lidar sensor
 if param compare -s SENS_EN_MPDT 1
 then
-	mappydot start -a
+	mappydot start -X
 fi
 
 # mb12xx sonar sensor
 if param greater -s SENS_EN_MB12XX 0
 then
-	mb12xx start -a
+	mb12xx start -X
 fi
 
 # pga460 sonar sensor
@@ -85,7 +92,7 @@ fi
 # Lightware i2c lidar sensor
 if param greater -s SENS_EN_SF1XX 0
 then
-	sf1xx start -a
+	sf1xx start -X
 fi
 
 # Heater driver for temperature regulated IMUs.
@@ -97,13 +104,13 @@ fi
 # Teraranger one tof sensor
 if param greater -s SENS_EN_TRANGER 0
 then
-	teraranger start -a
+	teraranger start -X
 fi
 
-# Possible pmw3901 optical flow sensor
+# Possible external pmw3901 optical flow sensor
 if param greater -s SENS_EN_PMW3901 0
 then
-	pmw3901 start
+	pmw3901 -S start
 fi
 
 ###############################################################################

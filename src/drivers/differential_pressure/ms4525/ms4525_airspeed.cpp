@@ -51,6 +51,8 @@
 
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <uORB/topics/system_power.h>
 
 #include <drivers/airspeed/airspeed.h>
@@ -63,7 +65,6 @@ enum MS_DEVICE_TYPE {
 /* I2C bus address is 1010001x */
 #define I2C_ADDRESS_MS4515DO	0x46
 #define I2C_ADDRESS_MS4525DO	0x28	/**< 7-bit address. Depends on the order code (this is for code "I") */
-#define PATH_MS4525		"/dev/ms4525"
 
 /* Register address */
 #define ADDR_READ_MR			0x00	/* write to this address to start conversion */
@@ -74,18 +75,21 @@ enum MS_DEVICE_TYPE {
 #define CONVERSION_INTERVAL	(1000000 / MEAS_RATE)	/* microseconds */
 
 
-class MEASAirspeed : public Airspeed
+class MEASAirspeed : public Airspeed, public I2CSPIDriver<MEASAirspeed>
 {
 public:
-	MEASAirspeed(int bus, int address = I2C_ADDRESS_MS4525DO, const char *path = PATH_MS4525);
+	MEASAirspeed(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address = I2C_ADDRESS_MS4525DO);
+
+	virtual ~MEASAirspeed() = default;
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void	RunImpl();
 
 protected:
 
-	/**
-	* Perform a poll cycle; collect from the previous measurement
-	* and start a new one.
-	*/
-	void	Run() override;
 	int	measure() override;
 	int	collect() override;
 
@@ -105,7 +109,9 @@ protected:
  */
 extern "C" __EXPORT int ms4525_airspeed_main(int argc, char *argv[]);
 
-MEASAirspeed::MEASAirspeed(int bus, int address, const char *path) : Airspeed(bus, address, CONVERSION_INTERVAL, path)
+MEASAirspeed::MEASAirspeed(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address)
+	: Airspeed(bus, bus_frequency, address, CONVERSION_INTERVAL),
+	  I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
 	_device_id.devid_s.devtype = DRV_DIFF_PRESS_DEVTYPE_MS4525;
 }
@@ -221,7 +227,7 @@ MEASAirspeed::collect()
 }
 
 void
-MEASAirspeed::Run()
+MEASAirspeed::RunImpl()
 {
 	int ret;
 
@@ -233,8 +239,9 @@ MEASAirspeed::Run()
 
 		if (OK != ret) {
 			/* restart the measurement state machine */
-			start();
+			_collect_phase = false;
 			_sensor_ok = false;
+			ScheduleNow();
 			return;
 		}
 
@@ -336,216 +343,83 @@ MEASAirspeed::voltage_correction(float &diff_press_pa, float &temperature)
 #endif // defined(ADC_SCALED_V5_SENSE)
 }
 
-/**
- * Local functions in support of the shell command.
- */
-namespace meas_airspeed
+I2CSPIDriverBase *MEASAirspeed::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+		int runtime_instance)
 {
+	MEASAirspeed *instance = new MEASAirspeed(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency,
+			cli.i2c_address);
 
-MEASAirspeed	*g_dev = nullptr;
-
-int start();
-int start_bus(int i2c_bus, int address);
-int stop();
-int reset();
-
-/**
-* Attempt to start driver on all available I2C busses.
-*
-* This function will return as soon as the first sensor
-* is detected on one of the available busses or if no
-* sensors are detected.
-*
-*/
-int
-start()
-{
-	for (unsigned i = 0; i < NUM_I2C_BUS_OPTIONS; i++) {
-		if (start_bus(i2c_bus_options[i], I2C_ADDRESS_MS4525DO) == PX4_OK) {
-			return PX4_OK;
-		}
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	return PX4_ERROR;
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
 
+	instance->ScheduleNow();
+	return instance;
 }
 
-/**
- * Start the driver on a specific bus.
- *
- * This function call only returns once the driver is up and running
- * or failed to detect the sensor.
- */
-int
-start_bus(int i2c_bus, int address)
+
+void
+MEASAirspeed::print_usage()
 {
-	int fd;
-
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_ERROR;
-	}
-
-	/* create the driver, try the MS4525DO first */
-	g_dev = new MEASAirspeed(i2c_bus, address, PATH_MS4525);
-
-	/* check if the MS4525DO was instantiated */
-	if (g_dev == nullptr) {
-		goto fail;
-	}
-
-	if (OK != g_dev->init()) {
-		goto fail;
-	}
-
-	/* set the poll rate to default, starts automatic data collection */
-	fd = px4_open(PATH_MS4525, O_RDONLY);
-
-	if (fd < 0) {
-		goto fail;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		goto fail;
-	}
-
-	return PX4_OK;
-
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	return PX4_ERROR;
-}
-
-/**
- * Stop the driver
- */
-int
-stop()
-{
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-
-	} else {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-/**
- * Reset the driver.
- */
-int
-reset()
-{
-	int fd = px4_open(PATH_MS4525, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("failed");
-		return PX4_ERROR;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCRESET, 0) < 0) {
-		PX4_ERR("driver reset failed");
-		return PX4_ERROR;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		PX4_ERR("driver poll restart failed");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-} // namespace
-
-
-static void
-meas_airspeed_usage()
-{
-	PX4_INFO("usage: ms4525 command [options]");
-	PX4_INFO("options:");
-	PX4_INFO("\t-b --bus i2cbus (%d)", PX4_I2C_BUS_DEFAULT);
-	PX4_INFO("\t-a --all");
-	PX4_INFO("command:");
-	PX4_INFO("\tstart|stop|reset");
+	PRINT_MODULE_USAGE_NAME("ms4525_airspeed", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAM_STRING('T', "4525", "4525|4515", "Device type", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
 int
 ms4525_airspeed_main(int argc, char *argv[])
 {
-	int i2c_bus = PX4_I2C_BUS_DEFAULT;
-
-	int myoptind = 1;
 	int ch;
-	const char *myoptarg = nullptr;
-
+	using ThisDriver = MEASAirspeed;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 100000;
 	int device_type = DEVICE_TYPE_MS4525;
 
-	bool start_all = false;
-
-	while ((ch = px4_getopt(argc, argv, "ab:T:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "T:")) != EOF) {
 		switch (ch) {
-		case 'b':
-			i2c_bus = atoi(myoptarg);
-			break;
-
-		case 'a':
-			start_all = true;
-			break;
-
 		case 'T':
-			device_type = atoi(myoptarg);
+			device_type = atoi(cli.optarg());
 			break;
-
-		default:
-			meas_airspeed_usage();
-			return 0;
 		}
 	}
 
-	if (myoptind >= argc) {
-		meas_airspeed_usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
 		return -1;
 	}
 
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(argv[myoptind], "start")) {
-		if (start_all) {
-			return meas_airspeed::start();
+	if (device_type == DEVICE_TYPE_MS4525) {
+		cli.i2c_address = I2C_ADDRESS_MS4525DO;
 
-		} else if (device_type == DEVICE_TYPE_MS4515) {
-			return meas_airspeed::start_bus(i2c_bus, I2C_ADDRESS_MS4515DO);
-
-		} else if (device_type == DEVICE_TYPE_MS4525) {
-			return meas_airspeed::start_bus(i2c_bus, I2C_ADDRESS_MS4525DO);
-		}
+	} else {
+		cli.i2c_address = I2C_ADDRESS_MS4515DO;
 	}
 
-	/*
-	 * Stop the driver
-	 */
-	if (!strcmp(argv[myoptind], "stop")) {
-		return meas_airspeed::stop();
+	BusInstanceIterator iterator(MODULE_NAME, cli,
+				     DRV_DIFF_PRESS_DEVTYPE_MS4525);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Reset the driver.
-	 */
-	if (!strcmp(argv[myoptind], "reset")) {
-		return meas_airspeed::reset();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	meas_airspeed_usage();
-	return 0;
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

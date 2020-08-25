@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,60 +37,88 @@ set(LIBUAVCAN_DIR_DRIVERS ${PX4_SOURCE_DIR}/src/drivers/uavcan/uavcan_drivers)
 px4_add_git_submodule(TARGET git_uavcan PATH ${LIBUAVCAN_DIR})
 
 set(UAVCAN_USE_CPP03 ON CACHE BOOL "uavcan cpp03")
-set(UAVCAN_PLATFORM generic CACHE STRING "uavcan platform")
+set(UAVCAN_PLATFORM "generic")
+
+if(CONFIG_ARCH_CHIP)
+	if(${CONFIG_ARCH_CHIP} MATCHES "kinetis")
+		set(UAVCAN_DRIVER "kinetis")
+		set(UAVCAN_TIMER 1)
+	elseif(${CONFIG_ARCH_CHIP} MATCHES "stm32")
+		set(UAVCAN_DRIVER "stm32")
+		set(UAVCAN_TIMER 5) # The default timer the 5
+	endif()
+endif()
+
+if(NOT DEFINED UAVCAN_DRIVER)
+	message(FATAL_ERROR "UAVCAN_DRIVER not set")
+endif()
+
+if(NOT config_uavcan_num_ifaces)
+	message(FATAL_ERROR "config_uavcan_num_ifaces not set")
+endif()
 
 string(TOUPPER "${PX4_PLATFORM}" OS_UPPER)
+string(TOUPPER "${UAVCAN_DRIVER}" UAVCAN_DRIVER_UPPER)
 add_definitions(
-		-DUAVCAN_CPP_VERSION=UAVCAN_CPP03
-		-DUAVCAN_MAX_NETWORK_SIZE_HINT=16
-		-DUAVCAN_MEM_POOL_BLOCK_SIZE=48
-		-DUAVCAN_NO_ASSERTIONS
-		-DUAVCAN_PLATFORM=generic
-		-DUAVCAN_STM32_${OS_UPPER}=1
-		-DUAVCAN_STM32_NUM_IFACES=1
-		-DUAVCAN_STM32_TIMER_NUMBER=2
-		-DUAVCAN_USE_CPP03=ON
-		-DUAVCAN_USE_EXTERNAL_SNPRINT
-		)
+	-DUAVCAN_${UAVCAN_DRIVER_UPPER}_${OS_UPPER}=1
+	-DUAVCAN_${UAVCAN_DRIVER_UPPER}_NUM_IFACES=${config_uavcan_num_ifaces}
+	-DUAVCAN_${UAVCAN_DRIVER_UPPER}_TIMER_NUMBER=${UAVCAN_TIMER}
+	-DUAVCAN_CPP_VERSION=UAVCAN_CPP03
+	-DUAVCAN_DRIVER=uavcan_${UAVCAN_DRIVER}
+	-DUAVCAN_IMPLEMENT_PLACEMENT_NEW=1
+	-DUAVCAN_MEM_POOL_BLOCK_SIZE=48
+	-DUAVCAN_NO_ASSERTIONS
+	-DUAVCAN_PLATFORM=${UAVCAN_PLATFORM}
+)
 
 add_compile_options(-Wno-cast-align) # TODO: fix and enable
-add_subdirectory(${LIBUAVCAN_DIR} uavcannode_libuavcan)
-add_subdirectory(${LIBUAVCAN_DIR_DRIVERS}/stm32/driver uavcanesc_uavcan_drivers)
-target_include_directories(uavcan_stm32_driver PUBLIC
-	${LIBUAVCAN_DIR}/libuavcan/include
-	${LIBUAVCAN_DIR}/libuavcan/include/dsdlc_generated
-	)
+add_subdirectory(${LIBUAVCAN_DIR} libuavcan EXCLUDE_FROM_ALL)
 add_dependencies(uavcan prebuild_targets)
 
+# driver
+add_subdirectory(${LIBUAVCAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver libuavcan_drivers EXCLUDE_FROM_ALL)
+target_include_directories(uavcan_${UAVCAN_DRIVER}_driver PUBLIC
+	${LIBUAVCAN_DIR}/libuavcan/include
+	${LIBUAVCAN_DIR}/libuavcan/include/dsdlc_generated
+)
+
+
+# generated DSDL
+set(DSDLC_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/com" "${LIBUAVCAN_DIR}/dsdl/uavcan")
+set(DSDLC_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/dsdlc_generated")
+
+set(DSDLC_INPUT_FILES)
+foreach(DSDLC_INPUT ${DSDLC_INPUTS})
+	file(GLOB_RECURSE DSDLC_NEW_INPUT_FILES ${CMAKE_CURRENT_SOURCE_DIR} "${DSDLC_INPUT}/*.uavcan")
+	list(APPEND DSDLC_INPUT_FILES ${DSDLC_NEW_INPUT_FILES})
+endforeach(DSDLC_INPUT)
+add_custom_command(OUTPUT px4_uavcan_dsdlc_run.stamp
+	COMMAND ${PYTHON} ${LIBUAVCAN_DIR}/libuavcan/dsdl_compiler/libuavcan_dsdlc ${DSDLC_INPUTS} -O${DSDLC_OUTPUT}
+	COMMAND ${CMAKE_COMMAND} -E touch px4_uavcan_dsdlc_run.stamp
+	DEPENDS ${DSDLC_INPUT_FILES}
+	COMMENT "PX4 UAVCAN dsdl compiler"
+)
+add_custom_target(px4_uavcan_dsdlc DEPENDS px4_uavcan_dsdlc_run.stamp)
+
 px4_add_module(
-	MODULE modules__uavcannode
+	MODULE drivers__uavcannode
 	MAIN uavcannode
-	STACK_MAIN 1048
 	INCLUDES
+		${DSDLC_OUTPUT}
 		${LIBUAVCAN_DIR}/libuavcan/include
 		${LIBUAVCAN_DIR}/libuavcan/include/dsdlc_generated
 		${LIBUAVCAN_DIR}/libuavcan_drivers/posix/include
-		${LIBUAVCAN_DIR_DRIVERS}/stm32/driver/include
-	COMPILE_FLAGS
-		-Wframe-larger-than=1500
-		-Wno-deprecated-declarations
-		-O3
+		${LIBUAVCAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/include
 	SRCS
-		uavcannode_main.cpp
-		indication_controller.cpp
-		sim_controller.cpp
-		led.cpp
-		resources.cpp
+		allocator.hpp
+		uavcan_driver.hpp
+		UavcanNode.cpp
+		UavcanNode.hpp
 	DEPENDS
+		px4_uavcan_dsdlc
 		drivers_bootloaders
-		git_uavcan
 		version
-
-		uavcan_stm32_driver
-
-		# within libuavcan
-		libuavcan_dsdlc
-		uavcan
+		git_uavcan
+		uavcan_${UAVCAN_DRIVER}_driver
+		uavcan # within libuavcan
 	)
-
-set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES uavcan_stm32_driver)

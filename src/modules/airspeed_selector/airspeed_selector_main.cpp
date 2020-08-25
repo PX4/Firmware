@@ -87,10 +87,10 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	/* run the main loop */
+private:
+
 	void Run() override;
 
-private:
 	static constexpr int MAX_NUM_AIRSPEED_SENSORS = 3; /**< Support max 3 airspeed sensors */
 	enum airspeed_index {
 		DISABLED_INDEX = -1,

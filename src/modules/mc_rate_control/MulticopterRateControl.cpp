@@ -85,8 +85,6 @@ MulticopterRateControl::parameters_updated()
 	_rate_control.setIntegratorLimit(
 		Vector3f(_param_mc_rr_int_lim.get(), _param_mc_pr_int_lim.get(), _param_mc_yr_int_lim.get()));
 
-	_rate_control.setDTermCutoff(_loop_update_rate_hz, _param_mc_dterm_cutoff.get(), false);
-
 	_rate_control.setFeedForwardGain(
 		Vector3f(_param_mc_rollrate_ff.get(), _param_mc_pitchrate_ff.get(), _param_mc_yawrate_ff.get()));
 
@@ -147,12 +145,18 @@ MulticopterRateControl::Run()
 	vehicle_angular_velocity_s angular_velocity;
 
 	if (_vehicle_angular_velocity_sub.update(&angular_velocity)) {
+
+		// grab corresponding vehicle_angular_acceleration immediately after vehicle_angular_velocity copy
+		vehicle_angular_acceleration_s v_angular_acceleration{};
+		_vehicle_angular_acceleration_sub.copy(&v_angular_acceleration);
+
 		const hrt_abstime now = hrt_absolute_time();
 
 		// Guard against too small (< 0.2ms) and too large (> 20ms) dt's.
 		const float dt = math::constrain(((now - _last_run) / 1e6f), 0.0002f, 0.02f);
 		_last_run = now;
 
+		const Vector3f angular_accel{v_angular_acceleration.xyz};
 		const Vector3f rates{angular_velocity.xyz};
 
 		/* check for updates in other topics */
@@ -240,20 +244,6 @@ MulticopterRateControl::Run()
 			}
 		}
 
-		// calculate loop update rate while disarmed or at least a few times (updating the filter is expensive)
-		if (!_v_control_mode.flag_armed || (now - _task_start) < 3300000) {
-			_dt_accumulator += dt;
-			++_loop_counter;
-
-			if (_dt_accumulator > 1.0f) {
-				const float loop_update_rate = (float)_loop_counter / _dt_accumulator;
-				_loop_update_rate_hz = _loop_update_rate_hz * 0.5f + loop_update_rate * 0.5f;
-				_dt_accumulator = 0;
-				_loop_counter = 0;
-				_rate_control.setDTermCutoff(_loop_update_rate_hz, _param_mc_dterm_cutoff.get(), true);
-			}
-		}
-
 		// run the rate controller
 		if (_v_control_mode.flag_control_rates_enabled && !_actuators_0_circuit_breaker_enabled) {
 
@@ -275,7 +265,7 @@ MulticopterRateControl::Run()
 			}
 
 			// run rate controller
-			const Vector3f att_control = _rate_control.update(rates, _rates_sp, dt, _maybe_landed || _landed);
+			const Vector3f att_control = _rate_control.update(rates, _rates_sp, angular_accel, dt, _maybe_landed || _landed);
 
 			// publish rate controller status
 			rate_ctrl_status_s rate_ctrl_status{};

@@ -44,7 +44,7 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/module.h>
 
 #include <drivers/device/i2c.h>
@@ -74,18 +74,21 @@
 #include <board_config.h>
 
 /* Configuration Constants */
-#define SF1XX_BUS_DEFAULT	PX4_I2C_BUS_EXPANSION
 #define SF1XX_BASEADDR		0x66
 #define SF1XX_DEVICE_PATH	"/dev/sf1xx"
 
 
-class SF1XX : public device::I2C, public px4::ScheduledWorkItem
+class SF1XX : public device::I2C, public I2CSPIDriver<SF1XX>
 {
 public:
-	SF1XX(uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING, int bus = SF1XX_BUS_DEFAULT,
+	SF1XX(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency,
 	      int address = SF1XX_BASEADDR);
 
 	virtual ~SF1XX() override;
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	int init() override;
 
@@ -95,7 +98,13 @@ public:
 	/**
 	* Diagnostics - print some basic information about the driver.
 	*/
-	void print_info();
+	void print_status() override;
+
+	/**
+	* Perform a poll cycle; collect from the previous measurement
+	* and start a new one.
+	*/
+	void RunImpl();
 
 protected:
 	int probe() override;
@@ -119,11 +128,6 @@ private:
 	void start();
 
 	/**
-	* Stop the automatic measurement state machine.
-	*/
-	void stop();
-
-	/**
 	* Set the min and max distance thresholds if you want the end points of the sensors
 	* range to be brought in at all, otherwise it will use the defaults SF1XX_MIN_DISTANCE
 	* and SF1XX_MAX_DISTANCE
@@ -133,11 +137,6 @@ private:
 	float get_minimum_distance();
 	float get_maximum_distance();
 
-	/**
-	* Perform a poll cycle; collect from the previous measurement
-	* and start a new one.
-	*/
-	void Run() override;
 	int measure();
 	int collect();
 
@@ -166,18 +165,15 @@ private:
  */
 extern "C" __EXPORT int sf1xx_main(int argc, char *argv[]);
 
-SF1XX::SF1XX(uint8_t rotation, int bus, int address) :
-	I2C("SF1XX", SF1XX_DEVICE_PATH, bus, address, 400000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+SF1XX::SF1XX(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency, int address) :
+	I2C("SF1XX", SF1XX_DEVICE_PATH, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_rotation(rotation)
 {
 }
 
 SF1XX::~SF1XX()
 {
-	/* make sure we are truly inactive */
-	stop();
-
 	/* free any existing reports */
 	if (_reports != nullptr) {
 		delete _reports;
@@ -517,6 +513,10 @@ SF1XX::collect()
 void
 SF1XX::start()
 {
+	if (_measure_interval == 0) {
+		_measure_interval = _conversion_interval;
+	}
+
 	/* reset the report ring and state machine */
 	_reports->flush();
 
@@ -528,13 +528,7 @@ SF1XX::start()
 }
 
 void
-SF1XX::stop()
-{
-	ScheduleClear();
-}
-
-void
-SF1XX::Run()
+SF1XX::RunImpl()
 {
 	/* Collect results */
 	if (OK != collect()) {
@@ -549,247 +543,17 @@ SF1XX::Run()
 }
 
 void
-SF1XX::print_info()
+SF1XX::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	printf("poll interval:  %u\n", _measure_interval);
 	_reports->print_info("report queue");
 }
 
-/**
- * Local functions in support of the shell command.
- */
-namespace sf1xx
-{
-
-SF1XX	*g_dev;
-
-int 	start(uint8_t rotation);
-int 	start_bus(uint8_t rotation, int i2c_bus);
-int 	stop();
-int 	test();
-int 	reset();
-int 	info();
-
-/**
- *
- * Attempt to start driver on all available I2C busses.
- *
- * This function will return as soon as the first sensor
- * is detected on one of the available busses or if no
- * sensors are detected.
- *
- */
-int
-start(uint8_t rotation)
-{
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_ERROR;
-	}
-
-	for (unsigned i = 0; i < NUM_I2C_BUS_OPTIONS; i++) {
-		if (start_bus(rotation, i2c_bus_options[i]) == PX4_OK) {
-			return PX4_OK;
-		}
-	}
-
-	return PX4_ERROR;
-}
-
-/**
- * Start the driver on a specific bus.
- *
- * This function only returns if the sensor is up and running
- * or could not be detected successfully.
- */
-int
-start_bus(uint8_t rotation, int i2c_bus)
-{
-	int fd = -1;
-
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_ERROR;
-	}
-
-	/* create the driver */
-	g_dev = new SF1XX(rotation, i2c_bus);
-
-	if (g_dev == nullptr) {
-		goto fail;
-	}
-
-	if (OK != g_dev->init()) {
-		goto fail;
-	}
-
-	/* set the poll rate to default, starts automatic data collection */
-	fd = px4_open(SF1XX_DEVICE_PATH, O_RDONLY);
-
-	if (fd < 0) {
-		goto fail;
-	}
-
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		px4_close(fd);
-		goto fail;
-	}
-
-	px4_close(fd);
-	return PX4_OK;
-
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	return PX4_ERROR;
-}
-
-/**
- * Stop the driver
- */
-int
-stop()
-{
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-
-	} else {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-/**
- * Perform some basic functional tests on the driver;
- * make sure we can collect data from the sensor in polled
- * and automatic modes.
- */
-int
-test()
-{
-	struct distance_sensor_s report;
-	ssize_t sz;
-	int ret;
-
-	int fd = px4_open(SF1XX_DEVICE_PATH, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("%s open failed (try 'sf1xx start' if the driver is not running)", SF1XX_DEVICE_PATH);
-		return PX4_ERROR;
-	}
-
-	/* do a simple demand read */
-	sz = read(fd, &report, sizeof(report));
-
-	if (sz != sizeof(report)) {
-		PX4_ERR("immediate read failed");
-		return PX4_ERROR;
-	}
-
-	print_message(report);
-
-	/* start the sensor polling at 2Hz */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, 2)) {
-		PX4_ERR("failed to set 2Hz poll rate");
-		return PX4_ERROR;
-	}
-
-	/* read the sensor 5x and report each value */
-	for (unsigned i = 0; i < 5; i++) {
-		struct pollfd fds;
-
-		/* wait for data to be ready */
-		fds.fd = fd;
-		fds.events = POLLIN;
-		ret = poll(&fds, 1, 2000);
-
-		if (ret != 1) {
-			PX4_ERR("timed out waiting for sensor data");
-			return PX4_ERROR;
-		}
-
-		/* now go get it */
-		sz = read(fd, &report, sizeof(report));
-
-		if (sz != sizeof(report)) {
-			PX4_ERR("periodic read failed");
-			return PX4_ERROR;
-		}
-
-		print_message(report);
-	}
-
-	/* reset the sensor polling to default rate */
-	if (OK != ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT)) {
-		PX4_ERR("failed to set default poll rate");
-		return PX4_ERROR;
-	}
-
-	px4_close(fd);
-
-	PX4_INFO("PASS");
-	return PX4_OK;
-}
-
-/**
- * Reset the driver.
- */
-int
-reset()
-{
-	int fd = px4_open(SF1XX_DEVICE_PATH, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("failed");
-		return PX4_ERROR;
-	}
-
-	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
-		PX4_ERR("driver reset failed");
-		return PX4_ERROR;
-	}
-
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		PX4_ERR("driver poll restart failed");
-		return PX4_ERROR;
-	}
-
-	px4_close(fd);
-
-	return PX4_OK;
-}
-
-/**
- * Print a little info about the driver.
- */
-int
-info()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	printf("state @ %p\n", g_dev);
-	g_dev->print_info();
-
-	return PX4_OK;
-}
-
-} /* namespace */
-
-
-static void
-sf1xx_usage()
+void
+SF1XX::print_usage()
 {
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
@@ -798,104 +562,74 @@ sf1xx_usage()
 I2C bus driver for Lightware SFxx series LIDAR rangefinders: SF10/a, SF10/b, SF10/c, SF11/c, SF/LW20.
 
 Setup/usage information: https://docs.px4.io/en/sensor/sfxx_lidar.html
-
-### Examples
-
-Attempt to start driver on any bus (start on bus where first sensor found).
-$ sf1xx start -a
-Stop driver
-$ sf1xx stop
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("sf1xx", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("start","Start driver");
-	PRINT_MODULE_USAGE_PARAM_FLAG('a', "Attempt to start driver on all I2C buses", true);
-	PRINT_MODULE_USAGE_PARAM_INT('b', 1, 1, 2000, "Start driver on specific I2C bus", true);
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
 	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 1, 25, "Sensor rotation - downward facing by default", true);
-	PRINT_MODULE_USAGE_COMMAND_DESCR("stop","Stop driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("test","Test driver (basic functional tests)");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("reset","Reset driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("info","Print driver information");
-
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
+
+I2CSPIDriverBase *SF1XX::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
+{
+	SF1XX* instance = new SF1XX(iterator.configuredBusOption(), iterator.bus(), cli.orientation, cli.bus_frequency);
+
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
+
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
+
+	instance->start();
+	return instance;
+}
+
 
 int
 sf1xx_main(int argc, char *argv[])
 {
 	int ch;
-	int myoptind = 1;
-	const char *myoptarg = nullptr;
-	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
-	bool start_all = false;
+	using ThisDriver = SF1XX;
+	BusCLIArguments cli{true, false};
+	cli.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
+	cli.default_i2c_frequency = 400000;
 
-	int i2c_bus = SF1XX_BUS_DEFAULT;
-
-	while ((ch = px4_getopt(argc, argv, "ab:R:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
-			rotation = (uint8_t)atoi(myoptarg);
+			cli.orientation = atoi(cli.optarg());
 			break;
-
-		case 'b':
-			i2c_bus = atoi(myoptarg);
-			break;
-
-		case 'a':
-			start_all = true;
-			break;
-
-		default:
-			PX4_WARN("Unknown option!");
-			goto out_error;
 		}
 	}
 
-	if (myoptind >= argc) {
-		goto out_error;
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(argv[myoptind], "start")) {
-		if (start_all) {
-			return sf1xx::start(rotation);
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_DIST_DEVTYPE_SF1XX);
 
-		} else {
-			return sf1xx::start_bus(rotation, i2c_bus);
-		}
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Stop the driver
-	 */
-	if (!strcmp(argv[myoptind], "stop")) {
-		return sf1xx::stop();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	/*
-	 * Test the driver/device.
-	 */
-	if (!strcmp(argv[myoptind], "test")) {
-		return sf1xx::test();
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	/*
-	 * Reset the driver.
-	 */
-	if (!strcmp(argv[myoptind], "reset")) {
-		return sf1xx::reset();
-	}
-
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(argv[myoptind], "info") || !strcmp(argv[myoptind], "status")) {
-		return sf1xx::info();
-	}
-
-out_error:
-	sf1xx_usage();
-	return PX4_ERROR;
+	ThisDriver::print_usage();
+	return -1;
 }

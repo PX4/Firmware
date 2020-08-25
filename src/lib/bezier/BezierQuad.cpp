@@ -37,6 +37,12 @@
  * @author Dennis Mannhart <dennis.mannhart@gmail.com>
  */
 
+// The header includes this implementation, so in order to have this library shared with other
+// .cpp files and avoid duplication of constants, we need to prevent including it twice
+#ifndef BEZIER_QUAD_CPP
+#define BEZIER_QUAD_CPP
+
+
 #include "BezierQuad.hpp"
 
 namespace bezier
@@ -213,3 +219,5 @@ Tp BezierQuad<Tp>::_getDistanceSquared(const Tp t, const Vector3_t &pose)
 	return (vec * vec);
 }
 }
+
+#endif

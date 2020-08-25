@@ -42,34 +42,28 @@
 #include <perf/perf_counter.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/PublicationMulti.hpp>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
-/* Default I2C bus */
-static constexpr uint8_t PX4_I2C_BUS_DEFAULT = PX4_I2C_BUS_EXPANSION;
-
-class __EXPORT Airspeed : public device::I2C, public px4::ScheduledWorkItem
+class __EXPORT Airspeed : public device::I2C
 {
 public:
-	Airspeed(int bus, int address, unsigned conversion_interval, const char *path);
+	Airspeed(int bus, int bus_frequency, int address, unsigned conversion_interval);
 	virtual ~Airspeed();
 
-	virtual int	init();
+	int	init() override;
 
-	virtual int	ioctl(device::file_t *filp, int cmd, unsigned long arg);
+	int	ioctl(device::file_t *filp, int cmd, unsigned long arg) override;
 
 private:
-	/* this class has pointer data members and should not be copied */
-	Airspeed(const Airspeed &);
-	Airspeed &operator=(const Airspeed &);
+	Airspeed(const Airspeed &) = delete;
+	Airspeed &operator=(const Airspeed &) = delete;
 
 protected:
-	virtual int	probe();
+	int	probe() override;
 
 	/**
 	* Perform a poll cycle; collect from the previous measurement
 	* and start a new one.
 	*/
-	virtual void	Run() = 0;
 	virtual int	measure() = 0;
 	virtual int	collect() = 0;
 
@@ -88,26 +82,6 @@ protected:
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
-
-	/**
-	* Initialise the automatic measurement state machine and start it.
-	*
-	* @note This function is called at open and error time.  It might make sense
-	*       to make it more aggressive about resetting the bus in case of errors.
-	*/
-	void	start();
-
-	/**
-	* Stop the automatic measurement state machine.
-	*/
-	void	stop();
-
-	/**
-	* add a new report to the reports queue
-	*
-	* @param report		differential_pressure_s report
-	*/
-	void	new_report(const differential_pressure_s &report);
 };
 
 

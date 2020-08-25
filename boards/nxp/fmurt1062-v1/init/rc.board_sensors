@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# PX4 FMUv5 specific board sensors init
+#------------------------------------------------------------------------------
+#
+# UART mapping on NXP FMURT1062:
+#
+# LPUART7       /dev/ttyS0      CONSOLE
+# LPUART2       /dev/ttyS1      GPS
+# LPUART3       /dev/ttyS2      TELEM2 (GPIO flow control)
+# LPUART4       /dev/ttyS3      TELEM1 (UART flow control)
+# LPUART5       /dev/ttyS4      TELEM4 GPS2
+# LPUART6       /dev/ttyS5      TELEM3 (RC_INPUT)
+# LPUART8       /dev/ttyS6      PX4IO
+#
+#------------------------------------------------------------------------------
+
+adc start
+
+# Internal SPI bus ICM-20602
+mpu6000 -R 8 -s -T 20602 start
+
+# Internal SPI bus ICM-20689
+mpu6000 -R 8 -s -T 20689 start
+
+# Internal SPI bus BMI055 accel
+bmi055 -A -R 10 -s start
+
+# Internal SPI bus BMI055 gyro
+bmi055 -G -R 10 -s start
+
+# Possible external compasses
+ist8310 -X start
+hmc5883 -T -X start
+qmc5883 -X start
+lis3mdl -X start
+
+# ICM20948 as external magnetometer on I2C (e.g. Here GPS)
+if ! icm20948 -X -M -R 6 start
+then
+	# external emulated AK09916 (Here2) is rotated 270 degrees yaw
+	ak09916 -X -R 6 start
+fi
+
+# Possible internal compass
+ist8310 -I start
+
+# Baro on internal SPI
+ms5611 -s start
+
+# External RM3100 (I2C or SPI)
+rm3100 start
+
+# Possible pmw3901 optical flow sensor
+pmw3901 -S start
+
+px4flow start -X

@@ -112,6 +112,8 @@
 /*         OMNIBUSF4SD SPI chip selects and DRDY            */
 /*----------------------------------------------------------*/
 
+#include <drivers/drv_sensor.h>
+
 /* SPI chip selects */
 /*
  * Define the Chip Selects for SPI1
@@ -171,11 +173,11 @@
 
 // One device per bus
 #define PX4_SPI_BUS_SENSORS         1
-#define PX4_SPIDEV_MPU              1
-#define PX4_SPIDEV_ICM_20602        1
+#define PX4_SPIDEV_MPU              PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU6000)
+#define PX4_SPIDEV_ICM_20602        PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ICM20602)
 #define PX4_SPIDEV_BARO_BUS         3
-#define PX4_SPIDEV_BARO             1
-#define PX4_SPIDEV_OSD              2
+#define PX4_SPIDEV_BARO             PX4_MK_SPI_SEL(0, DRV_BARO_DEVTYPE_BMP280)
+#define PX4_SPIDEV_OSD              PX4_MK_SPI_SEL(0, DRV_OSD_DEVTYPE_ATXXXX)
 
 /* USB OTG FS
  *
@@ -195,41 +197,9 @@
 
 /* PWM
  *
- * 6 PWM outputs are configured.
- *
  * Alternatively CH3/CH4 could be assigned to UART6_TX/RX
- *
- * Pins:
- *
- * INPUTS:
- *  CH1 : PB8 : TIM10_CH1 // PPM
- *  CH2 : PB9 : TIM4_CH4
- *  CH3 : PC6 : TIM8_CH1 // OR UART6_TX
- *  CH4 : PC7 : TIM8_CH2 // OR UART6_RX
- *  CH5 : PC8 : TIM8_CH3
- *  CH6 : PC9 : TIM8_CH4
- *
- * OUTPUTS:
- *  M1 : PB0 : TIM3_CH3
- *  M2 : PB1 : TIM3_CH4
- *  M3 : PA3 : TIM2_CH3
- *  M4 : PA2 : TIM2_CH4
- *  M5 : PA1 : TIM5_CH2 // UART4_RX
- *  M6 : PA8 : TIM1_CH1 // USART2_TX
  */
-
-#define GPIO_TIM3_CH3OUT        GPIO_TIM3_CH3OUT_1 //PB0 S1_OUT D1_ST7
-#define GPIO_TIM3_CH4OUT        GPIO_TIM3_CH4OUT_1 //PB1 S2_OUT D1_ST2
-#define GPIO_TIM2_CH4OUT        GPIO_TIM2_CH4OUT_1 //PA3 S3_OUT D1_ST6
-#define GPIO_TIM2_CH3OUT        GPIO_TIM2_CH3OUT_1 //PA2 S4_OUT D1_ST1
-
 #define DIRECT_PWM_OUTPUT_CHANNELS      4
-
-#define GPIO_TIM3_CH3IN         GPIO_TIM3_CH3IN_1
-#define GPIO_TIM3_CH4IN         GPIO_TIM3_CH4IN_1
-#define GPIO_TIM2_CH4IN         GPIO_TIM2_CH4IN_1
-#define GPIO_TIM2_CH3IN         GPIO_TIM2_CH3IN_1
-
 #define DIRECT_INPUT_TIMER_CHANNELS  4
 
 // Has pwm outputs
@@ -260,7 +230,7 @@
 #define BOARD_HAS_PWM    DIRECT_PWM_OUTPUT_CHANNELS
 
 /* This board provides a DMA pool and APIs */
-#define BOARD_DMA_ALLOC_POOL_SIZE    5120
+#define BOARD_DMA_ALLOC_POOL_SIZE (5120 + 1008)	// 5120 fat + 1008 spi
 
 #define BOARD_HAS_ON_RESET 1
 
@@ -291,14 +261,9 @@ __BEGIN_DECLS
  * Description:
  *   Called to configure SPI chip select GPIO pins for the PX4FMU board.
  *
- *   mask - is bus selection
- *   1 - 1 << 0
- *   2 - 1 << 1
- *
  ****************************************************************************************************/
 
 extern void stm32_spiinitialize(void);
-void board_spi_reset(int ms);
 
 
 /****************************************************************************************************

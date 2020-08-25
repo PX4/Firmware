@@ -39,6 +39,7 @@ px4_add_module(
 		ICM20602.cpp
 		ICM20602.hpp
 		icm20602_main.cpp
+		InvenSense_ICM20602_registers.hpp
 	DEPENDS
 		drivers_accelerometer
 		drivers_gyroscope

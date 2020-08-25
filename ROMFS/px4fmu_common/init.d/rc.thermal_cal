@@ -5,11 +5,36 @@
 # NOTE: Script variables are declared/initialized/unset in the rcS script.
 #
 
-set TEMP_CALIB_ARGS ""
+set TEMP_COMP_START ""
+
+if param compare TC_A_ENABLE 1
+then
+	set TEMP_COMP_START "true"
+fi
+
+if param compare TC_B_ENABLE 1
+then
+	set TEMP_COMP_START "true"
+fi
+
+if param compare TC_G_ENABLE 1
+then
+	set TEMP_COMP_START "true"
+fi
+
+if [ "x$TEMP_COMP_START" != "x" ]
+then
+	temperature_compensation start
+fi
+
+unset TEMP_COMP_START
+
 
 #
 # Determine if a thermal calibration should be started.
 #
+
+set TEMP_CALIB_ARGS ""
 
 if param compare SYS_CAL_ACCEL 1
 then
@@ -34,7 +59,7 @@ fi
 #
 if [ "x$TEMP_CALIB_ARGS" != "x" ]
 then
-	send_event temperature_calibration ${TEMP_CALIB_ARGS}
+	temperature_compensation calibrate ${TEMP_CALIB_ARGS}
 fi
 
 unset TEMP_CALIB_ARGS

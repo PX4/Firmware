@@ -78,13 +78,11 @@ MPU9250::MPU9250(device::Device *interface, device::Device *mag_interface, enum 
 	_mag(this, mag_interface, rotation),
 	_dlpf_freq(MPU9250_DEFAULT_ONCHIP_FILTER_FREQ),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
-	_bad_transfers(perf_alloc(PC_COUNT, MODULE_NAME": bad_trans")),
 	_bad_registers(perf_alloc(PC_COUNT, MODULE_NAME": bad_reg")),
-	_good_transfers(perf_alloc(PC_COUNT, MODULE_NAME": good_trans")),
 	_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": dupe"))
 {
-	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_MPU9250);
-	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_MPU9250);
+	_px4_accel.set_device_type(DRV_IMU_DEVTYPE_MPU9250);
+	_px4_gyro.set_device_type(DRV_IMU_DEVTYPE_MPU9250);
 }
 
 MPU9250::~MPU9250()
@@ -94,9 +92,7 @@ MPU9250::~MPU9250()
 
 	// delete the perf counter
 	perf_free(_sample_perf);
-	perf_free(_bad_transfers);
 	perf_free(_bad_registers);
-	perf_free(_good_transfers);
 	perf_free(_duplicates);
 }
 
@@ -125,7 +121,7 @@ MPU9250::init()
 
 	if (reset_mpu() != OK) {
 		PX4_ERR("Exiting! Device failed to take initialization");
-		return ret;
+		return PX4_ERROR;
 	}
 
 	/* Magnetometer setup */
@@ -274,12 +270,10 @@ MPU9250::probe()
 		_num_checked_registers = MPU9250_NUM_CHECKED_REGISTERS;
 		_checked_registers = _mpu9250_checked_registers;
 		memset(_checked_values, 0, MPU9250_NUM_CHECKED_REGISTERS);
-		memset(_checked_bad, 0, MPU9250_NUM_CHECKED_REGISTERS);
 		ret = PX4_OK;
 	}
 
 	_checked_values[0] = _whoami;
-	_checked_bad[0] = _whoami;
 
 	if (ret != PX4_OK) {
 		PX4_DEBUG("unexpected whoami 0x%02x", _whoami);
@@ -398,17 +392,6 @@ MPU9250::read_reg_range(unsigned start_reg, uint32_t speed, uint8_t *buf, uint16
 	return _interface->read(MPU9250_SET_SPEED(start_reg, speed), buf, count);
 }
 
-uint16_t
-MPU9250::read_reg16(unsigned reg)
-{
-	uint8_t buf[2] {};
-
-	// general register transfer at low clock speed
-	_interface->read(MPU9250_LOW_SPEED_OP(reg), &buf, arraySize(buf));
-
-	return (uint16_t)(buf[0] << 8) | buf[1];
-}
-
 void
 MPU9250::write_reg(unsigned reg, uint8_t value)
 {
@@ -442,7 +425,6 @@ MPU9250::write_checked_reg(unsigned reg, uint8_t value)
 	for (uint8_t i = 0; i < _num_checked_registers; i++) {
 		if (reg == _checked_registers[i]) {
 			_checked_values[i] = value;
-			_checked_bad[i] = value;
 			break;
 		}
 	}
@@ -526,7 +508,8 @@ MPU9250::check_registers()
 
 	if ((v = read_reg(_checked_registers[_checked_next], MPU9250_HIGH_BUS_SPEED)) != _checked_values[_checked_next]) {
 
-		_checked_bad[_checked_next] = v;
+		PX4_DEBUG("reg: %d = %d (should be %d) _reset_wait: %llu", _checked_registers[_checked_next], v,
+			  _checked_values[_checked_next], _reset_wait);
 
 		/*
 		  if we get the wrong value then we know the SPI bus
@@ -571,26 +554,6 @@ MPU9250::check_registers()
 }
 
 bool
-MPU9250::check_null_data(uint16_t *data, uint8_t size)
-{
-	while (size--) {
-		if (*data++) {
-			perf_count(_good_transfers);
-			return false;
-		}
-	}
-
-	// all zero data - probably a SPI bus error
-	perf_count(_bad_transfers);
-	perf_end(_sample_perf);
-	// note that we don't call reset() here as a reset()
-	// costs 20ms with interrupts disabled. That means if
-	// the mpu9250 does go bad it would cause a FMU failure,
-	// regardless of whether another sensor is available,
-	return true;
-}
-
-bool
 MPU9250::check_duplicate(uint8_t *accel_data)
 {
 	/*
@@ -603,8 +566,6 @@ MPU9250::check_duplicate(uint8_t *accel_data)
 	*/
 	if (!_got_duplicate && memcmp(accel_data, &_last_accel_data, sizeof(_last_accel_data)) == 0) {
 		// it isn't new data - wait for next timer
-		perf_end(_sample_perf);
-		perf_count(_duplicates);
 		_got_duplicate = true;
 
 	} else {
@@ -628,30 +589,20 @@ MPU9250::measure()
 
 	MPUReport mpu_report{};
 
-	struct Report {
-		int16_t		accel_x;
-		int16_t		accel_y;
-		int16_t		accel_z;
-		int16_t		temp;
-		int16_t		gyro_x;
-		int16_t		gyro_y;
-		int16_t		gyro_z;
-	} report{};
-
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
 
 	// Fetch the full set of measurements from the ICM20948 in one pass
 	if (_mag.is_passthrough() && _register_wait == 0) {
-		if (_whoami == MPU_WHOAMI_9250 || _whoami == MPU_WHOAMI_6500) {
-			if (OK != read_reg_range(MPUREG_INT_STATUS, MPU9250_HIGH_BUS_SPEED, (uint8_t *)&mpu_report, sizeof(mpu_report))) {
-				perf_end(_sample_perf);
-				return;
-			}
+		if (OK != read_reg_range(MPUREG_ACCEL_XOUT_H, MPU9250_HIGH_BUS_SPEED, (uint8_t *)&mpu_report, sizeof(mpu_report))) {
+			perf_end(_sample_perf);
+			return;
 		}
 
 		check_registers();
 
-		if (check_duplicate(&mpu_report.accel_x[0])) {
+		if (check_duplicate(&mpu_report.ACCEL_XOUT_H)) {
+			perf_end(_sample_perf);
+			perf_count(_duplicates);
 			return;
 		}
 	}
@@ -678,62 +629,47 @@ MPU9250::measure()
 
 #   endif
 
-	// Continue evaluating gyro and accelerometer results
-	if (_register_wait == 0) {
-		// Convert from big to little endian
-		report.accel_x = int16_t_from_bytes(mpu_report.accel_x);
-		report.accel_y = int16_t_from_bytes(mpu_report.accel_y);
-		report.accel_z = int16_t_from_bytes(mpu_report.accel_z);
-		report.temp    = int16_t_from_bytes(mpu_report.temp);
-		report.gyro_x  = int16_t_from_bytes(mpu_report.gyro_x);
-		report.gyro_y  = int16_t_from_bytes(mpu_report.gyro_y);
-		report.gyro_z  = int16_t_from_bytes(mpu_report.gyro_z);
-
-		if (check_null_data((uint16_t *)&report, sizeof(report) / 2)) {
-			return;
-		}
-	}
-
 	if (_register_wait != 0) {
-		/*
-		 * We are waiting for some good transfers before using the sensor again.
-		 * We still increment _good_transfers, but don't return any data yet.
-		*/
+		// We are waiting for some good transfers before using the sensor again
 		_register_wait--;
+
+		perf_end(_sample_perf);
 		return;
 	}
 
+	// Convert from big to little endian
+	int16_t accel_x = combine(mpu_report.ACCEL_XOUT_H, mpu_report.ACCEL_XOUT_L);
+	int16_t accel_y = combine(mpu_report.ACCEL_YOUT_H, mpu_report.ACCEL_YOUT_L);
+	int16_t accel_z = combine(mpu_report.ACCEL_ZOUT_H, mpu_report.ACCEL_ZOUT_L);
+	int16_t temp    = combine(mpu_report.TEMP_OUT_H, mpu_report.TEMP_OUT_L);
+	int16_t gyro_x  = combine(mpu_report.GYRO_XOUT_H, mpu_report.GYRO_XOUT_L);
+	int16_t gyro_y  = combine(mpu_report.GYRO_YOUT_H, mpu_report.GYRO_YOUT_L);
+	int16_t gyro_z  = combine(mpu_report.GYRO_ZOUT_H, mpu_report.GYRO_ZOUT_L);
+
 	// Get sensor temperature
-	_last_temperature = (report.temp) / 333.87f + 21.0f;
+	_last_temperature = temp / 333.87f + 21.0f;
 
 	_px4_accel.set_temperature(_last_temperature);
 	_px4_gyro.set_temperature(_last_temperature);
 
-
 	// Swap axes and negate y
-	int16_t accel_xt = report.accel_y;
-	int16_t accel_yt = ((report.accel_x == -32768) ? 32767 : -report.accel_x);
+	int16_t accel_xt = accel_y;
+	int16_t accel_yt = ((accel_x == -32768) ? 32767 : -accel_x);
 
-	int16_t gyro_xt = report.gyro_y;
-	int16_t gyro_yt = ((report.gyro_x == -32768) ? 32767 : -report.gyro_x);
-
-	// Apply the swap
-	report.accel_x = accel_xt;
-	report.accel_y = accel_yt;
-	report.gyro_x = gyro_xt;
-	report.gyro_y = gyro_yt;
+	int16_t gyro_xt = gyro_y;
+	int16_t gyro_yt = ((gyro_x == -32768) ? 32767 : -gyro_x);
 
 	// report the error count as the sum of the number of bad
 	// transfers and bad register reads. This allows the higher
 	// level code to decide if it should use this sensor based on
 	// whether it has had failures
-	const uint64_t error_count = perf_event_count(_bad_transfers) + perf_event_count(_bad_registers);
+	const uint64_t error_count = perf_event_count(_bad_registers);
 	_px4_accel.set_error_count(error_count);
 	_px4_gyro.set_error_count(error_count);
 
 	/* NOTE: Axes have been swapped to match the board a few lines above. */
-	_px4_accel.update(timestamp_sample, report.accel_x, report.accel_y, report.accel_z);
-	_px4_gyro.update(timestamp_sample, report.gyro_x, report.gyro_y, report.gyro_z);
+	_px4_accel.update(timestamp_sample, accel_xt, accel_yt, accel_z);
+	_px4_gyro.update(timestamp_sample, gyro_xt, gyro_yt, gyro_z);
 
 	/* stop measuring */
 	perf_end(_sample_perf);
@@ -743,9 +679,7 @@ void
 MPU9250::print_info()
 {
 	perf_print_counter(_sample_perf);
-	perf_print_counter(_bad_transfers);
 	perf_print_counter(_bad_registers);
-	perf_print_counter(_good_transfers);
 	perf_print_counter(_duplicates);
 
 	_px4_accel.print_status();

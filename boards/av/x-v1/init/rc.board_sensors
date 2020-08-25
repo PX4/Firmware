@@ -7,20 +7,20 @@ adc start
 
 adis16477 -R 8 start
 
-lps22hb -S start
+lps22hb -s start
 
 lsm303agr -R 4 start
 
-ms4525_airspeed -T 4515 -b 3 start
+ms4525_airspeed -T 4515 -I -b 3 start
 
 if ! param greater SENS_EN_PMW3901 0
 then
 	# try to start adis16497 only if pmw3901 isn't enabled, or parameter doesn't exists
+	# TODO: this one is external SPI
 	adis16497 start
 fi
 
 # Possible external compasses
-ist8310 -C -b 1 start
-ist8310 -C -b 2 start
-hmc5883 -C -T -X start
+ist8310 -X start
+hmc5883 -T -X start
 qmc5883 -X start

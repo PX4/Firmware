@@ -54,7 +54,7 @@
 
 @{
 import genmsg.msgs
-import gencpp
+
 
 cpp_class = 'px4_%s'%spec.short_name
 native_type = spec.short_name

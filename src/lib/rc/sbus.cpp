@@ -41,7 +41,6 @@
 
 #include <fcntl.h>
 #include <unistd.h>
-#include <termios.h>
 #include <string.h>
 
 #ifdef TIOCSSINGLEWIRE
@@ -56,9 +55,11 @@ using namespace time_literals;
 
 #define SBUS_DEBUG_LEVEL 	0 /* Set debug output level */
 
-#if defined(__PX4_POSIX_OCPOC)
+#if defined(__PX4_LINUX)
 #include <sys/ioctl.h>
-#include <linux/serial_core.h>
+#include <asm-generic/termbits.h>
+#else
+#include <termios.h>
 #endif
 
 #define SBUS_START_SYMBOL	0x0f
@@ -152,56 +153,40 @@ sbus_init(const char *device, bool singlewire)
 int
 sbus_config(int sbus_fd, bool singlewire)
 {
-#if defined(__PX4_POSIX_OCPOC)
-	struct termios options;
-
-	if (tcgetattr(sbus_fd, &options) != 0) {
-		return -1;
-	}
-
-	tcflush(sbus_fd, TCIFLUSH);
-	bzero(&options, sizeof(options));
-
-	options.c_cflag |= (CLOCAL | CREAD);
-	options.c_cflag &= ~CSIZE;
-	options.c_cflag |= CS8;
-	options.c_cflag |= PARENB;
-	options.c_cflag &= ~PARODD;
-	options.c_iflag |= INPCK;
-	options.c_cflag |= CSTOPB;
-
-	options.c_cc[VTIME] = 0;
-	options.c_cc[VMIN] = 0;
-
-	cfsetispeed(&options, B38400);
-	cfsetospeed(&options, B38400);
-
-	tcflush(sbus_fd, TCIFLUSH);
-
-	if ((tcsetattr(sbus_fd, TCSANOW, &options)) != 0) {
-		return -1;
-	}
-
-	int baud = 100000;
-	struct serial_struct serials;
-
-	if ((ioctl(sbus_fd, TIOCGSERIAL, &serials)) < 0) {
-		return -1;
-	}
-
-	serials.flags = ASYNC_SPD_CUST;
-	serials.custom_divisor = serials.baud_base / baud;
-
-	if ((ioctl(sbus_fd, TIOCSSERIAL, &serials)) < 0) {
-		return -1;
-	}
-
-	ioctl(sbus_fd, TIOCGSERIAL, &serials);
-
-	tcflush(sbus_fd, TCIFLUSH);
-	return 0;
-#else
 	int ret = -1;
+
+#if defined(__PX4_LINUX)
+
+	struct termios2 tio = {};
+
+	if (0 != ioctl(sbus_fd, TCGETS2, &tio)) {
+		return ret;
+	}
+
+	/**
+	 * Setting serial port,8E2, non-blocking.100Kbps
+	 */
+	tio.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL
+			 | IXON);
+	tio.c_iflag |= (INPCK | IGNPAR);
+	tio.c_oflag &= ~OPOST;
+	tio.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+	tio.c_cflag &= ~(CSIZE | CRTSCTS | PARODD | CBAUD);
+	/**
+	 * use BOTHER to specify speed directly in c_[io]speed member
+	 */
+	tio.c_cflag |= (CS8 | CSTOPB | CLOCAL | PARENB | BOTHER | CREAD);
+	tio.c_ispeed = 100000;
+	tio.c_ospeed = 100000;
+	tio.c_cc[VMIN] = 25;
+	tio.c_cc[VTIME] = 0;
+
+	if (0 != ioctl(sbus_fd, TCSETS2, &tio)) {
+		return ret;
+	}
+
+	ret = 0;
+#else
 
 	if (sbus_fd >= 0) {
 		struct termios t;
@@ -221,16 +206,16 @@ sbus_config(int sbus_fd, bool singlewire)
 #endif
 		}
 
-		/* initialise the decoder */
-		partial_frame_count = 0;
-		last_rx_time = hrt_absolute_time();
-		sbus_frame_drops = 0;
-
 		ret = 0;
 	}
 
-	return ret;
 #endif
+	/* initialise the decoder */
+	partial_frame_count = 0;
+	last_rx_time = hrt_absolute_time();
+	sbus_frame_drops = 0;
+
+	return ret;
 }
 
 void

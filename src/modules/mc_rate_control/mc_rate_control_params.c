@@ -44,7 +44,7 @@
  *
  * Roll rate proportional gain, i.e. control output for angular speed error 1 rad/s.
  *
- * @min 0.0
+ * @min 0.01
  * @max 0.5
  * @decimal 3
  * @increment 0.01
@@ -112,7 +112,7 @@ PARAM_DEFINE_FLOAT(MC_ROLLRATE_FF, 0.0f);
  * Set MC_ROLLRATE_P=1 to implement a PID in the ideal form.
  * Set MC_ROLLRATE_K=1 to implement a PID in the parallel form.
  *
- * @min 0.0
+ * @min 0.01
  * @max 5.0
  * @decimal 4
  * @increment 0.0005
@@ -125,7 +125,7 @@ PARAM_DEFINE_FLOAT(MC_ROLLRATE_K, 1.0f);
  *
  * Pitch rate proportional gain, i.e. control output for angular speed error 1 rad/s.
  *
- * @min 0.0
+ * @min 0.01
  * @max 0.6
  * @decimal 3
  * @increment 0.01
@@ -192,7 +192,7 @@ PARAM_DEFINE_FLOAT(MC_PITCHRATE_FF, 0.0f);
  * Set MC_PITCHRATE_P=1 to implement a PID in the ideal form.
  * Set MC_PITCHRATE_K=1 to implement a PID in the parallel form.
  *
- * @min 0.0
+ * @min 0.01
  * @max 5.0
  * @decimal 4
  * @increment 0.0005
@@ -395,20 +395,3 @@ PARAM_DEFINE_FLOAT(MC_ACRO_SUPEXPOY, 0.7f);
  * @group Multicopter Rate Control
  */
 PARAM_DEFINE_INT32(MC_BAT_SCALE_EN, 0);
-
-/**
- * Cutoff frequency for the low pass filter on the D-term in the rate controller
- *
- * The D-term uses the derivative of the rate and thus is the most susceptible to noise.
- * Therefore, using a D-term filter allows to decrease the driver-level filtering, which
- * leads to reduced control latency and permits to increase the P gains.
- * A value of 0 disables the filter.
- *
- * @unit Hz
- * @min 0
- * @max 1000
- * @decimal 0
- * @increment 10
- * @group Multicopter Rate Control
- */
-PARAM_DEFINE_FLOAT(MC_DTERM_CUTOFF, 0.f);

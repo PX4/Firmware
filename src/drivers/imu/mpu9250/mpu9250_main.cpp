@@ -83,7 +83,7 @@ struct mpu9250_bus_option {
 };
 
 // find a bus structure for a busid
-static struct mpu9250_bus_option *find_bus(MPU9250_BUS busid)
+static mpu9250_bus_option *find_bus(MPU9250_BUS busid)
 {
 	for (mpu9250_bus_option &bus_option : bus_options) {
 		if ((busid == MPU9250_BUS::ALL ||
@@ -119,10 +119,15 @@ static bool start_bus(mpu9250_bus_option &bus, enum Rotation rotation)
 
 	MPU9250 *dev = new MPU9250(interface, mag_interface, rotation);
 
-	if (dev == nullptr || (dev->init() != PX4_OK)) {
+	if (dev == nullptr) {
+		PX4_ERR("alloc failed");
+		delete mag_interface;
+		return false;
+	}
+
+	if (dev->init() != PX4_OK) {
 		PX4_ERR("driver start failed");
 		delete dev;
-		delete interface;
 		delete mag_interface;
 		return false;
 	}
@@ -147,11 +152,11 @@ static int start(MPU9250_BUS busid, enum Rotation rotation)
 		}
 
 		if (start_bus(bus_option, rotation)) {
-			return PX4_OK;
+			return 0;
 		}
 	}
 
-	return PX4_ERROR;
+	return -1;
 }
 
 static int stop(MPU9250_BUS busid)
@@ -164,10 +169,10 @@ static int stop(MPU9250_BUS busid)
 
 	} else {
 		PX4_WARN("driver not running");
-		return PX4_ERROR;
+		return -1;
 	}
 
-	return PX4_OK;
+	return 0;
 }
 
 static int status(MPU9250_BUS busid)
@@ -176,11 +181,11 @@ static int status(MPU9250_BUS busid)
 
 	if (bus != nullptr && bus->dev != nullptr) {
 		bus->dev->print_info();
-		return PX4_OK;
+		return 0;
 	}
 
 	PX4_WARN("driver not running");
-	return PX4_ERROR;
+	return -1;
 }
 
 static int usage()
@@ -208,7 +213,7 @@ extern "C" int mpu9250_main(int argc, char *argv[])
 	MPU9250_BUS busid = MPU9250_BUS::ALL;
 	enum Rotation rotation = ROTATION_NONE;
 
-	while ((ch = px4_getopt(argc, argv, "XISstMR:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "XISstR:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'X':
 			busid = MPU9250_BUS::I2C_EXTERNAL;

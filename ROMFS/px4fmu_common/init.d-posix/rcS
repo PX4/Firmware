@@ -109,7 +109,10 @@ param set MAV_SYS_ID $((px4_instance+1))
 simulator_tcp_port=$((4560+px4_instance))
 udp_offboard_port_local=$((14580+px4_instance))
 udp_offboard_port_remote=$((14540+px4_instance))
-udp_gcs_port_local=$((14570+px4_instance))
+[ $px4_instance -gt 9 ] && udp_offboard_port_remote=14549 # use the same ports for more than 10 instances to avoid port overlaps
+udp_onboard_payload_port_local=$((14280+px4_instance))
+udp_onboard_payload_port_remote=$((14030+px4_instance))
+udp_gcs_port_local=$((18570+px4_instance))
 
 if [ $AUTOCNF = yes ]
 then
@@ -126,20 +129,21 @@ then
 	param set CAL_MAG0_ID 197388
 	param set CAL_MAG_PRIME 197388
 
-	param set CAL_BARO_PRIME 6620172
-
 	param set CBRK_AIRSPD_CHK 0
 
-	param set COM_DISARM_LAND 0.1
+	param set COM_DISARM_LAND 0.5
 	param set COM_OBL_ACT 2
 	param set COM_OBL_RC_ACT 0
-	param set COM_OF_LOSS_T 5
 	param set COM_RC_IN_MODE 1
 
 	param set EKF2_AID_MASK 1
 	param set EKF2_ANGERR_INIT 0.01
 	param set EKF2_HGT_MODE 0
 	param set EKF2_GBIAS_INIT 0.01
+
+	# Prevent high accel bias
+	param set COM_ARM_EKF_AB 0.005
+
 	# Speedup SITL startup
 	param set EKF2_REQ_GPS_H 0.5
 
@@ -163,6 +167,8 @@ then
 	param set MPC_JERK_MIN 10
 	param set MPC_JERK_MAX 20
 	param set MPC_ACC_HOR_MAX 3
+	param set MPC_SPOOLUP_TIME 0.5
+	param set MPC_TKO_RAMP_T 1
 
 	param set NAV_ACC_RAD 2
 	param set NAV_DLL_ACT 2
@@ -191,11 +197,11 @@ if [ ! -z $PX4_SIM_SPEED_FACTOR ]; then
 	echo "COM_DL_LOSS_T set to $COM_DL_LOSS_T_LONGER"
 	param set COM_DL_LOSS_T $COM_DL_LOSS_T_LONGER
 
-	COM_RC_LOSS_T_LONGER=$(echo "$PX4_SIM_SPEED_FACTOR * 1" | bc)
+	COM_RC_LOSS_T_LONGER=$(echo "$PX4_SIM_SPEED_FACTOR * 0.5" | bc)
 	echo "COM_RC_LOSS_T set to $COM_RC_LOSS_T_LONGER"
 	param set COM_RC_LOSS_T $COM_RC_LOSS_T_LONGER
 
-	COM_OF_LOSS_T_LONGER=$(echo "$PX4_SIM_SPEED_FACTOR * 10" | bc)
+	COM_OF_LOSS_T_LONGER=$(echo "$PX4_SIM_SPEED_FACTOR * 0.5" | bc)
 	echo "COM_OF_LOSS_T set to $COM_OF_LOSS_T_LONGER"
 	param set COM_OF_LOSS_T $COM_OF_LOSS_T_LONGER
 fi
@@ -233,7 +239,6 @@ dataman start
 replay tryapplyparams
 simulator start -c $simulator_tcp_port
 tone_alarm start
-gpssim start
 rc_update start
 sensors start
 commander start
@@ -271,6 +276,9 @@ mavlink stream -r 10 -s OPTICAL_FLOW_RAD -u $udp_gcs_port_local
 
 # API/Offboard link
 mavlink start -x -u $udp_offboard_port_local -r 4000000 -m onboard -o $udp_offboard_port_remote
+
+# Onboard link to camera
+mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $udp_onboard_payload_port_remote
 
 # execute autostart post script if any
 [ -e "$autostart_file".post ] && sh "$autostart_file".post

@@ -1,0 +1,32 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+choice
+	prompt "Boot Flash"
+	default NXP_FMURT1062_V3_QSPI_FLASH
+
+config NXP_FMURT1062_V3_HYPER_FLASH
+	bool "HYPER Flash"
+
+config NXP_FMURT1062_V3_QSPI_FLASH
+	bool "QSPI Flash"
+
+endchoice # Boot Flash
+
+config BOARD_HAS_PROBES
+	bool "Board provides GPIO or other Hardware for signaling to timing analyze."
+	default y
+	---help---
+		This board provides GPIO FMU-CH1-8, as PROBE_1-8 to provide timing signals
+                from selected drivers.
+
+config BOARD_USE_PROBES
+	bool "Enable the use the board provided FMU-CH1-8 as PROBE_1-8"
+	default n
+	depends on BOARD_HAS_PROBES
+
+	---help---
+		Select to use GPIO FMU-CH1-8, as PROBE_1-8 to provide timing signals
+                from selected drivers.

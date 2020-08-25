@@ -5,7 +5,7 @@
 
 if ! param compare OSD_ATXXXX_CFG 0
 then
-	atxxxx start
+	atxxxx start -s
 fi
 
 

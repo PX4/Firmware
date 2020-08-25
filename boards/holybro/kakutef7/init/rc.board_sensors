@@ -8,14 +8,13 @@ adc start
 # The default IMU is an ICM20689, but there might also be an MPU6000
 if ! mpu6000 -R 12 -s start
 then
-	mpu6000 -R 12 -z -T 20689 start
+	mpu6000 -R 12 -s -T 20689 start
 fi
 
-# Internal Baro
-bmp280 -I start
+# Onboard Baro
+bmp280 -X start
 
 # Possible external compasses
-ist8310 -C -b 1 start
-ist8310 -C -b 2 start
-hmc5883 -C -T -X start
+ist8310 -X start
+hmc5883 -T -X start
 qmc5883 -X start

@@ -67,9 +67,15 @@ SPI::SPI(const char *name, const char *devname, int bus, uint32_t device, enum s
 	// fill in _device_id fields for a SPI device
 	_device_id.devid_s.bus_type = DeviceBusType_SPI;
 	_device_id.devid_s.bus = bus;
-	_device_id.devid_s.address = (uint8_t)device;
+	// Use the 2. LSB byte as SPI address. This is currently 0, but will allow to extend
+	// for multiple instances of the same device on a bus, should that ever be required.
+	_device_id.devid_s.address = (uint8_t)(device >> 8);
 	// devtype needs to be filled in by the driver
 	_device_id.devid_s.devtype = 0;
+
+	if (!px4_spi_bus_requires_locking(bus)) {
+		_locking_mode = LOCK_NONE;
+	}
 }
 
 SPI::~SPI()

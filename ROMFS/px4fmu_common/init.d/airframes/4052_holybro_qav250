@@ -2,13 +2,16 @@
 #
 # @name HolyBro QAV250
 #
-# @board px4_fmu-v2 exclude
 # @url https://docs.px4.io/en/frames_multicopter/holybro_qav250_pixhawk4_mini.html
 #
 # @type Quadrotor x
 # @class Copter
 #
 # @maintainer Beat Kueng <beat-kueng@gmx.net>
+#
+# @board px4_fmu-v2 exclude
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
 #
 
 sh /etc/init.d/rc.mc_defaults
@@ -22,7 +25,7 @@ then
 	param set BAT_N_CELLS 4
 
 	param set IMU_GYRO_CUTOFF 120
-	param set MC_DTERM_CUTOFF 45
+	param set IMU_DGYRO_CUTOFF 45
 
 	param set MC_AIRMODE 1
 	param set MC_PITCHRATE_D 0.0012

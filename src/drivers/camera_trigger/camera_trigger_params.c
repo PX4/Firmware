@@ -37,6 +37,7 @@
  *
  * @author Mohammed Kabir <kabir@uasys.io>
  * @author Andreas Bircher <andreas@wingtra.com>
+ * @author Lorenz Meier <lorenz@px4.io>
  */
 
 /**
@@ -50,7 +51,6 @@
 * @value 4 Generic PWM (IR trigger, servo)
 *
 * @reboot_required true
-*
 * @group Camera trigger
 */
 PARAM_DEFINE_INT32(TRIG_INTERFACE, 4);
@@ -64,9 +64,25 @@ PARAM_DEFINE_INT32(TRIG_INTERFACE, 4);
  * @min 4.0
  * @max 10000.0
  * @decimal 1
+ * @reboot_required true
  * @group Camera trigger
  */
 PARAM_DEFINE_FLOAT(TRIG_INTERVAL, 40.0f);
+
+/**
+ * Minimum camera trigger interval
+ *
+ * This parameter sets the minimum time between two consecutive trigger events
+ * the specific camera setup is supporting.
+ *
+ * @unit ms
+ * @min 1.0
+ * @max 10000.0
+ * @decimal 1
+ * @reboot_required true
+ * @group Camera trigger
+ */
+PARAM_DEFINE_FLOAT(TRIG_MIN_INTERVA, 1.0f);
 
 /**
  * Camera trigger polarity
@@ -77,6 +93,7 @@ PARAM_DEFINE_FLOAT(TRIG_INTERVAL, 40.0f);
  * @value 1 Active high
  * @min 0
  * @max 1
+ * @reboot_required true
  * @group Camera trigger
  */
 PARAM_DEFINE_INT32(TRIG_POLARITY, 0);
@@ -90,6 +107,7 @@ PARAM_DEFINE_INT32(TRIG_POLARITY, 0);
  * @min 0.1
  * @max 3000
  * @decimal 1
+ * @reboot_required true
  * @group Camera trigger
  */
 PARAM_DEFINE_FLOAT(TRIG_ACT_TIME, 40.0f);
@@ -136,6 +154,7 @@ PARAM_DEFINE_INT32(TRIG_PINS, 56);
  * @min 0
  * @increment 1
  * @decimal 1
+ * @reboot_required true
  * @group Camera trigger
  */
 PARAM_DEFINE_FLOAT(TRIG_DISTANCE, 25.0f);

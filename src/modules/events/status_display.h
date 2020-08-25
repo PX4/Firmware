@@ -40,14 +40,14 @@
 
 #pragma once
 
-#include "subscriber_handler.h"
-
 #include <drivers/drv_hrt.h>
 
 #include <uORB/PublicationQueued.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/cpuload.h>
 #include <uORB/topics/led_control.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_status_flags.h>
 
@@ -60,7 +60,7 @@ class StatusDisplay
 {
 public:
 
-	StatusDisplay(const events::SubscriberHandler &subscriber_handler);
+	StatusDisplay();
 
 	/** regularily called to handle state updates */
 	void process();
@@ -81,11 +81,11 @@ protected:
 	void publish();
 
 	// TODO: review if there is a better variant that allocates this in the memory
-	struct battery_status_s _battery_status = {};
-	struct cpuload_s _cpu_load = {};
-	struct vehicle_status_s _vehicle_status = {};
-	struct vehicle_status_flags_s _vehicle_status_flags = {};
-	struct vehicle_attitude_s _vehicle_attitude = {};
+	uORB::SubscriptionData<battery_status_s> _battery_status_sub{ORB_ID(battery_status)};
+	uORB::SubscriptionData<cpuload_s> _cpu_load_sub{ORB_ID(cpuload)};
+	uORB::SubscriptionData<vehicle_status_s> _vehicle_status_sub{ORB_ID(vehicle_status)};
+	uORB::SubscriptionData<vehicle_status_flags_s> _vehicle_status_flags_sub{ORB_ID(vehicle_status_flags)};
+	uORB::SubscriptionData<vehicle_attitude_s> _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 
 	struct led_control_s _led_control = {};
 
@@ -99,7 +99,6 @@ private:
 
 	uORB::PublicationQueued<led_control_s> _led_control_pub{ORB_ID(led_control)};
 
-	const events::SubscriberHandler &_subscriber_handler;
 };
 
 } /* namespace status */

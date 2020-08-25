@@ -64,10 +64,7 @@ BMI160::BMI160(int bus, uint32_t device, enum Rotation rotation) :
 	_duplicates(perf_alloc(PC_COUNT, "bmi160_duplicates"))
 {
 	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_BMI160);
-	_px4_accel.set_sample_rate(BMI160_ACCEL_DEFAULT_RATE);
-
 	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_BMI160);
-	_px4_accel.set_sample_rate(BMI160_GYRO_DEFAULT_RATE);
 }
 
 BMI160::~BMI160()

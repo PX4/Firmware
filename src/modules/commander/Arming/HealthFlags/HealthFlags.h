@@ -43,7 +43,9 @@
 
 #include <px4_platform_common/log.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/subsystem_info.h>
 
 void set_health_flags(uint64_t subsystem_type, bool present, bool enabled, bool ok, vehicle_status_s &status);
 void set_health_flags_present_healthy(uint64_t subsystem_type, bool present, bool healthy, vehicle_status_s &status);
 void set_health_flags_healthy(uint64_t subsystem_type, bool healthy, vehicle_status_s &status);
+void print_health_flags(const vehicle_status_s &status);

@@ -79,11 +79,11 @@ MavlinkParametersManager::handle_message(const mavlink_message_t *msg)
 			if (req_list.target_system == mavlink_system.sysid && req_list.target_component < 127 &&
 			    (req_list.target_component != mavlink_system.compid || req_list.target_component == MAV_COMP_ID_ALL)) {
 				// publish list request to UAVCAN driver via uORB.
-				uavcan_parameter_request_s req;
+				uavcan_parameter_request_s req{};
 				req.message_type = msg->msgid;
 				req.node_id = req_list.target_component;
 				req.param_index = 0;
-
+				req.timestamp = hrt_absolute_time();
 				_uavcan_parameter_request_pub.publish(req);
 			}
 
@@ -139,7 +139,7 @@ MavlinkParametersManager::handle_message(const mavlink_message_t *msg)
 			if (set.target_system == mavlink_system.sysid && set.target_component < 127 &&
 			    (set.target_component != mavlink_system.compid || set.target_component == MAV_COMP_ID_ALL)) {
 				// publish set request to UAVCAN driver via uORB.
-				uavcan_parameter_request_s req;
+				uavcan_parameter_request_s req{};
 				req.message_type = msg->msgid;
 				req.node_id = set.target_component;
 				req.param_index = -1;
@@ -157,6 +157,7 @@ MavlinkParametersManager::handle_message(const mavlink_message_t *msg)
 					req.int_value = val;
 				}
 
+				req.timestamp = hrt_absolute_time();
 				_uavcan_parameter_request_pub.publish(req);
 			}
 
@@ -217,7 +218,7 @@ MavlinkParametersManager::handle_message(const mavlink_message_t *msg)
 			if (req_read.target_system == mavlink_system.sysid && req_read.target_component < 127 &&
 			    (req_read.target_component != mavlink_system.compid || req_read.target_component == MAV_COMP_ID_ALL)) {
 				// publish set request to UAVCAN driver via uORB.
-				uavcan_parameter_request_s req = {};
+				uavcan_parameter_request_s req{};
 				req.timestamp = hrt_absolute_time();
 				req.message_type = msg->msgid;
 				req.node_id = req_read.target_component;

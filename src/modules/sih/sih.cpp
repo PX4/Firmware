@@ -92,8 +92,8 @@ Sih *Sih::instantiate(int argc, char *argv[])
 
 Sih::Sih() :
 	ModuleParams(nullptr),
-	_loop_perf(perf_alloc(PC_ELAPSED, "sih_execution")),
-	_sampling_perf(perf_alloc(PC_ELAPSED, "sih_sampling"))
+	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": execution")),
+	_sampling_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sampling"))
 {
 }
 
@@ -333,34 +333,20 @@ void Sih::reconstruct_sensors_signals()
 void Sih::send_IMU()
 {
 	// gyro
-	{
-		static constexpr float scaling = 1000.0f;
-		_px4_gyro.set_scale(1 / scaling);
-		_px4_gyro.set_temperature(T1_C);
-		_px4_gyro.update(_now, _gyro(0) * scaling, _gyro(1) * scaling, _gyro(2) * scaling);
-	}
+	_px4_gyro.set_temperature(T1_C);
+	_px4_gyro.update(_now, _gyro(0), _gyro(1), _gyro(2));
 
 	// accel
-	{
-		static constexpr float scaling = 1000.0f;
-		_px4_accel.set_scale(1 / scaling);
-		_px4_accel.set_temperature(T1_C);
-		_px4_accel.update(_now, _acc(0) * scaling, _acc(1) * scaling, _acc(2) * scaling);
-	}
+	_px4_accel.set_temperature(T1_C);
+	_px4_accel.update(_now, _acc(0), _acc(1), _acc(2));
 
 	// magnetometer
-	{
-		static constexpr float scaling = 1000.0f;
-		_px4_mag.set_scale(1 / scaling);
-		_px4_mag.set_temperature(T1_C);
-		_px4_mag.update(_now, _mag(0) * scaling, _mag(1) * scaling, _mag(2) * scaling);
-	}
+	_px4_mag.set_temperature(T1_C);
+	_px4_mag.update(_now, _mag(0), _mag(1), _mag(2));
 
 	// baro
-	{
-		_px4_baro.set_temperature(_baro_temp_c);
-		_px4_baro.update(_now, _baro_p_mBar);
-	}
+	_px4_baro.set_temperature(_baro_temp_c);
+	_px4_baro.update(_now, _baro_p_mBar);
 }
 
 void Sih::send_gps()
@@ -405,9 +391,6 @@ void Sih::publish_sih()
 	_gpos_gt.lat = _gps_lat_noiseless;
 	_gpos_gt.lon = _gps_lon_noiseless;
 	_gpos_gt.alt = _gps_alt_noiseless;
-	_gpos_gt.vel_n = _v_I(0);
-	_gpos_gt.vel_e = _v_I(1);
-	_gpos_gt.vel_d = _v_I(2);
 
 	_gpos_gt_pub.publish(_gpos_gt);
 }

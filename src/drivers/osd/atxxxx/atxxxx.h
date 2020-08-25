@@ -46,24 +46,11 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
-
-/* Configuration Constants */
-#ifdef PX4_SPI_BUS_OSD
-#define OSD_BUS PX4_SPI_BUS_OSD
-#else
-#error "add the required spi bus from board_config.h here"
-#endif
-
-#ifdef PX4_SPIDEV_OSD
-#define OSD_SPIDEV PX4_SPIDEV_OSD
-#else
-#error "add the required spi device from board_config.h here"
-#endif
 
 #define OSD_SPI_BUS_SPEED (2000000L) /*  2 MHz  */
 
@@ -78,36 +65,24 @@
 
 extern "C" __EXPORT int atxxxx_main(int argc, char *argv[]);
 
-class OSDatxxxx : public device::SPI, public ModuleBase<OSDatxxxx>, public ModuleParams, public px4::ScheduledWorkItem
+class OSDatxxxx : public device::SPI, public ModuleParams, public I2CSPIDriver<OSDatxxxx>
 {
 public:
-	OSDatxxxx(int bus = OSD_BUS);
+	OSDatxxxx(I2CSPIBusOption bus_option, int bus, int devid, int bus_frequency, spi_mode_e spi_mode);
+	virtual ~OSDatxxxx() = default;
 
-	~OSDatxxxx();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	virtual int init();
+	int init() override;
 
-	/**
-	 * @see ModuleBase::custom_command
-	 */
-	static int custom_command(int argc, char *argv[]);
-
-	/**
-	 * @see ModuleBase::print_usage
-	 */
-	static int print_usage(const char *reason = nullptr);
-
-	/**
-	 * @see ModuleBase::task_spawn
-	 */
-	static int task_spawn(int argc, char *argv[]);
+	void RunImpl();
 
 protected:
-	virtual int probe();
+	int probe() override;
 
 private:
-	void Run() override;
-
 	int start();
 
 	int reset();

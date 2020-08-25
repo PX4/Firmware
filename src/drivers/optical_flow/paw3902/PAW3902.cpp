@@ -33,9 +33,10 @@
 
 #include "PAW3902.hpp"
 
-PAW3902::PAW3902(int bus, enum Rotation yaw_rotation) :
-	SPI("PAW3902", nullptr, bus, PAW3902_SPIDEV, SPIDEV_MODE0, PAW3902_SPI_BUS_SPEED),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+PAW3902::PAW3902(I2CSPIBusOption bus_option, int bus, int devid, enum Rotation yaw_rotation, int bus_frequency,
+		 spi_mode_e spi_mode) :
+	SPI("PAW3902", nullptr, bus, devid, spi_mode, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_sample_perf(perf_alloc(PC_ELAPSED, "paw3902: read")),
 	_comms_errors(perf_alloc(PC_COUNT, "paw3902: com_err")),
 	_dupe_count_perf(perf_alloc(PC_COUNT, "paw3902: duplicate reading")),
@@ -45,9 +46,6 @@ PAW3902::PAW3902(int bus, enum Rotation yaw_rotation) :
 
 PAW3902::~PAW3902()
 {
-	// make sure we are truly inactive
-	stop();
-
 	// free perf counters
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
@@ -534,7 +532,7 @@ PAW3902::registerWrite(uint8_t reg, uint8_t data)
 }
 
 void
-PAW3902::Run()
+PAW3902::RunImpl()
 {
 	perf_begin(_sample_perf);
 
@@ -603,7 +601,7 @@ PAW3902::Run()
 			// LowLight -> SuperLowLight
 			changeMode(Mode::SuperLowLight);
 
-		} else if ((shutter >= 0x0BB8)) {	// AND valid for 10 consecutive frames?
+		} else if ((shutter < 0x0BB8)) {	// AND valid for 10 consecutive frames?
 			// LowLight -> Bright
 			changeMode(Mode::Bright);
 		}
@@ -613,7 +611,7 @@ PAW3902::Run()
 	case Mode::SuperLowLight:
 
 		// SuperLowLight -> LowLight
-		if ((shutter >= 0x03E8)) { // AND valid for 10 consecutive frames?
+		if ((shutter < 0x03E8)) { // AND valid for 10 consecutive frames?
 			changeMode(Mode::LowLight);
 		}
 
@@ -686,14 +684,9 @@ PAW3902::start()
 }
 
 void
-PAW3902::stop()
+PAW3902::print_status()
 {
-	ScheduleClear();
-}
-
-void
-PAW3902::print_info()
-{
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_dupe_count_perf);

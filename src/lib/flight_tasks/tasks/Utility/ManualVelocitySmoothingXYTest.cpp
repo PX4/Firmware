@@ -58,9 +58,9 @@ TEST_F(ManualVelocitySmoothingXYTest, setGet)
 	_smoothing.setMaxVel(5.f);
 
 	// THEN: We should be able to get them back
-	EXPECT_EQ(_smoothing.getMaxJerk(), 11.f);
-	EXPECT_EQ(_smoothing.getMaxAccel(), 7.f);
-	EXPECT_EQ(_smoothing.getMaxVel(), 5.f);
+	EXPECT_FLOAT_EQ(_smoothing.getMaxJerk(), 11.f);
+	EXPECT_FLOAT_EQ(_smoothing.getMaxAccel(), 7.f);
+	EXPECT_FLOAT_EQ(_smoothing.getMaxVel(), 5.f);
 }
 
 TEST_F(ManualVelocitySmoothingXYTest, getCurrentState)

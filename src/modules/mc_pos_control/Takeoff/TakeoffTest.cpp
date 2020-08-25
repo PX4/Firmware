@@ -33,6 +33,7 @@
 
 #include <gtest/gtest.h>
 #include <Takeoff.hpp>
+#include <drivers/drv_hrt.h>
 
 TEST(TakeoffTest, Initialization)
 {
@@ -40,10 +41,38 @@ TEST(TakeoffTest, Initialization)
 	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::disarmed);
 }
 
-// TEST(TakeoffTest, Ramp)
-// {
-// 	Takeoff takeoff;
-// 	takeoff.updateTakeoffState(true, false, true, 1.f, false);
-// 	takeoff.updateThrustRamp(1.f, 0.1f);
-// 	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::disarmed);
-// }
+TEST(TakeoffTest, RegularTakeoffRamp)
+{
+	Takeoff takeoff;
+	takeoff.setSpoolupTime(1.f);
+	takeoff.setTakeoffRampTime(2.0);
+	takeoff.generateInitialRampValue(.5f, 1.f);
+
+	// disarmed, landed, don't want takeoff
+	takeoff.updateTakeoffState(false, true, false, 1.f, false, 0);
+	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::disarmed);
+
+	// armed, not landed anymore, don't want takeoff
+	takeoff.updateTakeoffState(true, false, false, 1.f, false, 500_ms);
+	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::spoolup);
+
+	// armed, not landed, don't want takeoff yet, spoolup time passed
+	takeoff.updateTakeoffState(true, false, false, 1.f, false, 2_s);
+	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::ready_for_takeoff);
+
+	// armed, not landed, want takeoff
+	takeoff.updateTakeoffState(true, false, true, 1.f, false, 3_s);
+	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::rampup);
+
+	// armed, not landed, want takeoff, ramping up
+	takeoff.updateTakeoffState(true, false, true, 1.f, false, 4_s);
+	EXPECT_FLOAT_EQ(takeoff.updateRamp(.5f, 1.5f), 0.f);
+	EXPECT_FLOAT_EQ(takeoff.updateRamp(.5f, 1.5f), .5f);
+	EXPECT_FLOAT_EQ(takeoff.updateRamp(.5f, 1.5f), 1.f);
+	EXPECT_FLOAT_EQ(takeoff.updateRamp(.5f, 1.5f), 1.5f);
+	EXPECT_FLOAT_EQ(takeoff.updateRamp(.5f, 1.5f), 1.5f);
+
+	// armed, not landed, want takeoff, rampup time passed
+	takeoff.updateTakeoffState(true, false, true, 1.f, false, 6500_ms);
+	EXPECT_EQ(takeoff.getTakeoffState(), TakeoffState::flight);
+}

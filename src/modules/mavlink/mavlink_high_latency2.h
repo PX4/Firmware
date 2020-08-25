@@ -44,6 +44,22 @@
 #include "mavlink_simple_analyzer.h"
 #include "mavlink_stream.h"
 
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/airspeed.h>
+#include <uORB/topics/battery_status.h>
+#include <uORB/topics/estimator_status.h>
+#include <uORB/topics/geofence_result.h>
+#include <uORB/topics/position_controller_status.h>
+#include <uORB/topics/tecs_status.h>
+#include <uORB/topics/wind_estimate.h>
+#include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_gps_position.h>
+#include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_status_flags.h>
+
 class MavlinkStreamHighLatency2 : public MavlinkStream
 {
 public:
@@ -85,54 +101,28 @@ public:
 private:
 
 	struct PerBatteryData {
-		PerBatteryData() {}
-		MavlinkOrbSubscription *subscription{nullptr};
+		PerBatteryData(uint8_t instance) : subscription(ORB_ID(battery_status), instance) {}
+		uORB::Subscription subscription;
 		SimpleAnalyzer analyzer{SimpleAnalyzer::AVERAGE};
 		uint64_t timestamp{0};
 		bool connected{false};
 	};
 
-	MavlinkOrbSubscription *_actuator_sub_0;
-	uint64_t _actuator_time_0;
-
-	MavlinkOrbSubscription *_actuator_sub_1;
-	uint64_t _actuator_time_1;
-
-	MavlinkOrbSubscription *_airspeed_sub;
-	uint64_t _airspeed_time;
-
-	MavlinkOrbSubscription *_attitude_sp_sub;
-	uint64_t _attitude_sp_time;
-
-	MavlinkOrbSubscription *_estimator_status_sub;
-	uint64_t _estimator_status_time;
-
-	MavlinkOrbSubscription *_pos_ctrl_status_sub;
-	uint64_t _pos_ctrl_status_time;
-
-	MavlinkOrbSubscription *_geofence_sub;
-	uint64_t _geofence_time;
-
-	MavlinkOrbSubscription *_global_pos_sub;
-	uint64_t _global_pos_time;
-
-	MavlinkOrbSubscription *_gps_sub;
-	uint64_t _gps_time;
-
-	MavlinkOrbSubscription *_mission_result_sub;
-	uint64_t _mission_result_time;
-
-	MavlinkOrbSubscription *_status_sub;
-	uint64_t _status_time;
-
-	MavlinkOrbSubscription *_status_flags_sub;
-	uint64_t _status_flags_time;
-
-	MavlinkOrbSubscription *_tecs_status_sub;
-	uint64_t _tecs_time;
-
-	MavlinkOrbSubscription *_wind_sub;
-	uint64_t _wind_time;
+	uORB::Subscription _actuator_0_sub{ORB_ID(actuator_controls_0)};
+	uORB::Subscription _actuator_1_sub{ORB_ID(actuator_controls_1)};
+	uORB::Subscription _airspeed_sub{ORB_ID(airspeed)};
+	uORB::Subscription _attitude_sp_sub{ORB_ID(vehicle_attitude_setpoint)};
+	uORB::Subscription _estimator_status_sub{ORB_ID(estimator_status)};
+	uORB::Subscription _pos_ctrl_status_sub{ORB_ID(position_controller_status)};
+	uORB::Subscription _geofence_sub{ORB_ID(geofence_result)};
+	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
+	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _gps_sub{ORB_ID(vehicle_gps_position)};
+	uORB::Subscription _mission_result_sub{ORB_ID(mission_result)};
+	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
+	uORB::Subscription _status_flags_sub{ORB_ID(vehicle_status_flags)};
+	uORB::Subscription _tecs_status_sub{ORB_ID(tecs_status)};
+	uORB::Subscription _wind_sub{ORB_ID(wind_estimate)};
 
 	SimpleAnalyzer _airspeed;
 	SimpleAnalyzer _airspeed_sp;
@@ -148,7 +138,7 @@ private:
 	hrt_abstime _last_update_time = 0;
 	float _update_rate_filtered = 0.0f;
 
-	PerBatteryData _batteries[ORB_MULTI_MAX_INSTANCES];
+	PerBatteryData _batteries[ORB_MULTI_MAX_INSTANCES] {0, 1, 2, 3};
 
 	/* do not allow top copying this class */
 	MavlinkStreamHighLatency2(MavlinkStreamHighLatency2 &);
@@ -193,7 +183,7 @@ protected:
 
 	void update_battery_status();
 
-	void update_global_position();
+	void update_local_position();
 
 	void update_gps();
 

@@ -42,7 +42,6 @@
 #include <matrix/matrix/math.hpp>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_constraints.h>
-#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 
 struct PositionControlStates {
@@ -115,29 +114,37 @@ public:
 	void setTiltLimit(const float tilt) { _lim_tilt = tilt; }
 
 	/**
-	 * Set the maximum tilt angle in radians the output attitude is allowed to have
-	 * @param thrust [0,1] with which the vehicle hovers not aacelerating down or up with level orientation
+	 * Set the normalized hover thrust
+	 * @param thrust [0,1] with which the vehicle hovers not acelerating down or up with level orientation
 	 */
-	void setHoverThrust(const float thrust) { _hover_thrust = thrust; }
+	void setHoverThrust(const float hover_thrust) { _hover_thrust = hover_thrust; }
 
 	/**
-	 * Update the current vehicle state.
+	 * Update the hover thrust without immediately affecting the output
+	 * by adjusting the integrator. This prevents propagating the dynamics
+	 * of the hover thrust signal directly to the output of the controller.
+	 */
+	void updateHoverThrust(const float hover_thrust_new);
+
+	/**
+	 * Pass the current vehicle state to the controller
 	 * @param PositionControlStates structure
 	 */
-	void updateState(const PositionControlStates &states);
+	void setState(const PositionControlStates &states);
 
 	/**
-	 * Update the desired setpoints.
+	 * Pass the desired setpoints
+	 * Note: NAN value means no feed forward/leave state uncontrolled if there's no higher order setpoint.
 	 * @param setpoint a vehicle_local_position_setpoint_s structure
-	 * @return true if setpoint has updated correctly
 	 */
-	bool updateSetpoint(const vehicle_local_position_setpoint_s &setpoint);
+	void setInputSetpoint(const vehicle_local_position_setpoint_s &setpoint);
 
 	/**
-	 * Set constraints that are stricter than the global limits.
+	 * Pass constraints that are stricter than the global limits
+	 * Note: NAN value means no constraint, take maximum limit of controller.
 	 * @param constraints a PositionControl structure with supported constraints
 	 */
-	void updateConstraints(const vehicle_constraints_s &constraints);
+	void setConstraints(const vehicle_constraints_s &constraints);
 
 	/**
 	 * Apply P-position and PID-velocity controller that updates the member
@@ -145,42 +152,21 @@ public:
 	 * @see _thr_sp
 	 * @see _yaw_sp
 	 * @see _yawspeed_sp
-	 * @param dt the delta-time
+	 * @param dt time in seconds since last iteration
+	 * @return true if update succeeded and output setpoint is executable, false if not
 	 */
-	void generateThrustYawSetpoint(const float dt);
+	bool update(const float dt);
 
 	/**
-	 * 	Set the integral term in xy to 0.
-	 * 	@see _thr_int
+	 * Set the integral term in xy to 0.
+	 * @see _vel_int
 	 */
-	void resetIntegralXY() { _thr_int(0) = _thr_int(1) = 0.f; }
+	void resetIntegral() { _vel_int.setZero(); }
 
 	/**
-	 * 	Set the integral term in z to 0.
-	 * 	@see _thr_int
+	 * @return the value of the velocity integrator
 	 */
-	void resetIntegralZ() { _thr_int(2) = 0.f; }
-
-	/**
-	 * 	Get the
-	 * 	@see _vel_sp
-	 * 	@return The velocity set-point that was executed in the control-loop. Nan if velocity control-loop was skipped.
-	 */
-	const matrix::Vector3f getVelSp() const
-	{
-		matrix::Vector3f vel_sp{};
-
-		for (int i = 0; i <= 2; i++) {
-			if (_ctrl_vel[i]) {
-				vel_sp(i) = _vel_sp(i);
-
-			} else {
-				vel_sp(i) = NAN;
-			}
-		}
-
-		return vel_sp;
-	}
+	matrix::Vector3f getIntegral() const { return _vel_int; }
 
 	/**
 	 * Get the controllers output local position setpoint
@@ -199,15 +185,10 @@ public:
 	void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const;
 
 private:
-	/**
-	 * Maps setpoints to internal-setpoints.
-	 * @return true if mapping succeeded.
-	 */
-	bool _interfaceMapping();
+	bool _updateSuccessful();
 
-	void _positionController(); /** applies the P-position-controller */
-	void _velocityController(const float &dt); /** applies the PID-velocity-controller */
-	void _setCtrlFlag(bool value); /**< set control-loop flags (only required for logging) */
+	void _positionControl(); ///< Position proportional control
+	void _velocityControl(const float dt); ///< Velocity PID control
 
 	// Gains
 	matrix::Vector3f _gain_pos_p; ///< Position control proportional gain
@@ -229,7 +210,7 @@ private:
 	matrix::Vector3f _pos; /**< current position */
 	matrix::Vector3f _vel; /**< current velocity */
 	matrix::Vector3f _vel_dot; /**< velocity derivative (replacement for acceleration estimate) */
-	matrix::Vector3f _thr_int; /**< integral term of the velocity controller */
+	matrix::Vector3f _vel_int; /**< integral term of the velocity controller */
 	float _yaw{}; /**< current heading */
 
 	vehicle_constraints_s _constraints{}; /**< variable constraints */
@@ -241,8 +222,4 @@ private:
 	matrix::Vector3f _thr_sp; /**< desired thrust */
 	float _yaw_sp{}; /**< desired heading */
 	float _yawspeed_sp{}; /** desired yaw-speed */
-
-	bool _skip_controller{false}; /**< skips position/velocity controller. true for stabilized mode */
-	bool _ctrl_pos[3] = {true, true, true}; /**< True if the control-loop for position was used */
-	bool _ctrl_vel[3] = {true, true, true}; /**< True if the control-loop for velocity was used */
 };

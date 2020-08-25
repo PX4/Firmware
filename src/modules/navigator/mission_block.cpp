@@ -282,6 +282,40 @@ MissionBlock::is_mission_item_reached()
 				}
 			}
 
+		} else if (_mission_item.nav_cmd == NAV_CMD_CONDITION_GATE) {
+
+			struct position_setpoint_s *curr_sp = &_navigator->get_position_setpoint_triplet()->current;
+
+			// if the setpoint is valid we are checking if we reached the gate
+			// in the case of an invalid setpoint we are defaulting to
+			// assuming that we have already reached the gate to not block
+			// the further execution of the mission.
+			if (curr_sp->valid) {
+
+				// location of gate (mission item)
+				struct map_projection_reference_s ref_pos;
+				map_projection_init(&ref_pos, _mission_item.lat, _mission_item.lon);
+
+				// current setpoint
+				matrix::Vector2f gate_to_curr_sp;
+				map_projection_project(&ref_pos, curr_sp->lat, curr_sp->lon, &gate_to_curr_sp(0), &gate_to_curr_sp(1));
+
+				// system position
+				matrix::Vector2f vehicle_pos;
+				map_projection_project(&ref_pos, _navigator->get_global_position()->lat, _navigator->get_global_position()->lon,
+						       &vehicle_pos(0), &vehicle_pos(1));
+				const float dot_product = vehicle_pos.dot(gate_to_curr_sp.normalized());
+
+				// if the dot product (projected vector) is positive, then
+				// the current position is between the gate position and the
+				// next waypoint
+				if (dot_product >= 0) {
+					_waypoint_position_reached = true;
+					_waypoint_yaw_reached = true;
+					_time_wp_reached = now;
+				}
+			}
+
 		} else if (_mission_item.nav_cmd == NAV_CMD_DELAY) {
 			_waypoint_position_reached = true;
 			_waypoint_yaw_reached = true;
@@ -336,10 +370,10 @@ MissionBlock::is_mission_item_reached()
 
 			/* check course if defined only for rotary wing except takeoff */
 			float cog = (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) ?
-				    _navigator->get_global_position()->yaw :
+				    _navigator->get_local_position()->yaw :
 				    atan2f(
-					    _navigator->get_global_position()->vel_e,
-					    _navigator->get_global_position()->vel_n
+					    _navigator->get_local_position()->vy,
+					    _navigator->get_local_position()->vx
 				    );
 
 			float yaw_err = wrap_pi(_mission_item.yaw - cog);
@@ -428,12 +462,9 @@ MissionBlock::reset_mission_item_reached()
 void
 MissionBlock::issue_command(const mission_item_s &item)
 {
-	if (item_contains_position(item)) {
-		return;
-	}
-
-	// NAV_CMD_DO_LAND_START is only a marker
-	if (item.nav_cmd == NAV_CMD_DO_LAND_START) {
+	if (item_contains_position(item)
+	    || item_contains_gate(item)
+	    || item_contains_marker(item)) {
 		return;
 	}
 
@@ -506,6 +537,18 @@ MissionBlock::item_contains_position(const mission_item_s &item)
 	       item.nav_cmd == NAV_CMD_VTOL_TAKEOFF ||
 	       item.nav_cmd == NAV_CMD_VTOL_LAND ||
 	       item.nav_cmd == NAV_CMD_DO_FOLLOW_REPOSITION;
+}
+
+bool
+MissionBlock::item_contains_gate(const mission_item_s &item)
+{
+	return item.nav_cmd == NAV_CMD_CONDITION_GATE;
+}
+
+bool
+MissionBlock::item_contains_marker(const mission_item_s &item)
+{
+	return item.nav_cmd == NAV_CMD_DO_LAND_START;
 }
 
 bool
@@ -642,7 +685,7 @@ MissionBlock::set_takeoff_item(struct mission_item_s *item, float abs_altitude, 
 	/* use current position */
 	item->lat = _navigator->get_global_position()->lat;
 	item->lon = _navigator->get_global_position()->lon;
-	item->yaw = _navigator->get_global_position()->yaw;
+	item->yaw = _navigator->get_local_position()->yaw;
 
 	item->altitude = abs_altitude;
 	item->altitude_is_relative = false;
@@ -711,7 +754,7 @@ MissionBlock::set_vtol_transition_item(struct mission_item_s *item, const uint8_
 {
 	item->nav_cmd = NAV_CMD_DO_VTOL_TRANSITION;
 	item->params[0] = (float) new_mode;
-	item->yaw = _navigator->get_global_position()->yaw;
+	item->yaw = _navigator->get_local_position()->yaw;
 	item->autocontinue = true;
 }
 

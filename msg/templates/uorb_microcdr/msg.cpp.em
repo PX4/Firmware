@@ -54,7 +54,7 @@
 
 @{
 import genmsg.msgs
-import gencpp
+
 from px_generate_uorb_topic_helper import * # this is in Tools/
 
 uorb_struct = '%s_s'%spec.short_name

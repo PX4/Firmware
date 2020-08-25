@@ -16,6 +16,8 @@ then
 	param set FW_LND_ANG 8
 	param set FW_THR_LND_MAX 0
 
+	param set FW_L1_PERIOD 15
+
 	param set FW_P_TC 0.5
 	param set FW_PR_FF 0.40
 	param set FW_PR_I 0.05

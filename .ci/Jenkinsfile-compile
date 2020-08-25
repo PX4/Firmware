@@ -9,14 +9,14 @@ pipeline {
         script {
           def build_nodes = [:]
           def docker_images = [
-            armhf: "px4io/px4-dev-armhf:2019-10-24",
-            base: "px4io/px4-dev-base-bionic:2019-10-24",
-            nuttx: "px4io/px4-dev-nuttx:2019-10-24",
-            snapdragon: "lorenzmeier/px4-dev-snapdragon:2018-09-12"
+            armhf: "px4io/px4-dev-armhf:2020-01-13",
+            base: "px4io/px4-dev-base-bionic:2020-01-13",
+            nuttx: "px4io/px4-dev-nuttx:2020-01-13",
+            snapdragon: "lorenzmeier/px4-dev-snapdragon:2020-01-13"
           ]
 
           def armhf_builds = [
-            target: ["aerotenna_ocpoc_default", "emlid_navio2_cross", "parrot_bebop_default", "px4_raspberrypi_cross"],
+            target: ["aerotenna_ocpoc_default", "beaglebone_blue_default", "emlid_navio2_default", "px4_raspberrypi_default"],
             image: docker_images.armhf,
             archive: false
           ]
@@ -29,28 +29,54 @@ pipeline {
 
           def nuttx_builds_archive = [
             target: [
-                     "px4_io-v2_default",
-                     "px4_fmu-v2_default", "px4_fmu-v2_fixedwing", "px4_fmu-v2_lpe", "px4_fmu-v2_multicopter", "px4_fmu-v2_rover", "px4_fmu-v2_test",
+                     "airmind_mindpx-v2_default",
+                     "av_x-v1_default",
+                     "bitcraze_crazyflie_default",
+                     "holybro_durandal-v1_default",
+                     "holybro_durandal-v1_stackcheck",
+                     "holybro_kakutef7",
+                     "intel_aerofc-v1_default",
+                     "modalai_fc-v1_default",
+                     "mro_ctrl-zero-f7_default",
+                     "mro_x21-777_default",
+                     "mro_x21_default",
+                     "nxp_fmuk66-v3_default",
+                     "nxp_fmurt1062-v1_default",
+                     "nxp_rddrone-uavcan146_default",
+                     "omnibus_f4sd_default",
+                     "px4_fmu-v2_default",
+                     "px4_fmu-v2_fixedwing",
+                     "px4_fmu-v2_lpe",
+                     "px4_fmu-v2_multicopter",
+                     "px4_fmu-v2_rover",
+                     "px4_fmu-v2_test",
                      "px4_fmu-v3_default",
+                     "px4_fmu-v4_cannode",
                      "px4_fmu-v4_default",
                      "px4_fmu-v4pro_default",
-                     "px4_fmu-v5_default", "px4_fmu-v5_fixedwing", "px4_fmu-v5_multicopter", "px4_fmu-v5_rover", "px4_fmu-v5_rtps", "px4_fmu-v5_stackcheck",
+                     "px4_fmu-v5_default",
+                     "px4_fmu-v5_fixedwing",
+                     "px4_fmu-v5_multicopter",
+                     "px4_fmu-v5_rover",
+                     "px4_fmu-v5_rtps",
+                     "px4_fmu-v5_stackcheck",
                      "px4_fmu-v5x_default",
-                     "intel_aerofc-v1_default", "auav_x21_default", "av_x-v1_default", "bitcraze_crazyflie_default", "airmind_mindpx-v2_default",
-                     "holybro_kakutef7", "holybro_durandal-v1_default", "holybro_durandal-v1_stackcheck", "modalai_fc-v1_default", "mro_ctrl-zero-f7_default", "nxp_fmuk66-v3_default", "omnibus_f4sd_default",
-                     "uvify_core_default"],
+                     "px4_fmu-v5x_p2_base_phy_LAN8742Ai",
+                     "px4_io-v2_default",
+                     "uvify_core_default"
+            ],
             image: docker_images.nuttx,
             archive: true
           ]
 
           def snapdragon_builds = [
-            target: ["atlflight_eagle_qurt-default", "atlflight_eagle_default"],
+            target: ["atlflight_eagle_qurt", "atlflight_eagle_default"],
             image: docker_images.snapdragon,
             archive: false
           ]
 
           def docker_builds = [
-            armhf_builds, base_builds, nuttx_builds_archive, snapdragon_builds
+            armhf_builds, base_builds, nuttx_builds_archive//, snapdragon_builds
           ]
 
           for (def build_type = 0; build_type < docker_builds.size(); build_type++) {
@@ -70,7 +96,7 @@ pipeline {
     // TODO: actually upload artifacts to S3
     // stage('S3 Upload') {
     //   agent {
-    //     docker { image 'px4io/px4-dev-base-bionic:2019-10-24' }
+    //     docker { image 'px4io/px4-dev-base-bionic:2020-01-13' }
     //   }
     //   options {
     //         skipDefaultCheckout()
@@ -104,7 +130,7 @@ def createBuildNode(Boolean archive, String docker_image, String target) {
 
     // TODO: fix the snapdragon image
     bypass_entrypoint = ''
-    if (docker_image == 'lorenzmeier/px4-dev-snapdragon:2018-09-12') {
+    if (docker_image == 'lorenzmeier/px4-dev-snapdragon:2020-01-13') {
       bypass_entrypoint = ' --entrypoint=""'
     }
 

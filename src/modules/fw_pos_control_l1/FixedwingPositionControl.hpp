@@ -141,11 +141,11 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
-
 	bool init();
 
 private:
+	void Run() override;
+
 	orb_advert_t	_mavlink_log_pub{nullptr};
 
 	uORB::SubscriptionCallbackWorkItem _global_pos_sub{this, ORB_ID(vehicle_global_position)};
@@ -264,113 +264,8 @@ private:
 		FW_POSCTRL_MODE_OTHER
 	} _control_mode_current{FW_POSCTRL_MODE_OTHER};		///< used to check the mode in the last control loop iteration. Use to check if the last iteration was in the same mode.
 
-	struct {
-		float climbout_diff;
-
-		float max_climb_rate;
-		float max_sink_rate;
-		float speed_weight;
-		float time_const_throt;
-
-		float airspeed_min;
-		float airspeed_trim;
-		float airspeed_max;
-		int32_t airspeed_disabled;
-
-		float pitch_limit_min;
-		float pitch_limit_max;
-
-		float throttle_min;
-		float throttle_max;
-		float throttle_idle;
-		float throttle_cruise;
-		float throttle_alt_scale;
-
-		float man_roll_max_rad;
-		float man_pitch_max_rad;
-		float rollsp_offset_rad;
-		float pitchsp_offset_rad;
-
-		float throttle_land_max;
-		float loiter_radius;
-
-		float land_heading_hold_horizontal_distance;
-		float land_flare_pitch_min_deg;
-		float land_flare_pitch_max_deg;
-		int32_t land_use_terrain_estimate;
-		int32_t land_early_config_change;
-		float land_airspeed_scale;
-		float land_throtTC_scale;
-
-		// VTOL
-		float airspeed_trans;
-	} _parameters{};					///< local copies of interesting parameters
-
-	struct {
-		param_t climbout_diff;
-
-		param_t l1_period;
-		param_t l1_damping;
-		param_t roll_limit;
-		param_t roll_slew_deg_sec;
-
-		param_t time_const;
-		param_t time_const_throt;
-		param_t min_sink_rate;
-		param_t max_sink_rate;
-		param_t max_climb_rate;
-		param_t heightrate_p;
-		param_t heightrate_ff;
-		param_t speedrate_p;
-		param_t throttle_damp;
-		param_t integrator_gain;
-		param_t vertical_accel_limit;
-		param_t height_comp_filter_omega;
-		param_t speed_comp_filter_omega;
-		param_t roll_throttle_compensation;
-		param_t speed_weight;
-		param_t pitch_damping;
-
-		param_t airspeed_min;
-		param_t airspeed_trim;
-		param_t airspeed_max;
-		param_t airspeed_trans;
-		param_t airspeed_disabled;
-
-		param_t pitch_limit_min;
-		param_t pitch_limit_max;
-
-		param_t throttle_min;
-		param_t throttle_max;
-		param_t throttle_idle;
-		param_t throttle_cruise;
-		param_t throttle_slew_max;
-		param_t throttle_alt_scale;
-
-		param_t man_roll_max_deg;
-		param_t man_pitch_max_deg;
-		param_t rollsp_offset_deg;
-		param_t pitchsp_offset_deg;
-
-		param_t throttle_land_max;
-
-		param_t land_slope_angle;
-		param_t land_H1_virt;
-		param_t land_flare_alt_relative;
-		param_t land_thrust_lim_alt_relative;
-		param_t land_heading_hold_horizontal_distance;
-		param_t land_flare_pitch_min_deg;
-		param_t land_flare_pitch_max_deg;
-		param_t land_use_terrain_estimate;
-		param_t land_early_config_change;
-		param_t land_airspeed_scale;
-		param_t land_throtTC_scale;
-		param_t loiter_radius;
-	} _parameter_handles {};				///< handles for interesting parameters
-
-	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::FW_GND_SPD_MIN>) _groundspeed_min
-	)
+	param_t _param_handle_airspeed_trans{PARAM_INVALID};
+	float _param_airspeed_trans{NAN};
 
 	// Update our local parameter cache.
 	int		parameters_update();
@@ -454,6 +349,72 @@ private:
 					float throttle_min, float throttle_max, float throttle_cruise,
 					bool climbout_mode, float climbout_pitch_min_rad,
 					uint8_t mode = tecs_status_s::TECS_MODE_NORMAL);
+
+	DEFINE_PARAMETERS(
+
+		(ParamFloat<px4::params::FW_AIRSPD_MAX>) _param_fw_airspd_max,
+		(ParamFloat<px4::params::FW_AIRSPD_MIN>) _param_fw_airspd_min,
+		(ParamFloat<px4::params::FW_AIRSPD_TRIM>) _param_fw_airspd_trim,
+
+		(ParamFloat<px4::params::FW_CLMBOUT_DIFF>) _param_fw_clmbout_diff,
+
+		(ParamFloat<px4::params::FW_GND_SPD_MIN>) _param_fw_gnd_spd_min,
+
+		(ParamFloat<px4::params::FW_L1_DAMPING>) _param_fw_l1_damping,
+		(ParamFloat<px4::params::FW_L1_PERIOD>) _param_fw_l1_period,
+		(ParamFloat<px4::params::FW_L1_R_SLEW_MAX>) _param_fw_l1_r_slew_max,
+		(ParamFloat<px4::params::FW_R_LIM>) _param_fw_r_lim,
+
+		(ParamFloat<px4::params::FW_LND_AIRSPD_SC>) _param_fw_lnd_airspd_sc,
+		(ParamFloat<px4::params::FW_LND_ANG>) _param_fw_lnd_ang,
+		(ParamFloat<px4::params::FW_LND_FL_PMAX>) _param_fw_lnd_fl_pmax,
+		(ParamFloat<px4::params::FW_LND_FL_PMIN>) _param_fw_lnd_fl_pmin,
+		(ParamFloat<px4::params::FW_LND_FLALT>) _param_fw_lnd_flalt,
+		(ParamFloat<px4::params::FW_LND_HHDIST>) _param_fw_lnd_hhdist,
+		(ParamFloat<px4::params::FW_LND_HVIRT>) _param_fw_lnd_hvirt,
+		(ParamFloat<px4::params::FW_LND_THRTC_SC>) _param_fw_thrtc_sc,
+		(ParamFloat<px4::params::FW_LND_TLALT>) _param_fw_lnd_tlalt,
+		(ParamBool<px4::params::FW_LND_EARLYCFG>) _param_fw_lnd_earlycfg,
+		(ParamBool<px4::params::FW_LND_USETER>) _param_fw_lnd_useter,
+
+		(ParamFloat<px4::params::FW_P_LIM_MAX>) _param_fw_p_lim_max,
+		(ParamFloat<px4::params::FW_P_LIM_MIN>) _param_fw_p_lim_min,
+
+		(ParamFloat<px4::params::FW_T_CLMB_MAX>) _param_fw_t_clmb_max,
+		(ParamFloat<px4::params::FW_T_HRATE_FF>) _param_fw_t_hrate_ff,
+		(ParamFloat<px4::params::FW_T_HRATE_P>) _param_fw_t_hrate_p,
+		(ParamFloat<px4::params::FW_T_INTEG_GAIN>) _param_fw_t_integ_gain,
+		(ParamFloat<px4::params::FW_T_PTCH_DAMP>) _param_fw_t_ptch_damp,
+		(ParamFloat<px4::params::FW_T_RLL2THR>) _param_fw_t_rll2thr,
+		(ParamFloat<px4::params::FW_T_SINK_MAX>) _param_fw_t_sink_max,
+		(ParamFloat<px4::params::FW_T_SINK_MIN>) _param_fw_t_sink_min,
+		(ParamFloat<px4::params::FW_T_SPD_OMEGA>) _param_fw_t_spd_omega,
+		(ParamFloat<px4::params::FW_T_SPDWEIGHT>) _param_fw_t_spdweight,
+		(ParamFloat<px4::params::FW_T_SRATE_P>) _param_fw_t_srate_p,
+		(ParamFloat<px4::params::FW_T_THR_DAMP>) _param_fw_t_thr_damp,
+		(ParamFloat<px4::params::FW_T_THRO_CONST>) _param_fw_t_thro_const,
+		(ParamFloat<px4::params::FW_T_TIME_CONST>) _param_fw_t_time_const,
+		(ParamFloat<px4::params::FW_T_VERT_ACC>) _param_fw_t_vert_acc,
+
+		(ParamFloat<px4::params::FW_THR_ALT_SCL>) _param_fw_thr_alt_scl,
+		(ParamFloat<px4::params::FW_THR_CRUISE>) _param_fw_thr_cruise,
+		(ParamFloat<px4::params::FW_THR_IDLE>) _param_fw_thr_idle,
+		(ParamFloat<px4::params::FW_THR_LND_MAX>) _param_fw_thr_lnd_max,
+		(ParamFloat<px4::params::FW_THR_MAX>) _param_fw_thr_max,
+		(ParamFloat<px4::params::FW_THR_MIN>) _param_fw_thr_min,
+		(ParamFloat<px4::params::FW_THR_SLEW_MAX>) _param_fw_thr_slew_max,
+
+		// external parameters
+		(ParamInt<px4::params::FW_ARSP_MODE>) _param_fw_arsp_mode,
+
+		(ParamFloat<px4::params::FW_PSP_OFF>) _param_fw_psp_off,
+		(ParamFloat<px4::params::FW_RSP_OFF>) _param_fw_rsp_off,
+		(ParamFloat<px4::params::FW_MAN_P_MAX>) _param_fw_man_p_max,
+		(ParamFloat<px4::params::FW_MAN_R_MAX>) _param_fw_man_r_max,
+
+		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad
+
+	)
 
 };
 

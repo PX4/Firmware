@@ -48,7 +48,6 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
-#include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
 using ST_ISM330DLC::Register;
@@ -57,38 +56,33 @@ class ISM330DLC : public device::SPI, public px4::ScheduledWorkItem
 {
 public:
 	ISM330DLC(int bus, uint32_t device, enum Rotation rotation = ROTATION_NONE);
-	virtual ~ISM330DLC();
+	~ISM330DLC() override;
 
-	bool		Init();
-	void		Start();
-	void		Stop();
-	bool		Reset();
-	void		PrintInfo();
-
-protected:
-	virtual int	probe();
+	bool Init();
+	void Start();
+	void Stop();
+	bool Reset();
+	void PrintInfo();
 
 private:
+	int probe() override;
 
-	static int	DataReadyInterruptCallback(int irq, void *context, void *arg);
-	void		DataReady();
+	static int DataReadyInterruptCallback(int irq, void *context, void *arg);
+	void DataReady();
 
-	void		Run() override;
+	void Run() override;
 
-	uint8_t		RegisterRead(Register reg);
-	void		RegisterWrite(Register reg, uint8_t value);
-	void		RegisterSetBits(Register reg, uint8_t setbits);
-	void		RegisterClearBits(Register reg, uint8_t clearbits);
+	uint8_t RegisterRead(Register reg);
+	void RegisterWrite(Register reg, uint8_t value);
+	void RegisterSetBits(Register reg, uint8_t setbits);
+	void RegisterClearBits(Register reg, uint8_t clearbits);
 
-	void		ResetFIFO();
+	void ResetFIFO();
 
+	uint8_t *_dma_data_buffer{nullptr};
 
-	uint8_t	*_dma_data_buffer{nullptr};
-
-	PX4Accelerometer	_px4_accel;
-	PX4Gyroscope		_px4_gyro;
-
-	static constexpr uint32_t _fifo_interval{1000};						// 1000 us sample interval
+	PX4Accelerometer _px4_accel;
+	PX4Gyroscope _px4_gyro;
 
 	perf_counter_t _interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME": run interval")};
 	perf_counter_t _transfer_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": transfer")};
@@ -100,5 +94,4 @@ private:
 
 	hrt_abstime _time_data_ready{0};
 	hrt_abstime _time_last_temperature_update{0};
-
 };

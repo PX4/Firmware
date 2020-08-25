@@ -7,6 +7,8 @@
 #
 # @maintainer Lorenz Meier <lorenz@px4.io>
 #
+# @board bitcraze_crazyflie exclude
+#
 
 sh /etc/init.d/rc.mc_defaults
 

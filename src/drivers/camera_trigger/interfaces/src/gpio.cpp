@@ -2,13 +2,12 @@
 
 #include "gpio.h"
 #include <cstring>
-
-constexpr uint32_t CameraInterfaceGPIO::_gpios[ngpios];
+#include <px4_arch/io_timer.h>
 
 CameraInterfaceGPIO::CameraInterfaceGPIO():
 	CameraInterface(),
 	_trigger_invert(false),
-	_triggers{0}
+	_triggers{}
 {
 	_p_polarity = param_find("TRIG_POLARITY");
 
@@ -25,10 +24,9 @@ void CameraInterfaceGPIO::setup()
 {
 	for (unsigned i = 0, t = 0; i < arraySize(_pins); i++) {
 
-		// Pin range is from 1 to 5 or 6, indexes are 0 to 4 or 5
-
-		if (_pins[i] >= 0 && _pins[i] < (int)arraySize(_gpios)) {
-			uint32_t gpio = _gpios[_pins[i]];
+		// Pin range is from 0 to num_gpios - 1
+		if (_pins[i] >= 0 && t < (int)arraySize(_triggers) && _pins[i] < num_gpios) {
+			uint32_t gpio = io_timer_channel_get_gpio_output(_pins[i]);
 			_triggers[t++] = gpio;
 			px4_arch_configgpio(gpio);
 			px4_arch_gpiowrite(gpio, false ^ _trigger_invert);
@@ -50,17 +48,13 @@ void CameraInterfaceGPIO::trigger(bool trigger_on_true)
 
 void CameraInterfaceGPIO::info()
 {
-	if (ngpios == 6) {
-		PX4_INFO("GPIO trigger mode, pins enabled : [%d][%d][%d][%d][%d][%d], polarity : %s",
-			 _pins[5], _pins[4], _pins[3], _pins[2], _pins[1], _pins[0],
-			 _trigger_invert ? "ACTIVE_LOW" : "ACTIVE_HIGH");
+	PX4_INFO_RAW("GPIO trigger mode, pins enabled: ");
+
+	for (unsigned i = 0; i < arraySize(_pins); ++i) {
+		PX4_INFO_RAW("[%d]", _pins[i]);
 	}
 
-	if (ngpios == 5) {
-		PX4_INFO("GPIO trigger mode, pins enabled : [%d][%d][%d][%d][%d], polarity : %s",
-			 _pins[4], _pins[3], _pins[2], _pins[1], _pins[0],
-			 _trigger_invert ? "ACTIVE_LOW" : "ACTIVE_HIGH");
-	}
+	PX4_INFO_RAW(", polarity : %s\n", _trigger_invert ? "ACTIVE_LOW" : "ACTIVE_HIGH");
 }
 
 #endif /* ifdef __PX4_NUTTX */

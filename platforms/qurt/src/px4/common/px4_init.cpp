@@ -38,7 +38,7 @@
 #include <lib/parameters/param.h>
 #include <px4_platform_common/px4_work_queue/WorkQueueManager.hpp>
 
-int px4_platform_init(void)
+int px4_platform_init()
 {
 	hrt_init();
 

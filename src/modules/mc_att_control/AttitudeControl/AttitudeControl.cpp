@@ -77,7 +77,7 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, cons
 
 	// mix full and reduced desired attitude
 	Quatf q_mix = qd_red.inversed() * qd;
-	q_mix *= math::signNoZero(q_mix(0));
+	q_mix.canonicalize();
 	// catch numerical problems with the domain of acosf and asinf
 	q_mix(0) = math::constrain(q_mix(0), -1.f, 1.f);
 	q_mix(3) = math::constrain(q_mix(3), -1.f, 1.f);
@@ -88,7 +88,7 @@ matrix::Vector3f AttitudeControl::update(matrix::Quatf q, matrix::Quatf qd, cons
 
 	// using sin(alpha/2) scaled rotation axis as attitude error (see quaternion definition by axis angle)
 	// also taking care of the antipodal unit quaternion ambiguity
-	const Vector3f eq = 2.f * math::signNoZero(qe(0)) * qe.imag();
+	const Vector3f eq = 2.f * qe.canonical().imag();
 
 	// calculate angular rates setpoint
 	matrix::Vector3f rate_setpoint = eq.emult(_proportional_gain);

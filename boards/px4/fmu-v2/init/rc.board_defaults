@@ -25,4 +25,7 @@ unset BL_FILE
 if [ $AUTOCNF = yes ]
 then
 
+	# to minimize cpu usage on older boards limit inner loop to 400 Hz
+	param set IMU_GYRO_RATEMAX 400
+
 fi

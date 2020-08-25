@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,10 +31,13 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__srf02
+	MODULE drivers__distance_sensor__srf02
 	MAIN srf02
-	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		srf02.cpp
+		SRF02.cpp
+		SRF02.hpp
+		srf02_main.cpp
+	DEPENDS
+		drivers_rangefinder
+		px4_work_queue
 	)

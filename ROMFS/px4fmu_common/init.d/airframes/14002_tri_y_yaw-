@@ -12,6 +12,9 @@
 #
 # @maintainer Trent Lukaczyk <aerialhedgehog@gmail.com>
 #
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
 
 sh /etc/init.d/rc.mc_defaults
 

@@ -192,12 +192,14 @@ public:
 
 	const orb_metadata *get_meta() const { return _meta; }
 
+	ORB_ID id() const { return static_cast<ORB_ID>(_meta->o_id); }
+
 	const char *get_name() const { return _meta->o_name; }
 
 	uint8_t get_instance() const { return _instance; }
 
-	int get_priority() const { return _priority; }
-	void set_priority(uint8_t priority) { _priority = priority; }
+	ORB_PRIO get_priority() const { return (ORB_PRIO)_priority; }
+	void set_priority(ORB_PRIO priority) { _priority = priority; }
 
 	/**
 	 * Copies data and the corresponding generation
@@ -212,21 +214,6 @@ public:
 	 */
 	bool copy(void *dst, unsigned &generation);
 
-	/**
-	 * Copies data and the corresponding generation
-	 * from a node to the buffer provided.
-	 *
-	 * @param dst
-	 *   The buffer into which the data is copied.
-	 *   If topic was not updated since last check it will return false but
-	 *   still copy the data.
-	 * @param generation
-	 *   The generation that was copied.
-	 * @return uint64_t
-	 *   Returns the timestamp of the copied data.
-	 */
-	uint64_t copy_and_get_timestamp(void *dst, unsigned &generation);
-
 	// add item to list of work items to schedule on node update
 	bool register_callback(SubscriptionCallback *callback_sub);
 
@@ -235,9 +222,9 @@ public:
 
 protected:
 
-	pollevent_t poll_state(cdev::file_t *filp) override;
+	px4_pollevent_t poll_state(cdev::file_t *filp) override;
 
-	void poll_notify_one(px4_pollfd_struct_t *fds, pollevent_t events) override;
+	void poll_notify_one(px4_pollfd_struct_t *fds, px4_pollevent_t events) override;
 
 private:
 
@@ -267,19 +254,20 @@ private:
 	};
 
 	const orb_metadata *_meta; /**< object metadata information */
-	const uint8_t _instance; /**< orb multi instance identifier */
+
 	uint8_t     *_data{nullptr};   /**< allocated object buffer */
-	hrt_abstime   _last_update{0}; /**< time the object was last updated */
 	px4::atomic<unsigned>  _generation{0};  /**< object generation count */
 	List<uORB::SubscriptionCallback *>	_callbacks;
-	uint8_t   _priority;  /**< priority of the topic */
-	bool _advertised{false};  /**< has ever been advertised (not necessarily published data yet) */
-	uint8_t _queue_size; /**< maximum number of elements in the queue */
-	int8_t _subscriber_count{0};
 
 	// statistics
 	uint32_t _lost_messages = 0; /**< nr of lost messages for all subscribers. If two subscribers lose the same
 					message, it is counted as two. */
+
+	const uint8_t _instance; /**< orb multi instance identifier */
+	uint8_t _priority;  /**< priority of the topic */
+	bool _advertised{false};  /**< has ever been advertised (not necessarily published data yet) */
+	uint8_t _queue_size; /**< maximum number of elements in the queue */
+	int8_t _subscriber_count{0};
 
 	inline static SubscriberData    *filp_to_sd(cdev::file_t *filp);
 

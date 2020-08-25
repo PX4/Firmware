@@ -46,11 +46,7 @@ namespace sensors
 constexpr uint8_t MAG_COUNT_MAX = 4;
 constexpr uint8_t GYRO_COUNT_MAX = 3;
 constexpr uint8_t ACCEL_COUNT_MAX = 3;
-constexpr uint8_t BARO_COUNT_MAX = 3;
 
-constexpr uint8_t SENSOR_COUNT_MAX = math::max(MAG_COUNT_MAX,
-				     math::max(GYRO_COUNT_MAX,
-						     math::max(ACCEL_COUNT_MAX,
-								     BARO_COUNT_MAX)));
+constexpr uint8_t SENSOR_COUNT_MAX = math::max(MAG_COUNT_MAX, math::max(GYRO_COUNT_MAX, ACCEL_COUNT_MAX));
 
 } /* namespace sensors */

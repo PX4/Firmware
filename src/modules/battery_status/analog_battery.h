@@ -39,7 +39,7 @@
 class AnalogBattery : public Battery
 {
 public:
-	AnalogBattery(int index = 1, ModuleParams *parent = nullptr);
+	AnalogBattery(int index, ModuleParams *parent);
 
 	/**
 	 * Update current battery status message.
@@ -50,11 +50,9 @@ public:
 	 * @param selected_source This battery is on the brick that the selected source for selected_source
 	 * @param priority: The brick number -1. The term priority refers to the Vn connection on the LTC4417
 	 * @param throttle_normalized Throttle of the vehicle, between 0 and 1
-	 * @param armed Arming state of the vehicle
 	 */
 	void updateBatteryStatusRawADC(hrt_abstime timestamp, int32_t voltage_raw, int32_t current_raw,
-				       bool selected_source, int priority, float throttle_normalized,
-				       bool armed);
+				       bool selected_source, int priority, float throttle_normalized);
 
 	/**
 	 * Whether the ADC channel for the voltage of this battery is valid.

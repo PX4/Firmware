@@ -917,7 +917,8 @@ void CanDriver::initOnce()
 #endif
 }
 
-int CanDriver::init(const uavcan::uint32_t bitrate, const CanIface::OperatingMode mode)
+int CanDriver::init(const uavcan::uint32_t bitrate, const CanIface::OperatingMode mode,
+		    const uavcan::uint32_t enabledInterfaces)
 {
 	int res = 0;
 
@@ -934,28 +935,33 @@ int CanDriver::init(const uavcan::uint32_t bitrate, const CanIface::OperatingMod
 	/*
 	 * CAN1
 	 */
-	UAVCAN_STM32_LOG("Initing iface 0...");
-	ifaces[0] = &if0_;                          // This link must be initialized first,
-	res = if0_.init(bitrate, mode);             // otherwise an IRQ may fire while the interface is not linked yet;
+	if (enabledInterfaces & 1) {
+		UAVCAN_STM32_LOG("Initing iface 0...");
+		ifaces[0] = &if0_;                          // This link must be initialized first,
+		res = if0_.init(bitrate, mode);             // otherwise an IRQ may fire while the interface is not linked yet;
 
-	if (res < 0) {                              // a typical race condition.
-		UAVCAN_STM32_LOG("Iface 0 init failed %i", res);
-		ifaces[0] = UAVCAN_NULLPTR;
-		goto fail;
+		if (res < 0) {                              // a typical race condition.
+			UAVCAN_STM32_LOG("Iface 0 init failed %i", res);
+			ifaces[0] = UAVCAN_NULLPTR;
+			goto fail;
+		}
 	}
 
 	/*
 	 * CAN2
 	 */
 #if UAVCAN_STM32_NUM_IFACES > 1
-	UAVCAN_STM32_LOG("Initing iface 1...");
-	ifaces[1] = &if1_;                          // Same thing here.
-	res = if1_.init(bitrate, mode);
 
-	if (res < 0) {
-		UAVCAN_STM32_LOG("Iface 1 init failed %i", res);
-		ifaces[1] = UAVCAN_NULLPTR;
-		goto fail;
+	if (enabledInterfaces & 2) {
+		UAVCAN_STM32_LOG("Initing iface 1...");
+		ifaces[1] = &if1_;                          // Same thing here.
+		res = if1_.init(bitrate, mode);
+
+		if (res < 0) {
+			UAVCAN_STM32_LOG("Iface 1 init failed %i", res);
+			ifaces[1] = UAVCAN_NULLPTR;
+			goto fail;
+		}
 	}
 
 #endif

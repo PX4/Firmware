@@ -58,6 +58,18 @@ public:
 	/**
 	 * Constructor
 	 *
+	 * @param id The uORB ORB_ID enum for the topic.
+	 * @param interval The requested maximum update interval in microseconds.
+	 * @param instance The instance for multi sub.
+	 */
+	SubscriptionInterval(ORB_ID id, uint32_t interval_us = 0, uint8_t instance = 0) :
+		_subscription{id, instance},
+		_interval_us(interval_us)
+	{}
+
+	/**
+	 * Constructor
+	 *
 	 * @param meta The uORB metadata (usually from the ORB_ID() macro) for the topic.
 	 * @param interval The requested maximum update interval in microseconds.
 	 * @param instance The instance for multi sub.
@@ -120,6 +132,7 @@ public:
 
 	uint8_t		get_instance() const { return _subscription.get_instance(); }
 	orb_id_t	get_topic() const { return _subscription.get_topic(); }
+	ORB_PRIO	get_priority() { return _subscription.get_priority(); }
 
 	/**
 	 * Set the interval in microseconds

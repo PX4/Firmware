@@ -54,7 +54,7 @@ FixedwingLandDetector::FixedwingLandDetector()
 void FixedwingLandDetector::_update_topics()
 {
 	LandDetector::_update_topics();
-	_airspeed_sub.update(&_airspeed);
+	_airspeed_validated_sub.update(&_airspeed_validated);
 }
 
 bool FixedwingLandDetector::_get_landed_state()
@@ -66,7 +66,7 @@ bool FixedwingLandDetector::_get_landed_state()
 
 	bool landDetected = false;
 
-	if (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms) {
+	if (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 1_s) {
 
 		// Horizontal velocity complimentary filter.
 		float val = 0.97f * _velocity_xy_filtered + 0.03f * sqrtf(_vehicle_local_position.vx * _vehicle_local_position.vx +
@@ -83,7 +83,13 @@ bool FixedwingLandDetector::_get_landed_state()
 			_velocity_z_filtered = val;
 		}
 
-		_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * _airspeed.true_airspeed_m_s;
+		// set _airspeed_filtered to 0 if airspeed data is invalid
+		if (!PX4_ISFINITE(_airspeed_validated.true_airspeed_m_s) || hrt_elapsed_time(&_airspeed_validated.timestamp) > 1_s) {
+			_airspeed_filtered = 0.0f;
+
+		} else {
+			_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * _airspeed_validated.true_airspeed_m_s;
+		}
 
 		// A leaking lowpass prevents biases from building up, but
 		// gives a mostly correct response for short impulses.

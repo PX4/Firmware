@@ -50,6 +50,17 @@ WorkItem::WorkItem(const char *name, const wq_config_t &config) :
 	}
 }
 
+WorkItem::WorkItem(const char *name, const WorkItem &work_item) :
+	_item_name(name)
+{
+	px4::WorkQueue *wq = work_item._wq;
+
+	if ((wq != nullptr) && wq->Attach(this)) {
+		_wq = wq;
+		_start_time = hrt_absolute_time();
+	}
+}
+
 WorkItem::~WorkItem()
 {
 	Deinit();
@@ -89,6 +100,14 @@ WorkItem::Deinit()
 	}
 }
 
+void
+WorkItem::ScheduleClear()
+{
+	if (_wq != nullptr) {
+		_wq->Remove(this);
+	}
+}
+
 float
 WorkItem::elapsed_time() const
 {
@@ -100,7 +119,7 @@ WorkItem::average_rate() const
 {
 	const float rate = _run_count / elapsed_time();
 
-	if (PX4_ISFINITE(rate)) {
+	if ((_run_count > 0) && PX4_ISFINITE(rate)) {
 		return rate;
 	}
 
@@ -110,9 +129,10 @@ WorkItem::average_rate() const
 float
 WorkItem::average_interval() const
 {
-	const float interval = 1000000.0f / average_rate();
+	const float rate = average_rate();
+	const float interval = 1000000.0f / rate;
 
-	if (PX4_ISFINITE(interval)) {
+	if ((rate > 0.0f) && PX4_ISFINITE(interval)) {
 		return interval;
 	}
 

@@ -40,6 +40,7 @@
 /************************************************************************************
  * Included Files
  ************************************************************************************/
+#include "board_dma_map.h"
 
 #include <nuttx/config.h>
 
@@ -219,7 +220,6 @@
 // ESC
 #define GPIO_USART1_TX	GPIO_USART1_TX_2
 #define GPIO_USART1_RX	GPIO_USART1_RX_2
-#define DMAMAP_USART1_RX DMAMAP_USART1_RX_2
 
 // Companion
 #define GPIO_USART2_TX	GPIO_USART2_TX_1
@@ -245,7 +245,6 @@
 // Serial console
 #define GPIO_USART6_TX	GPIO_USART6_TX_1
 #define GPIO_USART6_RX	GPIO_USART6_RX_1
-#define DMAMAP_USART6_RX DMAMAP_USART6_RX_2
 
 /*
  * I2C

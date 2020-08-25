@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,181 +31,22 @@
  *
  ****************************************************************************/
 
-/**
- * @file spi.cpp
- *
- * Board-specific SPI functions.
- */
-
-/************************************************************************************
- * Included Files
- ************************************************************************************/
-
-#include <board_config.h>
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <debug.h>
-#include <unistd.h>
-
+#include <px4_arch/spi_hw_description.h>
+#include <drivers/drv_sensor.h>
 #include <nuttx/spi/spi.h>
-#include <arch/board/board.h>
-#include <systemlib/px4_macros.h>
 
-#include <up_arch.h>
-#include <chip.h>
-#include <stm32_gpio.h>
-#include "board_config.h"
+constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
+	initSPIBus(SPI::Bus::SPI1, {
+		initSPIDevice(SPIDEV_MMCSD(0), SPI::CS{GPIO::PortA, GPIO::Pin4})
+	}),
+	initSPIBus(SPI::Bus::SPI2, {
+		initSPIDevice(DRV_OSD_DEVTYPE_ATXXXX, SPI::CS{GPIO::PortB, GPIO::Pin12}),
+	}),
+	initSPIBus(SPI::Bus::SPI4, {
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM20689, SPI::CS{GPIO::PortE, GPIO::Pin4}, SPI::DRDY{GPIO::PortE, GPIO::Pin1}),
+		initSPIDevice(DRV_IMU_DEVTYPE_MPU6000, SPI::CS{GPIO::PortE, GPIO::Pin4}, SPI::DRDY{GPIO::PortE, GPIO::Pin1}),
+	}),
+};
 
-/* Define CS GPIO array */
-static constexpr uint32_t spi1selects_gpio[] = PX4_SD_CARD_BUS_CS_GPIO;
-static constexpr uint32_t spi2selects_gpio[] = PX4_OSD_BUS_CS_GPIO;
-static constexpr uint32_t spi4selects_gpio[] = PX4_SENSOR_BUS_CS_GPIO;
+static constexpr bool unused = validateSPIConfig(px4_spi_buses);
 
-/************************************************************************************
- * Name: stm32_spiinitialize
- *
- * Description:
- *   Called to configure SPI chip select GPIO pins for the board.
- *
- ************************************************************************************/
-
-__EXPORT void stm32_spiinitialize()
-{
-#ifdef CONFIG_STM32F7_SPI1
-
-	for (auto gpio : spi1selects_gpio) {
-		px4_arch_configgpio(gpio);
-	}
-
-#endif // CONFIG_STM32F7_SPI1
-
-
-#if defined(CONFIG_STM32F7_SPI2)
-
-	for (auto gpio : spi2selects_gpio) {
-		px4_arch_configgpio(gpio);
-	}
-
-#endif // CONFIG_STM32F7_SPI2
-
-
-#ifdef CONFIG_STM32F7_SPI4
-
-	for (auto gpio : spi4selects_gpio) {
-		px4_arch_configgpio(gpio);
-	}
-
-#endif // CONFIG_STM32F7_SPI4
-
-
-#ifdef CONFIG_STM32F7_SPI5
-
-	for (auto gpio : spi5selects_gpio) {
-		px4_arch_configgpio(gpio);
-	}
-
-#endif // CONFIG_STM32F7_SPI5
-
-
-#ifdef CONFIG_STM32F7_SPI6
-
-	for (auto gpio : spi6selects_gpio) {
-		px4_arch_configgpio(gpio);
-	}
-
-#endif // CONFIG_STM32F7_SPI6
-}
-
-/************************************************************************************
- * Name: stm32_spi1select and stm32_spi1status
- *
- * Description:
- *   Called by stm32 spi driver on bus 1.
- *
- ************************************************************************************/
-#ifdef CONFIG_STM32F7_SPI1
-__EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
-{
-	ASSERT(devid == SPIDEV_MMCSD(0));
-
-	// Making sure the other peripherals are not selected
-	for (auto cs : spi1selects_gpio) {
-		stm32_gpiowrite(cs, 1);
-	}
-
-	// SPI select is active low, so write !selected to select the device
-	stm32_gpiowrite(spi1selects_gpio[PX4_SPI_DEV_ID(devid)], !selected);
-}
-
-__EXPORT uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, uint32_t devid)
-{
-	return SPI_STATUS_PRESENT;
-}
-#endif // CONFIG_STM32F7_SPI1
-
-/************************************************************************************
- * Name: stm32_spi2select and stm32_spi2status
- *
- * Description:
- *   Called by stm32 spi driver on bus 2.
- *
- ************************************************************************************/
-#if defined(CONFIG_STM32F7_SPI2)
-__EXPORT void stm32_spi2select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
-{
-	ASSERT(PX4_SPI_BUS_ID(devid) == PX4_SPI_BUS_OSD);
-
-	// Making sure the other peripherals are not selected
-	for (auto cs : spi2selects_gpio) {
-		stm32_gpiowrite(cs, 1);
-	}
-
-	// SPI select is active low, so write !selected to select the device
-	stm32_gpiowrite(spi2selects_gpio[PX4_SPI_DEV_ID(devid)], !selected);
-}
-
-__EXPORT uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
-{
-	return SPI_STATUS_PRESENT;
-}
-#endif // CONFIG_STM32F7_SPI2 && GPIO_SPI2_CS_FRAM
-
-/************************************************************************************
- * Name: stm32_spi4select and stm32_spi4status
- *
- * Description:
- *   Called by stm32 spi driver on bus 4.
- *
- ************************************************************************************/
-#ifdef CONFIG_STM32F7_SPI4
-__EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
-{
-	ASSERT(PX4_SPI_BUS_ID(devid) == PX4_SPI_BUS_SENSORS);
-
-	// Making sure the other peripherals are not selected
-	for (auto cs : spi4selects_gpio) {
-		stm32_gpiowrite(cs, 1);
-	}
-
-	// SPI select is active low, so write !selected to select the device
-	stm32_gpiowrite(spi4selects_gpio[PX4_SPI_DEV_ID(devid)], !selected);
-}
-
-__EXPORT uint8_t stm32_spi4status(FAR struct spi_dev_s *dev, uint32_t devid)
-{
-	return SPI_STATUS_PRESENT;
-}
-#endif // CONFIG_STM32F7_SPI4
-
-/************************************************************************************
- * Name: board_spi_reset
- *
- * Description:
- *
- *
- ************************************************************************************/
-
-__EXPORT void board_spi_reset(int ms)
-{
-}

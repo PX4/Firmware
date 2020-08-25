@@ -51,8 +51,6 @@
 #include <termios.h>
 #include <string.h>
 
-#include <arch/board/board.h>
-
 #include "tests_main.h"
 
 #include <math.h>

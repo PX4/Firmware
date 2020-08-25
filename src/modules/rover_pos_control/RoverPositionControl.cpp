@@ -47,9 +47,7 @@
 
 #define ACTUATOR_PUBLISH_PERIOD_MS 4
 
-using matrix::Eulerf;
-using matrix::Quatf;
-using matrix::Vector3f;
+using namespace matrix;
 
 /**
  * L1 control app start / stop handling function
@@ -261,7 +259,7 @@ RoverPositionControl::control_position(const matrix::Vector2f &current_position,
 
 			float desired_r = ground_speed_2d.norm_squared() / math::abs_t(_gnd_control.nav_lateral_acceleration_demand());
 			float desired_theta = (0.5f * M_PI_F) - atan2f(desired_r, _param_wheel_base.get());
-			float control_effort = (desired_theta / _param_max_turn_angle.get()) * math::sign(
+			float control_effort = (desired_theta / _param_max_turn_angle.get()) * sign(
 						       _gnd_control.nav_lateral_acceleration_demand());
 			control_effort = math::constrain(control_effort, -1.0f, 1.0f);
 			_act_controls.control[actuator_controls_s::INDEX_YAW] = control_effort;
@@ -433,7 +431,7 @@ RoverPositionControl::run()
 			// update the reset counters in any case
 			_pos_reset_counter = _global_pos.lat_lon_reset_counter;
 
-			matrix::Vector3f ground_speed(_global_pos.vel_n, _global_pos.vel_e,  _global_pos.vel_d);
+			matrix::Vector3f ground_speed(_local_pos.vx, _local_pos.vy,  _local_pos.vz);
 			matrix::Vector2f current_position((float)_global_pos.lat, (float)_global_pos.lon);
 			matrix::Vector3f current_velocity(_local_pos.vx, _local_pos.vy, _local_pos.vz);
 

@@ -1,5 +1,5 @@
 /****************************************************************************
- * nuttx-configs/px4_fmu-v2/scripts/ld.script
+ * scripts/ld.script
  *
  *   Copyright (C) 2011 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>

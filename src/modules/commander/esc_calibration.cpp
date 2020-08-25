@@ -57,35 +57,8 @@ using namespace time_literals;
 int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *armed)
 {
 	int	return_code = PX4_OK;
-
-#if defined(__PX4_POSIX_OCPOC) || defined(__PX4_POSIX_BBBLUE)
-	hrt_abstime timeout_start = 0;
-	hrt_abstime timeout_wait = 60_s;
-	armed->in_esc_calibration_mode = true;
-	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "begin esc");
-	timeout_start = hrt_absolute_time();
-
-	while (true) {
-		if (hrt_absolute_time() - timeout_start > timeout_wait) {
-			break;
-
-		} else {
-			px4_usleep(50000);
-		}
-	}
-
-	armed->in_esc_calibration_mode = false;
-	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "end esc");
-
-	if (return_code == OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
-	}
-
-	return return_code;
-
-#else
 	int	fd = -1;
-	bool	batt_connected = true;	// for safety resons assume battery is connected, will be cleared below if not the case
+	bool	batt_connected = true;	// for safety reasons assume battery is connected, will be cleared below if not the case
 	hrt_abstime timeout_start = 0;
 
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
@@ -207,5 +180,4 @@ Out:
 	}
 
 	return return_code;
-#endif
 }

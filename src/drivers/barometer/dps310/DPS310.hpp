@@ -43,6 +43,7 @@
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 #include "Infineon_DPS310_Registers.hpp"
 
@@ -52,22 +53,24 @@ namespace dps310
 using Infineon_DPS310::CalibrationCoefficients;
 using Infineon_DPS310::Register;
 
-class DPS310 : public px4::ScheduledWorkItem
+class DPS310 : public I2CSPIDriver<DPS310>
 {
 public:
-	DPS310(device::Device *interface);
+	DPS310(I2CSPIBusOption bus_option, int bus, device::Device *interface);
 	virtual ~DPS310();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	int			init();
 
-	void			print_info();
+	void			print_status();
+	void			RunImpl();
 
 private:
 
-	void			Run() override;
-
 	void			start();
-	void			stop();
 	int			reset();
 
 	uint8_t			RegisterRead(Register reg);
@@ -75,7 +78,7 @@ private:
 	void			RegisterSetBits(Register reg, uint8_t setbits);
 	void			RegisterClearBits(Register reg, uint8_t clearbits);
 
-	static constexpr uint32_t SAMPLE_RATE{32}; //
+	static constexpr uint32_t SAMPLE_RATE{32};
 
 	PX4Barometer		_px4_barometer;
 

@@ -46,12 +46,12 @@ namespace dps310
 #define DIR_READ			(1<<7)
 #define DIR_WRITE			(0<<7)
 
-device::Device *DPS310_SPI_interface(uint8_t bus, uint32_t device);
+device::Device *DPS310_SPI_interface(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 
 class DPS310_SPI : public device::SPI
 {
 public:
-	DPS310_SPI(uint8_t bus, uint32_t device);
+	DPS310_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~DPS310_SPI() = default;
 
 	virtual int	read(unsigned address, void *data, unsigned count);
@@ -60,13 +60,13 @@ public:
 };
 
 device::Device *
-DPS310_SPI_interface(uint8_t bus, uint32_t device)
+DPS310_SPI_interface(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new DPS310_SPI(bus, device);
+	return new DPS310_SPI(bus, device, bus_frequency, spi_mode);
 }
 
-DPS310_SPI::DPS310_SPI(uint8_t bus, uint32_t device) :
-	SPI("DPS310_SPI", nullptr, bus, device, SPIDEV_MODE3, 10 * 1000 * 1000)
+DPS310_SPI::DPS310_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("DPS310_SPI", nullptr, bus, device, spi_mode, bus_frequency)
 {
 }
 

@@ -2,6 +2,16 @@
 
 set -e
 
+if [ "$#" -lt 6 ]; then
+	echo usage: sitl_run.sh sitl_bin debugger program model src_path build_path
+	exit 1
+fi
+
+if [[ -n "$DONT_RUN" ]]; then
+	echo "Not running simulation (DONT_RUN is set)."
+    exit 0
+fi
+
 sitl_bin="$1"
 debugger="$2"
 program="$3"
@@ -41,12 +51,6 @@ if [ "$model" == "" ] || [ "$model" == "none" ]; then
 	model="iris"
 fi
 
-if [ "$#" -lt 6 ]; then
-	echo usage: sitl_run.sh sitl_bin debugger program model src_path build_path
-	echo ""
-	exit 1
-fi
-
 # kill process names that might stil
 # be running from last time
 pkill -x gazebo || true
@@ -73,22 +77,20 @@ if [ "$program" == "jmavsim" ] && [ ! -n "$no_sim" ]; then
 	SIM_PID=`echo $!`
 elif [ "$program" == "gazebo" ] && [ ! -n "$no_sim" ]; then
 	if [ -x "$(command -v gazebo)" ]; then
-		if  [[ -z "$DONT_RUN" ]]; then
-			# Set the plugin path so Gazebo finds our model and sim
-			source "$src_path/Tools/setup_gazebo.bash" "${src_path}" "${build_path}"
+	# Set the plugin path so Gazebo finds our model and sim
+	source "$src_path/Tools/setup_gazebo.bash" "${src_path}" "${build_path}"
 
-			gzserver --verbose "${src_path}/Tools/sitl_gazebo/worlds/${model}.world" &
+			gzserver "${src_path}/Tools/sitl_gazebo/worlds/${model}.world" &
 			SIM_PID=`echo $!`
 
-			if [[ -n "$HEADLESS" ]]; then
-				echo "not running gazebo gui"
-			else
-				# gzserver needs to be running to avoid a race. Since the launch
-				# is putting it into the background we need to avoid it by backing off
-				sleep 3
-				nice -n 20 gzclient --verbose &
-				GUI_PID=`echo $!`
-			fi
+	if [[ -n "$HEADLESS" ]]; then
+		echo "not running gazebo gui"
+	else
+		# gzserver needs to be running to avoid a race. Since the launch
+		# is putting it into the background we need to avoid it by backing off
+		sleep 3
+		nice -n 20 gzclient --verbose &
+		GUI_PID=`echo $!`
 		fi
 	else
 		echo "You need to have gazebo simulator installed!"
@@ -112,9 +114,7 @@ echo SITL COMMAND: $sitl_command
 export PX4_SIM_MODEL=${model}
 
 
-if [[ -n "$DONT_RUN" ]]; then
-	echo "Not running simulation (\$DONT_RUN is set)."
-elif [ "$debugger" == "lldb" ]; then
+if [ "$debugger" == "lldb" ]; then
 	eval lldb -- $sitl_command
 elif [ "$debugger" == "gdb" ]; then
 	eval gdb --args $sitl_command
@@ -138,14 +138,12 @@ fi
 
 popd >/dev/null
 
-if [[ -z "$DONT_RUN" ]]; then
-	if [ "$program" == "jmavsim" ]; then
-		pkill -9 -P $SIM_PID
-		kill -9 $SIM_PID
-	elif [ "$program" == "gazebo" ]; then
-		kill -9 $SIM_PID
-		if [[ ! -n "$HEADLESS" ]]; then
-			kill -9 $GUI_PID
-		fi
+if [ "$program" == "jmavsim" ]; then
+	pkill -9 -P $SIM_PID
+	kill -9 $SIM_PID
+elif [ "$program" == "gazebo" ]; then
+	kill -9 $SIM_PID
+	if [[ ! -n "$HEADLESS" ]]; then
+		kill -9 $GUI_PID
 	fi
 fi

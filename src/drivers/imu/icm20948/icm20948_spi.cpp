@@ -92,7 +92,7 @@ ICM20948_SPI_interface(int bus, uint32_t cs)
 ICM20948_SPI::ICM20948_SPI(int bus, uint32_t device) :
 	SPI("ICM20948", nullptr, bus, device, SPIDEV_MODE3, ICM20948_LOW_SPI_BUS_SPEED)
 {
-	_device_id.devid_s.devtype = DRV_DEVTYPE_ICM20948;
+	_device_id.devid_s.devtype = DRV_IMU_DEVTYPE_ICM20948;
 }
 
 void

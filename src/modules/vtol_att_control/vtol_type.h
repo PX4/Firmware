@@ -70,6 +70,8 @@ struct Params {
 	int32_t fw_motors_off;			/**< bitmask of all motors that should be off in fixed wing mode */
 	int32_t diff_thrust;
 	float diff_thrust_scale;
+	float down_pitch_max;
+	float forward_thrust_scale;
 };
 
 // Has to match 1:1 msg/vtol_vehicle_status.msg
@@ -163,6 +165,10 @@ public:
 	 */
 	bool can_transition_on_ground();
 
+	/**
+	 * Pusher assist in hover (pusher/pull for standard VTOL, motor tilt for tiltrotor)
+	 */
+	float pusher_assist();
 
 
 	mode get_mode() {return _vtol_mode;}

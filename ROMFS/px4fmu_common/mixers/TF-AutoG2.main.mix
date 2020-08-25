@@ -1,0 +1,55 @@
+Aileron/rudder/elevator/throttle mixer for PX4FMU
+==================================================
+
+Inputs to the mixer come from channel group 0 (vehicle attitude), channels 0
+(roll), 1 (pitch) and 3 (thrust).
+
+CH1, 2: rotor-head mixer
+-------------
+Two scalers total (output, roll).
+
+M: 2
+O: 10000 10000 0 -10000 10000
+S: 0 0 -10000 -10000 0 -10000 10000
+S: 0 1  10000  10000      0 -10000  10000
+
+
+M: 2
+O: 10000 10000 0 -10000 10000
+S: 0 0 -10000 -10000 0 -10000 10000
+S: 0 1 -10000 -10000      0 -10000  10000
+
+
+CH3: Elevator, prerotator mixer
+------------
+Two scalers total (output, roll).
+
+M: 1
+O: 7500 7500 0 -10000 10000
+S: 3 6 10000 10000 0 -10000 10000
+
+
+CH4, 5: Rudder mixer
+------------
+Two scalers total (output, yaw).
+
+M: 1
+S: 0 2  10000  10000      0 -10000  10000
+
+M: 1
+S: 0 2  -10000  -10000      0 -10000  10000
+
+CH4: Motor speed mixer
+-----------------
+Two scalers total (output, thrust).
+
+M: 1
+S: 0 3      0  20000 -10000 -10000  10000
+
+
+CH3: Wheel mixer
+------------
+Two scalers total (output, yaw).
+
+M: 1
+S: 0 2  10000  10000      0 -10000  10000

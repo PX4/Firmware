@@ -33,188 +33,95 @@
 
 #include "DPS310.hpp"
 
-#include <px4_platform_common/getopt.h>
-
 namespace dps310
 {
-
-enum class DPS310_BUS {
-	ALL = 0,
-	I2C_INTERNAL,
-	I2C_EXTERNAL,
-	SPI_INTERNAL,
-	SPI_EXTERNAL
-};
-
-extern device::Device *DPS310_SPI_interface(uint8_t bus, uint32_t device);
-extern device::Device *DPS310_I2C_interface(uint8_t bus, uint32_t device);
-typedef device::Device *(*DPS310_constructor)(uint8_t, uint32_t);
-
-struct dps310_bus_option {
-	DPS310_BUS busid;
-	DPS310_constructor interface_constructor;
-	uint8_t busnum;
-	uint32_t address;
-	DPS310	*dev;
-} bus_options[] = {
-#if defined(PX4_SPI_BUS_2) && defined(PX4_SPIDEV_BARO)
-	{ DPS310_BUS::SPI_INTERNAL, &DPS310_SPI_interface, PX4_SPI_BUS_2, PX4_SPIDEV_BARO, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION) && defined(PX4_I2C_OBDEV_DPS310)
-	{ DPS310_BUS::I2C_EXTERNAL, &DPS310_I2C_interface, PX4_I2C_BUS_EXPANSION, PX4_I2C_OBDEV_DPS310, nullptr },
-#endif
-};
-
-// find a bus structure for a busid
-static dps310_bus_option *find_bus(DPS310_BUS busid)
-{
-	for (dps310_bus_option &bus_option : bus_options) {
-		if ((busid == DPS310_BUS::ALL ||
-		     busid == bus_option.busid) && bus_option.dev != nullptr) {
-
-			return &bus_option;
-		}
-	}
-
-	return nullptr;
+extern device::Device *DPS310_SPI_interface(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *DPS310_I2C_interface(uint8_t bus, uint32_t device, int bus_frequency);
 }
 
-static bool start_bus(dps310_bus_option &bus)
-{
-	device::Device *interface = bus.interface_constructor(bus.busnum, bus.address);
+#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-	if ((interface == nullptr) || (interface->init() != PX4_OK)) {
-		PX4_WARN("no device on bus %u", (unsigned)bus.busid);
+using namespace dps310;
+
+void
+DPS310::print_usage()
+{
+	PRINT_MODULE_USAGE_NAME("dps310", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("baro");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, true);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x77);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+}
+
+I2CSPIDriverBase *DPS310::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
+{
+	device::Device *interface = nullptr;
+
+	if (iterator.busType() == BOARD_I2C_BUS) {
+		interface = DPS310_I2C_interface(iterator.bus(), cli.i2c_address, cli.bus_frequency);
+
+	} else if (iterator.busType() == BOARD_SPI_BUS) {
+		interface = DPS310_SPI_interface(iterator.bus(), iterator.devid(), cli.bus_frequency, cli.spi_mode);
+	}
+
+	if (interface == nullptr) {
+		PX4_ERR("failed creating interface for bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	if (interface->init() != OK) {
 		delete interface;
-		return false;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
 	}
 
-	DPS310 *dev = new DPS310(interface);
+	DPS310 *dev = new DPS310(iterator.configuredBusOption(), iterator.bus(), interface);
 
-	if (dev == nullptr || dev->init() != PX4_OK) {
-		PX4_ERR("driver start failed");
+	if (dev == nullptr) {
+		delete interface;
+		return nullptr;
+	}
+
+	if (OK != dev->init()) {
 		delete dev;
-		return false;
+		return nullptr;
 	}
 
-	bus.dev = dev;
-
-	return true;
+	return dev;
 }
-
-static int start(DPS310_BUS busid)
-{
-	for (dps310_bus_option &bus_option : bus_options) {
-		if (bus_option.dev != nullptr) {
-			// this device is already started
-			PX4_WARN("already started");
-			continue;
-		}
-
-		if (busid != DPS310_BUS::ALL && bus_option.busid != busid) {
-			// not the one that is asked for
-			continue;
-		}
-
-		if (start_bus(bus_option)) {
-			return PX4_OK;
-		}
-	}
-
-	return PX4_ERROR;
-}
-
-static int stop(DPS310_BUS busid)
-{
-	dps310_bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		delete bus->dev;
-		bus->dev = nullptr;
-
-	} else {
-		PX4_WARN("driver not running");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-static int status(DPS310_BUS busid)
-{
-	dps310_bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		bus->dev->print_info();
-		return PX4_OK;
-	}
-
-	PX4_WARN("driver not running");
-	return PX4_ERROR;
-}
-
-static int usage()
-{
-	PX4_INFO("missing command: try 'start', 'stop', 'status'");
-	PX4_INFO("options:");
-	PX4_INFO("    -X    (i2c external bus)");
-	PX4_INFO("    -I    (i2c internal bus)");
-	PX4_INFO("    -s    (spi internal bus)");
-	PX4_INFO("    -S    (spi external bus)");
-
-	return 0;
-}
-
-} // namespace dsp310
 
 extern "C" int dps310_main(int argc, char *argv[])
 {
-	int myoptind = 1;
-	int ch;
-	const char *myoptarg = nullptr;
+	using ThisDriver = DPS310;
+	BusCLIArguments cli{true, true};
+	cli.i2c_address = 0x77;
+	cli.default_i2c_frequency = 400000;
+	cli.default_spi_frequency = 10 * 1000 * 1000;
 
-	using namespace dps310;
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-	DPS310_BUS busid = DPS310_BUS::ALL;
-
-	while ((ch = px4_getopt(argc, argv, "XISs", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'X':
-			busid = DPS310_BUS::I2C_EXTERNAL;
-			break;
-
-		case 'I':
-			busid = DPS310_BUS::I2C_INTERNAL;
-			break;
-
-		case 'S':
-			busid = DPS310_BUS::SPI_EXTERNAL;
-			break;
-
-		case 's':
-			busid = DPS310_BUS::SPI_INTERNAL;
-			break;
-
-		default:
-			return usage();
-		}
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	if (myoptind >= argc) {
-		return usage();
-	}
-
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_BARO_DEVTYPE_DPS310);
 
 	if (!strcmp(verb, "start")) {
-		return start(busid);
-
-	} else if (!strcmp(verb, "stop")) {
-		return stop(busid);
-
-	} else if (!strcmp(verb, "status")) {
-		return status(busid);
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	return usage();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

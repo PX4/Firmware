@@ -28,7 +28,10 @@ px4_add_board(
 		gps
 		#heater
 		#imu # all available imu drivers
-		imu/mpu6000
+		imu/invensense/icm20602
+		imu/invensense/icm20608g
+		#imu/invensense/mpu9250
+		#imu/mpu6000 # legacy icm20602/icm20608g driver
 		imu/mpu9250
 		irlock
 		lights/blinkm
@@ -37,7 +40,8 @@ px4_add_board(
 		#lights/rgbled_pwm
 		magnetometer # all available magnetometer drivers
 		mkblctrl
-		optical_flow # all available optical flow drivers
+		#optical_flow # all available optical flow drivers
+		optical_flow/px4flow
 		#osd
 		pca9685
 		power_monitor/ina226
@@ -70,6 +74,7 @@ px4_add_board(
 		logger
 		mavlink
 		mc_att_control
+		mc_hover_thrust_estimator
 		mc_pos_control
 		mc_rate_control
 		micrortps_bridge
@@ -78,6 +83,8 @@ px4_add_board(
 		rover_pos_control
 		sensors
 		sih
+		temperature_compensation
+		uuv_att_control
 		vmount
 		vtol_att_control
 	SYSTEMCMDS
@@ -109,7 +116,6 @@ px4_add_board(
 		ver
 		work_queue
 	EXAMPLES
-		bottle_drop # OBC challenge
 		fixedwing_control # Tutorial code from https://px4.io/dev/example_fixedwing_control
 		hello
 		hwtest # Hardware test

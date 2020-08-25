@@ -47,10 +47,11 @@ public:
 
 	int main();
 
-	void Run() override;
-
 	static px4::AppState appState; /* track requests to terminate app */
 
 private:
+
+	void Run() override;
+
 	int _iter{0};
 };

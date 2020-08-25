@@ -1,0 +1,37 @@
+Generic car mixer (eg DF Robot GPX:Asurada RC Car)
+===========================
+
+Designed for DF Robot GPX:Asurada
+
+This file defines mixers suitable for controlling a DF Robot GPX:Asurada rover using
+PX4FMU. The configuration assumes the steering is connected to PX4FMU
+servo outputs 1 and the motor speed controls to output 2 and 3. Output 0 is
+assumed to be unused.
+
+Inputs to the mixer come from channel group 0 (vehicle attitude), channels 0 (roll), and 3 (thrust).
+
+See the README for more information on the scaler format.
+
+
+Output 0
+-----------------------------------------
+Z:
+
+Steering mixer using roll on output 1
+------------------------------------------
+M: 1
+S: 0 0  10000   10000     0 -10000  10000
+
+
+Output 2
+------------------------------------------
+M: 2
+S: 0 0   -500   -500      0      0  10000
+S: 0 3  10000  10000      0 -10000  10000
+
+
+Output 3
+------------------------------------------
+M: 2
+S: 0 0    500    500      0      0  10000
+S: 0 3  10000  10000      0 -10000  10000

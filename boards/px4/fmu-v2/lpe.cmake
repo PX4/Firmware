@@ -81,6 +81,7 @@ px4_add_board(
 		battery_status
 		rc_update
 		sensors
+		temperature_compensation
 		vmount
 		#vtol_att_control
 		#airspeed_selector
@@ -111,7 +112,6 @@ px4_add_board(
 		work_queue
 
 	EXAMPLES
-		#bottle_drop # OBC challenge
 		#fixedwing_control # Tutorial code from https://px4.io/dev/example_fixedwing_control
 		#hello
 		#hwtest # Hardware test

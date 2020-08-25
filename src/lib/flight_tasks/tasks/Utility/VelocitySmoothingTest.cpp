@@ -172,9 +172,9 @@ TEST_F(VelocitySmoothingTest, testZeroSetpoint)
 
 	// THEN: All the trajectories should still be zero
 	for (int i = 0; i < 3; i++) {
-		EXPECT_EQ(_trajectories[i].getCurrentJerk(), 0.f);
-		EXPECT_EQ(_trajectories[i].getCurrentAcceleration(), 0.f);
-		EXPECT_EQ(_trajectories[i].getCurrentVelocity(), 0.f);
-		EXPECT_EQ(_trajectories[i].getCurrentPosition(), 0.f);
+		EXPECT_FLOAT_EQ(_trajectories[i].getCurrentJerk(), 0.f);
+		EXPECT_FLOAT_EQ(_trajectories[i].getCurrentAcceleration(), 0.f);
+		EXPECT_FLOAT_EQ(_trajectories[i].getCurrentVelocity(), 0.f);
+		EXPECT_FLOAT_EQ(_trajectories[i].getCurrentPosition(), 0.f);
 	}
 }

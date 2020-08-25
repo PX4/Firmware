@@ -43,21 +43,21 @@
 #pragma once
 
 #include <float.h>
-#include <lib/hysteresis/hysteresis.h>
 #include <math.h>
-#include <perf/perf_counter.h>
-#include <px4_platform_common/px4_config.h>
+
+#include <lib/hysteresis/hysteresis.h>
+#include <lib/perf/perf_counter.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
-#include <px4_platform_common/module_params.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
+#include <px4_platform_common/module_params.h>
+#include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <uORB/Subscription.hpp>
 #include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/sensor_bias.h>
 #include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>

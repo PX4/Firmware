@@ -65,26 +65,20 @@ __EXPORT int config_main(int argc, char *argv[]);
 static int	do_gyro(int argc, char *argv[]);
 static int	do_accel(int argc, char *argv[]);
 static int	do_mag(int argc, char *argv[]);
-static int	do_device(int argc, char *argv[]);
 static void	print_usage(void);
 
 int
 config_main(int argc, char *argv[])
 {
-	bool is_device_cmd = argc >= 2 && (!strcmp(argv[1], "block") || !strcmp(argv[1], "unblock"));
-
 	if (argc >= 3) {
-		if (!is_device_cmd && !strncmp(argv[2], "/dev/gyro", 9)) {
+		if (!strncmp(argv[2], "/dev/gyro", 9)) {
 			return do_gyro(argc - 1, argv + 1);
 
-		} else if (!is_device_cmd && !strncmp(argv[2], "/dev/accel", 10)) {
+		} else if (!strncmp(argv[2], "/dev/accel", 10)) {
 			return do_accel(argc - 1, argv + 1);
 
-		} else if (!is_device_cmd && !strncmp(argv[2], "/dev/mag", 8)) {
+		} else if (!strncmp(argv[2], "/dev/mag", 8)) {
 			return do_mag(argc - 1, argv + 1);
-
-		} else {
-			return do_device(argc - 1, argv + 1);
 		}
 	}
 
@@ -112,55 +106,6 @@ print_usage(void)
 	PRINT_MODULE_USAGE_ARG("<file:dev> <rate>", "Sensor device file and range", false);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("check", "Perform sensor self-test (and print info)");
 	PRINT_MODULE_USAGE_ARG("<file:dev>", "Sensor device file", false);
-}
-
-static int
-do_device(int argc, char *argv[])
-{
-	if (argc < 2) {
-		print_usage();
-		return 1;
-	}
-
-	int	fd;
-
-	fd = open(argv[1], 0);
-
-	if (fd < 0) {
-		PX4_ERR("open %s failed (%i)", argv[1], errno);
-		return 1;
-
-	} else {
-
-		int	ret;
-
-		if (argc == 2 && !strcmp(argv[0], "block")) {
-
-			/* disable the device publications */
-			ret = ioctl(fd, DEVIOCSPUBBLOCK, 1);
-
-			if (ret) {
-				PX4_ERR("uORB publications could not be blocked");
-				return 1;
-			}
-
-		} else if (argc == 2 && !strcmp(argv[0], "unblock")) {
-
-			/* enable the device publications */
-			ret = ioctl(fd, DEVIOCSPUBBLOCK, 0);
-
-			if (ret) {
-				PX4_ERR("uORB publications could not be unblocked");
-				return 1;
-			}
-
-		} else {
-			print_usage();
-			return 1;
-		}
-	}
-
-	return 0;
 }
 
 static int

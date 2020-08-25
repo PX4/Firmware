@@ -176,12 +176,17 @@ uint32_t px4_arch_adc_sample(uint32_t base_address, unsigned channel)
 	return result;
 }
 
+float px4_arch_adc_reference_v()
+{
+	return BOARD_ADC_POS_REF_V;	// TODO: provide true vref
+}
+
 uint32_t px4_arch_adc_temp_sensor_mask()
 {
 	return 1 << (ADC_SC1_ADCH_TEMP >> ADC_SC1_ADCH_SHIFT);
 }
 
-uint32_t px4_arch_adc_dn_fullcount(void)
+uint32_t px4_arch_adc_dn_fullcount()
 {
 	return 1 << 12; // 12 bit ADC
 }

@@ -33,4 +33,3 @@
 
 add_subdirectory(init.d)
 add_subdirectory(mixers)
-add_subdirectory(unit_test_data)

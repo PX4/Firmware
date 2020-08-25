@@ -11,6 +11,8 @@
         "ms-python.python",
         "ms-vscode.cmake-tools",
         "ms-vscode.cpptools",
+        "redhat.vscode-yaml",
+        "timonwong.shellcheck",
         "twxs.cmake",
         "uavcan.dsdl",
         "wholroyd.jinja",

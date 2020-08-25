@@ -429,8 +429,6 @@ FXAS21002C::set_samplerate(unsigned frequency)
 	modify_reg(FXAS21002C_CTRL_REG1, CTRL_REG1_DR_MASK, bits);
 	set_standby(_current_rate, false);
 
-	_px4_gyro.set_sample_rate(_current_rate);
-
 	return OK;
 }
 

@@ -207,8 +207,9 @@ void Tiltrotor::update_mc_state()
 {
 	VtolType::update_mc_state();
 
-	// make sure motors are not tilted
-	_tilt_control = _params_tiltrotor.tilt_mc;
+	_tilt_control = VtolType::pusher_assist();
+
+	_v_att_sp->thrust_body[2] = Tiltrotor::thrust_compensation_for_tilt();
 }
 
 void Tiltrotor::update_fw_state()
@@ -231,7 +232,7 @@ void Tiltrotor::update_transition_state()
 	}
 
 	if (_vtol_schedule.flight_mode == vtol_mode::TRANSITION_FRONT_P1) {
-		// for the first part of the transition the rear rotors are enabled
+		// for the first part of the transition all rotors are enabled
 		if (_motor_state != motor_state::ENABLED) {
 			_motor_state = set_motor_state(_motor_state, motor_state::ENABLED);
 		}
@@ -279,17 +280,18 @@ void Tiltrotor::update_transition_state()
 		_mc_roll_weight = 0.0f;
 		_mc_yaw_weight = 0.0f;
 
-		// ramp down rear motors (setting MAX_PWM down scales the given output into the new range)
-		int rear_value = (1.0f - time_since_trans_start / _params_tiltrotor.front_trans_dur_p2) *
-				 (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) + PWM_DEFAULT_MIN;
+		// ramp down motors not used in fixed-wing flight (setting MAX_PWM down scales the given output into the new range)
+		int ramp_down_value = (1.0f - time_since_trans_start / _params_tiltrotor.front_trans_dur_p2) *
+				      (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) + PWM_DEFAULT_MIN;
 
 
-		_motor_state = set_motor_state(_motor_state, motor_state::VALUE, rear_value);
+		_motor_state = set_motor_state(_motor_state, motor_state::VALUE, ramp_down_value);
 
 
 		_thrust_transition = -_mc_virtual_att_sp->thrust_body[2];
 
 	} else if (_vtol_schedule.flight_mode == vtol_mode::TRANSITION_BACK) {
+		// turn on all MC motors
 		if (_motor_state != motor_state::ENABLED) {
 			_motor_state = set_motor_state(_motor_state, motor_state::ENABLED);
 		}
@@ -386,4 +388,18 @@ void Tiltrotor::fill_actuator_outputs()
 		_actuators_out_1->control[actuator_controls_s::INDEX_YAW] =
 			_actuators_fw_in->control[actuator_controls_s::INDEX_YAW];
 	}
+}
+
+/*
+ * Increase combined thrust of MC propellers if motors are tilted. Assumes that all MC motors are tilted equally.
+ */
+
+float Tiltrotor::thrust_compensation_for_tilt()
+{
+	// only compensate for tilt angle up to 0.5 * max tilt
+	float compensated_tilt = math::constrain(_tilt_control, 0.0f, 0.5f);
+
+	// increase vertical thrust by 1/cos(tilt), limmit to [-1,0]
+	return math::constrain(_v_att_sp->thrust_body[2] / cosf(compensated_tilt * M_PI_2_F), -1.0f, 0.0f);
+
 }

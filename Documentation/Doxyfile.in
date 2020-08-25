@@ -828,8 +828,7 @@ RECURSIVE              = YES
 # Note that relative paths are relative to the directory from which doxygen is
 # run.
 
-EXCLUDE                = @CMAKE_SOURCE_DIR@/src/lib/DriverFramework \
-                         @CMAKE_SOURCE_DIR@/src/modules/uavcan/libuavcan \
+EXCLUDE                = @CMAKE_SOURCE_DIR@/src/modules/uavcan/libuavcan \
                          @CMAKE_SOURCE_DIR@/src/modules/micrortps_bridge/micro-CDR \
                          @CMAKE_SOURCE_DIR@/src/examples \
                          @CMAKE_SOURCE_DIR@/src/templates

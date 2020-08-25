@@ -204,10 +204,10 @@ void sPort_send_ALT(int uart)
 // verified scaling for "calculated" option
 void sPort_send_SPD(int uart)
 {
-	const vehicle_global_position_s &global_pos = s_port_subscription_data->vehicle_global_position_sub.get();
+	const vehicle_local_position_s &local_pos = s_port_subscription_data->vehicle_local_position_sub.get();
 
 	/* send data for A2 */
-	float speed  = sqrtf(global_pos.vel_n * global_pos.vel_n + global_pos.vel_e * global_pos.vel_e);
+	float speed = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
 	uint32_t ispeed = (int)(10 * speed);
 	sPort_send_data(uart, SMARTPORT_ID_GPS_SPD, ispeed);
 }
@@ -297,10 +297,10 @@ void sPort_send_GPS_TIME(int uart)
 
 void sPort_send_GPS_SPD(int uart)
 {
-	const vehicle_global_position_s &global_pos = s_port_subscription_data->vehicle_global_position_sub.get();
+	const vehicle_local_position_s &local_pos = s_port_subscription_data->vehicle_local_position_sub.get();
 
 	/* send 100 * knots */
-	float speed  = sqrtf(global_pos.vel_n * global_pos.vel_n + global_pos.vel_e * global_pos.vel_e);
+	float speed = sqrtf(local_pos.vx * local_pos.vx + local_pos.vy * local_pos.vy);
 	uint32_t ispeed = (int)(1944 * speed);
 	sPort_send_data(uart, SMARTPORT_ID_GPS_SPD, ispeed);
 }

@@ -20,7 +20,7 @@ install:
 # if the toolchain wasn't restored from build cache download and install it
 - ps: >-
     if (-not (Test-Path C:\PX4)) {
-        Invoke-WebRequest https://s3-us-west-2.amazonaws.com/px4-tools/PX4+Windows+Cygwin+Toolchain/PX4+Windows+Cygwin+Toolchain+0.6.msi -OutFile C:\Toolchain.msi
+        Invoke-WebRequest https://s3-us-west-2.amazonaws.com/px4-tools/PX4+Windows+Cygwin+Toolchain/PX4+Windows+Cygwin+Toolchain+0.8.msi -OutFile C:\Toolchain.msi
         Start-Process -Wait msiexec -ArgumentList '/I C:\Toolchain.msi /quiet /qn /norestart /log C:\install.log'
     }
 

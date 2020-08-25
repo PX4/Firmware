@@ -63,6 +63,7 @@ public:
 			const Vector3f rate_setpoint_new = _attitude_control.update(_quat_state, _quat_goal, 0.f);
 			// rotate the simulated state quaternion according to the rate setpoint
 			_quat_state = _quat_state * Quatf(AxisAnglef(rate_setpoint_new));
+			_quat_state = -_quat_state; // produce intermittent antipodal quaternion states to test against unwinding problem
 
 			// expect the error and hence also the output to get smaller with each iteration
 			if (rate_setpoint_new.norm() >= rate_setpoint.norm()) {
@@ -72,20 +73,9 @@ public:
 			rate_setpoint = rate_setpoint_new;
 		}
 
-		EXPECT_EQ(adaptAntipodal(_quat_state), adaptAntipodal(_quat_goal));
+		EXPECT_EQ(_quat_state.canonical(), _quat_goal.canonical());
 		// it shouldn't have taken longer than an iteration timeout to converge
 		EXPECT_GT(i, 0);
-	}
-
-	Quatf adaptAntipodal(const Quatf q)
-	{
-		for (int i = 0; i < 4; i++) {
-			if (fabs(q(i)) > FLT_EPSILON) {
-				return q * math::sign(q(i));
-			}
-		}
-
-		return q;
 	}
 
 	AttitudeControl _attitude_control;

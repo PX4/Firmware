@@ -40,6 +40,7 @@
 #pragma once
 
 #include <drivers/device/Device.hpp>
+#include <drivers/device/spi.h>
 
 #define ADDR_ID_A			0x0a
 #define ADDR_ID_B			0x0b
@@ -50,6 +51,5 @@
 #define ID_C_WHO_AM_I			'3'
 
 /* interface factories */
-extern device::Device *HMC5883_SPI_interface(int bus);
-extern device::Device *HMC5883_I2C_interface(int bus);
-typedef device::Device *(*HMC5883_constructor)(int);
+extern device::Device *HMC5883_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *HMC5883_I2C_interface(int bus, int bus_frequency);

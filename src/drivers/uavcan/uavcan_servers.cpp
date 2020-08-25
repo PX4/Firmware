@@ -45,7 +45,7 @@
 #include <systemlib/err.h>
 #include <parameters/param.h>
 #include <version/version.h>
-#include <arch/board/board.h>
+
 #include <arch/chip/chip.h>
 
 #include "uavcan_main.hpp"
@@ -59,8 +59,6 @@
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/uavcan_parameter_request.h>
-
-#include <v2.0/common/mavlink.h>
 
 /**
  * @file uavcan_servers.cpp
@@ -334,7 +332,7 @@ UavcanServers::run(pthread_addr_t)
 				 * We know how many parameters are exposed by this node, so
 				 * process the request.
 				 */
-				if (request.message_type == MAVLINK_MSG_ID_PARAM_REQUEST_READ) {
+				if (request.message_type == uavcan_parameter_request_s::MESSAGE_TYPE_PARAM_REQUEST_READ) {
 					uavcan::protocol::param::GetSet::Request req;
 
 					if (request.param_index >= 0) {
@@ -354,7 +352,7 @@ UavcanServers::run(pthread_addr_t)
 						_param_index = request.param_index;
 					}
 
-				} else if (request.message_type == MAVLINK_MSG_ID_PARAM_SET) {
+				} else if (request.message_type == uavcan_parameter_request_s::MESSAGE_TYPE_PARAM_SET) {
 					uavcan::protocol::param::GetSet::Request req;
 
 					if (request.param_index >= 0) {
@@ -364,10 +362,10 @@ UavcanServers::run(pthread_addr_t)
 						req.name = (char *)request.param_id;
 					}
 
-					if (request.param_type == MAV_PARAM_TYPE_REAL32) {
+					if (request.param_type == uavcan_parameter_request_s::PARAM_TYPE_REAL32) {
 						req.value.to<uavcan::protocol::param::Value::Tag::real_value>() = request.real_value;
 
-					} else if (request.param_type == MAV_PARAM_TYPE_UINT8) {
+					} else if (request.param_type == uavcan_parameter_request_s::PARAM_TYPE_UINT8) {
 						req.value.to<uavcan::protocol::param::Value::Tag::boolean_value>() = request.int_value;
 
 					} else {
@@ -387,7 +385,7 @@ UavcanServers::run(pthread_addr_t)
 						_param_index = request.param_index;
 					}
 
-				} else if (request.message_type == MAVLINK_MSG_ID_PARAM_REQUEST_LIST) {
+				} else if (request.message_type == uavcan_parameter_request_s::MESSAGE_TYPE_PARAM_REQUEST_LIST) {
 					// This triggers the _param_list_in_progress case below.
 					_param_index = 0;
 					_param_list_in_progress = true;
@@ -397,8 +395,8 @@ UavcanServers::run(pthread_addr_t)
 					PX4_INFO("UAVCAN command bridge: starting component-specific param list");
 				}
 
-			} else if (request.node_id == MAV_COMP_ID_ALL) {
-				if (request.message_type == MAVLINK_MSG_ID_PARAM_REQUEST_LIST) {
+			} else if (request.node_id == uavcan_parameter_request_s::NODE_ID_ALL) {
+				if (request.message_type == uavcan_parameter_request_s::MESSAGE_TYPE_PARAM_REQUEST_LIST) {
 					/*
 					 * This triggers the _param_list_in_progress case below,
 					 * but additionally iterates over all active nodes.
@@ -644,15 +642,15 @@ UavcanServers::cb_getset(const uavcan::ServiceCallResult<uavcan::protocol::param
 			response.param_count = _param_counts[response.node_id];
 
 			if (param.value.is(uavcan::protocol::param::Value::Tag::integer_value)) {
-				response.param_type = MAV_PARAM_TYPE_INT64;
+				response.param_type = uavcan_parameter_request_s::PARAM_TYPE_INT64;
 				response.int_value = param.value.to<uavcan::protocol::param::Value::Tag::integer_value>();
 
 			} else if (param.value.is(uavcan::protocol::param::Value::Tag::real_value)) {
-				response.param_type = MAV_PARAM_TYPE_REAL32;
+				response.param_type = uavcan_parameter_request_s::PARAM_TYPE_REAL32;
 				response.real_value = param.value.to<uavcan::protocol::param::Value::Tag::real_value>();
 
 			} else if (param.value.is(uavcan::protocol::param::Value::Tag::boolean_value)) {
-				response.param_type = MAV_PARAM_TYPE_UINT8;
+				response.param_type = uavcan_parameter_request_s::PARAM_TYPE_UINT8;
 				response.int_value = param.value.to<uavcan::protocol::param::Value::Tag::boolean_value>();
 			}
 

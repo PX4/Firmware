@@ -65,5 +65,4 @@ void FlightTaskManualPositionSmooth::_updateSetpoints()
 
 	/* Check for altitude lock*/
 	_updateAltitudeLock();
-
 }

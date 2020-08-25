@@ -220,7 +220,7 @@ static int vmount_thread_main(int argc, char *argv[])
 	ControlData *control_data = nullptr;
 	g_thread_data = &thread_data;
 
-	int last_active = 0;
+	int last_active = -1;
 
 	while (!thread_should_exit) {
 
@@ -395,7 +395,7 @@ static int vmount_thread_main(int argc, char *argv[])
 
 				thread_data.input_objs_len = 0;
 
-				last_active = 0;
+				last_active = -1;
 
 				if (thread_data.output_obj) {
 					delete (thread_data.output_obj);

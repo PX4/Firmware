@@ -14,5 +14,8 @@ then
 	# It does not start EKF2 in the beginning which is strange behaviour. but 3 seconds hack.
 	# We intentionally put this initialization to here for delayed initialization.
 	sleep 4
-	ms5611 -T 0 -X start
+	if ! ms5611 -T 5607 -X start
+	then
+		ms5611 -X start
+	fi
 fi

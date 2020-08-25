@@ -59,6 +59,4 @@
 typedef struct dshot_conf_t {
 	uint32_t			dma_base;
 	uint32_t			dmamap;
-	uint32_t			start_ccr_register;
-	uint8_t				channels_number;  ///< number of channels/outputs (<=MAX_NUM_CHANNELS_PER_TIMER)
 } dshot_conf_t;

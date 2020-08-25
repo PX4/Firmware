@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015 Mark Charlebois. All rights reserved.
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,92 +31,70 @@
  *
  ****************************************************************************/
 
-/**
- * @file px4_i2c.h
- *
- * Includes device headers depending on the build target
- */
-
 #pragma once
 
-#define PX4_I2C_M_READ           0x0001          /* read data, from slave to master */
+#include <board_config.h>
 
-#if defined (__PX4_NUTTX)
-__BEGIN_DECLS
+#define I2C_BUS_MAX_BUS_ITEMS PX4_NUMBER_I2C_BUSES
 
-/*
- * Building for NuttX
+struct px4_i2c_bus_t {
+	int bus{-1}; ///< physical bus number (1, ...) (-1 means this is unused)
+	bool is_external; ///< static external configuration. Use px4_i2c_bus_external() to check if a bus is really external
+};
+
+__EXPORT extern const px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS]; ///< board-specific I2C bus configuration
+
+/**
+ * runtime-check if a board has a specific bus as external.
+ * This can be overridden by a board to add run-time checks.
  */
-#include <px4_platform_common/px4_config.h>
-#include <sys/ioctl.h>
-#include <nuttx/arch.h>
-#include <nuttx/wqueue.h>
-#include <nuttx/clock.h>
-#include <nuttx/i2c/i2c_master.h>
-#include <nuttx/irq.h>
-#include <nuttx/wqueue.h>
-#include <chip.h>
-#include <arch/board/board.h>
-#include <arch/chip/chip.h>
-#include "up_internal.h"
-#include "up_arch.h"
+__EXPORT bool px4_i2c_bus_external(const px4_i2c_bus_t &bus);
 
-#define px4_i2c_msg_t i2c_msg_s
+/**
+ * runtime-check if a board has a specific bus as external.
+ */
+static inline bool px4_i2c_bus_external(int bus)
+{
+	for (int i = 0; i < I2C_BUS_MAX_BUS_ITEMS; ++i) {
+		if (px4_i2c_buses[i].bus == bus) {
+			return px4_i2c_bus_external(px4_i2c_buses[i]);
+		}
+	}
 
-typedef struct i2c_master_s px4_i2c_dev_t;
-__END_DECLS
+	return true;
+}
 
-#elif defined(__PX4_POSIX)
-#include <stdint.h>
 
-#define I2C_M_READ           0x0001          /* read data, from slave to master */
-#define I2C_M_TEN            0x0002          /* ten bit address */
-#define I2C_M_NORESTART      0x0080          /* message should not begin with (re-)start of transfer */
+/**
+ * @class I2CBusIterator
+ * Iterate over configured I2C buses by the board
+ */
+class I2CBusIterator
+{
+public:
+	enum class FilterType {
+		All, ///< specific or all buses
+		InternalBus, ///< specific or all internal buses
+		ExternalBus, ///< specific or all external buses
+	};
 
-// NOTE - This is a copy of the NuttX i2c_msg_s structure
+	/**
+	 * @param bus specify bus: starts with 1, -1=all. Internal: arch-specific bus numbering is used,
+	 *             external: n-th external bus
+	 */
+	I2CBusIterator(FilterType filter, int bus = -1)
+		: _filter(filter), _bus(bus) {}
 
-typedef struct {
-	uint32_t frequency;         /* I2C frequency */
-	uint16_t addr;              /* Slave address (7- or 10-bit) */
-	uint16_t flags;             /* See I2C_M_* definitions */
-	uint8_t *buffer;        /* Buffer to be transferred */
-	ssize_t length;             /* Length of the buffer in bytes */
-} px4_i2c_msg_t;
+	bool next();
 
-// NOTE - This is a copy of the NuttX i2c_ops_s structure
-typedef struct {
-	const struct px4_i2c_ops_t *ops; /* I2C vtable */
-} px4_i2c_dev_t;
+	const px4_i2c_bus_t &bus() const { return px4_i2c_buses[_index]; }
 
-//#define SPI_SELECT(d,id,s) ((d)->ops->select(d,id,s))
-#define SPI_SELECT(d,id,s)
+	bool external() const { return px4_i2c_bus_external(bus()); }
 
-// FIXME - Stub implementation
-// Original version commented out
-//#define I2C_TRANSFER(d,m,c) ((d)->ops->transfer(d,m,c))
-inline int I2C_TRANSFER(px4_i2c_dev_t *dev, px4_i2c_msg_t *msg, int count);
-inline int I2C_TRANSFER(px4_i2c_dev_t *dev, px4_i2c_msg_t *msg, int count) { return 0; }
-
-#ifdef __PX4_QURT
-
-struct i2c_msg {
-	uint16_t  addr;                  /* Slave address */
-	uint16_t  flags;                 /* See I2C_M_* definitions */
-	uint8_t  *buf;
-	int       len;
+private:
+	const FilterType _filter;
+	const int _bus;
+	int _index{-1};
+	int _external_bus_counter{0};
 };
 
-#define I2C_RDWR 0x0FFF
-
-struct i2c_rdwr_ioctl_data {
-	struct i2c_msg *msgs;   /* pointers to i2c_msgs */
-	uint32_t nmsgs;         /* number of i2c_msgs */
-};
-
-// FIXME - The functions are not implemented on QuRT/DSPAL
-int ioctl(int fd, int flags, unsigned long data);
-int write(int fd, const char *buffer, int buflen);
-#endif
-#else
-#error "No target platform defined"
-#endif

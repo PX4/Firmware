@@ -37,27 +37,33 @@ px_generate_mixers.py
 Generates c/cpp header/source files for multirotor mixers
 from geometry descriptions files (.toml format)
 """
+import sys
 
 try:
     import toml
+except ImportError as e:
+    print("Failed to import toml: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user toml")
+    print("")
+    sys.exit(1)
+
+try:
     import numpy as np
 except ImportError as e:
-    print("python import error: ", e)
-    print('''
-Required python packages not installed.
-
-On a GNU/Linux or MacOS system please run:
-  sudo pip install numpy toml
-
-On Windows please run:
-  easy_install numpy toml
-''')
-    exit(1)
+    print("Failed to import numpy: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user numpy")
+    print("")
+    sys.exit(1)
 
 __author__ = "Julien Lecoeur"
 __copyright__ = "Copyright (C) 2013-2017 PX4 Development Team."
 __license__ = "BSD"
 __email__ = "julien.lecoeur@gmail.com"
+
 
 def parse_geometry_toml(filename):
     '''

@@ -41,12 +41,10 @@
 
 #include "bmp388.h"
 
-#if defined(PX4_I2C_OBDEV_BMP388) || defined(PX4_I2C_EXT_OBDEV_BMP388)
-
 class BMP388_I2C: public device::I2C, public IBMP388
 {
 public:
-	BMP388_I2C(uint8_t bus, uint32_t device);
+	BMP388_I2C(uint8_t bus, uint32_t device, int bus_frequency);
 	virtual ~BMP388_I2C() = default;
 
 	int init();
@@ -54,23 +52,23 @@ public:
 	uint8_t get_reg(uint8_t addr);
 	int get_reg_buf(uint8_t addr, uint8_t *buf, uint8_t len);
 	int set_reg(uint8_t value, uint8_t addr);
-	data_s *get_data(uint8_t addr);
 	calibration_s *get_calibration(uint8_t addr);
 
 	uint32_t get_device_id() const override { return device::I2C::get_device_id(); }
 
+	uint8_t get_device_address() const override { return device::I2C::get_device_address(); }
+
 private:
 	struct calibration_s _cal;
-	struct data_s _data;
 };
 
-IBMP388 *bmp388_i2c_interface(uint8_t busnum, uint32_t device)
+IBMP388 *bmp388_i2c_interface(uint8_t busnum, uint32_t device, int bus_frequency)
 {
-	return new BMP388_I2C(busnum, device);
+	return new BMP388_I2C(busnum, device, bus_frequency);
 }
 
-BMP388_I2C::BMP388_I2C(uint8_t bus, uint32_t device) :
-	I2C("BMP388_I2C", nullptr, bus, device, 100 * 1000)
+BMP388_I2C::BMP388_I2C(uint8_t bus, uint32_t device, int bus_frequency) :
+	I2C("BMP388_I2C", nullptr, bus, device, bus_frequency)
 {
 }
 
@@ -99,18 +97,6 @@ int BMP388_I2C::set_reg(uint8_t value, uint8_t addr)
 	return transfer(cmd, sizeof(cmd), nullptr, 0);
 }
 
-data_s *BMP388_I2C::get_data(uint8_t addr)
-{
-	const uint8_t cmd = (uint8_t)(addr);
-
-	if (transfer(&cmd, sizeof(cmd), (uint8_t *)&_data, sizeof(struct data_s)) == OK) {
-		return (&_data);
-
-	} else {
-		return nullptr;
-	}
-}
-
 calibration_s *BMP388_I2C::get_calibration(uint8_t addr)
 {
 	const uint8_t cmd = (uint8_t)(addr);
@@ -122,5 +108,3 @@ calibration_s *BMP388_I2C::get_calibration(uint8_t addr)
 		return nullptr;
 	}
 }
-
-#endif /* PX4_I2C_OBDEV_BMP388 || PX4_I2C_EXT_OBDEV_BMP388 */

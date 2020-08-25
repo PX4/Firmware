@@ -35,7 +35,13 @@ px4_add_module(
 	MAIN fw_att_control
 	SRCS
 		FixedwingAttitudeControl.cpp
+		FixedwingAttitudeControl.hpp
+
+		ecl_controller.cpp
+		ecl_pitch_controller.cpp
+		ecl_roll_controller.cpp
+		ecl_wheel_controller.cpp
+		ecl_yaw_controller.cpp
 	DEPENDS
-		git_ecl
-		ecl_attitude_fw
+		px4_work_queue
 	)

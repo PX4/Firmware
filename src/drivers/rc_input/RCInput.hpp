@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,9 +48,9 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/module.h>
-#include <px4_platform_common/workqueue.h>
-#include <uORB/Subscription.hpp>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/PublicationMulti.hpp>
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/adc_report.h>
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/vehicle_command.h>
@@ -61,18 +61,15 @@
 # include <systemlib/ppm_decode.h>
 #endif
 
-class RCInput : public ModuleBase<RCInput>
+class RCInput : public ModuleBase<RCInput>, public px4::ScheduledWorkItem
 {
 public:
 
-	RCInput(bool run_as_task, char *device);
+	RCInput(const char *device);
 	virtual ~RCInput();
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
-
-	/** @see ModuleBase */
-	static RCInput *instantiate(int argc, char *argv[]);
 
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
@@ -80,20 +77,15 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	/** @see ModuleBase::run() */
-	void run() override;
-
-	/**
-	 * run the main loop: if running as task, continuously iterate, otherwise execute only one single cycle
-	 */
-	void cycle();
-
 	/** @see ModuleBase::print_status() */
 	int print_status() override;
 
 	int	init();
 
 private:
+
+	void Run() override;
+
 	enum RC_SCAN {
 		RC_SCAN_PPM = 0,
 		RC_SCAN_SBUS,
@@ -114,14 +106,11 @@ private:
 
 	hrt_abstime _rc_scan_begin{0};
 
+	bool _initialized{false};
 	bool _rc_scan_locked{false};
 	bool _report_lock{true};
 
-	unsigned	_current_update_interval{4000};
-
-	bool 		_run_as_task{false};
-
-	static struct work_s	_work;
+	static constexpr unsigned	_current_update_interval{4000}; // 250 Hz
 
 	uORB::Subscription	_vehicle_cmd_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription	_adc_sub{ORB_ID(adc_report)};
@@ -145,10 +134,6 @@ private:
 
 	perf_counter_t      _cycle_perf;
 	perf_counter_t      _publish_interval_perf;
-
-	static void	cycle_trampoline(void *arg);
-	static void	cycle_trampoline_init(void *arg);
-	int 		start();
 
 	void fill_rc_in(uint16_t raw_rc_count_local,
 			uint16_t raw_rc_values_local[input_rc_s::RC_INPUT_MAX_CHANNELS],

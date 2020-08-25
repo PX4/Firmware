@@ -6,14 +6,6 @@
 	path = src/drivers/uavcan/libuavcan
 	url = https://github.com/PX4/uavcan.git
 	branch = px4
-[submodule "msg/tools/genmsg"]
-	path = msg/tools/genmsg
-	url = https://github.com/PX4/genmsg.git
-	branch = px4
-[submodule "msg/tools/gencpp"]
-	path = msg/tools/gencpp
-	url = https://github.com/PX4/gencpp.git
-	branch = px4
 [submodule "Tools/jMAVSim"]
 	path = Tools/jMAVSim
 	url = https://github.com/PX4/jMAVSim.git
@@ -25,10 +17,6 @@
 [submodule "src/lib/matrix"]
 	path = src/lib/matrix
 	url = https://github.com/PX4/Matrix.git
-	branch = master
-[submodule "src/lib/DriverFramework"]
-	path = src/lib/DriverFramework
-	url = https://github.com/PX4/DriverFramework.git
 	branch = master
 [submodule "src/lib/ecl"]
 	path = src/lib/ecl
@@ -54,7 +42,6 @@
 	path = platforms/nuttx/NuttX/apps
 	url = https://github.com/PX4/NuttX-apps.git
 	branch = px4_firmware_nuttx-8.2
-[submodule "cmake/configs/uavcan_board_ident"]
-	path = cmake/configs/uavcan_board_ident
-	url = https://github.com/PX4/uavcan_board_ident.git
-	branch = master
+[submodule "platforms/qurt/dspal"]
+	path = platforms/qurt/dspal
+	url = https://github.com/ATLFlight/dspal.git

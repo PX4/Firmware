@@ -39,13 +39,14 @@
  * Datasheet: https://www.sensirion.com/fileadmin/user_upload/customers/sensirion/Dokumente/8_Differential_Pressure/Sensirion_Differential_Pressure_Sensors_SDP3x_Digital_Datasheet_V0.8.pdf
  */
 
-#ifndef DRIVERS_SDP3X_AIRSPEED_HPP_
-#define DRIVERS_SDP3X_AIRSPEED_HPP_
+#pragma once
 
 #include <drivers/airspeed/airspeed.h>
 #include <math.h>
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 #define I2C_ADDRESS_1_SDP3X		0x21
 #define I2C_ADDRESS_2_SDP3X		0x22
@@ -60,28 +61,30 @@
 #define SDP3X_SCALE_PRESSURE_SDP32	240
 #define SDP3X_SCALE_PRESSURE_SDP33	20
 
-#define PATH_SDP3X "/dev/sdp3x"
-
 // Measurement rate is 20Hz
 #define SPD3X_MEAS_RATE 100
 #define SDP3X_MEAS_DRIVER_FILTER_FREQ 3.0f
 #define CONVERSION_INTERVAL	(1000000 / SPD3X_MEAS_RATE)	/* microseconds */
 
-class SDP3X : public Airspeed
+class SDP3X : public Airspeed, public I2CSPIDriver<SDP3X>
 {
 public:
-	SDP3X(int bus, int address = I2C_ADDRESS_1_SDP3X, const char *path = PATH_SDP3X) :
-		Airspeed(bus, address, CONVERSION_INTERVAL, path)
+	SDP3X(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address = I2C_ADDRESS_1_SDP3X) :
+		Airspeed(bus, bus_frequency, address, CONVERSION_INTERVAL),
+		I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 	{
 	}
 
+	virtual ~SDP3X() = default;
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void	RunImpl();
+
 private:
 
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 */
-	void	Run() override;
 	int	measure() override { return 0; }
 	int	collect() override;
 	int	probe() override;
@@ -102,5 +105,3 @@ private:
 
 	uint16_t _scale{0};
 };
-
-#endif /* DRIVERS_SDP3X_AIRSPEED_HPP_ */

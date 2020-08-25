@@ -78,11 +78,10 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
-
 	bool init();
 
 private:
+	void Run() override;
 
 	/**
 	 * initialize some vectors/matrices from parameters

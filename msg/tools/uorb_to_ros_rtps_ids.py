@@ -1,12 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Script to read an yaml file containing the RTPS message IDs and update the naming convention to PascalCase
 """
 
+import errno
 import os
 import yaml
 import sys
 import argparse
+import six
 
 __author__ = 'PX4 Development Team'
 __copyright__ = \
@@ -73,7 +75,7 @@ def load_yaml_file(file):
     try:
         with open(file, 'r') as f:
             if verbose:
-                print("--\t[Step 1] %s yaml file loaded!" % file)
+                print(("--\t[Step 1] %s yaml file loaded!" % file))
             return yaml.safe_load(f)
     except OSError as e:
         if e.errno == errno.ENOENT:
@@ -91,18 +93,12 @@ def update_dict(list):
     if verbose:
         num_of_msgs = 0
     for i, dictionary in enumerate(list["rtps"]):
-        # implementation depends on the Python version being used
-        if sys.version_info[0] < 3:
-            dict = {k: v.title().replace('_', '') if isinstance(
-                v, basestring) else v for k, v in dictionary.iteritems()}
-        else:
-            dict = {k: v.title().replace('_', '') if isinstance(
-                v, str) else v for k, v in dictionary.items()}
-        list["rtps"][i] = dict
+        list["rtps"][i] = {k: v.title().replace('_', '') if isinstance(
+            v, six.string_types) else v for k, v in six.iteritems(dictionary)}
         if verbose:
             num_of_msgs += 1
     if verbose:
-        print("--\t[Step 2] List: %d msg names updated!" % num_of_msgs)
+        print(("--\t[Step 2] List: %d msg names updated!" % num_of_msgs))
 
 
 def update_yaml_file(list, file):
@@ -121,9 +117,9 @@ def update_yaml_file(list, file):
             yaml.dump(list, f, Dumper=IndenterDumper, default_flow_style=False)
             if verbose:
                 if in_file == out_file:
-                    print("--\t[Step 3] %s updated!" % in_file)
+                    print(("--\t[Step 3] %s updated!" % in_file))
                 else:
-                    print("--\t[Step 3] %s created!" % out_file)
+                    print(("--\t[Step 3] %s created!" % out_file))
 
     except OSError as e:
         if e.errno == errno.ENOENT:

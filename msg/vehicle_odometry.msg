@@ -17,7 +17,7 @@ uint8 COVARIANCE_MATRIX_YAWRATE_VARIANCE=20
 
 # Position and linear velocity frame of reference constants
 uint8 LOCAL_FRAME_NED=0         # NED earth-fixed frame
-uint8 LOCAL_FRAME_ENU=1         # ENU earth-fixed frame
+uint8 LOCAL_FRAME_FRD=1         # FRD earth-fixed frame, arbitrary heading reference
 uint8 LOCAL_FRAME_OTHER=2       # Not aligned with the std frames of reference
 
 # Position and linear velocity local frame of reference

@@ -109,7 +109,7 @@ CameraFeedback::Run()
 		// Indicate whether capture feedback from camera is available
 		// What is case 0 for capture.result?
 		if (!_param_camera_capture_feedback.get()) {
-			capture.result = -1;
+			capture.result = 0;
 
 		} else {
 			capture.result = 1;

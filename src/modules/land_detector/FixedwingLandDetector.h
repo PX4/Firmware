@@ -43,7 +43,7 @@
 #pragma once
 
 #include <matrix/math.hpp>
-#include <uORB/topics/airspeed.h>
+#include <uORB/topics/airspeed_validated.h>
 
 #include "LandDetector.h"
 
@@ -69,9 +69,9 @@ private:
 	static constexpr hrt_abstime LANDED_TRIGGER_TIME_US = 2_s;
 	static constexpr hrt_abstime FLYING_TRIGGER_TIME_US = 0_us;
 
-	uORB::Subscription _airspeed_sub{ORB_ID(airspeed)};
+	uORB::Subscription _airspeed_validated_sub{ORB_ID(airspeed_validated)};
 
-	airspeed_s _airspeed{};
+	airspeed_validated_s _airspeed_validated{};
 
 	float _airspeed_filtered{0.0f};
 	float _velocity_xy_filtered{0.0f};

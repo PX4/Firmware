@@ -63,6 +63,7 @@
 #include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <systemlib/conversions.h>
 #include <systemlib/px4_macros.h>
@@ -263,48 +264,36 @@ struct MPUReport {
 #  define MPU6000_LOW_SPEED_OP(r)			MPU6000_REG((r))
 
 /* interface factories */
-extern device::Device *MPU6000_SPI_interface(int bus, int device_type, bool external_bus);
-extern device::Device *MPU6000_I2C_interface(int bus, int device_type, bool external_bus);
+extern device::Device *MPU6000_SPI_interface(int bus, uint32_t devid, int device_type, bool external_bus,
+		int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *MPU6000_I2C_interface(int bus, uint32_t devid, int device_type, bool external_bus,
+		int bus_frequency);
 extern int MPU6000_probe(device::Device *dev, int device_type);
-
-typedef device::Device *(*MPU6000_constructor)(int, int, bool);
 
 
 #define MPU6000_TIMER_REDUCTION				200
 
-enum MPU6000_BUS {
-	MPU6000_BUS_ALL = 0,
-	MPU6000_BUS_I2C_INTERNAL,
-	MPU6000_BUS_I2C_EXTERNAL,
-	MPU6000_BUS_SPI_INTERNAL1,
-	MPU6000_BUS_SPI_INTERNAL2,
-	MPU6000_BUS_SPI_EXTERNAL1,
-	MPU6000_BUS_SPI_EXTERNAL2
-};
 
-class MPU6000 : public px4::ScheduledWorkItem
+class MPU6000 : public I2CSPIDriver<MPU6000>
 {
 public:
-	MPU6000(device::Device *interface, enum Rotation rotation, int device_type);
+	MPU6000(device::Device *interface, enum Rotation rotation, int device_type, I2CSPIBusOption bus_option, int bus);
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	virtual ~MPU6000();
 
-	virtual int		init();
-
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	int		init();
 
 	void			print_registers();
 
 #ifndef CONSTRAINED_FLASH
 	/**
 	 * Test behaviour against factory offsets
-	 *
-	 * @return 0 on success, 1 on failure
 	 */
-	int 			factory_self_test();
+	void 			factory_self_test();
 #endif
 
 	// deliberately cause a sensor error
@@ -322,14 +311,18 @@ public:
 	 */
 	int			reset();
 
+	void RunImpl();
+
 protected:
 	device::Device			*_interface;
 
-	virtual int		probe();
+	int probe();
+
+	void print_status() override;
+
+	void custom_method(const BusCLIArguments &cli) override;
 
 private:
-
-	void Run() override;
 
 	int 			_device_type;
 	uint8_t			_product{0};	/** product code */
@@ -393,11 +386,6 @@ private:
 	 * is_mpu_device
 	 */
 	bool 		is_mpu_device() { return _device_type == MPU_DEVICE_TYPE_MPU6000; }
-
-	/**
-	 * Fetch measurements from the sensor and update the report buffers.
-	 */
-	int			measure();
 
 	/**
 	 * Read a register from the MPU6000

@@ -34,6 +34,7 @@
 px4_add_library(px4_work_queue
 	ScheduledWorkItem.cpp
 	WorkItem.cpp
+	WorkItemSingleShot.cpp
 	WorkQueue.cpp
 	WorkQueueManager.cpp
 )

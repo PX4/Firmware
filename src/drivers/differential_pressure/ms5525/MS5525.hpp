@@ -31,41 +31,41 @@
  *
  ****************************************************************************/
 
-#ifndef DRIVERS_MS5525_AIRSPEED_HPP_
-#define DRIVERS_MS5525_AIRSPEED_HPP_
+#pragma once
 
 #include <drivers/airspeed/airspeed.h>
 #include <math.h>
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 /* The MS5525DSO address is 111011Cx, where C is the complementary value of the pin CSB */
 static constexpr uint8_t I2C_ADDRESS_1_MS5525DSO = 0x76;
-
-static constexpr const char PATH_MS5525[] = "/dev/ms5525";
 
 /* Measurement rate is 100Hz */
 static constexpr unsigned MEAS_RATE = 100;
 static constexpr float MEAS_DRIVER_FILTER_FREQ = 1.2f;
 static constexpr int64_t CONVERSION_INTERVAL = (1000000 / MEAS_RATE); /* microseconds */
 
-class MS5525 : public Airspeed
+class MS5525 : public Airspeed, public I2CSPIDriver<MS5525>
 {
 public:
-	MS5525(uint8_t bus, uint8_t address = I2C_ADDRESS_1_MS5525DSO, const char *path = PATH_MS5525) :
-		Airspeed(bus, address, CONVERSION_INTERVAL, path)
+	MS5525(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address = I2C_ADDRESS_1_MS5525DSO) :
+		Airspeed(bus, bus_frequency, address, CONVERSION_INTERVAL),
+		I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 	{
 	}
 
-	~MS5525() override = default;
+	virtual ~MS5525() = default;
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void	RunImpl();
 
 private:
-
-	/**
-	* Perform a poll cycle; collect from the previous measurement
-	* and start a new one.
-	*/
-	void Run() override;
 
 	int measure() override;
 	int collect() override;
@@ -127,5 +127,3 @@ private:
 	uint8_t prom_crc4(uint16_t n_prom[]) const;
 
 };
-
-#endif /* DRIVERS_MS5525_AIRSPEED_HPP_ */

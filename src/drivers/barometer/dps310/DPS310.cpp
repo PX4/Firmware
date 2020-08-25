@@ -46,20 +46,19 @@ static void getTwosComplement(T &raw, uint8_t length)
 	}
 }
 
-DPS310::DPS310(device::Device *interface) :
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id())),
+DPS310::DPS310(I2CSPIBusOption bus_option, int bus, device::Device *interface) :
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus,
+		     interface->get_device_address()),
 	_px4_barometer(interface->get_device_id()),
 	_interface(interface),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
 	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comm errors"))
 {
-	_px4_barometer.set_device_type(DRV_DEVTYPE_DPS310);
+	_px4_barometer.set_device_type(DRV_BARO_DEVTYPE_DPS310);
 }
 
 DPS310::~DPS310()
 {
-	stop();
-
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 
@@ -177,13 +176,7 @@ DPS310::start()
 }
 
 void
-DPS310::stop()
-{
-	ScheduleClear();
-}
-
-void
-DPS310::Run()
+DPS310::RunImpl()
 {
 	perf_begin(_sample_perf);
 
@@ -287,8 +280,9 @@ DPS310::RegisterClearBits(Register reg, uint8_t clearbits)
 }
 
 void
-DPS310::print_info()
+DPS310::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 

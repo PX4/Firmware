@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2019 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,12 +31,15 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__l3gd20
+	MODULE drivers__imu__l3gd20
 	MAIN l3gd20
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		l3gd20.cpp
+		L3GD20.hpp
+		L3GD20.cpp
+		l3gd20_main.cpp
 	DEPENDS
 		drivers_gyroscope
+		px4_work_queue
 	)

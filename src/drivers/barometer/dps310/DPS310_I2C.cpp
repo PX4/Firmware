@@ -42,12 +42,12 @@
 namespace dps310
 {
 
-device::Device *DPS310_I2C_interface(uint8_t bus, uint32_t address);
+device::Device *DPS310_I2C_interface(uint8_t bus, uint32_t address, int bus_frequency);
 
 class DPS310_I2C : public device::I2C
 {
 public:
-	DPS310_I2C(uint8_t bus, uint32_t address);
+	DPS310_I2C(uint8_t bus, uint32_t address, int bus_frequency);
 	virtual ~DPS310_I2C() = default;
 
 	virtual int	read(unsigned address, void *data, unsigned count);
@@ -56,13 +56,13 @@ public:
 };
 
 device::Device *
-DPS310_I2C_interface(uint8_t bus, uint32_t address)
+DPS310_I2C_interface(uint8_t bus, uint32_t address, int bus_frequency)
 {
-	return new DPS310_I2C(bus, address);
+	return new DPS310_I2C(bus, address, bus_frequency);
 }
 
-DPS310_I2C::DPS310_I2C(uint8_t bus, uint32_t address) :
-	I2C("DPS310_I2C", nullptr, bus, address, 400000)
+DPS310_I2C::DPS310_I2C(uint8_t bus, uint32_t address, int bus_frequency) :
+	I2C("DPS310_I2C", nullptr, bus, address, bus_frequency)
 {
 }
 

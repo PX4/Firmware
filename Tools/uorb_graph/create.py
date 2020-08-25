@@ -8,7 +8,7 @@ import codecs
 import re
 import colorsys
 import json
-
+import sys
 
 
 parser = argparse.ArgumentParser(
@@ -221,7 +221,6 @@ class Graph(object):
     #   to this, so that we can ignore it)
         special_cases_sub = [
     ('sensors', r'voted_sensors_update\.cpp$', r'\binitSensorClass\b\(([^,)]+)', r'^meta$'),
-    ('mavlink', r'.*', r'\badd_orb_subscription\b\(([^,)]+)', r'^_topic$'),
     ('listener', r'.*', None, r'^(id)$'),
     ('logger', r'.*', None, r'^(topic|sub\.metadata|_polling_topic_meta)$'),
 
@@ -367,7 +366,7 @@ class Graph(object):
             try:
                 content = f.read()
             except:
-                print('Failed reading file: %s, skipping content.' % path)
+                print('Failed reading file: %s, skipping content.' % file_name)
                 return
 
 
@@ -610,11 +609,13 @@ if args.output == 'json':
 elif args.output == 'graphviz':
     try:
         from graphviz import Digraph
-    except:
-        print("Failed to import graphviz.")
-        print("You may need to install it with 'pip install graphviz'")
+    except ImportError as e:
+        print("Failed to import graphviz: " + e)
         print("")
-        raise
+        print("You may need to install it with:")
+        print("    pip3 install --user graphviz")
+        print("")
+        sys.exit(1)
     output_graphviz = OutputGraphviz(graph)
     engine='fdp' # use neato or fdp
     output_graphviz.write(args.file+'.fv', engine=engine)

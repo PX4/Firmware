@@ -19,16 +19,11 @@ then
 	qshell pwm_out_rc_in start -d /dev/tty-2
 
 	qshell gps start -d /dev/tty-4
-	qshell df_hmc5883_wrapper start
-	qshell df_trone_wrapper start
-	#qshell df_isl29501_wrapper start
+	qshell hmc5883 start
 
 # Qualcomm 200qx microheli platform
 elif param compare SYS_AUTOSTART 4200
 then
-	param set CAL_GYRO0_ID 100
-	param set CAL_ACC0_ID 100
-	param set CAL_MAG0_ID 101
 	param set MAV_TYPE 2
 	param set MC_YAW_P 7.0
 	param set MC_YAWRATE_P 0.08
@@ -42,56 +37,11 @@ then
 	param set MC_ROLLRATE_P 0.08
 	param set MC_ROLLRATE_I 0.0
 	param set MC_ROLLRATE_D 0.0001
-	param set RC_MAP_THROTTLE 1
-	param set RC_MAP_ROLL 2
-	param set RC_MAP_PITCH 3
-	param set RC_MAP_YAW 4
-	param set RC_MAP_MODE_SW 5
-	param set RC_MAP_POSCTL_SW 6
-	param set RC1_MAX 1900
-	param set RC1_MIN 1099
-	param set RC1_TRIM 1099
-	param set RC1_REV 1
-	param set RC2_MAX 1900
-	param set RC2_MIN 1099
-	param set RC2_TRIM 1500
-	param set RC2_REV -1
-	param set RC3_MAX 1900
-	param set RC3_MIN 1099
-	param set RC3_TRIM 1500
-	param set RC3_REV 1
-	param set RC4_MAX 1900
-	param set RC4_MIN 1099
-	param set RC4_TRIM 1500
-	param set RC4_REV -1
-	param set RC5_MAX 1900
-	param set RC5_MIN 1099
-	param set RC5_TRIM 1500
-	param set RC5_REV 1
-	param set RC6_MAX 1900
-	param set RC6_MIN 1099
-	param set RC6_TRIM 1099
-	param set RC6_REV 1
-	param set ATT_W_MAG 0.00
-	param set PE_MAG_NOISE 1.0f
 	param set SENS_BOARD_ROT 0
-	param set RC_RECEIVER_TYPE 1
-	param set UART_ESC_MODEL 2
-	param set UART_ESC_BAUDRTE 250000
-	param set UART_ESC_MOTOR1 4
-	param set UART_ESC_MOTOR2 2
-	param set UART_ESC_MOTOR3 1
-	param set UART_ESC_MOTOR4 3
-
-	qshell uart_esc start -D /dev/tty-2
-	qshell rc_receiver start -D /dev/tty-1
 
 # Qualcomm internal 210qc platform
 elif param compare SYS_AUTOSTART 4210
 then
-	param set CAL_GYRO0_ID 100
-	param set CAL_ACC0_ID 100
-	param set CAL_MAG0_ID 101
 	param set MAV_TYPE 2
 	param set MC_YAW_P 12
 	param set MC_YAWRATE_P 0.08
@@ -105,64 +55,8 @@ then
 	param set MC_ROLLRATE_P 0.08
 	param set MC_ROLLRATE_I 0.0
 	param set MC_ROLLRATE_D 0.001
-	param set RC_MAP_THROTTLE 1
-	param set RC_MAP_ROLL 2
-	param set RC_MAP_PITCH 3
-	param set RC_MAP_YAW 4
-	param set RC_MAP_MODE_SW 5
-	param set RC_MAP_POSCTL_SW 6
-	param set RC1_MAX 1900
-	param set RC1_MIN 1099
-	param set RC1_TRIM 1099
-	param set RC1_REV 1
-	param set RC2_MAX 1900
-	param set RC2_MIN 1099
-	param set RC2_TRIM 1500
-	param set RC2_REV -1
-	param set RC3_MAX 1900
-	param set RC3_MIN 1099
-	param set RC3_TRIM 1500
-	param set RC3_REV 1
-	param set RC4_MAX 1900
-	param set RC4_MIN 1099
-	param set RC4_TRIM 1500
-	param set RC4_REV -1
-	param set RC5_MAX 1900
-	param set RC5_MIN 1099
-	param set RC5_TRIM 1500
-	param set RC5_REV 1
-	param set RC6_MAX 1900
-	param set RC6_MIN 1099
-	param set RC6_TRIM 1099
-	param set RC6_REV 1
-	param set ATT_W_MAG 0.00
-	param set PE_MAG_NOISE 1.0f
 	param set SENS_BOARD_ROT 0
-	param set CAL_GYRO0_XOFF -0.0028
-	param set CAL_GYRO0_YOFF -0.0047
-	param set CAL_GYRO0_ZOFF -0.0034
-	param set CAL_MAG0_XOFF 0.0000
-	param set CAL_MAG0_YOFF 0.0000
-	param set CAL_MAG0_ZOFF 0.0000
-	param set CAL_MAG0_XSCALE 1.0000
-	param set CAL_MAG0_YSCALE 1.0000
-	param set CAL_MAG0_ZSCALE 1.0000
-	param set CAL_ACC0_XOFF -0.0941
-	param set CAL_ACC0_YOFF 0.1168
-	param set CAL_ACC0_ZOFF -0.0398
-	param set CAL_ACC0_XSCALE 1.0004
-	param set CAL_ACC0_YSCALE 0.9974
-	param set CAL_ACC0_ZSCALE 0.9951
-	param set RC_RECEIVER_TYPE 1
-	param set UART_ESC_MODEL 2
-	param set UART_ESC_BAUDRTE 250000
-	param set UART_ESC_MOTOR1 4
-	param set UART_ESC_MOTOR2 2
-	param set UART_ESC_MOTOR3 1
-	param set UART_ESC_MOTOR4 3
 
-	uart_esc start -D /dev/tty-2
-	rc_receiver start -D /dev/tty-1
 else
 	echo "NO AIRFRAME CHOSEN!"
 	echo "Please set parameter to select airframe:"
@@ -171,8 +65,8 @@ else
 fi
 
 
-qshell df_mpu9250_wrapper start
-qshell df_bmp280_wrapper start
+qshell mpu9250 start
+qshell bmp280 start
 qshell rc_update start
 qshell sensors start
 
@@ -193,6 +87,7 @@ fi
 
 qshell commander start
 qshell land_detector start multicopter
+qshell mc_hover_thrust_estimator start
 qshell mc_pos_control start
 qshell mc_att_control start
 qshell mc_rate_control start

@@ -261,7 +261,6 @@ void Tailsitter::update_transition_state()
 	_v_att_sp->yaw_body = euler_sp.psi();
 
 	_q_trans_sp.copyTo(_v_att_sp->q_d);
-	_v_att_sp->q_d_valid = true;
 }
 
 void Tailsitter::waiting_on_tecs()

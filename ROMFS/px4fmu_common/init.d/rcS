@@ -198,13 +198,13 @@ else
 	#
 	# Start system state indicator.
 	#
-	rgbled start
-	rgbled_ncp5623c start
+	rgbled start -X
+	rgbled_ncp5623c start -X
 	rgbled_pwm start
 
 	if param greater LIGHT_EN_BLINKM 0
 	then
-		if blinkm start
+		if blinkm start -X
 		then
 			blinkm systemstate
 		fi
@@ -360,6 +360,15 @@ else
 		set AUX_MODE pwm4
 	fi
 
+
+	# Check if ATS is enabled
+	if param compare FD_EXT_ATS_EN 1
+	then
+		# Clear pins 5 and 6.
+		set FMU_MODE pwm4
+		set AUX_MODE pwm4
+	fi
+
 	if param greater TRIG_MODE 0
 	then
 		# We ONLY support trigger on pins 5 and 6 when simultanously using AUX for actuator output.
@@ -458,16 +467,16 @@ else
 		vmount start
 	fi
 
-	# Check for flow sensor, launched as a background task to scan
+	# Check for flow sensor
 	if param compare SENS_EN_PX4FLOW 1
 	then
-		px4flow start &
+		px4flow start -X
 	fi
 
 	# Blacksheep telemetry
 	if param greater TEL_BST_EN 0
 	then
-		bst start
+		bst start -X
 	fi
 
 	#

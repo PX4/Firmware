@@ -74,8 +74,6 @@ PX4Barometer::update(hrt_abstime timestamp, float pressure)
 	report.timestamp = timestamp;
 	report.pressure = pressure;
 
-	poll_notify(POLLIN);
-
 	_sensor_baro_pub.update();
 }
 

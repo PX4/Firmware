@@ -12,7 +12,6 @@ dataman start
 
 simulator start
 tone_alarm start
-gpssim start
 pwm_out_sim start
 
 ver all

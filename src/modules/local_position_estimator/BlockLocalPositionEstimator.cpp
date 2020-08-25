@@ -111,7 +111,13 @@ BlockLocalPositionEstimator::BlockLocalPositionEstimator() :
 	_ref_lon(0.0),
 	_ref_alt(0.0)
 {
+#if defined(ENABLE_LOCKSTEP_SCHEDULER)
+	// For lockstep 250 Hz are needed because ekf2_timestamps need to be
+	// published at 250 Hz.
+	_sensors_sub.set_interval_ms(4);
+#else
 	_sensors_sub.set_interval_ms(10); // main prediction loop, 100 hz
+#endif
 
 	// assign distance subs to array
 	_dist_subs[0] = &_sub_dist0;
@@ -498,6 +504,7 @@ void BlockLocalPositionEstimator::Run()
 
 		if ((_estimatorInitialized & EST_XY) && (_map_ref.init_done || _param_lpe_fake_origin.get())) {
 			publishGlobalPos();
+			publishEk2fTimestamps();
 		}
 	}
 
@@ -604,7 +611,6 @@ void BlockLocalPositionEstimator::publishLocalPos()
 		_pub_lpos.get().ref_lon = _map_ref.lon_rad * 180 / M_PI;
 		_pub_lpos.get().ref_alt = _altOrigin;
 		_pub_lpos.get().dist_bottom = _aglLowPass.getState();
-		_pub_lpos.get().dist_bottom_rate = -xLP(X_vz);
 		// we estimate agl even when we don't have terrain info
 		// if you are in terrain following mode this is important
 		// so that if terrain estimation fails there isn't a
@@ -747,6 +753,22 @@ void BlockLocalPositionEstimator::publishEstimatorStatus()
 	_pub_est_status.update();
 }
 
+void BlockLocalPositionEstimator::publishEk2fTimestamps()
+{
+	_pub_ekf2_timestamps.get().timestamp = _timeStamp;
+
+	// We only really publish this as a dummy because lockstep simulation
+	// requires it to be published.
+	_pub_ekf2_timestamps.get().airspeed_timestamp_rel = 0;
+	_pub_ekf2_timestamps.get().distance_sensor_timestamp_rel = 0;
+	_pub_ekf2_timestamps.get().optical_flow_timestamp_rel = 0;
+	_pub_ekf2_timestamps.get().vehicle_air_data_timestamp_rel = 0;
+	_pub_ekf2_timestamps.get().vehicle_magnetometer_timestamp_rel = 0;
+	_pub_ekf2_timestamps.get().visual_odometry_timestamp_rel = 0;
+
+	_pub_ekf2_timestamps.update();
+}
+
 void BlockLocalPositionEstimator::publishGlobalPos()
 {
 	// publish global position
@@ -781,9 +803,6 @@ void BlockLocalPositionEstimator::publishGlobalPos()
 		_pub_gpos.get().lat = lat;
 		_pub_gpos.get().lon = lon;
 		_pub_gpos.get().alt = alt;
-		_pub_gpos.get().vel_n = xLP(X_vx);
-		_pub_gpos.get().vel_e = xLP(X_vy);
-		_pub_gpos.get().vel_d = xLP(X_vz);
 		_pub_gpos.get().yaw = matrix::Eulerf(matrix::Quatf(_sub_att.get().q)).psi();
 		_pub_gpos.get().eph = eph;
 		_pub_gpos.get().epv = epv;

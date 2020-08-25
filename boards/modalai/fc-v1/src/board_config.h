@@ -181,17 +181,19 @@
 #define _PIN_OFF(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_2MHz))
 #define PX4_SPI_BUS_RAMTRON  PX4_SPI_BUS_MEMORY
 
-#define PX4_SPIDEV_ICM_20602        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS1,0)
+#include <drivers/drv_sensor.h>
+
+#define PX4_SPIDEV_ICM_20602        PX4_MK_SPI_SEL(0,DRV_IMU_DEVTYPE_ICM20602)
 #define PX4_SENSORS1_BUS_CS_GPIO    {GPIO_SPI1_nCS1_ICM20602}
 
-#define PX4_SPIDEV_ICM_42688        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS2,0)
+#define PX4_SPIDEV_ICM_42688        PX4_MK_SPI_SEL(0,DRV_DEVTYPE_UNUSED)
 #define PX4_SENSORS2_BUS_CS_GPIO    {GPIO_SPI2_nCS1_ICM_42688}
 
-#define PX4_SPIDEV_MEMORY           PX4_MK_SPI_SEL(PX4_SPI_BUS_MEMORY,0)
+#define PX4_SPIDEV_MEMORY           SPIDEV_FLASH(0)
 #define PX4_MEMORY_BUS_CS_GPIO      {GPIO_SPI5_nCS1_FRAM}
 
-#define PX4_SPIDEV_BMI088_GYR       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS3,0)
-#define PX4_SPIDEV_BMI088_ACC       PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS3,1)
+#define PX4_SPIDEV_BMI088_GYR       PX4_MK_SPI_SEL(0,DRV_GYR_DEVTYPE_BMI088)
+#define PX4_SPIDEV_BMI088_ACC       PX4_MK_SPI_SEL(0,DRV_ACC_DEVTYPE_BMI088)
 #define PX4_SENSORS3_BUS_CS_GPIO    {GPIO_SPI6_nCS2_BMI088, GPIO_SPI6_nCS1_BMI088}
 
 /* I2C busses */
@@ -206,7 +208,6 @@
  *
  * Note that these are unshifted addresses.
  */
-#define PX4_I2C_OBDEV_BMP388        0x76
 #define PX4_I2C_OBDEV_A71CH         0x49
 
 #define BOARD_NUMBER_I2C_BUSES      4
@@ -252,13 +253,17 @@
 
 /* HW has to large of R termination on ADC todo:change when HW value is chosen */
 
+#define HW_REV_VER_ADC_BASE STM32_ADC3_BASE
+
+#define SYSTEM_ADC_BASE STM32_ADC1_BASE
+
 #define BOARD_ADC_OPEN_CIRCUIT_V     (5.6f)
 
 /* HW Version and Revision drive signals Default to 1 to detect */
 
 #define BOARD_HAS_HW_VERSIONING
 
-#define GPIO_HW_VER_REV_DRIVE  /* PA4 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN4)
+#define GPIO_HW_VER_REV_DRIVE  /* PG0 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTG|GPIO_PIN0)
 #define GPIO_HW_REV_SENSE      /* PF5 */  ADC3_GPIO(15)
 #define GPIO_HW_VER_SENSE      /* PF4 */  ADC3_GPIO(14)
 #define HW_INFO_INIT           {'V','1','x', 'x',0}
@@ -266,73 +271,10 @@
 #define HW_INFO_INIT_REV       3 /* Offset in above string of the REV */
 
 /* PWM
- *
- * 8  PWM outputs are configured.
- *
- * Pins:
- *
- * FMU_CH1 : PE14 : TIM1_CH4
- * FMU_CH2 : PA10 : TIM1_CH3
- * FMU_CH3 : PE11 : TIM1_CH2
- * FMU_CH4 : PA8  : TIM1_CH1
- * FMU_CH5 : PD13 : TIM4_CH2
- * FMU_CH6 : PD14 : TIM4_CH3
- * FMU_CH7 : PD12 : TIM4_CH1
- * FMU_CH8 : PH15 : TIM4_CH4
- *
  */
-#define GPIO_TIM4_CH4OUT      /* PH15  T4C4   FMU8 */ GPIO_TIM4_CH4OUT_2
-#define GPIO_TIM4_CH1OUT      /* PD12  T4C1   FMU7 */ GPIO_TIM4_CH1OUT_2
-#define GPIO_TIM4_CH3OUT      /* PD14  T4C3   FMU6 */ GPIO_TIM4_CH3OUT_2
-#define GPIO_TIM4_CH2OUT      /* PD13  T4C2   FMU5 */ GPIO_TIM4_CH2OUT_2
-#define GPIO_TIM1_CH1OUT      /* PA8   T1C1   FMU4 */ GPIO_TIM1_CH1OUT_1
-#define GPIO_TIM1_CH2OUT      /* PE11  T1C2   FMU3 */ GPIO_TIM1_CH2OUT_2
-#define GPIO_TIM1_CH3OUT      /* PA10  T1C3   FMU2 */ GPIO_TIM1_CH3OUT_1
-#define GPIO_TIM1_CH4OUT      /* PE14  T1C4   FMU1 */ GPIO_TIM1_CH4OUT_2
 
 #define DIRECT_PWM_OUTPUT_CHANNELS  8
-
-#define GPIO_TIM4_CH4IN       /* PD15  T4C4   FMU8 */ GPIO_TIM4_CH4IN_2
-#define GPIO_TIM4_CH1IN       /* PD12  T4C1   FMU7 */ GPIO_TIM4_CH1IN_2
-#define GPIO_TIM4_CH3IN       /* PD14  T4C3   FMU6 */ GPIO_TIM4_CH3IN_2
-#define GPIO_TIM4_CH2IN       /* PD13  T4C2   FMU5 */ GPIO_TIM4_CH2IN_2
-#define GPIO_TIM1_CH1IN       /* PA8   T1C1   FMU4 */ GPIO_TIM1_CH1IN_1
-#define GPIO_TIM1_CH2IN       /* PE11  T1C2   FMU3 */ GPIO_TIM1_CH2IN_2
-#define GPIO_TIM1_CH3IN       /* PA10  T1C3   FMU2 */ GPIO_TIM1_CH3IN_1
-#define GPIO_TIM1_CH4IN       /* PE14  T1C4   FMU1 */ GPIO_TIM1_CH4IN_2
-
 #define DIRECT_INPUT_TIMER_CHANNELS  8
-
-/* User GPIOs
- *
- */
-
-#define _MK_GPIO_INPUT(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT|GPIO_PULLUP))
-
-#define GPIO_GPIO7_INPUT        /* PD15  T4C4   FMU8 */ _MK_GPIO_INPUT(GPIO_TIM4_CH4IN)
-#define GPIO_GPIO6_INPUT        /* PD12  T4C1   FMU7 */ _MK_GPIO_INPUT(GPIO_TIM4_CH1IN)
-#define GPIO_GPIO5_INPUT        /* PD14  T4C3   FMU6 */ _MK_GPIO_INPUT(GPIO_TIM4_CH3IN)
-#define GPIO_GPIO4_INPUT        /* PD13  T4C2   FMU5 */ _MK_GPIO_INPUT(GPIO_TIM4_CH2IN)
-#define GPIO_GPIO3_INPUT        /* PA8   T1C1   FMU4 */ _MK_GPIO_INPUT(GPIO_TIM1_CH1IN)
-#define GPIO_GPIO2_INPUT        /* PE11  T1C2   FMU3 */ _MK_GPIO_INPUT(GPIO_TIM1_CH2IN)
-#define GPIO_GPIO1_INPUT        /* PA10  T1C3   FMU2 */ _MK_GPIO_INPUT(GPIO_TIM1_CH3IN)
-#define GPIO_GPIO0_INPUT        /* PE14  T1C4   FMU1 */ _MK_GPIO_INPUT(GPIO_TIM1_CH4IN)
-
-#define _MK_GPIO_OUTPUT(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR))
-
-#define GPIO_GPIO7_OUTPUT        /* PD15  T4C4   FMU8 */ _MK_GPIO_OUTPUT(GPIO_TIM4_CH4OUT)
-#define GPIO_GPIO6_OUTPUT        /* PD12  T4C1   FMU7 */ _MK_GPIO_OUTPUT(GPIO_TIM4_CH1OUT)
-#define GPIO_GPIO5_OUTPUT        /* PD14  T4C3   FMU6 */ _MK_GPIO_OUTPUT(GPIO_TIM4_CH3OUT)
-#define GPIO_GPIO4_OUTPUT        /* PD13  T4C2   FMU5 */ _MK_GPIO_OUTPUT(GPIO_TIM4_CH2OUT)
-#define GPIO_GPIO3_OUTPUT        /* PA8   T1C1   FMU4 */ _MK_GPIO_OUTPUT(GPIO_TIM1_CH1OUT)
-#define GPIO_GPIO2_OUTPUT        /* PE11  T1C2   FMU3 */ _MK_GPIO_OUTPUT(GPIO_TIM1_CH2OUT)
-#define GPIO_GPIO1_OUTPUT        /* PA10  T1C3   FMU2 */ _MK_GPIO_OUTPUT(GPIO_TIM1_CH3OUT)
-#define GPIO_GPIO0_OUTPUT        /* PE14  T1C4   FMU1 */ _MK_GPIO_OUTPUT(GPIO_TIM1_CH4OUT)
-
-/* Power supply control and monitoring GPIOs */
-
-#define BOARD_NUMBER_BRICKS             0
-#define BOARD_NUMBER_DIGITAL_BRICKS     0
 
 #define GPIO_CAN1_SILENT                /* PI11 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTI|GPIO_PIN11)
 
@@ -363,12 +305,10 @@
 #define HRT_PPM_CHANNEL         /* T8C1 */  1  /* use capture/compare channel 1 */
 #define GPIO_PPM_IN             /* PI5 T8C1 */ GPIO_TIM8_CH1IN_2
 
-#define RC_UXART_BASE                      STM32_USART6_BASE
+/* RC Serial port */
+
 #define RC_SERIAL_PORT                     "/dev/ttyS5"
-#define BOARD_HAS_SINGLE_WIRE              1 /* HW is capable of Single Wire */
-#define BOARD_HAS_SINGLE_WIRE_ON_TX        0 /* HW default is wired as Single Wire On RX pin */
-#define BOARD_HAS_RX_TX_SWAP               1 /* HW Can swap TX and RX */
-#define RC_SERIAL_PORT_IS_SWAPED           1 /* Board wired with RC's TX is on cpu RX */
+#define RC_SERIAL_SINGLEWIRE
 
 /* Safety Switch: Enable the FMU to control it as there is no px4io in ModalAI FC-v1 */
 #define GPIO_SAFETY_SWITCH_IN              /* PF3 */ (GPIO_INPUT|GPIO_PULLDOWN|GPIO_PORTF|GPIO_PIN3)
@@ -417,51 +357,18 @@
 /* ModalAI FC-v1 never powers off the Servo rail */
 
 #define BOARD_ADC_SERVO_VALID     (1)
+#define BOARD_ADC_BRICK_VALID     (1)
 
-#if !defined(BOARD_HAS_LTC44XX_VALIDS) || BOARD_HAS_LTC44XX_VALIDS == 0
-#  define BOARD_ADC_BRICK1_VALID  (1)
-#  define BOARD_ADC_BRICK2_VALID  (0)
-#elif BOARD_HAS_LTC44XX_VALIDS == 1
-#  define BOARD_ADC_BRICK1_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
-#  define BOARD_ADC_BRICK2_VALID  (0)
-#elif BOARD_HAS_LTC44XX_VALIDS == 2
-#  define BOARD_ADC_BRICK1_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
-#  define BOARD_ADC_BRICK2_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK2_VALID))
-#elif BOARD_HAS_LTC44XX_VALIDS == 3
-#  define BOARD_ADC_BRICK1_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
-#  define BOARD_ADC_BRICK2_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK2_VALID))
-#  define BOARD_ADC_BRICK3_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK3_VALID))
-#elif BOARD_HAS_LTC44XX_VALIDS == 4
-#  define BOARD_ADC_BRICK1_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
-#  define BOARD_ADC_BRICK2_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK2_VALID))
-#  define BOARD_ADC_BRICK3_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK3_VALID))
-#  define BOARD_ADC_BRICK4_VALID  (!px4_arch_gpioread(GPIO_nVDD_BRICK4_VALID))
-#else
-#  error Unsupported BOARD_HAS_LTC44XX_VALIDS value
-#endif
 
 #define BOARD_HAS_PWM  DIRECT_PWM_OUTPUT_CHANNELS
 
 /* This board provides a DMA pool and APIs */
 
-#define BOARD_DMA_ALLOC_POOL_SIZE 5120
+#define BOARD_DMA_ALLOC_POOL_SIZE (5120 + 1024 + 1024)	// 5120 fat + 1024 + 1024 spi
 
 /* This board provides the board_on_reset interface */
 
 #define BOARD_HAS_ON_RESET 1
-
-/* The list of GPIO that will be initialized */
-
-#define PX4_GPIO_PWM_INIT_LIST { \
-		GPIO_GPIO7_INPUT, \
-		GPIO_GPIO6_INPUT, \
-		GPIO_GPIO5_INPUT, \
-		GPIO_GPIO4_INPUT, \
-		GPIO_GPIO3_INPUT, \
-		GPIO_GPIO2_INPUT, \
-		GPIO_GPIO1_INPUT, \
-		GPIO_GPIO0_INPUT, \
-	}
 
 #define PX4_GPIO_INIT_LIST { \
 		PX4_ADC_GPIO,                     \
@@ -517,8 +424,6 @@ int stm32_sdio_initialize(void);
  ****************************************************************************************************/
 
 extern void stm32_spiinitialize(void);
-
-void board_spi_reset(int ms);
 
 extern void stm32_usbinitialize(void);
 

@@ -143,8 +143,8 @@ private:
 
 	matrix::Matrix<float, 2, 2> _covariance; // state covariance
 
-	float _residual; // residual of last measurement update
+	float _residual{0.0f}; // residual of last measurement update
 
-	float _innovCov; // innovation covariance of last measurement update
+	float _innovCov{0.0f}; // innovation covariance of last measurement update
 };
 } // namespace landing_target_estimator

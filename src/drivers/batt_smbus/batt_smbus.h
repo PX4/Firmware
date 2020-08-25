@@ -49,12 +49,12 @@
 #include <perf/perf_counter.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <uORB/topics/battery_status.h>
 
-#include "board_config.h"
+#include <board_config.h>
 
-#define DATA_BUFFER_SIZE                                32
+#define MAC_DATA_BUFFER_SIZE                            32
 
 #define BATT_CELL_VOLTAGE_THRESHOLD_RTL                 0.5f            ///< Threshold in volts to RTL if cells are imbalanced
 #define BATT_CELL_VOLTAGE_THRESHOLD_FAILED              1.5f            ///< Threshold in volts to Land if cells are imbalanced
@@ -95,51 +95,22 @@
 #define BATT_SMBUS_ENABLED_PROTECTIONS_A_DEFAULT        0xcf
 #define BATT_SMBUS_ENABLED_PROTECTIONS_A_CUV_DISABLED   0xce
 
-#define NUM_BUS_OPTIONS (sizeof(smbus_bus_options)/sizeof(smbus_bus_options[0]))
-
-enum BATT_SMBUS_BUS {
-	BATT_SMBUS_BUS_ALL = 0,
-	BATT_SMBUS_BUS_I2C_INTERNAL,
-	BATT_SMBUS_BUS_I2C_EXTERNAL,
-	BATT_SMBUS_BUS_I2C_EXTERNAL1,
-	BATT_SMBUS_BUS_I2C_EXTERNAL2
-};
-
-struct batt_smbus_bus_option {
-	enum BATT_SMBUS_BUS busid;
-	const char *devpath;
-	uint8_t busnum;
-} const smbus_bus_options[] = {
-	{ BATT_SMBUS_BUS_I2C_EXTERNAL, "/dev/batt_smbus_ext", PX4_I2C_BUS_EXPANSION},
-#ifdef PX4_I2C_BUS_EXPANSION1
-	{ BATT_SMBUS_BUS_I2C_EXTERNAL1, "/dev/batt_smbus_ext1", PX4_I2C_BUS_EXPANSION1},
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION2
-	{ BATT_SMBUS_BUS_I2C_EXTERNAL2, "/dev/batt_smbus_ext2", PX4_I2C_BUS_EXPANSION2},
-#endif
-#ifdef PX4_I2C_BUS_ONBOARD
-	{ BATT_SMBUS_BUS_I2C_INTERNAL, "/dev/batt_smbus_int", PX4_I2C_BUS_ONBOARD},
-#endif
-};
-
-class BATT_SMBUS : public ModuleBase<BATT_SMBUS>, public px4::ScheduledWorkItem
+class BATT_SMBUS : public I2CSPIDriver<BATT_SMBUS>
 {
 public:
-
-	BATT_SMBUS(SMBus *interface, const char *path);
+	BATT_SMBUS(I2CSPIBusOption bus_option, const int bus, SMBus *interface);
 
 	~BATT_SMBUS();
 
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
 	friend SMBus;
 
-	/** @see ModuleBase */
-	static int print_usage();
+	void RunImpl();
 
-	/** @see ModuleBase */
-	static int custom_command(int argc, char *argv[]);
-
-	/** @see ModuleBase */
-	static int task_spawn(int argc, char *argv[]);
+	void custom_method(const BusCLIArguments &cli) override;
 
 	/**
 	 * @brief Reads data from flash.
@@ -147,7 +118,7 @@ public:
 	 * @param data The returned data.
 	 * @return Returns PX4_OK on success, PX4_ERROR on failure.
 	 */
-	int dataflash_read(uint16_t &address, void *data);
+	int dataflash_read(uint16_t &address, void *data, const unsigned length);
 
 	/**
 	 * @brief Writes data to flash.
@@ -156,7 +127,7 @@ public:
 	 * @param length The number of bytes being written.
 	 * @return Returns PX4_OK on success, PX4_ERROR on failure.
 	 */
-	int dataflash_write(uint16_t &address, void *data, const unsigned length);
+	int dataflash_write(uint16_t address, void *data, const unsigned length);
 
 	/**
 	 * @brief Returns the SBS serial number of the battery device.
@@ -242,11 +213,8 @@ public:
 
 	void resume();
 
-protected:
-
-	void Run() override;
-
 private:
+
 	SMBus *_interface;
 
 	perf_counter_t _cycle{perf_alloc(PC_ELAPSED, "batt_smbus_cycle")};

@@ -124,11 +124,6 @@ typedef struct {
 // wait for the sensor hub if its data is coming from it.
 #define SCHED_PRIORITY_ESTIMATOR		(PX4_WQ_HP_BASE - 5)
 
-// The sensor hub conditions sensor data. It is not the fastest component
-// in the controller chain, but provides easy-to-use data to the more
-// complex downstream consumers
-#define SCHED_PRIORITY_SENSOR_HUB		(PX4_WQ_HP_BASE - 6)
-
 // Position controllers typically are in a blocking wait on estimator data
 // so when new sensor data is available they will run last. Keeping them
 // on a high priority ensures that they are the first process to be run

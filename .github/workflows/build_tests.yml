@@ -1,0 +1,35 @@
+name: Build Tests
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-bionic:2020-01-13
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+    - name: check_format
+      env:
+        CI: true
+      run: make check_format
+    - uses: actions/cache@v1.1.0
+      id: ccache-persistence
+      with:
+        path: ~/.ccache
+        key: ccache-main-tests
+        restore-keys: |
+          ccache-main-tests
+    - name: setup ccache
+      run: mkdir -p ~/.ccache && echo "max_size = 300M" > ~/.ccache/ccache.conf && ccache -z && ccache -s
+    - name: main tests
+      run: make tests
+    - name: ccache post-run
+      run: ccache -s && ccache -z

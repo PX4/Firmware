@@ -101,29 +101,35 @@
 
 /* I2C PX4 clock configuration
  *
- * A board may override BOARD_NUMBER_I2C_BUSES and BOARD_I2C_BUS_CLOCK_INIT
- * simply by defining the #defines.
- *
- * If none are provided the default number of I2C busses  will be taken from
- * the px4 micro hal and the init will be from the legacy values of 100K.
+ * A board may override BOARD_I2C_BUS_CLOCK_INIT simply by defining the #defines.
  */
-#if !defined(BOARD_NUMBER_I2C_BUSES)
-# define BOARD_NUMBER_I2C_BUSES PX4_NUMBER_I2C_BUSES
-#endif
 
-#if !defined(BOARD_I2C_BUS_CLOCK_INIT)
-#  if (BOARD_NUMBER_I2C_BUSES) == 1
-#    define BOARD_I2C_BUS_CLOCK_INIT {100000}
-#  elif (BOARD_NUMBER_I2C_BUSES) == 2
-#    define BOARD_I2C_BUS_CLOCK_INIT {100000, 100000}
-#  elif (BOARD_NUMBER_I2C_BUSES) == 3
-#    define BOARD_I2C_BUS_CLOCK_INIT {100000, 100000, 100000}
-#  elif (BOARD_NUMBER_I2C_BUSES) == 4
-#    define BOARD_I2C_BUS_CLOCK_INIT {100000, 100000, 100000, 100000}
+#if defined(BOARD_I2C_BUS_CLOCK_INIT)
+#  define PX4_I2C_BUS_CLOCK_INIT BOARD_I2C_BUS_CLOCK_INIT
+#else
+#  if (PX4_NUMBER_I2C_BUSES) == 1
+#    define PX4_I2C_BUS_CLOCK_INIT {100000}
+#  elif (PX4_NUMBER_I2C_BUSES) == 2
+#    define PX4_I2C_BUS_CLOCK_INIT {100000, 100000}
+#  elif (PX4_NUMBER_I2C_BUSES) == 3
+#    define PX4_I2C_BUS_CLOCK_INIT {100000, 100000, 100000}
+#  elif (PX4_NUMBER_I2C_BUSES) == 4
+#    define PX4_I2C_BUS_CLOCK_INIT {100000, 100000, 100000, 100000}
 #  else
-#    error BOARD_NUMBER_I2C_BUSES not supported
+#    error PX4_NUMBER_I2C_BUSES not supported
 #  endif
 #endif
+
+#ifdef BOARD_SPI_BUS_MAX_BUS_ITEMS
+#define SPI_BUS_MAX_BUS_ITEMS BOARD_SPI_BUS_MAX_BUS_ITEMS
+#else
+#define SPI_BUS_MAX_BUS_ITEMS 6
+#endif
+
+#ifndef BOARD_NUM_SPI_CFG_HW_VERSIONS
+#define BOARD_NUM_SPI_CFG_HW_VERSIONS 1
+#endif
+
 /* ADC defining tools
  * We want to normalize the V5 Sensing to V = (adc_dn) * ADC_V5_V_FULL_SCALE/(2 ^ ADC_BITS) * ADC_V5_SCALE)
  */
@@ -145,6 +151,10 @@
 #endif
 #if !defined(ADC_3V3_SCALE)
 #define ADC_3V3_SCALE                    (2.0f) // The scale factor defined by HW's resistive divider (Rt+Rb)/ Rb
+#endif
+
+#ifndef BOARD_ADC_POS_REF_V
+#define BOARD_ADC_POS_REF_V              (3.3f) // Default reference voltage for every channels
 #endif
 
 #ifndef BOARD_ADC_POS_REF_V_FOR_CURRENT_CHAN
@@ -380,8 +390,11 @@ typedef enum PX4_SOC_ARCH_ID_t {
 	PX4_SOC_ARCH_ID_STM32F7        =  0x0002,
 	PX4_SOC_ARCH_ID_KINETISK66     =  0x0003,
 	PX4_SOC_ARCH_ID_SAMV7          =  0x0004,
+	PX4_SOC_ARCH_ID_NXPIMXRT1062   =  0x0005,
 
 	PX4_SOC_ARCH_ID_STM32H7        =  0x0006,
+
+	PX4_SOC_ARCH_ID_NXPS32K146     =  0x0007,
 
 	PX4_SOC_ARCH_ID_EAGLE          =  0x1001,
 	PX4_SOC_ARCH_ID_QURT           =  0x1002,
@@ -657,6 +670,9 @@ __EXPORT int board_set_bootload_mode(board_reset_e mode);
 
 typedef enum {
 	PX4_MFT_PX4IO = 0,
+	PX4_MFT_USB   = 1,
+	PX4_MFT_CAN2  = 2,
+	PX4_MFT_CAN3  = 3,
 } px4_hw_mft_item_id_t;
 
 typedef enum {
@@ -700,6 +716,35 @@ __EXPORT px4_hw_mft_item board_query_manifest(px4_hw_mft_item_id_t id);
 #  define PX4_MFT_HW_IS_OFFBOARD(ID)         (0)
 #  define PX4_MFT_HW_IS_CONNECTION_KNOWN(ID) (0)
 #  define board_query_manifest(_na)          px4_hw_mft_unsupported
+#endif
+
+/************************************************************************************
+ * Name: board_get_can_interfaces
+ *
+ * Description:
+ *   Optional returns a bit mask of the enabled can interfaces, that are
+ *   dependent on the on board CAN configuration.
+ *
+ *   In UAVCAN the number of interfaces is a compile time setting. On some HW
+ *   using the same binary, all the CAN interfaces are not present.
+ *
+ *   The default is now 3 CAN interfaces and all active, the the build will set
+ *   the actual max number of interfaces.
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   A bit mask of the can interfaces enabled for this board.
+ *   i.e CAN1 and CAN2   0x3
+ *       CAN0 and CAN1   0x3
+ *
+ ************************************************************************************/
+
+#if defined(UAVCAN_NUM_IFACES_RUNTIME)
+__EXPORT uint16_t board_get_can_interfaces(void);
+#else
+inline uint16_t board_get_can_interfaces(void) { return 0x7; }
 #endif
 
 /************************************************************************************
@@ -1005,46 +1050,6 @@ int board_shutdown(void);
 static inline int board_register_power_state_notification_cb(power_button_state_notification_t cb) { return 0; }
 static inline int board_shutdown(void) { return -EINVAL; }
 #endif
-__END_DECLS
-
-/************************************************************************************
- * Name: px4_i2c_bus_external
- *
- ************************************************************************************/
-
-#if defined(BOARD_HAS_SIMPLE_HW_VERSIONING)
-
-__EXPORT bool px4_i2c_bus_external(int bus);
-
-#else
-
-#ifdef PX4_I2C_BUS_ONBOARD
-#define px4_i2c_bus_external(bus) (bus != PX4_I2C_BUS_ONBOARD)
-#else
-#define px4_i2c_bus_external(bus) true
-#endif /* PX4_I2C_BUS_ONBOARD */
-
-#endif /* BOARD_HAS_SIMPLE_HW_VERSIONING */
-
-
-/************************************************************************************
- * Name: px4_spi_bus_external
- *
- ************************************************************************************/
-
-#if defined(BOARD_HAS_SIMPLE_HW_VERSIONING)
-
-__EXPORT bool px4_spi_bus_external(int bus);
-
-#else
-
-#ifdef PX4_SPI_BUS_EXT
-#define px4_spi_bus_external(bus) (bus == PX4_SPI_BUS_EXT)
-#else
-#define px4_spi_bus_external(bus) false
-#endif /* PX4_SPI_BUS_EXT */
-
-#endif /* BOARD_HAS_SIMPLE_HW_VERSIONING */
 
 /************************************************************************************
  * Name: board_has_bus
@@ -1052,6 +1057,7 @@ __EXPORT bool px4_spi_bus_external(int bus);
  ************************************************************************************/
 
 enum board_bus_types {
+	BOARD_INVALID_BUS = 0,
 	BOARD_SPI_BUS = 1,
 	BOARD_I2C_BUS = 2
 };
@@ -1063,6 +1069,41 @@ __EXPORT bool board_has_bus(enum board_bus_types type, uint32_t bus);
 #else
 #  define board_has_bus(t, b) true
 #endif /* BOARD_HAS_BUS_MANIFEST */
+
+
+/************************************************************************************
+ * Name: board_spi_reset
+ *
+ * Description:
+ *   Reset SPI buses and devices
+ *
+ * Input Parameters:
+ *  ms                   - delay in msbetween powering off the devices and re-enabling power.
+ *
+ *  bus_mask             - bitmask to select buses - use 0xffff to select all.
+ */
+__EXPORT void board_spi_reset(int ms, int bus_mask);
+
+/************************************************************************************
+ * Name: board_control_spi_sensors_power_configgpio
+ *
+ * Description:
+ *   Initialize GPIO pins for all SPI bus power enable pins
+ */
+__EXPORT void board_control_spi_sensors_power_configgpio(void);
+
+/************************************************************************************
+ * Name: board_control_spi_sensors_power
+ *
+ * Description:
+ *   Control the power of SPI buses
+ *
+ * Input Parameters:
+ *  enable_power         - true to enable power, false to disable
+ *
+ *  bus_mask             - bitmask to select buses - use 0xffff to select all.
+ */
+__EXPORT void board_control_spi_sensors_power(bool enable_power, int bus_mask);
 
 /************************************************************************************
  * Name: board_hardfault_init
@@ -1088,3 +1129,5 @@ __EXPORT bool board_has_bus(enum board_bus_types type, uint32_t bus);
  *               32000 resets.
  */
 int board_hardfault_init(int display_to_console, bool allow_prompt);
+
+__END_DECLS

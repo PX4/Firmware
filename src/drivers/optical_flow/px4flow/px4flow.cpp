@@ -49,7 +49,8 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <px4_platform_common/module.h>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/optical_flow.h>
@@ -75,23 +76,28 @@
 
 #include "i2c_frame.h"
 
-class PX4FLOW: public device::I2C, public px4::ScheduledWorkItem
+class PX4FLOW: public device::I2C, public I2CSPIDriver<PX4FLOW>
 {
 public:
-	PX4FLOW(int bus, int address = I2C_FLOW_ADDRESS_DEFAULT, enum Rotation rotation = (enum Rotation)0,
-		int conversion_interval = PX4FLOW_CONVERSION_INTERVAL_DEFAULT,
-		uint8_t sonar_rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
+	PX4FLOW(I2CSPIBusOption bus_option, int bus, int address, uint8_t sonar_rotation, int bus_frequency,
+		int conversion_interval = PX4FLOW_CONVERSION_INTERVAL_DEFAULT, enum Rotation rotation = ROTATION_NONE);
 	virtual ~PX4FLOW();
 
-	virtual int 		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	int init() override;
+
+	void print_status();
 
 	/**
-	 * Diagnostics - print some basic information about the driver.
+	 * Perform a poll cycle; collect from the previous measurement
+	 * and start a new one.
 	 */
-	void				print_info();
-
+	void				RunImpl();
 protected:
-	virtual int			probe();
+	int			probe() override;
 
 private:
 
@@ -132,30 +138,17 @@ private:
 	 */
 	void				start();
 
-	/**
-	 * Stop the automatic measurement state machine.
-	 */
-	void				stop();
-
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 */
-	void				Run() override;
-
 	int					measure();
 	int					collect();
 
 };
 
-/*
- * Driver 'main' command.
- */
 extern "C" __EXPORT int px4flow_main(int argc, char *argv[]);
 
-PX4FLOW::PX4FLOW(int bus, int address, enum Rotation rotation, int conversion_interval, uint8_t sonar_rotation) :
-	I2C("PX4FLOW", PX4FLOW0_DEVICE_PATH, bus, address, PX4FLOW_I2C_MAX_BUS_SPEED), /* 100-400 KHz */
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+PX4FLOW::PX4FLOW(I2CSPIBusOption bus_option, int bus, int address, uint8_t sonar_rotation, int bus_frequency,
+		 int conversion_interval, enum Rotation rotation) :
+	I2C("PX4FLOW", PX4FLOW0_DEVICE_PATH, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
 	_sonar_rotation(sonar_rotation),
 	_sample_perf(perf_alloc(PC_ELAPSED, "px4f_read")),
 	_comms_errors(perf_alloc(PC_COUNT, "px4f_com_err")),
@@ -165,9 +158,6 @@ PX4FLOW::PX4FLOW(int bus, int address, enum Rotation rotation, int conversion_in
 
 PX4FLOW::~PX4FLOW()
 {
-	/* make sure we are truly inactive */
-	stop();
-
 	perf_free(_sample_perf);
 	perf_free(_comms_errors);
 }
@@ -361,13 +351,7 @@ PX4FLOW::start()
 }
 
 void
-PX4FLOW::stop()
-{
-	ScheduleClear();
-}
-
-void
-PX4FLOW::Run()
+PX4FLOW::RunImpl()
 {
 	if (OK != measure()) {
 		DEVICE_DEBUG("measure error");
@@ -385,260 +369,82 @@ PX4FLOW::Run()
 }
 
 void
-PX4FLOW::print_info()
+PX4FLOW::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
 }
 
-/**
- * Local functions in support of the shell command.
- */
-namespace px4flow
+void
+PX4FLOW::print_usage()
 {
-
-PX4FLOW	*g_dev = nullptr;
-bool start_in_progress = false;
-
-const int START_RETRY_COUNT = 5;
-const int START_RETRY_TIMEOUT = 1000;
-
-int start(int argc, char *argv[]);
-int stop();
-int info();
-void usage();
-
-/**
- * Start the driver.
- */
-int
-start(int argc, char *argv[])
-{
-	/* entry check: */
-	if (start_in_progress) {
-		PX4_WARN("start already in progress");
-		return 1;
-	}
-
-	if (g_dev != nullptr) {
-		start_in_progress = false;
-		PX4_WARN("already started");
-		return 1;
-	}
-
-	/* parse command line options */
-	int address = I2C_FLOW_ADDRESS_DEFAULT;
-	int conversion_interval = PX4FLOW_CONVERSION_INTERVAL_DEFAULT;
-
-	/* don't exit from getopt loop to leave getopt global variables in consistent state,
-	 * set error flag instead */
-	bool err_flag = false;
-	int ch;
-	int myoptind = 1;
-	const char *myoptarg = nullptr;
-	uint8_t sonar_rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
-
-	while ((ch = px4_getopt(argc, argv, "a:i:R:", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'a':
-			address = strtoul(myoptarg, nullptr, 16);
-
-			if (address < I2C_FLOW_ADDRESS_MIN || address > I2C_FLOW_ADDRESS_MAX) {
-				PX4_WARN("invalid i2c address '%s'", myoptarg);
-				err_flag = true;
-
-			}
-
-			break;
-
-		case 'i':
-			conversion_interval = strtoul(myoptarg, nullptr, 10);
-
-			if (conversion_interval < PX4FLOW_CONVERSION_INTERVAL_MIN || conversion_interval > PX4FLOW_CONVERSION_INTERVAL_MAX) {
-				PX4_WARN("invalid conversion interval '%s'", myoptarg);
-				err_flag = true;
-			}
-
-			break;
-
-		case 'R':
-			sonar_rotation = (uint8_t)atoi(myoptarg);
-			PX4_INFO("Setting sonar orientation to %d", (int)sonar_rotation);
-
-			break;
-
-		default:
-			err_flag = true;
-			break;
-		}
-	}
-
-	if (err_flag) {
-		usage();
-		return PX4_ERROR;
-	}
-
-	/* starting */
-	start_in_progress = true;
-	PX4_INFO("scanning I2C buses for device..");
-
-	int retry_nr = 0;
-
-	while (1) {
-		const int busses_to_try[] = {
-			PX4_I2C_BUS_EXPANSION,
-#ifdef PX4_I2C_BUS_ESC
-			PX4_I2C_BUS_ESC,
-#endif
-#ifdef PX4_I2C_BUS_ONBOARD
-			PX4_I2C_BUS_ONBOARD,
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION1
-			PX4_I2C_BUS_EXPANSION1,
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION2
-			PX4_I2C_BUS_EXPANSION2,
-#endif
-
-			-1
-		};
-
-		const int *cur_bus = busses_to_try;
-
-		while (*cur_bus != -1) {
-			/* create the driver */
-			/* PX4_WARN("trying bus %d", *cur_bus); */
-			g_dev = new PX4FLOW(*cur_bus, address, (enum Rotation)0, conversion_interval, sonar_rotation);
-
-			if (g_dev == nullptr) {
-				/* this is a fatal error */
-				break;
-			}
-
-			/* init the driver: */
-			if (OK == g_dev->init()) {
-				/* success! */
-				break;
-			}
-
-			/* destroy it again because it failed. */
-			delete g_dev;
-			g_dev = nullptr;
-
-			/* try next! */
-			cur_bus++;
-		}
-
-		/* check whether we found it: */
-		if (*cur_bus != -1) {
-
-			/* check for failure: */
-			if (g_dev == nullptr) {
-				break;
-			}
-
-			/* success! */
-			start_in_progress = false;
-			return 0;
-		}
-
-		if (retry_nr < START_RETRY_COUNT) {
-			/* lets not be too verbose */
-			// PX4_WARN("PX4FLOW not found on I2C busses. Retrying in %d ms. Giving up in %d retries.", START_RETRY_TIMEOUT, START_RETRY_COUNT - retry_nr);
-			px4_usleep(START_RETRY_TIMEOUT * 1000);
-			retry_nr++;
-
-		} else {
-			break;
-		}
-	}
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	start_in_progress = false;
-
-	return PX4_OK;
+	PRINT_MODULE_USAGE_NAME("px4flow", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x42);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 35, "Rotation (default=downwards)", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-/**
- * Stop the driver
- */
-int
-stop()
+I2CSPIDriverBase *PX4FLOW::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	start_in_progress = false;
+	PX4FLOW *instance = new PX4FLOW(iterator.configuredBusOption(), iterator.bus(), cli.i2c_address, cli.orientation,
+					cli.bus_frequency);
 
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-
-		return PX4_OK;
-
-	} else {
-		PX4_WARN("driver not running");
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	return PX4_ERROR;
-}
-
-/**
- * Print a little info about the driver.
- */
-int
-info()
-{
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
-		return PX4_ERROR;
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
 	}
 
-	g_dev->print_info();
-
-	return PX4_OK;
+	return instance;
 }
-
-void usage()
-{
-	PX4_INFO("usage: px4flow {start|info'}");
-	PX4_INFO("    [-a i2c_address]");
-	PX4_INFO("    [-i i2c_interval]");
-}
-
-} // namespace
 
 int
 px4flow_main(int argc, char *argv[])
 {
-	if (argc < 2) {
-		px4flow::usage();
-		return 1;
+	int ch;
+	using ThisDriver = PX4FLOW;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = PX4FLOW_I2C_MAX_BUS_SPEED;
+	cli.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
+	cli.i2c_address = I2C_FLOW_ADDRESS_DEFAULT;
+
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
+		switch (ch) {
+		case 'R':
+			cli.orientation = atoi(cli.optarg());
+			break;
+		}
 	}
 
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(argv[1], "start")) {
-		return px4flow::start(argc, argv);
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	/*
-	 * Stop the driver
-	 */
-	if (!strcmp(argv[1], "stop")) {
-		return px4flow::stop();
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_FLOW_DEVTYPE_PX4FLOW);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(argv[1], "info") || !strcmp(argv[1], "status")) {
-		return px4flow::info();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	px4flow::usage();
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
 
-	return PX4_OK;
+	ThisDriver::print_usage();
+	return -1;
 }

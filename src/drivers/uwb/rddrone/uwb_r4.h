@@ -188,14 +188,15 @@ public:
 	void run() override;
 
 protected:
-	/*
-	 * Update Params
-	 * */
 
-	void _update_params();
 
 private:
 
+	/**
+     	* Check for parameter changes and update them if needed.
+     	* @param parameter_update_sub uorb subscription to parameter_update
+     	*/
+	void parameters_update(int parameter_update_sub, bool force = false);
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::UWB_UUID_ON_SD>) _param_uwb_uuid_on_sd,	/**< UUID on SD card  */
@@ -203,19 +204,8 @@ private:
 	)
 
 	uORB::Subscription _parameterSub{ORB_ID(parameter_update)};	/**< param update subscription */
-	/*
-	 *	Handle Params
-	 * */
-	struct {
-		bool uwb_uuid_on_sd;
-		bool uwb_pos_debug;
-	} _params ;
-	struct {
-		param_t uwb_uuid_on_sd;
-		param_t uwb_pos_debug;
-	} _param_handles ;
 
-	void _check_params(const bool force);
+
 
 
 

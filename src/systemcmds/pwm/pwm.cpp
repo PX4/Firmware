@@ -60,8 +60,6 @@
 #include <nuttx/fs/ioctl.h>
 #endif
 
-#include <arch/board/board.h>
-
 #include "systemlib/err.h"
 #include <parameters/param.h>
 #include "drivers/drv_pwm_output.h"

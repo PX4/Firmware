@@ -11,7 +11,7 @@
 #   this script has a bit more Logic (aka Bobby Tarantino) than normal.
 #
 # Flight Core Version Information:
-#   V100 - Flight Core Stand Alone configuration
+#   V106 - Flight Core Stand Alone configuration
 #   V110 - Flight Core VOXL-Flight configuration
 #
 
@@ -22,7 +22,7 @@ if [ $AUTOCNF = yes ]
 then
 	#
 	# Disable safety switch by default (pull high to 3.3V to enable)
-	#  V100 - J13 pin 5
+	#  V106 - J13 pin 5
 	#  V110 - J1011 pin 5
 	#
 	param set CBRK_IO_SAFETY 22027
@@ -31,9 +31,9 @@ fi
 #
 # Stand Alone configuration
 #
-if ver hwtypecmp V100
+if ver hwtypecmp V106
 then
-	echo "Configuring Flight Core - V100"
+	echo "Configuring Flight Core - V106"
 
 	#
 	# In Flight Core, J1 and J4 can be setup to be used as serial ports for TELEM2
@@ -45,14 +45,14 @@ then
 	then
 		if param compare MAV_1_CONFIG 0
 		then
-			echo "V100 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
+			echo "V106 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 			param set MAV_1_CONFIG 102 # TELEM2
 			param set MAV_1_MODE 0	# normal
 			param set SER_TEL2_BAUD 921600 # VIO data
 		fi
 		if param compare MAV_2_CONFIG 0
 		then
-			echo "V100 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
+			echo "V106 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
 			param set MAV_2_CONFIG 103 # TELEM3
 			param set MAV_2_MODE 0	# normal
 			param set SER_TEL3_BAUD 57600 # standard data
@@ -62,12 +62,12 @@ then
 	# User is setting defaults, so let's do it!
 	if [ $AUTOCNF = yes ]
 	then
-		echo "V100 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
+		echo "V106 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 		param set MAV_1_CONFIG 102 # TELEM2
 		param set MAV_1_MODE 0	# normal
 		param set SER_TEL2_BAUD 921600 # VIO data
 
-		echo "V100 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
+		echo "V106 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
 		param set MAV_2_CONFIG 103 # TELEM3
 		param set MAV_2_MODE 0	# normal
 		param set SER_TEL3_BAUD 57600 # standard data

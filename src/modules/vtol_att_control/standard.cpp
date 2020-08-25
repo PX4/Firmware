@@ -62,8 +62,6 @@ Standard::Standard(VtolAttitudeControl *attc) :
 
 	_params_handles_standard.pusher_ramp_dt = param_find("VT_PSHER_RMP_DT");
 	_params_handles_standard.back_trans_ramp = param_find("VT_B_TRANS_RAMP");
-	_params_handles_standard.down_pitch_max = param_find("VT_DWN_PITCH_MAX");
-	_params_handles_standard.forward_thrust_scale = param_find("VT_FWD_THRUST_SC");
 	_params_handles_standard.pitch_setpoint_offset = param_find("FW_PSP_OFF");
 	_params_handles_standard.reverse_output = param_find("VT_B_REV_OUT");
 	_params_handles_standard.reverse_delay = param_find("VT_B_REV_DEL");
@@ -83,13 +81,6 @@ Standard::parameters_update()
 	_params_standard.back_trans_ramp = math::constrain(v, 0.0f, _params->back_trans_duration);
 
 	_airspeed_trans_blend_margin = _params->transition_airspeed - _params->airspeed_blend;
-
-	/* maximum down pitch allowed */
-	param_get(_params_handles_standard.down_pitch_max, &v);
-	_params_standard.down_pitch_max = math::radians(v);
-
-	/* scale for fixed wing thrust used for forward acceleration in multirotor mode */
-	param_get(_params_handles_standard.forward_thrust_scale, &_params_standard.forward_thrust_scale);
 
 	/* pitch setpoint offset */
 	param_get(_params_handles_standard.pitch_setpoint_offset, &v);
@@ -275,7 +266,6 @@ void Standard::update_transition_state()
 		_v_att_sp->pitch_body = _params_standard.pitch_setpoint_offset * (1.0f - mc_weight);
 		const Quatf q_sp(Eulerf(_v_att_sp->roll_body, _v_att_sp->pitch_body, _v_att_sp->yaw_body));
 		q_sp.copyTo(_v_att_sp->q_d);
-		_v_att_sp->q_d_valid = true;
 
 		// check front transition timeout
 		if (_params->front_trans_timeout > FLT_EPSILON) {
@@ -291,7 +281,6 @@ void Standard::update_transition_state()
 		_v_att_sp->pitch_body = _params_standard.pitch_setpoint_offset;
 		const Quatf q_sp(Eulerf(_v_att_sp->roll_body, _v_att_sp->pitch_body, _v_att_sp->yaw_body));
 		q_sp.copyTo(_v_att_sp->q_d);
-		_v_att_sp->q_d_valid = true;
 
 		_pusher_throttle = 0.0f;
 
@@ -326,76 +315,7 @@ void Standard::update_mc_state()
 {
 	VtolType::update_mc_state();
 
-	// if the thrust scale param is zero or the drone is on manual mode,
-	// then the pusher-for-pitch strategy is disabled and we can return
-	if (_params_standard.forward_thrust_scale < FLT_EPSILON ||
-	    !_v_control_mode->flag_control_position_enabled) {
-		return;
-	}
-
-	// Do not engage pusher assist during a failsafe event
-	// There could be a problem with the fixed wing drive
-	if (_attc->get_vtol_vehicle_status()->vtol_transition_failsafe) {
-		return;
-	}
-
-	// disable pusher assist during landing
-	if (_attc->get_pos_sp_triplet()->current.valid
-	    && _attc->get_pos_sp_triplet()->current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
-		return;
-	}
-
-	const Dcmf R(Quatf(_v_att->q));
-	const Dcmf R_sp(Quatf(_v_att_sp->q_d));
-	const Eulerf euler(R);
-	const Eulerf euler_sp(R_sp);
-	_pusher_throttle = 0.0f;
-
-	// direction of desired body z axis represented in earth frame
-	Vector3f body_z_sp(R_sp(0, 2), R_sp(1, 2), R_sp(2, 2));
-
-	// rotate desired body z axis into new frame which is rotated in z by the current
-	// heading of the vehicle. we refer to this as the heading frame.
-	Dcmf R_yaw = Eulerf(0.0f, 0.0f, -euler(2));
-	body_z_sp = R_yaw * body_z_sp;
-	body_z_sp.normalize();
-
-	// calculate the desired pitch seen in the heading frame
-	// this value corresponds to the amount the vehicle would try to pitch forward
-	float pitch_forward = atan2f(body_z_sp(0), body_z_sp(2));
-
-	// only allow pitching forward up to threshold, the rest of the desired
-	// forward acceleration will be compensated by the pusher
-	if (pitch_forward < -_params_standard.down_pitch_max) {
-		// desired roll angle in heading frame stays the same
-		float roll_new = -asinf(body_z_sp(1));
-
-		_pusher_throttle = (sinf(-pitch_forward) - sinf(_params_standard.down_pitch_max))
-				   * _params_standard.forward_thrust_scale;
-
-		// return the vehicle to level position
-		float pitch_new = 0.0f;
-
-		// create corrected desired body z axis in heading frame
-		const Dcmf R_tmp = Eulerf(roll_new, pitch_new, 0.0f);
-		Vector3f tilt_new(R_tmp(0, 2), R_tmp(1, 2), R_tmp(2, 2));
-
-		// rotate the vector into a new frame which is rotated in z by the desired heading
-		// with respect to the earh frame.
-		const float yaw_error = wrap_pi(euler_sp(2) - euler(2));
-		const Dcmf R_yaw_correction = Eulerf(0.0f, 0.0f, -yaw_error);
-		tilt_new = R_yaw_correction * tilt_new;
-
-		// now extract roll and pitch setpoints
-		_v_att_sp->pitch_body = atan2f(tilt_new(0), tilt_new(2));
-		_v_att_sp->roll_body = -asinf(tilt_new(1));
-
-		const Quatf q_sp(Eulerf(_v_att_sp->roll_body, _v_att_sp->pitch_body, euler_sp(2)));
-		q_sp.copyTo(_v_att_sp->q_d);
-		_v_att_sp->q_d_valid = true;
-	}
-
-	_pusher_throttle = _pusher_throttle < 0.0f ? 0.0f : _pusher_throttle;
+	_pusher_throttle = VtolType::pusher_assist();
 }
 
 void Standard::update_fw_state()

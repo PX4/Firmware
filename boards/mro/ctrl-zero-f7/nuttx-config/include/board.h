@@ -38,6 +38,7 @@
 /************************************************************************************
  * Included Files
  ************************************************************************************/
+#include "board_dma_map.h"
 
 #include <nuttx/config.h>
 
@@ -241,20 +242,6 @@
 #  define STM32_SDMMC_SDXFR_CLKDIV      (2 << STM32_SDMMC_CLKCR_CLKDIV_SHIFT)
 #endif
 
-/* DMA Channl/Stream Selections *****************************************************/
-/* Stream selections are arbitrary for now but might become important in the future
- * if we set aside more DMA channels/streams.
- *
- * SDMMC DMA is on DMA2
- *
- * SDMMC1 DMA
- *   DMAMAP_SDMMC1_1 = Channel 4, Stream 3 <- may later be used by SPI DMA
- *   DMAMAP_SDMMC1_2 = Channel 4, Stream 6
- */
-
-#define DMAMAP_SDMMC1  DMAMAP_SDMMC1_1
-
-
 /* FLASH wait states
  *
  *  --------- ---------- -----------
@@ -295,10 +282,6 @@
  *      GPIO_UART8_RX                          PE0
  *      GPIO_UART8_TX                          PE1
  */
-
-/* UART RX DMA configurations */
-#define DMAMAP_USART6_RX DMAMAP_USART6_RX_2
-
 
 /* CAN
  *

@@ -95,7 +95,7 @@ PARAM_DEFINE_FLOAT(RWTO_MAX_THR, 1.0);
  * to takeoff is reached.
  *
  * @unit deg
- * @min 0.0
+ * @min -10.0
  * @max 20.0
  * @decimal 1
  * @increment 0.5

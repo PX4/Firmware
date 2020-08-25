@@ -49,7 +49,6 @@ float32 ref_alt				# Reference altitude AMSL, (metres)
 
 # Distance to surface
 float32 dist_bottom			# Distance from from bottom surface to ground, (metres)
-float32 dist_bottom_rate		# Rate of change of distance from bottom surface to ground, (metres/sec)
 bool dist_bottom_valid			# true if distance to bottom surface is valid
 
 float32 eph				# Standard deviation of horizontal position error, (metres)

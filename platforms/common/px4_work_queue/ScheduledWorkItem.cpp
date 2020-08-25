@@ -66,7 +66,9 @@ ScheduledWorkItem::ScheduleOnInterval(uint32_t interval_us, uint32_t delay_us)
 void
 ScheduledWorkItem::ScheduleClear()
 {
+	// first clear any scheduled hrt call, then remove the item from the runnable queue
 	hrt_cancel(&_call);
+	WorkItem::ScheduleClear();
 }
 
 void

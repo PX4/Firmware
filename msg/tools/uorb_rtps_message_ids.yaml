@@ -147,7 +147,7 @@ rtps:
   - msg: sensor_baro
     id: 63
     send: true
-  - msg: sensor_bias
+  - msg: estimator_sensor_bias
     id: 64
   - msg: sensor_combined
     id: 65
@@ -177,8 +177,10 @@ rtps:
     id: 76
   - msg: test_motor
     id: 77
-  - msg: timesync_status
+  - msg: timesync
     id: 78
+    receive: true
+    send: true
   - msg: trajectory_waypoint
     id: 79
     receive: true
@@ -256,12 +258,11 @@ rtps:
     id: 112
   - msg: vehicle_acceleration
     id: 113
-  - msg: sensor_gyro_control
-    id: 114
   - msg: airspeed_validated
     id: 115
   - msg: onboard_computer_status
     id: 116
+    receive: true
   - msg: cellular_status
     id: 117
   - msg: sensor_accel_fifo
@@ -272,8 +273,36 @@ rtps:
     id: 120
   - msg: sensor_gyro_status
     id: 121
-  - msg: uwb_report
+  - msg: sensor_accel_integrated
     id: 122
+  - msg: sensor_gyro_integrated
+    id: 123
+  - msg: vehicle_imu
+    id: 124
+  - msg: vehicle_angular_acceleration
+    id: 125
+  - msg: logger_status
+    id: 126
+  - msg: rpm
+    id: 127
+  - msg: hover_thrust_estimate
+    id: 128
+  - msg: trajectory_bezier
+    id: 129
+  - msg: vehicle_trajectory_bezier
+    id: 130
+  - msg: timesync_status
+    id: 131
+  - msg: orb_test
+    id: 132
+  - msg: orb_test_medium
+    id: 133
+  - msg: orb_test_large
+    id: 134
+  - msg: yaw_estimator_status
+    id: 135
+  - msg: uwb_report
+    id: 136
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150
@@ -343,4 +372,16 @@ rtps:
   - msg: estimator_innovation_test_ratios
     id: 171
     alias: estimator_innovations
+  - msg: orb_multitest
+    id: 172
+    alias: orb_test
+  - msg: orb_test_medium_multi
+    id: 173
+    alias: orb_test_medium
+  - msg: orb_test_medium_queue
+    id: 174
+    alias: orb_test_medium
+  - msg: orb_test_medium_queue_poll
+    id: 175
+    alias: orb_test_medium
   ########## multi topics: end ##########

@@ -94,6 +94,7 @@ int px4_register_shutdown_hook(shutdown_hook_t hook)
 {
 	return -EINVAL;
 }
+
 int px4_unregister_shutdown_hook(shutdown_hook_t hook)
 {
 	return -EINVAL;

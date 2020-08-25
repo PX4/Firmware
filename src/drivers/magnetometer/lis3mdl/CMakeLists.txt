@@ -40,4 +40,6 @@ px4_add_module(
 		lis3mdl_spi.cpp
 		lis3mdl_main.cpp
 		lis3mdl.cpp
+	DEPENDS
+		conversion
 	)

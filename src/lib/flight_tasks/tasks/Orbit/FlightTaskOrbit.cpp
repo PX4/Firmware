@@ -117,7 +117,7 @@ bool FlightTaskOrbit::setRadius(float r)
 
 	// small radius is more important than high velocity for safety
 	if (!checkAcceleration(r, _v, _acceleration_max)) {
-		_v = math::sign(_v) * sqrtf(_acceleration_max * r);
+		_v = sign(_v) * sqrtf(_acceleration_max * r);
 	}
 
 	_r = r;

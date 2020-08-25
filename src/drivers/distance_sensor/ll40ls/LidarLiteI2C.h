@@ -40,14 +40,17 @@
 
 #pragma once
 
-#include "LidarLite.h"
-
 #include <drivers/device/i2c.h>
 #include <drivers/drv_hrt.h>
 #include <mathlib/mathlib.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <drivers/device/device.h>
+#include <lib/drivers/rangefinder/PX4Rangefinder.hpp>
+#include <perf/perf_counter.h>
 
+using namespace time_literals;
 
 /* Configuration Constants */
 static constexpr uint8_t LL40LS_BASEADDR              = 0x62; /* 7-bit address */
@@ -77,20 +80,35 @@ static constexpr int LL40LS_SIGNAL_STRENGTH_LOW       = 24;  /* Minimum signal s
 static constexpr int LL40LS_PEAK_STRENGTH_LOW         = 135; /* Minimum peak strength for accepting a measurement */
 static constexpr int LL40LS_PEAK_STRENGTH_HIGH        = 234; /* Max peak strength raw value */
 
+static constexpr float LL40LS_MIN_DISTANCE{0.05f};
+static constexpr float LL40LS_MAX_DISTANCE{25.00f};
+static constexpr float LL40LS_MAX_DISTANCE_V2{35.00f};
 
-class LidarLiteI2C : public LidarLite, public device::I2C, public px4::ScheduledWorkItem
+// Normal conversion wait time.
+static constexpr uint32_t LL40LS_CONVERSION_INTERVAL{50_ms};
+
+// Maximum time to wait for a conversion to complete.
+static constexpr uint32_t LL40LS_CONVERSION_TIMEOUT{100_ms};
+
+
+class LidarLiteI2C : public device::I2C, public I2CSPIDriver<LidarLiteI2C>
 {
 public:
-	LidarLiteI2C(const int bus, const uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING,
+	LidarLiteI2C(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency,
 		     const int address = LL40LS_BASEADDR);
 	virtual ~LidarLiteI2C();
 
-	int init() override;
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+
+	int init();
 
 	/**
 	 * Print sensor registers to console for debugging.
 	 */
-	void print_registers() override;
+	void print_registers();
 
 	/**
 	 * Initialise the automatic measurement state machine and start it.
@@ -98,21 +116,27 @@ public:
 	 * @note This function is called at open and error time.  It might make sense
 	 *       to make it more aggressive about resetting the bus in case of errors.
 	 */
-	void start() override;
+	void start();
 
 	/**
-	 * Stop the automatic measurement state machine.
+	 * Perform a poll cycle; collect from the previous measurement
+	 * and start a new one.
 	 */
-	void stop() override;
+	void RunImpl();
 
 protected:
+	void custom_method(const BusCLIArguments &cli) override;
 
-	int measure() override;
+	void print_status() override;
+
+	uint32_t get_measure_interval() const { return LL40LS_CONVERSION_INTERVAL; };
+
+	int measure();
 
 	/**
 	 * Reset the sensor to power on defaults plus additional configurations.
 	 */
-	int reset_sensor() override;
+	int reset_sensor();
 
 	int probe() override;
 
@@ -122,7 +146,7 @@ protected:
 
 private:
 
-	int collect() override;
+	int collect();
 
 	/**
 	 * LidarLite specific transfer function. This is needed
@@ -146,12 +170,6 @@ private:
 	 */
 	int probe_address(const uint8_t address);
 
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 */
-	void Run() override;
-
 	bool _collect_phase{false};
 	bool _is_v3hp{false};
 	bool _pause_measurements{false};
@@ -163,4 +181,11 @@ private:
 	uint16_t _zero_counter{0};
 
 	uint64_t _acquire_time_usec{0};
+
+	PX4Rangefinder	_px4_rangefinder;
+
+	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, "ll40ls: comms errors")};
+	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, "ll40ls: read")};
+	perf_counter_t _sensor_resets{perf_alloc(PC_COUNT, "ll40ls: resets")};
+	perf_counter_t _sensor_zero_resets{perf_alloc(PC_COUNT, "ll40ls: zero resets")};
 };

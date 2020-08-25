@@ -41,12 +41,12 @@
 
 #define LPS22HB_ADDRESS		0x5D
 
-device::Device *LPS22HB_I2C_interface(int bus);
+device::Device *LPS22HB_I2C_interface(int bus, int bus_frequency);
 
 class LPS22HB_I2C : public device::I2C
 {
 public:
-	LPS22HB_I2C(int bus);
+	LPS22HB_I2C(int bus, int bus_frequency);
 	virtual ~LPS22HB_I2C() = default;
 
 	virtual int	read(unsigned address, void *data, unsigned count);
@@ -58,13 +58,13 @@ protected:
 };
 
 device::Device *
-LPS22HB_I2C_interface(int bus)
+LPS22HB_I2C_interface(int bus, int bus_frequency)
 {
-	return new LPS22HB_I2C(bus);
+	return new LPS22HB_I2C(bus, bus_frequency);
 }
 
-LPS22HB_I2C::LPS22HB_I2C(int bus) :
-	I2C("LPS22HB_I2C", nullptr, bus, LPS22HB_ADDRESS, 400000)
+LPS22HB_I2C::LPS22HB_I2C(int bus, int bus_frequency) :
+	I2C("LPS22HB_I2C", nullptr, bus, LPS22HB_ADDRESS, bus_frequency)
 {
 }
 

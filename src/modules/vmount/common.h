@@ -61,13 +61,18 @@ struct ControlData {
 		//TODO: add more, like smooth curve, ... ?
 	};
 
+
 	Type type = Type::Neutral;
 
 	union TypeData {
 		struct TypeAngle {
-			float angles[3];              /**< attitude angles (roll, pitch, yaw) in rad, [-pi, +pi] if is_speed[i] == false */
+			float angles[3];         /**< attitude angles (roll, pitch, yaw) in rad, [-pi, +pi] or rad/s (if is angular rate) */
 
-			bool is_speed[3];        /**< if true, the angle is the angular speed in rad/s */
+			enum class Frame : uint8_t {
+				AngleBodyFrame = 0, /**< Angle in body frame. */
+				AngularRate,        /**< Angular rate in rad/s. */
+				AngleAbsoluteFrame  /**< Angle in absolute frame. */
+			} frames[3];             /**< Frame of given angle. */
 		} angle;
 
 		struct TypeLonLat {

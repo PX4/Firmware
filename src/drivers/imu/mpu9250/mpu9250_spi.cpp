@@ -82,17 +82,13 @@ private:
 device::Device *
 MPU9250_SPI_interface(int bus, uint32_t cs)
 {
-	device::Device *interface = nullptr;
-
-	interface = new MPU9250_SPI(bus, cs);
-
-	return interface;
+	return new MPU9250_SPI(bus, cs);
 }
 
 MPU9250_SPI::MPU9250_SPI(int bus, uint32_t device) :
 	SPI("MPU9250", nullptr, bus, device, SPIDEV_MODE3, MPU9250_LOW_SPI_BUS_SPEED)
 {
-	_device_id.devid_s.devtype = DRV_ACC_DEVTYPE_MPU9250;
+	set_device_type(DRV_IMU_DEVTYPE_MPU9250);
 }
 
 void

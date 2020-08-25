@@ -43,13 +43,17 @@
 #include <parameters/param.h>
 #include <systemlib/printload.h>
 #include <px4_platform_common/module.h>
+#include <px4_platform_common/module_params.h>
 
+#include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionInterval.hpp>
+#include <uORB/topics/logger_status.h>
 #include <uORB/topics/log_message.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/parameter_update.h>
 
 extern "C" __EXPORT int logger_main(int argc, char *argv[]);
 
@@ -61,28 +65,6 @@ namespace px4
 namespace logger
 {
 
-enum class SDLogProfileMask : int32_t {
-	DEFAULT =               1 << 0,
-	ESTIMATOR_REPLAY =      1 << 1,
-	THERMAL_CALIBRATION =   1 << 2,
-	SYSTEM_IDENTIFICATION = 1 << 3,
-	HIGH_RATE =             1 << 4,
-	DEBUG_TOPICS =          1 << 5,
-	SENSOR_COMPARISON =     1 << 6,
-	VISION_AND_AVOIDANCE =  1 << 7
-};
-
-enum class MissionLogType : int32_t {
-	Disabled =               0,
-	Complete =               1,
-	Geotagging =             2
-};
-
-inline bool operator&(SDLogProfileMask a, SDLogProfileMask b)
-{
-	return static_cast<int32_t>(a) & static_cast<int32_t>(b);
-}
-
 static constexpr uint8_t MSG_ID_INVALID = UINT8_MAX;
 
 struct LoggerSubscription : public uORB::SubscriptionInterval {
@@ -91,12 +73,12 @@ struct LoggerSubscription : public uORB::SubscriptionInterval {
 
 	LoggerSubscription() = default;
 
-	LoggerSubscription(const orb_metadata *meta, uint32_t interval_ms = 0, uint8_t instance = 0) :
-		uORB::SubscriptionInterval(meta, interval_ms * 1000, instance)
+	LoggerSubscription(ORB_ID id, uint32_t interval_ms = 0, uint8_t instance = 0) :
+		uORB::SubscriptionInterval(id, interval_ms * 1000, instance)
 	{}
 };
 
-class Logger : public ModuleBase<Logger>
+class Logger : public ModuleBase<Logger>, public ModuleParams
 {
 public:
 	enum class LogMode {
@@ -137,24 +119,6 @@ public:
 	void setReplayFile(const char *file_name);
 
 	/**
-	 * Add a topic to be logged. This must be called before start_log()
-	 * (because it does not write an ADD_LOGGED_MSG message).
-	 * @param name topic name
-	 * @param interval limit in milliseconds if >0, otherwise log as fast as the topic is updated.
-	 * @param instance orb topic instance
-	 * @return true on success
-	 */
-	bool add_topic(const char *name, uint32_t interval_ms = 0, uint8_t instance = 0);
-	bool add_topic_multi(const char *name, uint32_t interval_ms = 0);
-
-	/**
-	 * add a logged topic (called by add_topic() above).
-	 * In addition, it subscribes to the first instance of the topic, if it's advertised,
-	 * @return the newly added subscription on success, nullptr otherwise
-	 */
-	LoggerSubscription *add_topic(const orb_metadata *topic, uint32_t interval_ms = 0, uint8_t instance = 0);
-
-	/**
 	 * request the logger thread to stop (this method does not block).
 	 * @return true if the logger is stopped, false if (still) running
 	 */
@@ -172,7 +136,6 @@ private:
 		Watchdog
 	};
 
-	static constexpr size_t 	MAX_TOPICS_NUM = 90; /**< Maximum number of logged topics */
 	static constexpr int		MAX_MISSION_TOPICS_NUM = 5; /**< Maximum number of mission topics */
 	static constexpr unsigned	MAX_NO_LOGFILE = 999;	/**< Maximum number of log files */
 	static constexpr const char	*LOG_ROOT[(int)LogType::Count] = {
@@ -199,6 +162,11 @@ private:
 		unsigned min_delta_ms{0};        ///< minimum time between 2 topic writes [ms]
 		unsigned next_write_time{0};     ///< next time to write in 0.1 seconds
 	};
+
+	/**
+	 * @brief Updates and checks for updated uORB parameters.
+	 */
+	void update_params();
 
 	/**
 	 * Write an ADD_LOGGED_MSG to the log for a all current subscriptions and instances
@@ -249,11 +217,11 @@ private:
 	 */
 	void write_header(LogType type);
 
-	/// Array to store written formats (add some more for nested definitions)
-	using WrittenFormats = Array < const orb_metadata *, MAX_TOPICS_NUM + 10 >;
+	/// Array to store written formats for nested definitions (only)
+	using WrittenFormats = Array < const orb_metadata *, 20 >;
 
 	void write_format(LogType type, const orb_metadata &meta, WrittenFormats &written_formats, ulog_message_format_s &msg,
-			  int level = 1);
+			  int subscription_index, int level = 1);
 	void write_formats(LogType type);
 
 	/**
@@ -302,49 +270,24 @@ private:
 	bool write_message(LogType type, void *ptr, size_t size);
 
 	/**
-	 * Parse a file containing a list of uORB topics to log, calling add_topic for each
-	 * @param fname name of file
-	 * @return number of topics added
+	 * Add topic subscriptions from SD file if it exists, otherwise add topics based on the configured profile.
+	 * This must be called before start_log() (because it does not write an ADD_LOGGED_MSG message).
+	 * @return true on success
 	 */
-	int add_topics_from_file(const char *fname);
+	bool initialize_topics();
 
 	/**
-	 * Add topic subscriptions based on the configured mission log type
+	 * Determines if log-from-boot should be disabled, based on the value of SDLOG_BOOT_BAT and the battery status.
+	 * @return true if log-from-boot should be disabled
 	 */
-	void initialize_mission_topics(MissionLogType type);
-
-	/**
-	 * Add a topic to be logged for the mission log (it's also added to the full log).
-	 * The interval is expected to be 0 or large (in the order of 0.1 seconds or higher).
-	 * Must be called before all other topics are added.
-	 * @param name topic name
-	 * @param interval limit rate if >0 [ms], otherwise log as fast as the topic is updated.
-	 */
-	void add_mission_topic(const char *name, uint32_t interval_ms = 0);
-
-	/**
-	 * Add topic subscriptions based on the _sdlog_profile_handle parameter
-	 */
-	void initialize_configured_topics();
-
-	void add_default_topics();
-	void add_estimator_replay_topics();
-	void add_thermal_calibration_topics();
-	void add_system_identification_topics();
-	void add_high_rate_topics();
-	void add_debug_topics();
-	void add_sensor_comparison_topics();
-	void add_vision_and_avoidance_topics();
+	bool get_disable_boot_logging();
 
 	/**
 	 * check current arming state or aux channel and start/stop logging if state changed and according to
 	 * configured params.
-	 * @param vehicle_status_sub
-	 * @param manual_control_sp_sub
-	 * @param mission_log_type
 	 * @return true if log started
 	 */
-	bool start_stop_logging(MissionLogType mission_log_type);
+	bool start_stop_logging();
 
 	void handle_vehicle_command_update();
 	void ack_vehicle_command(vehicle_command_s *cmd, uint32_t result);
@@ -381,7 +324,8 @@ private:
 	LogMode						_log_mode;
 	const bool					_log_name_timestamp;
 
-	Array<LoggerSubscription, MAX_TOPICS_NUM>	_subscriptions; ///< all subscriptions for full & mission log (in front)
+	LoggerSubscription	 			*_subscriptions{nullptr}; ///< all subscriptions for full & mission log (in front)
+	int						_num_subscriptions{0};
 	MissionSubscription 				_mission_subscriptions[MAX_MISSION_TOPICS_NUM] {}; ///< additional data for mission subscriptions
 	int						_num_mission_subs{0};
 
@@ -397,15 +341,26 @@ private:
 	hrt_abstime					_next_load_print{0}; ///< timestamp when to print the process load
 	PrintLoadReason					_print_load_reason {PrintLoadReason::Preflight};
 
+	uORB::PublicationMulti<logger_status_s>		_logger_status_pub[2] { ORB_ID(logger_status), ORB_ID(logger_status) };
+
+#ifndef ORB_USE_PUBLISHER_RULES // don't publish logger_status when building for replay
+	hrt_abstime					_logger_status_last {0};
+#endif
+
 	uORB::Subscription				_manual_control_sp_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription				_vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription				_vehicle_status_sub{ORB_ID(vehicle_status)};
-	uORB::SubscriptionInterval			_log_message_sub{ORB_ID(log_message), 20};
+	uORB::SubscriptionInterval		_log_message_sub{ORB_ID(log_message), 20};
+	uORB::Subscription 				_parameter_update_sub{ORB_ID(parameter_update)};
 
-	param_t						_sdlog_profile_handle{PARAM_INVALID};
-	param_t						_log_utc_offset{PARAM_INVALID};
-	param_t						_log_dirs_max{PARAM_INVALID};
-	param_t						_mission_log{PARAM_INVALID};
+	DEFINE_PARAMETERS(
+		(ParamInt<px4::params::SDLOG_UTC_OFFSET>) _param_sdlog_utc_offset,
+		(ParamInt<px4::params::SDLOG_DIRS_MAX>) _param_sdlog_dirs_max,
+		(ParamInt<px4::params::SDLOG_PROFILE>) _param_sdlog_profile,
+		(ParamInt<px4::params::SDLOG_MISSION>) _param_sdlog_mission,
+		(ParamBool<px4::params::SDLOG_BOOT_BAT>) _param_sdlog_boot_bat,
+		(ParamBool<px4::params::SDLOG_UUID>) _param_sdlog_uuid
+	)
 };
 
 } //namespace logger

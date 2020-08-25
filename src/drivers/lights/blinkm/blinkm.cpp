@@ -99,7 +99,8 @@
 
 #include <drivers/device/i2c.h>
 #include <drivers/drv_blinkm.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <px4_platform_common/module.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/battery_status.h>
@@ -113,12 +114,17 @@ static const int LED_OFFTIME = 120;
 static const int LED_BLINK = 1;
 static const int LED_NOBLINK = 0;
 
-class BlinkM : public device::I2C, public px4::ScheduledWorkItem
+class BlinkM : public device::I2C, public I2CSPIDriver<BlinkM>
 {
 public:
-	BlinkM(int bus, int blinkm);
+	BlinkM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address);
 	virtual ~BlinkM() = default;
 
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void custom_method(const BusCLIArguments &cli) override;
 
 	virtual int		init();
 	virtual int		probe();
@@ -127,6 +133,7 @@ public:
 
 	static const char	*const script_names[];
 
+	void			RunImpl();
 private:
 	enum ScriptID {
 		USER		= 0,
@@ -196,8 +203,6 @@ private:
 
 	void 			setLEDColor(int ledcolor);
 
-	void			Run() override;
-
 	int			set_rgb(uint8_t r, uint8_t g, uint8_t b);
 
 	int			fade_rgb(uint8_t r, uint8_t g, uint8_t b);
@@ -220,12 +225,6 @@ private:
 
 	int			get_firmware_version(uint8_t version[2]);
 };
-
-/* for now, we only support one BlinkM */
-namespace
-{
-BlinkM *g_blinkm;
-}
 
 /* list of script names, must match script ID numbers */
 const char *const BlinkM::script_names[] = {
@@ -254,9 +253,9 @@ const char *const BlinkM::script_names[] = {
 
 extern "C" __EXPORT int blinkm_main(int argc, char *argv[]);
 
-BlinkM::BlinkM(int bus, int blinkm) :
-	I2C("blinkm", BLINKM0_DEVICE_PATH, bus, blinkm, 100000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+BlinkM::BlinkM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address) :
+	I2C("blinkm", BLINKM0_DEVICE_PATH, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	led_color_1(LED_OFF),
 	led_color_2(LED_OFF),
 	led_color_3(LED_OFF),
@@ -382,7 +381,7 @@ BlinkM::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 
 
 void
-BlinkM::Run()
+BlinkM::RunImpl()
 {
 	if (led_thread_ready == true) {
 		if (!detected_cells_blinked) {
@@ -924,111 +923,117 @@ BlinkM::get_firmware_version(uint8_t version[2])
 	return transfer(&msg, sizeof(msg), version, 2);
 }
 
-void blinkm_usage();
-
-void blinkm_usage()
+void
+BlinkM::print_usage()
 {
-	warnx("missing command: try 'start', 'systemstate', 'ledoff', 'list' or a script name {options}");
-	warnx("options:");
-	warnx("\t-b --bus i2cbus (3)");
-	warnx("\t-a --blinkmaddr blinkmaddr (9)");
+	PRINT_MODULE_USAGE_NAME("blinkm", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(9);
+	PRINT_MODULE_USAGE_COMMAND("systemstate");
+	PRINT_MODULE_USAGE_COMMAND("ledoff");
+	PRINT_MODULE_USAGE_COMMAND("list");
+	PRINT_MODULE_USAGE_COMMAND("script");
+	PRINT_MODULE_USAGE_PARAM_STRING('n', nullptr, "<file>", "Script file name", false);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-int
-blinkm_main(int argc, char *argv[])
+I2CSPIDriverBase *BlinkM::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
 {
+	BlinkM *instance = new BlinkM(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency, cli.i2c_address);
 
-	int i2cdevice = PX4_I2C_BUS_EXPANSION;
-	int blinkmadr = 9;
-
-	int x;
-
-	if (argc < 2) {
-		blinkm_usage();
-		return 1;
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	for (x = 1; x < argc; x++) {
-		if (strcmp(argv[x], "-b") == 0 || strcmp(argv[x], "--bus") == 0) {
-			if (argc > x + 1) {
-				i2cdevice = atoi(argv[x + 1]);
-			}
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
+
+	return instance;
+}
+
+void
+BlinkM::custom_method(const BusCLIArguments &cli)
+{
+	setMode(cli.custom1);
+}
+
+extern "C" __EXPORT int blinkm_main(int argc, char *argv[])
+{
+	int ch;
+	using ThisDriver = BlinkM;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 100000;
+	cli.i2c_address = 9;
+	const char *script = nullptr;
+
+	while ((ch = cli.getopt(argc, argv, "n:")) != EOF) {
+		switch (ch) {
+		case 'n':
+			script = cli.optarg();
+			break;
 		}
-
-		if (strcmp(argv[x], "-a") == 0 || strcmp(argv[x], "--blinkmaddr") == 0) {
-			if (argc > x + 1) {
-				blinkmadr = atoi(argv[x + 1]);
-			}
-		}
-
 	}
 
-	if (!strcmp(argv[1], "start")) {
-		if (g_blinkm != nullptr) {
-			warnx("already started");
-			return 1;
-		}
+	const char *verb = cli.optarg();
 
-		g_blinkm = new BlinkM(i2cdevice, blinkmadr);
-
-		if (g_blinkm == nullptr) {
-			warnx("new failed");
-			return 1;
-		}
-
-		if (OK != g_blinkm->init()) {
-			delete g_blinkm;
-			g_blinkm = nullptr;
-			warnx("init failed");
-			return 1;
-		}
-
-		return 0;
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_LED_DEVTYPE_BLINKM);
 
-	if (g_blinkm == nullptr) {
-		PX4_ERR("not started");
-		blinkm_usage();
-		return 0;
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	if (!strcmp(argv[1], "systemstate")) {
-		g_blinkm->setMode(1);
-		return 0;
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	if (!strcmp(argv[1], "ledoff")) {
-		g_blinkm->setMode(0);
-		return 0;
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
+	if (!strcmp(verb, "systemstate")) {
+		cli.custom1 = 1;
+		return ThisDriver::module_custom_method(cli, iterator);
+	}
 
-	if (!strcmp(argv[1], "list")) {
+	if (!strcmp(verb, "ledoff")) {
+		cli.custom1 = 0;
+		return ThisDriver::module_custom_method(cli, iterator);
+	}
+
+	if (!strcmp(verb, "list")) {
 		for (unsigned i = 0; BlinkM::script_names[i] != nullptr; i++) {
-			PX4_ERR("    %s", BlinkM::script_names[i]);
+			PX4_INFO("    %s", BlinkM::script_names[i]);
 		}
 
-		PX4_ERR("    <html color number>");
+		PX4_INFO("    <html color number>");
 		return 0;
 	}
 
-	/* things that require access to the device */
-	int fd = px4_open(BLINKM0_DEVICE_PATH, 0);
+	if (!strcmp(verb, "script") && script) {
+		/* things that require access to the device */
+		int fd = px4_open(BLINKM0_DEVICE_PATH, 0);
 
-	if (fd < 0) {
-		warn("can't open BlinkM device");
-		return 1;
-	}
+		if (fd < 0) {
+			PX4_ERR("can't open BlinkM device");
+			return 1;
+		}
 
-	g_blinkm->setMode(0);
+		px4_ioctl(fd, BLINKM_PLAY_SCRIPT_NAMED, (unsigned long)script);
 
-	if (px4_ioctl(fd, BLINKM_PLAY_SCRIPT_NAMED, (unsigned long)argv[1]) == OK) {
+		px4_close(fd);
 		return 0;
 	}
 
-	px4_close(fd);
-
-	blinkm_usage();
-	return 0;
+	ThisDriver::print_usage();
+	return -1;
 }

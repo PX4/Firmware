@@ -69,7 +69,7 @@ void FlightTaskTransition::updateAccelerationEstimate()
 	if (!PX4_ISFINITE(_acceleration_setpoint(0)) ||
 	    !PX4_ISFINITE(_acceleration_setpoint(1)) ||
 	    !PX4_ISFINITE(_acceleration_setpoint(2))) {
-		_acceleration_setpoint.setAll(0.f);
+		_acceleration_setpoint.setZero();
 	}
 
 	_velocity_prev = _velocity;
@@ -78,11 +78,8 @@ void FlightTaskTransition::updateAccelerationEstimate()
 bool FlightTaskTransition::update()
 {
 	// level wings during the transition, altitude should be controlled
-	_thrust_setpoint(0) = _thrust_setpoint(1) = 0.0f;
-	_thrust_setpoint(2) = NAN;
-	_position_setpoint *= NAN;
-	_velocity_setpoint *= NAN;
 	_position_setpoint(2) = _transition_altitude;
+	_thrust_setpoint.xy() = matrix::Vector2f(0.f, 0.f);
 
 	updateAccelerationEstimate();
 

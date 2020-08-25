@@ -499,6 +499,17 @@ __EXPORT void PRINT_MODULE_USAGE_COMMAND_DESCR(const char *name, const char *des
 	PRINT_MODULE_USAGE_COMMAND("stop"); \
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status", "print status info");
 
+/**
+ * Print default params for I2C or SPI drivers
+ * @param i2c_support true if the driver supports I2C
+ * @param spi_support true if the driver supports SPI
+ */
+__EXPORT void PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(bool i2c_support, bool spi_support);
+
+/**
+ * Configurable I2C address (via -a <address>)
+ */
+__EXPORT void PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(uint8_t default_address);
 
 /** @note Each of the PRINT_MODULE_USAGE_PARAM_* methods apply to the previous PRINT_MODULE_USAGE_COMMAND_DESCR(). */
 

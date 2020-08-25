@@ -34,16 +34,14 @@
 px4_add_library(FlightTaskUtility
 	ManualSmoothingZ.cpp
 	ManualSmoothingXY.cpp
-	ObstacleAvoidance.cpp
 	StraightLine.cpp
 	VelocitySmoothing.cpp
 	ManualVelocitySmoothingXY.cpp
 	ManualVelocitySmoothingZ.cpp
 )
 
-target_link_libraries(FlightTaskUtility PUBLIC FlightTask hysteresis)
+target_link_libraries(FlightTaskUtility PUBLIC FlightTask hysteresis bezier)
 target_include_directories(FlightTaskUtility PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 px4_add_unit_gtest(SRC VelocitySmoothingTest.cpp LINKLIBS FlightTaskUtility)
 px4_add_unit_gtest(SRC ManualVelocitySmoothingXYTest.cpp LINKLIBS FlightTaskUtility)
-px4_add_functional_gtest(SRC ObstacleAvoidanceTest.cpp LINKLIBS FlightTaskUtility)

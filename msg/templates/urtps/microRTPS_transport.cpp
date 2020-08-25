@@ -150,7 +150,7 @@ ssize_t Transport_node::read(uint8_t *topic_ID, char out_buffer[], size_t buffer
 	// Start not found
 	if (msg_start_pos > rx_buff_pos - header_size) {
 #ifndef PX4_INFO
-		printf("                                 (↓↓ %u)", msg_start_pos);
+		printf("                                 (↓↓ %u)\n", msg_start_pos);
 #else
 		PX4_INFO("                                 (↓↓ %u)", msg_start_pos);
 #endif /* PX4_INFO */
@@ -175,7 +175,7 @@ ssize_t Transport_node::read(uint8_t *topic_ID, char out_buffer[], size_t buffer
 		// If there's garbage at the beginning, drop it
 		if (msg_start_pos > 0) {
 #ifndef PX4_INFO
-			printf("                                 (↓ %u)", msg_start_pos);
+			printf("                                 (↓ %u)\n", msg_start_pos);
 #else
 			PX4_INFO("                                 (↓ %u)", msg_start_pos);
 #endif /* PX4_INFO */
@@ -191,8 +191,8 @@ ssize_t Transport_node::read(uint8_t *topic_ID, char out_buffer[], size_t buffer
 
 	if (read_crc != calc_crc) {
 #ifndef PX4_ERR
-		printf("Bad CRC %u != %u", read_crc, calc_crc);
-		printf("                                 (↓ %lu)", (unsigned long)(header_size + payload_len));
+		printf("Bad CRC %u != %u\n", read_crc, calc_crc);
+		printf("                                 (↓ %lu)\n", (unsigned long)(header_size + payload_len));
 #else
 		PX4_ERR("Bad CRC %u != %u", read_crc, calc_crc);
 		PX4_ERR("                                 (↓ %lu)", (unsigned long)(header_size + payload_len));
@@ -224,17 +224,7 @@ ssize_t Transport_node::write(const uint8_t topic_ID, char buffer[], size_t leng
 		return -1;
 	}
 
-	static struct Header header = {
-		.marker = {'>', '>', '>'},
-		.topic_ID = 0u,
-		.seq = 0u,
-		.payload_len_h = 0u,
-		.payload_len_l = 0u,
-		.crc_h = 0u,
-		.crc_l = 0u
-
-	};
-
+	static struct Header header = {{'>', '>', '>'}, 0u, 0u, 0u, 0u, 0u, 0u};
 	static uint8_t seq = 0;
 
 	// [>,>,>,topic_ID,seq,payload_length,CRCHigh,CRCLow,payload_start, ... ,payload_end]
@@ -252,16 +242,9 @@ ssize_t Transport_node::write(const uint8_t topic_ID, char buffer[], size_t leng
 	memcpy(buffer, &header, sizeof(header));
 	ssize_t len = node_write(buffer, length + sizeof(header));
 	if (len != ssize_t(length + sizeof(header))) {
-		goto err;
+		return len;
 	}
 	return len + sizeof(header);
-
-err:
-	//int errsv = errno;
-	//if (len == -1 ) PX4_ERR("                               => Writing error '%d'", errsv);
-	//else            PX4_ERR("                               => Wrote '%ld' != length(%lu) error '%d'", (long)len, (unsigned long)length, errsv);
-
-	return len;
 }
 
 UART_node::UART_node(const char *_uart_name, uint32_t _baudrate, uint32_t _poll_ms):
@@ -287,7 +270,7 @@ int UART_node::init()
 
 	if (uart_fd < 0) {
 #ifndef PX4_ERR
-		printf("Failed to open device: %s (%d)", uart_name, errno);
+		printf("Failed to open device: %s (%d)\n", uart_name, errno);
 #else
 		PX4_ERR("Failed to open device: %s (%d)", uart_name, errno);
 #endif /* PX4_ERR */
@@ -307,7 +290,7 @@ int UART_node::init()
 	if ((termios_state = tcgetattr(uart_fd, &uart_config)) < 0) {
 		int errno_bkp = errno;
 #ifndef PX4_ERR
-		printf("ERR GET CONF %s: %d (%d)", uart_name, termios_state, errno);
+		printf("ERR GET CONF %s: %d (%d)\n", uart_name, termios_state, errno);
 #else
 		PX4_ERR("ERR GET CONF %s: %d (%d)", uart_name, termios_state, errno);
 #endif /* PX4_ERR */
@@ -347,7 +330,7 @@ int UART_node::init()
 		if (cfsetispeed(&uart_config, speed) < 0 || cfsetospeed(&uart_config, speed) < 0) {
 			int errno_bkp = errno;
 #ifndef PX4_ERR
-			printf("ERR SET BAUD %s: %d (%d)", uart_name, termios_state, errno);
+			printf("ERR SET BAUD %s: %d (%d)\n", uart_name, termios_state, errno);
 #else
 			PX4_ERR("ERR SET BAUD %s: %d (%d)", uart_name, termios_state, errno);
 #endif /* PX4_ERR */
@@ -359,7 +342,7 @@ int UART_node::init()
 	if ((termios_state = tcsetattr(uart_fd, TCSANOW, &uart_config)) < 0) {
 		int errno_bkp = errno;
 #ifndef PX4_ERR
-		printf("ERR SET CONF %s (%d)", uart_name, errno);
+		printf("ERR SET CONF %s (%d)\n", uart_name, errno);
 #else
 		PX4_ERR("ERR SET CONF %s (%d)", uart_name, errno);
 #endif /* PX4_ERR */
@@ -385,13 +368,13 @@ int UART_node::init()
 
 	if (flush) {
 #ifndef PX4_INFO
-		printf("Flush");
+		printf("Flush\n");
 #else
 		PX4_INFO("Flush");
 #endif /* PX4_INFO */
 	} else {
 #ifndef PX4_INFO
-		printf("No flush");
+		printf("No flush\n");
 #else
 		PX4_INFO("No flush");
 #endif /* PX4_INFO */
@@ -412,7 +395,7 @@ uint8_t UART_node::close()
 {
 	if (-1 != uart_fd) {
 #ifndef PX4_WARN
-		printf("Closed UART...");
+		printf("Closed UART...\n");
 #else
 		PX4_WARN("Closed UART...");
 #endif /* PX4_WARN */
@@ -572,28 +555,28 @@ int UDP_node::init_receiver(uint16_t udp_port)
 
 	if ((receiver_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 #ifndef PX4_ERR
-		printf("Create socket failed");
+		printf("Create socket failed\n");
 #else
 		PX4_ERR("Create socket failed");
 #endif /* PX4_ERR */
 		return -1;
 	}
 #ifndef PX4_INFO
-	printf("Trying to connect...");
+	printf("- Trying to connect...");
 #else
 	PX4_INFO("Trying to connect...");
 #endif /* PX4_INFO */
 
 	if (bind(receiver_fd, (struct sockaddr *)&receiver_inaddr, sizeof(receiver_inaddr)) < 0) {
 #ifndef PX4_ERR
-		printf("Bind failed");
+		printf("Bind failed\n");
 #else
 		PX4_ERR("Bind failed");
 #endif /* PX4_ERR */
 		return -1;
 	}
 #ifndef PX4_INFO
-	printf("Connected to server!");
+	printf("Connected to server!\n\n");
 #else
 	PX4_INFO("Connected to server!");
 #endif /* PX4_INFO */
@@ -607,7 +590,7 @@ int UDP_node::init_sender(uint16_t udp_port)
 
 	if ((sender_fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 #ifndef PX4_ERR
-		printf("Create socket failed");
+		printf("Create socket failed\n");
 #else
 		PX4_ERR("Create socket failed");
 #endif /* PX4_ERR */
@@ -620,7 +603,7 @@ int UDP_node::init_sender(uint16_t udp_port)
 
 	if (inet_aton(udp_ip, &sender_outaddr.sin_addr) == 0) {
 #ifndef PX4_ERR
-		printf("inet_aton() failed");
+		printf("inet_aton() failed\n");
 #else
 		PX4_ERR("inet_aton() failed");
 #endif /* PX4_ERR */
@@ -638,7 +621,7 @@ uint8_t UDP_node::close()
 
 	if (sender_fd != -1) {
 #ifndef PX4_WARN
-		printf("Closed sender socket!");
+		printf("Closed sender socket!\n");
 #else
 		PX4_WARN("Closed sender socket!");
 #endif /* PX4_WARN */
@@ -649,7 +632,7 @@ uint8_t UDP_node::close()
 
 	if (receiver_fd != -1) {
 #ifndef PX4_WARN
-		printf("Closed receiver socket!");
+		printf("Closed receiver socket!\n");
 #else
 		PX4_WARN("Closed receiver socket!");
 #endif /* PX4_WARN */

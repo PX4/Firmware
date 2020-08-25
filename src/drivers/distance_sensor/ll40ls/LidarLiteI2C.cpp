@@ -41,18 +41,25 @@
 
 #include "LidarLiteI2C.h"
 
-LidarLiteI2C::LidarLiteI2C(const int bus, const uint8_t rotation, const int address) :
-	LidarLite(rotation),
-	I2C("LL40LS", nullptr, bus, address, 100000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id()))
+LidarLiteI2C::LidarLiteI2C(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency,
+			   const int address) :
+	I2C("LL40LS", nullptr, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_px4_rangefinder(0 /* device id not yet used */, ORB_PRIO_DEFAULT, rotation)
 {
+	_px4_rangefinder.set_min_distance(LL40LS_MIN_DISTANCE);
+	_px4_rangefinder.set_max_distance(LL40LS_MAX_DISTANCE);
+	_px4_rangefinder.set_fov(0.008); // Divergence 8 mRadian
 	// up the retries since the device misses the first measure attempts
 	_retries = 3;
 }
 
 LidarLiteI2C::~LidarLiteI2C()
 {
-	stop();
+	perf_free(_sample_perf);
+	perf_free(_comms_errors);
+	perf_free(_sensor_resets);
+	perf_free(_sensor_zero_resets);
 }
 
 int
@@ -64,6 +71,17 @@ LidarLiteI2C::init()
 	}
 
 	return PX4_OK;
+}
+
+void
+LidarLiteI2C::print_status()
+{
+	I2CSPIDriverBase::print_status();
+	perf_print_counter(_sample_perf);
+	perf_print_counter(_comms_errors);
+	perf_print_counter(_sensor_resets);
+	perf_print_counter(_sensor_zero_resets);
+	printf("poll interval:  %u \n", get_measure_interval());
 }
 
 int
@@ -440,12 +458,7 @@ void LidarLiteI2C::start()
 	ScheduleNow();
 }
 
-void LidarLiteI2C::stop()
-{
-	ScheduleClear();
-}
-
-void LidarLiteI2C::Run()
+void LidarLiteI2C::RunImpl()
 {
 	/* collection phase? */
 	if (_collect_phase) {

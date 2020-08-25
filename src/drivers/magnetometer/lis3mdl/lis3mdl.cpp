@@ -116,7 +116,7 @@ LIS3MDL::~LIS3MDL()
 int
 LIS3MDL::calibrate(struct file *file_pointer, unsigned enable)
 {
-	struct mag_report report;
+	sensor_mag_s report;
 	ssize_t sz;
 	int ret = 1;
 	uint8_t num_samples = 10;
@@ -348,7 +348,7 @@ LIS3MDL::collect()
 	float yraw_f;
 	float zraw_f;
 
-	struct mag_report new_mag_report;
+	sensor_mag_s new_mag_report;
 	bool sensor_is_onboard = false;
 
 	perf_begin(_sample_perf);
@@ -477,7 +477,7 @@ LIS3MDL::init()
 	}
 
 	/* allocate basic report buffers */
-	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
+	_reports = new ringbuffer::RingBuffer(2, sizeof(sensor_mag_s));
 
 	if (_reports == nullptr) {
 		return PX4_ERROR;
@@ -631,8 +631,8 @@ LIS3MDL::reset()
 int
 LIS3MDL::read(struct file *file_pointer, char *buffer, size_t buffer_len)
 {
-	unsigned count = buffer_len / sizeof(struct mag_report);
-	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
+	unsigned count = buffer_len / sizeof(sensor_mag_s);
+	sensor_mag_s *mag_buf = reinterpret_cast<sensor_mag_s *>(buffer);
 	int ret = 0;
 
 	/* buffer must be large enough */
@@ -649,7 +649,7 @@ LIS3MDL::read(struct file *file_pointer, char *buffer, size_t buffer_len)
 		 */
 		while (count--) {
 			if (_reports->get(mag_buf)) {
-				ret += sizeof(struct mag_report);
+				ret += sizeof(sensor_mag_s);
 				mag_buf++;
 			}
 		}
@@ -679,7 +679,7 @@ LIS3MDL::read(struct file *file_pointer, char *buffer, size_t buffer_len)
 		}
 
 		if (_reports->get(mag_buf)) {
-			ret = sizeof(struct mag_report);
+			ret = sizeof(sensor_mag_s);
 		}
 	} while (0);
 

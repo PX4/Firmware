@@ -1,0 +1,13 @@
+{
+    "board_id": 33,
+    "magic": "PX4FWv1",
+    "description": "Firmware for the mRo X2.1 board",
+    "image": "",
+    "build_time": 0,
+    "summary": "mRo X2.1",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 2080768,
+    "git_identity": "",
+    "board_revision": 0
+}

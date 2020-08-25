@@ -47,7 +47,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <math.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_airspeed.h>

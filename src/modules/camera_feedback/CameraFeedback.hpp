@@ -71,11 +71,11 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
-
 	bool init();
 
 private:
+
+	void Run() override;
 
 	uORB::SubscriptionCallbackWorkItem _trigger_sub{this, ORB_ID(camera_trigger)};
 

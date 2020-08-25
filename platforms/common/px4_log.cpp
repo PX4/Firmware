@@ -66,9 +66,7 @@ void px4_log_initialize(void)
 	log_message.severity = 6; //info
 	strcpy((char *)log_message.text, "initialized uORB logging");
 
-#if !defined(PARAM_NO_ORB)
 	orb_log_message_pub = orb_advertise_queue(ORB_ID(log_message), &log_message, 2);
-#endif /* !PARAM_NO_ORB */
 
 	if (!orb_log_message_pub) {
 		PX4_ERR("failed to advertise log_message");
@@ -136,9 +134,7 @@ __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *
 		va_end(argptr);
 		log_message.text[max_length_pub - 1] = 0; //ensure 0-termination
 
-#if !defined(PARAM_NO_ORB)
 		orb_publish(ORB_ID(log_message), orb_log_message_pub, &log_message);
-#endif /* !PARAM_NO_ORB */
 	}
 }
 

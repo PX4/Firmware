@@ -48,7 +48,6 @@
 #define DIR_READ			0x80
 #define DIR_WRITE			0x00
 
-#if defined(PX4_SPIDEV_MPU) || defined(PX4_SPIDEV_ICM_20602) || defined(PX4_SPIDEV_ICM_20689)
 
 /* The MPU6000 can only handle high SPI bus speeds of 20Mhz on the sensor and
 * interrupt status registers. All other registers have a maximum 1MHz
@@ -73,13 +72,14 @@
 #define UNKNOWN_HIGH_SPI_BUS_SPEED   8*1000*1000 // Use the minimum
 
 
-device::Device *MPU6000_SPI_interface(int bus, int device_type, bool external_bus);
+device::Device *MPU6000_SPI_interface(int bus, uint32_t devid, int device_type, bool external_bus, int bus_frequency,
+				      spi_mode_e spi_mode);
 
 
 class MPU6000_SPI : public device::SPI
 {
 public:
-	MPU6000_SPI(int bus, uint32_t device, int device_type);
+	MPU6000_SPI(int bus, uint32_t device, int device_type, int bus_frequency, spi_mode_e spi_mode);
 	~MPU6000_SPI() override = default;
 
 	int	read(unsigned address, void *data, unsigned count) override;
@@ -98,90 +98,14 @@ private:
 };
 
 device::Device *
-MPU6000_SPI_interface(int bus, int device_type, bool external_bus)
+MPU6000_SPI_interface(int bus, uint32_t devid, int device_type, bool external_bus, int bus_frequency,
+		      spi_mode_e spi_mode)
 {
-	int cs = SPIDEV_NONE(0);
-	device::Device *interface = nullptr;
-
-	if (external_bus) {
-
-#if defined(PX4_SPI_BUS_EXT) || defined(PX4_SPI_BUS_EXTERNAL)
-
-		switch (device_type) {
-
-		case MPU_DEVICE_TYPE_MPU6000:
-#  if defined(PX4_SPIDEV_EXT_MPU)
-			cs  = PX4_SPIDEV_EXT_MPU;
-# endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20602:
-#  if defined(PX4_SPIDEV_ICM_20602_EXT)
-			cs = PX4_SPIDEV_ICM_20602_EXT;
-#  endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20608:
-#  if defined(PX4_SPIDEV_EXT_ICM)
-			cs = PX4_SPIDEV_EXT_ICM;
-#  elif defined(PX4_SPIDEV_ICM_20608_EXT)
-			cs = PX4_SPIDEV_ICM_20608_EXT;
-#  endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20689:
-#  if defined(PX4_SPIDEV_ICM_20689_EXT)
-			cs = PX4_SPIDEV_ICM_20689_EXT;
-#  endif
-			break;
-
-		default:
-			break;
-		}
-
-#endif
-
-	} else {
-
-		switch (device_type) {
-
-		case MPU_DEVICE_TYPE_MPU6000:
-#if defined(PX4_SPIDEV_MPU)
-			cs = PX4_SPIDEV_MPU;
-#endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20602:
-#if defined(PX4_SPIDEV_ICM_20602)
-			cs = PX4_SPIDEV_ICM_20602;
-#endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20608:
-#if defined(PX4_SPIDEV_ICM_20608)
-			cs = PX4_SPIDEV_ICM_20608;
-#endif
-			break;
-
-		case MPU_DEVICE_TYPE_ICM20689:
-#  if defined(PX4_SPIDEV_ICM_20689)
-			cs = PX4_SPIDEV_ICM_20689;
-#  endif
-
-		default:
-			break;
-		}
-	}
-
-	if (cs != SPIDEV_NONE(0)) {
-		interface = new MPU6000_SPI(bus,  cs, device_type);
-	}
-
-	return interface;
+	return new MPU6000_SPI(bus, devid, device_type, bus_frequency, spi_mode);
 }
 
-MPU6000_SPI::MPU6000_SPI(int bus, uint32_t device, int device_type) :
-	SPI("MPU6000", nullptr, bus, device, SPIDEV_MODE3, MPU6000_LOW_SPI_BUS_SPEED),
+MPU6000_SPI::MPU6000_SPI(int bus, uint32_t device, int device_type, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("MPU6000", nullptr, bus, device, spi_mode, bus_frequency),
 	_device_type(device_type)
 {
 }
@@ -285,4 +209,3 @@ MPU6000_SPI::probe()
 	return (read(MPUREG_WHOAMI, &whoami, 1) > 0 && (whoami == expected)) ? 0 : -EIO;
 }
 
-#endif // PX4_SPIDEV_MPU

@@ -38,221 +38,13 @@
 
 #include "bmm150.hpp"
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-/** driver 'main' command */
-extern "C" { __EXPORT int bmm150_main(int argc, char *argv[]); }
+extern "C" __EXPORT int bmm150_main(int argc, char *argv[]);
 
-
-namespace bmm150
-{
-
-BMM150 *g_dev_ext;
-BMM150 *g_dev_int;
-
-void start(bool, enum Rotation);
-void test(bool);
-void reset(bool);
-void info(bool);
-void regdump(bool external_bus);
-void usage();
-
-
-/**
- * Start the driver.
- *
- * This function only returns if the driver is up and running
- * or failed to detect the sensor.
- */
-void start(bool external_bus, enum Rotation rotation)
-{
-	int fd;
-	BMM150 **g_dev_ptr = (external_bus ? &g_dev_ext : &g_dev_int);
-	const char *path = (external_bus ? BMM150_DEVICE_PATH_MAG_EXT : BMM150_DEVICE_PATH_MAG);
-
-	if (*g_dev_ptr != nullptr)
-		/* if already started, the still command succeeded */
-	{
-		PX4_ERR("already started");
-		exit(0);
-	}
-
-	/* create the driver */
-	if (external_bus) {
-#if defined(PX4_I2C_BUS_EXPANSION)
-		*g_dev_ptr = new BMM150(PX4_I2C_BUS_EXPANSION, path, rotation);
-#else
-		PX4_ERR("External I2C not available");
-		exit(0);
-#endif
-
-	} else {
-#if defined(PX4_I2C_BUS_ONBOARD)
-		*g_dev_ptr = new BMM150(PX4_I2C_BUS_ONBOARD, path, rotation);
-#else
-		PX4_ERR("Internal I2C not available");
-		exit(0);
-#endif
-	}
-
-	if (*g_dev_ptr == nullptr) {
-		goto fail;
-	}
-
-
-	if (OK != (*g_dev_ptr)->init()) {
-		goto fail;
-	}
-
-	/* set the poll rate to default, starts automatic data collection */
-	fd = open(path, O_RDONLY);
-
-
-	if (fd < 0) {
-		goto fail;
-	}
-
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		goto fail;
-	}
-
-	close(fd);
-
-	exit(0);
-fail:
-
-	if (*g_dev_ptr != nullptr) {
-		delete (*g_dev_ptr);
-		*g_dev_ptr = nullptr;
-	}
-
-	PX4_ERR("driver start failed");
-	exit(1);
-
-}
-
-
-void test(bool external_bus)
-{
-	int fd = -1;
-	const char *path = (external_bus ? BMM150_DEVICE_PATH_MAG_EXT : BMM150_DEVICE_PATH_MAG);
-	struct mag_report m_report;
-	ssize_t sz;
-
-
-	/* get the driver */
-	fd = open(path, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("%s open failed (try 'bmm150 start' if the driver is not running)", path);
-		exit(1);
-	}
-
-	/* reset to default polling rate*/
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		PX4_ERR("reset to Max polling rate");
-		exit(1);
-	}
-
-	/* do a simple demand read */
-	sz = read(fd, &m_report, sizeof(m_report));
-
-	if (sz != sizeof(m_report)) {
-		PX4_ERR("immediate mag read failed");
-		exit(1);
-	}
-
-	PX4_WARN("single read");
-	PX4_WARN("time:     %lld", m_report.timestamp);
-	PX4_WARN("mag  x:  \t%8.4f\t", (double)m_report.x);
-	PX4_WARN("mag  y:  \t%8.4f\t", (double)m_report.y);
-	PX4_WARN("mag  z:  \t%8.4f\t", (double)m_report.z);
-	PX4_WARN("mag  x:  \t%d\traw 0x%0x", (short)m_report.x_raw, (unsigned short)m_report.x_raw);
-	PX4_WARN("mag  y:  \t%d\traw 0x%0x", (short)m_report.y_raw, (unsigned short)m_report.y_raw);
-	PX4_WARN("mag  z:  \t%d\traw 0x%0x", (short)m_report.z_raw, (unsigned short)m_report.z_raw);
-
-	PX4_ERR("PASS");
-	exit(0);
-
-}
-
-
-void
-reset(bool external_bus)
-{
-	const char *path = external_bus ? BMM150_DEVICE_PATH_MAG_EXT : BMM150_DEVICE_PATH_MAG;
-	int fd = open(path, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("failed");
-		exit(1);
-	}
-
-	if (ioctl(fd, SENSORIOCRESET, 0) < 0) {
-		PX4_ERR("driver reset failed");
-		exit(1);
-	}
-
-	if (ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		PX4_ERR("driver poll restart failed");
-		exit(1);
-	}
-
-	exit(0);
-
-}
-
-void
-info(bool external_bus)
-{
-	BMM150 **g_dev_ptr = external_bus ? &g_dev_ext : &g_dev_int;
-
-	if (*g_dev_ptr == nullptr) {
-		PX4_ERR("driver not running");
-		exit(1);
-	}
-
-	printf("state @ %p\n", *g_dev_ptr);
-	(*g_dev_ptr)->print_info();
-
-	exit(0);
-
-}
-
-/**
- * Dump the register information
- */
-void
-regdump(bool external_bus)
-{
-	BMM150 **g_dev_ptr = external_bus ? &g_dev_ext : &g_dev_int;
-
-	if (*g_dev_ptr == nullptr) {
-		PX4_ERR("driver not running");
-		exit(1);
-	}
-
-	printf("regdump @ %p\n", *g_dev_ptr);
-	(*g_dev_ptr)->print_registers();
-
-	exit(0);
-}
-
-void
-usage()
-{
-	PX4_WARN("missing command: try 'start', 'info', 'test', 'stop',\n'reset', 'regdump'");
-	PX4_WARN("options:");
-	PX4_WARN("    -X    (external bus)");
-
-}
-
-} // namespace bmm150
-
-
-BMM150::BMM150(int bus, const char *path, enum Rotation rotation) :
-	I2C("BMM150", path, bus, BMM150_SLAVE_ADDRESS, BMM150_BUS_SPEED),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
-	_running(false),
+BMM150::BMM150(I2CSPIBusOption bus_option, const int bus, int bus_frequency, enum Rotation rotation) :
+	I2C("BMM150", nullptr, bus, BMM150_SLAVE_ADDRESS, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_call_interval(0),
 	_reports(nullptr),
 	_collect_phase(false),
@@ -297,9 +89,6 @@ BMM150::BMM150(int bus, const char *path, enum Rotation rotation) :
 
 BMM150::~BMM150()
 {
-	/* make sure we are truly inactive */
-	stop();
-
 	/* free any existing reports */
 	if (_reports != nullptr) {
 		delete _reports;
@@ -338,7 +127,7 @@ int BMM150::init()
 	}
 
 	/* allocate basic report buffers */
-	_reports = new ringbuffer::RingBuffer(2, sizeof(mag_report));
+	_reports = new ringbuffer::RingBuffer(2, sizeof(sensor_mag_s));
 
 	if (_reports == nullptr) {
 		goto out;
@@ -349,9 +138,9 @@ int BMM150::init()
 	up_udelay(10000);
 
 
-	/* check  id*/
+	/* check id*/
 	if (read_reg(BMM150_CHIP_ID_REG) != BMM150_CHIP_ID) {
-		PX4_WARN("id of magnetometer is not: 0x%02x", BMM150_CHIP_ID);
+		DEVICE_DEBUG("id of magnetometer is not: 0x%02x", BMM150_CHIP_ID);
 		return -EIO;
 	}
 
@@ -374,16 +163,20 @@ int BMM150::init()
 	}
 
 	/* advertise sensor topic, measure manually to initialize valid report */
-	struct mag_report mrb;
+	sensor_mag_s mrb;
 	_reports->get(&mrb);
 
 	/* measurement will have generated a report, publish */
 	_topic = orb_advertise_multi(ORB_ID(sensor_mag), &mrb,
-				     &_orb_class_instance, (external()) ? ORB_PRIO_HIGH : ORB_PRIO_MAX);
+				     &_orb_class_instance, (external()) ? ORB_PRIO_MAX : ORB_PRIO_HIGH);
 
 	if (_topic == nullptr) {
-		PX4_WARN("ADVERT FAIL");
+		PX4_ERR("ADVERT FAIL");
+		return -ENOMEM;
 	}
+
+	_call_interval = 1000000 / BMM150_MAX_DATA_RATE;
+	start();
 
 out:
 	return ret;
@@ -408,25 +201,17 @@ BMM150::start()
 {
 	/* reset the report ring and state machine */
 	_collect_phase = false;
-	_running = true;
 	_reports->flush();
 
 	/* schedule a cycle to start things */
 	ScheduleNow();
 }
 
-void
-BMM150::stop()
-{
-	_running = false;
-	ScheduleClear();
-}
-
 ssize_t
 BMM150::read(struct file *filp, char *buffer, size_t buflen)
 {
-	unsigned count = buflen / sizeof(mag_report);
-	struct mag_report *mag_buf = reinterpret_cast<struct mag_report *>(buffer);
+	unsigned count = buflen / sizeof(sensor_mag_s);
+	sensor_mag_s *mag_buf = reinterpret_cast<sensor_mag_s *>(buffer);
 	int ret = 0;
 
 	/* buffer must be large enough */
@@ -443,7 +228,7 @@ BMM150::read(struct file *filp, char *buffer, size_t buflen)
 		 */
 		while (count--) {
 			if (_reports->get(mag_buf)) {
-				ret += sizeof(struct mag_report);
+				ret += sizeof(sensor_mag_s);
 				mag_buf++;
 			}
 		}
@@ -474,7 +259,7 @@ BMM150::read(struct file *filp, char *buffer, size_t buflen)
 
 
 		if (_reports->get(mag_buf)) {
-			ret = sizeof(struct mag_report);
+			ret = sizeof(sensor_mag_s);
 		}
 	} while (0);
 
@@ -484,29 +269,24 @@ BMM150::read(struct file *filp, char *buffer, size_t buflen)
 }
 
 void
-BMM150::Run()
+BMM150::RunImpl()
 {
 	if (_collect_phase) {
 		collect();
 		unsigned wait_gap = _call_interval - BMM150_CONVERSION_INTERVAL;
 
-		if ((wait_gap != 0) && (_running)) {
+		if (wait_gap != 0) {
 			// need to wait some time before new measurement
 			ScheduleDelayed(wait_gap);
 
 			return;
 		}
-
 	}
 
 	measure();
 
-	if ((_running)) {
-		/* schedule a fresh cycle call when the measurement is done */
-		ScheduleDelayed(BMM150_CONVERSION_INTERVAL);
-	}
-
-
+	/* schedule a fresh cycle call when the measurement is done */
+	ScheduleDelayed(BMM150_CONVERSION_INTERVAL);
 }
 
 int
@@ -540,7 +320,7 @@ BMM150::collect()
 	bool mag_notify = true;
 	uint8_t mag_data[8], status;
 	uint16_t resistance, lsb, msb, msblsb;
-	mag_report  mrb;
+	sensor_mag_s mrb{};
 
 
 	/* start collecting data */
@@ -708,45 +488,6 @@ BMM150::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 
 	switch (cmd) {
-	case SENSORIOCSPOLLRATE: {
-			switch (arg) {
-
-			/* zero would be bad */
-			case 0:
-				return -EINVAL;
-
-			/* set default polling rate */
-			case SENSOR_POLLRATE_DEFAULT:
-				return ioctl(filp, SENSORIOCSPOLLRATE, BMM150_MAX_DATA_RATE);
-
-			/* adjust to a legal polling interval in Hz */
-			default: {
-					/* do we need to start internal polling? */
-					bool want_start = (_call_interval == 0);
-
-					/* convert hz to tick interval via microseconds */
-					unsigned interval = (1000000 / arg);
-
-					/* check against maximum rate */
-					if (interval < BMM150_CONVERSION_INTERVAL) {
-						return -EINVAL;
-					}
-
-					/* update interval for next measurement */
-					_call_interval = interval;
-
-					/* if we need to start the poll state machine, do it */
-					if (want_start) {
-						start();
-					}
-
-					return OK;
-				}
-			}
-		}
-
-	case SENSORIOCRESET:
-		return reset();
 
 	case MAGIOCSSCALE:
 		return OK;
@@ -841,7 +582,7 @@ BMM150::modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits)
 
 
 
-int BMM150 :: set_power_mode(uint8_t power_mode)
+int BMM150::set_power_mode(uint8_t power_mode)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = BMM150_POWER_MASK;
@@ -870,7 +611,7 @@ int BMM150 :: set_power_mode(uint8_t power_mode)
 
 }
 
-int BMM150 :: set_data_rate(uint8_t data_rate)
+int BMM150::set_data_rate(uint8_t data_rate)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = BMM150_OUTPUT_DATA_RATE_MASK;
@@ -920,7 +661,7 @@ int BMM150 :: set_data_rate(uint8_t data_rate)
 }
 
 
-int BMM150 :: init_trim_registers(void)
+int BMM150::init_trim_registers(void)
 {
 	int ret = OK;
 	uint8_t data[2] = {0};
@@ -1023,8 +764,9 @@ int BMM150::set_presetmode(uint8_t presetmode)
 }
 
 void
-BMM150::print_info()
+BMM150::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_bad_transfers);
 	perf_print_counter(_good_transfers);
@@ -1061,75 +803,97 @@ BMM150::print_registers()
 
 }
 
+void
+BMM150::print_usage()
+{
+	PRINT_MODULE_USAGE_NAME("bmm150", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("magnetometer");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_COMMAND("reset");
+	PRINT_MODULE_USAGE_COMMAND("regdump");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+}
+
+void
+BMM150::custom_method(const BusCLIArguments &cli)
+{
+	switch (cli.custom1) {
+	case 0: reset();
+		break;
+
+	case 1: print_registers();
+		break;
+	}
+}
+
+I2CSPIDriverBase *BMM150::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
+{
+	BMM150 *interface = new BMM150(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency, cli.rotation);
+
+	if (interface == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
+
+	if (interface->init() != OK) {
+		delete interface;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	return interface;
+}
+
 int
 bmm150_main(int argc, char *argv[])
 {
-	int myoptind = 1;
 	int ch;
-	const char *myoptarg = nullptr;
-	bool external_bus = false;
-	enum Rotation rotation = ROTATION_NONE;
+	using ThisDriver = BMM150;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = BMM150_BUS_SPEED;
 
-	while ((ch = px4_getopt(argc, argv, "XR:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'X':
-			external_bus = true;
-			break;
-
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		default:
-			bmm150::usage();
-			return 0;
 		}
 	}
 
-	if (myoptind >= argc) {
-		bmm150::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
 		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_MAG_DEVTYPE_BMM150);
 
-	/*
-	 * Start/load the driver.
-	 */
 	if (!strcmp(verb, "start")) {
-		bmm150::start(external_bus, rotation);
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-
-	/*
-	 * Test the driver/device.
-	 */
-	if (!strcmp(verb, "test")) {
-		bmm150::test(external_bus);
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	/*
-	 * Reset the driver.
-	 */
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
 	if (!strcmp(verb, "reset")) {
-		bmm150::reset(external_bus);
+		cli.custom1 = 0;
+		return ThisDriver::module_custom_method(cli, iterator);
 	}
 
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(verb, "info")) {
-		bmm150::info(external_bus);
-	}
-
-	/*
-	 * Print register information.
-	 */
 	if (!strcmp(verb, "regdump")) {
-		bmm150::regdump(external_bus);
+		cli.custom1 = 1;
+		return ThisDriver::module_custom_method(cli, iterator);
 	}
 
-
-	bmm150::usage();
+	ThisDriver::print_usage();
 	return -1;
 }

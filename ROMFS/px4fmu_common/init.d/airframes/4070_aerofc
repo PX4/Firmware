@@ -2,17 +2,18 @@
 #
 # @name Intel Aero Ready to Fly Drone
 #
+# @type Quadrotor x
+# @class Copter
+#
+# @maintainer Beat Kueng <beat@px4.io>
+#
 # @board px4_fmu-v2 exclude
 # @board px4_fmu-v3 exclude
 # @board px4_fmu-v4 exclude
 # @board px4_fmu-v4pro exclude
 # @board px4_fmu-v5 exclude
 # @board px4_fmu-v5x exclude
-#
-# @type Quadrotor x
-# @class Copter
-#
-# @maintainer Beat Kueng <beat@px4.io>
+# @board bitcraze_crazyflie exclude
 #
 
 sh /etc/init.d/rc.mc_defaults

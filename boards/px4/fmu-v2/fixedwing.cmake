@@ -56,7 +56,8 @@ px4_add_board(
 		navigator
 		rc_update
 		sensors
-		vmount
+		temperature_compensation
+		#vmount
 	SYSTEMCMDS
 		#bl_update
 		#config

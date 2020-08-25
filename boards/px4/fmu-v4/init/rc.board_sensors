@@ -15,9 +15,9 @@ fmu sensor_reset 50
 
 
 # External I2C bus
-hmc5883 -C -T -X start
+hmc5883 -T -X start
 lis3mdl -X start
-ist8310 start
+ist8310 -X start
 qmc5883 -X start
 rm3100 start
 
@@ -32,7 +32,7 @@ then
 fi
 
 # hmc5883 internal SPI bus is rotated 90 deg yaw
-if ! hmc5883 -C -T -S -R 2 start
+if ! hmc5883 -T -S -R 2 start
 then
 	# lis3mdl internal SPI bus is rotated 90 deg yaw
 	lis3mdl start
@@ -43,15 +43,11 @@ fi
 # will prevent the incorrect driver from a successful initialization.
 
 # ICM20602 internal SPI bus ICM-20608-G is rotated 90 deg yaw
-if ! mpu6000 -R 2 -T 20602 start
+if ! icm20602 -R 8 start
 then
 	# ICM20608 internal SPI bus ICM-20602-G is rotated 90 deg yaw
-	mpu6000 -R 2 -T 20608 start
+	icm20608g -R 8 start
 fi
-
-# new sensor drivers (in testing)
-#icm20602 -R 8 start
-#icm20608g -R 8 start
 
 # mpu9250 internal SPI bus mpu9250 is rotated 90 deg yaw
 mpu9250 -R 2 start

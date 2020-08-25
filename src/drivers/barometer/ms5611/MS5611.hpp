@@ -33,22 +33,16 @@
 
 #pragma once
 
-#include <drivers/device/i2c.h>
 #include <drivers/device/device.h>
-#include <drivers/device/ringbuffer.h>
-#include <drivers/device/spi.h>
-#include <drivers/drv_baro.h>
-#include <lib/cdev/CDev.hpp>
+#include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/perf/perf_counter.h>
-#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <systemlib/err.h>
-#include <uORB/uORB.h>
 
 #include "ms5611.h"
 
 enum MS56XX_DEVICE_TYPES {
-	MS56XX_DEVICE   = 0,
 	MS5611_DEVICE	= 5611,
 	MS5607_DEVICE	= 5607,
 };
@@ -89,64 +83,19 @@ enum MS56XX_DEVICE_TYPES {
  */
 #define MS5611_CONVERSION_INTERVAL	10000	/* microseconds */
 #define MS5611_MEASUREMENT_RATIO	3	/* pressure measurements per temperature measurement */
-#define MS5611_BARO_DEVICE_PATH_EXT	"/dev/ms5611_ext"
-#define MS5611_BARO_DEVICE_PATH_INT	"/dev/ms5611_int"
 
-class MS5611 : public cdev::CDev, public px4::ScheduledWorkItem
+class MS5611 : public I2CSPIDriver<MS5611>
 {
 public:
-	MS5611(device::Device *interface, ms5611::prom_u &prom_buf, const char *path, enum MS56XX_DEVICE_TYPES device_type);
-	~MS5611();
+	MS5611(device::Device *interface, ms5611::prom_u &prom_buf, enum MS56XX_DEVICE_TYPES device_type,
+	       I2CSPIBusOption bus_option, int bus);
+	~MS5611() override;
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	virtual ssize_t		read(cdev::file_t *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(cdev::file_t *filp, int cmd, unsigned long arg);
-
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
-
-protected:
-	device::Device		*_interface;
-
-	ms5611::prom_s		_prom;
-
-	unsigned		_measure_interval{0};
-
-	ringbuffer::RingBuffer	*_reports;
-	enum MS56XX_DEVICE_TYPES _device_type;
-	bool			_collect_phase;
-	unsigned		_measure_phase;
-
-	/* intermediate temperature values per MS5611/MS5607 datasheet */
-	int32_t			_TEMP;
-	int64_t			_OFF;
-	int64_t			_SENS;
-	float			_P;
-	float			_T;
-
-	orb_advert_t		_baro_topic;
-	int			_orb_class_instance;
-	int			_class_instance;
-
-	perf_counter_t		_sample_perf;
-	perf_counter_t		_measure_perf;
-	perf_counter_t		_comms_errors;
-
-	/**
-	 * Initialize the automatic measurement state machine and start it.
-	 *
-	 * @note This function is called at open and error time.  It might make sense
-	 *       to make it more aggressive about resetting the bus in case of errors.
-	 */
-	void			start();
-
-	/**
-	 * Stop the automatic measurement state machine.
-	 */
-	void			stop();
+	int		init();
 
 	/**
 	 * Perform a poll cycle; collect from the previous measurement
@@ -161,17 +110,46 @@ protected:
 	 * and measurement to provide the most recent measurement possible
 	 * at the next interval.
 	 */
-	void			Run() override;
+	void			RunImpl();
+
+protected:
+	void print_status() override;
+
+	PX4Barometer		_px4_barometer;
+
+	device::Device		*_interface;
+
+	ms5611::prom_s		_prom;
+
+	enum MS56XX_DEVICE_TYPES _device_type;
+	bool			_collect_phase{false};
+	unsigned		_measure_phase{false};
+
+	/* intermediate temperature values per MS5611/MS5607 datasheet */
+	int64_t			_OFF{0};
+	int64_t			_SENS{0};
+
+	perf_counter_t		_sample_perf;
+	perf_counter_t		_measure_perf;
+	perf_counter_t		_comms_errors;
+
+	/**
+	 * Initialize the automatic measurement state machine and start it.
+	 *
+	 * @note This function is called at open and error time.  It might make sense
+	 *       to make it more aggressive about resetting the bus in case of errors.
+	 */
+	void			start();
 
 	/**
 	 * Issue a measurement command for the current state.
 	 *
 	 * @return		OK if the measurement command was successful.
 	 */
-	virtual int		measure();
+	int			measure();
 
 	/**
 	 * Collect the result of the most recent measurement.
 	 */
-	virtual int		collect();
+	int			collect();
 };

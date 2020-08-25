@@ -16,7 +16,6 @@ dataman start
 
 simulator start
 tone_alarm start
-gpssim start
 pwm_out_sim start
 
 rc_update start
@@ -26,6 +25,7 @@ land_detector start vtol
 navigator start
 ekf2 start
 vtol_att_control start
+mc_hover_thrust_estimator start
 mc_pos_control start vtol
 mc_att_control start vtol
 mc_rate_control start vtol
@@ -84,7 +84,6 @@ sleep 2
 
 simulator stop
 tone_alarm stop
-gpssim stop
 
 dataman stop
 #uorb stop

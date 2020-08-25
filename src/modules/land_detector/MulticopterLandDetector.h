@@ -48,6 +48,7 @@
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/hover_thrust_estimate.h>
 
 #include "LandDetector.h"
 
@@ -102,6 +103,7 @@ private:
 		param_t hoverThrottle;
 		param_t minManThrottle;
 		param_t landSpeed;
+		param_t useHoverThrustEstimate;
 	} _paramHandle{};
 
 	struct {
@@ -109,6 +111,7 @@ private:
 		float hoverThrottle;
 		float minManThrottle;
 		float landSpeed;
+		bool useHoverThrustEstimate;
 	} _params{};
 
 	uORB::Subscription _actuator_controls_sub{ORB_ID(actuator_controls_0)};
@@ -118,6 +121,7 @@ private:
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _vehicle_local_position_setpoint_sub{ORB_ID(vehicle_local_position_setpoint)};
+	uORB::Subscription _hover_thrust_estimate_sub{ORB_ID(hover_thrust_estimate)};
 
 	actuator_controls_s               _actuator_controls {};
 	battery_status_s                  _battery_status {};

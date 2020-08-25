@@ -41,7 +41,6 @@
 
 #pragma once
 
-#include "datalinkloss.h"
 #include "enginefailure.h"
 #include "follow_target.h"
 #include "geofence.h"
@@ -51,7 +50,6 @@
 #include "loiter.h"
 #include "mission.h"
 #include "navigator_mode.h"
-#include "rcloss.h"
 #include "rtl.h"
 #include "takeoff.h"
 
@@ -83,7 +81,7 @@
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 11
+#define NAVIGATOR_MODE_ARRAY_SIZE 9
 
 
 class Navigator : public ModuleBase<Navigator>, public ModuleParams
@@ -129,9 +127,10 @@ public:
 	 * @param altitude_diff Altitude difference, positive is up
 	 * @param hor_velocity Horizontal velocity of traffic, in m/s
 	 * @param ver_velocity Vertical velocity of traffic, in m/s
+	 * @param emitter_type, Type of vehicle, as a number
 	 */
 	void		fake_traffic(const char *callsign, float distance, float direction, float traffic_heading, float altitude_diff,
-				     float hor_velocity, float ver_velocity);
+				     float hor_velocity, float ver_velocity, int emitter_type);
 
 	/**
 	 * Check nearby traffic for potential collisions
@@ -221,11 +220,15 @@ public:
 	 */
 	void		reset_cruising_speed();
 
-
 	/**
 	 *  Set triplets to invalid
 	 */
 	void 		reset_triplets();
+
+	/**
+	 *  Set position setpoint to safe defaults
+	 */
+	void		reset_position_setpoint(position_setpoint_s &sp);
 
 	/**
 	 * Get the target throttle
@@ -257,6 +260,7 @@ public:
 	 * should be ignored
 	 */
 	float 		get_yaw_acceptance(float mission_item_yaw);
+
 
 	orb_advert_t	*get_mavlink_log_pub() { return &_mavlink_log_pub; }
 
@@ -305,6 +309,8 @@ private:
 		_param_nav_mc_alt_rad,	/**< acceptance radius for multicopter altitude */
 		(ParamInt<px4::params::NAV_FORCE_VT>) _param_nav_force_vt,	/**< acceptance radius for multicopter altitude */
 		(ParamInt<px4::params::NAV_TRAFF_AVOID>) _param_nav_traff_avoid,	/**< avoiding other aircraft is enabled */
+		(ParamFloat<px4::params::NAV_TRAFF_A_RADU>) _param_nav_traff_a_radu,	/**< avoidance Distance Unmanned*/
+		(ParamFloat<px4::params::NAV_TRAFF_A_RADM>) _param_nav_traff_a_radm,	/**< avoidance Distance Manned*/
 
 		// non-navigator parameters
 		// Mission (MIS_*)
@@ -374,8 +380,6 @@ private:
 	Land		_land;			/**< class for handling land commands */
 	PrecLand	_precland;			/**< class for handling precision land commands */
 	RTL 		_rtl;				/**< class that handles RTL */
-	RCLoss 		_rcLoss;				/**< class that handles RTL according to OBC rules (rc loss mode) */
-	DataLinkLoss	_dataLinkLoss;			/**< class that handles the OBC datalink loss mode */
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode (FW only!) */
 	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
 	FollowTarget	_follow_target;

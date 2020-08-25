@@ -36,6 +36,9 @@
 #include <cstdio>
 #include <float.h>
 #include <mathlib/mathlib.h>
+#include <matrix/matrix/math.hpp>
+
+using matrix::sign;
 
 VelocitySmoothing::VelocitySmoothing(float initial_accel, float initial_vel, float initial_pos)
 {
@@ -183,12 +186,12 @@ int VelocitySmoothing::computeDirection()
 	float vel_zero_acc = computeVelAtZeroAcc();
 
 	/* Depending of the direction, start accelerating positively or negatively */
-	int direction = math::sign(_vel_sp - vel_zero_acc);
+	int direction = sign(_vel_sp - vel_zero_acc);
 
 	if (direction == 0) {
 		// If by braking immediately the velocity is exactly
 		// the require one with zero acceleration, then brake
-		direction = math::sign(_state.a);
+		direction = sign(_state.a);
 	}
 
 	return direction;
@@ -199,7 +202,7 @@ float VelocitySmoothing::computeVelAtZeroAcc()
 	float vel_zero_acc = _state.v;
 
 	if (fabsf(_state.a) > FLT_EPSILON) {
-		float j_zero_acc = -math::sign(_state.a) * _max_jerk; // Required jerk to reduce the acceleration
+		float j_zero_acc = -sign(_state.a) * _max_jerk; // Required jerk to reduce the acceleration
 		float t_zero_acc = -_state.a / j_zero_acc; // Required time to cancel the current acceleration
 		vel_zero_acc = _state.v + _state.a * t_zero_acc + 0.5f * j_zero_acc * t_zero_acc * t_zero_acc;
 	}

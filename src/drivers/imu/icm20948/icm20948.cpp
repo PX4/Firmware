@@ -100,8 +100,8 @@ ICM20948::ICM20948(device::Device *interface, device::Device *mag_interface, enu
 	_good_transfers(perf_alloc(PC_COUNT, MODULE_NAME": good_trans")),
 	_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": dupe"))
 {
-	_px4_accel.set_device_type(DRV_DEVTYPE_ICM20948);
-	_px4_gyro.set_device_type(DRV_DEVTYPE_ICM20948);
+	_px4_accel.set_device_type(DRV_IMU_DEVTYPE_ICM20948);
+	_px4_gyro.set_device_type(DRV_IMU_DEVTYPE_ICM20948);
 }
 
 ICM20948::~ICM20948()

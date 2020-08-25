@@ -46,7 +46,13 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <lib/ecl/geo/geo.h>
-#include <ObstacleAvoidance.hpp>
+
+// TODO: make this switchable in the board config, like a module
+#if CONSTRAINED_FLASH
+#include <lib/avoidance/ObstacleAvoidance_dummy.hpp>
+#else
+#include <lib/avoidance/ObstacleAvoidance.hpp>
+#endif
 
 /**
  * This enum has to agree with position_setpoint_s type definition
@@ -114,7 +120,6 @@ protected:
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTask,
 					(ParamFloat<px4::params::MPC_XY_CRUISE>) _param_mpc_xy_cruise,
-					(ParamFloat<px4::params::MPC_CRUISE_90>) _param_mpc_cruise_90, // speed at corner when angle is 90 degrees move to line
 					(ParamFloat<px4::params::NAV_MC_ALT_RAD>)
 					_param_nav_mc_alt_rad, //vertical acceptance radius at which waypoints are updated
 					(ParamInt<px4::params::MPC_YAW_MODE>) _param_mpc_yaw_mode, // defines how heading is executed,

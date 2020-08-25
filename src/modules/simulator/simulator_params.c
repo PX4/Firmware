@@ -38,7 +38,6 @@
  *
  * @author Mohamed Abdelkader <mohamedashraf123@gmail.com>
  */
-#include <parameters/param.h>
 
 /**
  * Simulator Battery drain interval
@@ -65,3 +64,75 @@ PARAM_DEFINE_FLOAT(SIM_BAT_DRAIN, 60);
  * @group SITL
  */
 PARAM_DEFINE_FLOAT(SIM_BAT_MIN_PCT, 50.0f);
+
+/**
+ * Simulator GPS noise multiplier.
+ *
+ * @min 0
+ * @max 10
+ * @increment 0.1
+ * @unit %
+ *
+ * @group SITL
+ */
+PARAM_DEFINE_FLOAT(SIM_GPS_NOISE_X, 0.0f);
+
+/**
+ * Simulator block GPS data.
+ *
+ * Enable to block the publication of any incoming simulation GPS data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_GPS_BLOCK, 0);
+
+/**
+ * Simulator block accelerometer data.
+ *
+ * Enable to block the publication of any incoming simulation accelerometer data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_ACCEL_BLOCK, 0);
+
+/**
+ * Simulator block gyroscope data.
+ *
+ * Enable to block the publication of any incoming simulation gyroscope data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_GYRO_BLOCK, 0);
+
+/**
+ * Simulator block magnetometer data.
+ *
+ * Enable to block the publication of any incoming simulation magnetometer data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_MAG_BLOCK, 0);
+
+/**
+ * Simulator block barometer data.
+ *
+ * Enable to block the publication of any incoming simulation barometer data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_BARO_BLOCK, 0);
+
+/**
+ * Simulator block differential pressure data.
+ *
+ * Enable to block the publication of any incoming simulation differential pressure data.
+ *
+ * @boolean
+ * @group SITL
+ */
+PARAM_DEFINE_INT32(SIM_DPRES_BLOCK, 0);

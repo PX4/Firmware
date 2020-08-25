@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,11 +31,12 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__navio_sysfs_rc_in
+	MODULE navio_sysfs_rc_in
 	MAIN navio_sysfs_rc_in
-	COMPILE_FLAGS
 	SRCS
-		navio_sysfs_rc_in.cpp
+		NavioSysRCInput.cpp
+		NavioSysRCInput.hpp
+		navio_sysfs_rc_in_main.cpp
 	DEPENDS
-	)
-
+		px4_work_queue
+)

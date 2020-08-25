@@ -1,5 +1,36 @@
-#ifndef BMM150_HPP_
-#define BMM150_HPP_
+/****************************************************************************
+ *
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+#pragma once
 
 #include <px4_platform_common/px4_config.h>
 
@@ -19,8 +50,7 @@
 #include <px4_platform_common/log.h>
 
 #include <perf/perf_counter.h>
-#include <systemlib/err.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <systemlib/conversions.h>
 
 #include <nuttx/arch.h>
@@ -36,10 +66,6 @@
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <lib/conversion/rotation.h>
 
-
-#define BMM150_DEVICE_PATH_MAG              "/dev/bmm150_i2c_int"
-
-#define BMM150_DEVICE_PATH_MAG_EXT          "/dev/bmm150_i2c_ext"
 
 #define BMM150_SLAVE_ADDRESS                 0x10
 
@@ -191,40 +217,38 @@ struct bmm150_data {
 };
 
 
-class BMM150 : public device::I2C, public px4::ScheduledWorkItem
+class BMM150 : public device::I2C, public I2CSPIDriver<BMM150>
 {
 public:
-	BMM150(int bus, const char *path, enum Rotation rotation);
+	BMM150(I2CSPIBusOption bus_option, const int bus, int bus_frequency, enum Rotation rotation);
 	virtual ~BMM150();
 
-	virtual int             init();
-	virtual ssize_t       read(struct file *filp, char *buffer, size_t buflen);
-	virtual int       ioctl(struct file *filp, int cmd, unsigned long arg);
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	/**
-	 * Stop automatic measurement.
-	 */
-	void            stop();
+	int             init() override;
+	ssize_t       read(struct file *filp, char *buffer, size_t buflen) override;
+	int       ioctl(struct file *filp, int cmd, unsigned long arg) override;
 
-	/**
-	  * Diagnostics - print some basic information about the driver.
-	  */
-	void            print_info();
+	void            print_status() override;
 
 	void        print_registers();
 
+	void	RunImpl();
+
+	void custom_method(const BusCLIArguments &cli) override;
+
 protected:
-	virtual int       probe();
+	int       probe() override;
 
 private:
-
-	bool _running;
 
 	/* altitude conversion calibration */
 	unsigned        _call_interval;
 
 
-	mag_report _report {};
+	sensor_mag_s _report {};
 	ringbuffer::RingBuffer  *_reports;
 
 	bool            _collect_phase;
@@ -265,7 +289,7 @@ private:
 	enum Rotation       _rotation;
 	bool            _got_duplicate;
 
-	mag_report   _last_report {};          /**< used for info() */
+	sensor_mag_s   _last_report {};          /**< used for info() */
 
 	int             init_trim_registers(void);
 
@@ -276,8 +300,6 @@ private:
 
 	int     measure(); //start measure
 	int     collect(); //get results and publish
-
-	void	Run() override;
 
 	/**
 	 * Read the specified number of bytes from BMM150.
@@ -363,5 +385,3 @@ private:
 };
 
 
-
-#endif /* BMM150_HPP_ */

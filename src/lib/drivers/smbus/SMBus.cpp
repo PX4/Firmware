@@ -98,6 +98,10 @@ int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, 
 
 	int result = transfer(&cmd_code, 1, (uint8_t *)&rx_data[3], length + 2);
 
+	if (result != PX4_OK) {
+		return result;
+	}
+
 	uint8_t device_address = get_device_address();
 	rx_data[0] = (device_address << 1) | 0x00;
 	rx_data[1] = cmd_code;

@@ -52,7 +52,7 @@
 #include <math.h>
 #include <poll.h>
 
-#include <arch/board/board.h>
+
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_pwm_output.h>
 

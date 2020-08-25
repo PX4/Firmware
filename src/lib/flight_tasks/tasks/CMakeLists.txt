@@ -37,7 +37,6 @@ add_subdirectory(Utility)
 add_subdirectory(Manual)
 add_subdirectory(Auto)
 add_subdirectory(AutoMapper)
-add_subdirectory(AutoMapper2)
 
 # add all additional flight tasks
 foreach(task ${flight_tasks_all})

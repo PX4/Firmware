@@ -66,14 +66,6 @@ public:
 	void setIntegratorLimit(const matrix::Vector3f &integrator_limit) { _lim_int = integrator_limit; };
 
 	/**
-	 * Set update frequency and low-pass filter cutoff that is applied to the derivative term
-	 * @param loop_rate [Hz] rate with which update function is called
-	 * @param cutoff [Hz] cutoff frequency for the low-pass filter on the dervative term
-	 * @param force flag to force an expensive update even if the cutoff didn't change
-	 */
-	void setDTermCutoff(const float loop_rate, const float cutoff, const bool force);
-
-	/**
 	 * Set direct rate to torque feed forward gain
 	 * @see _gain_ff
 	 * @param FF 3D vector of feed forward gains for body x,y,z axis
@@ -93,8 +85,8 @@ public:
 	 * @param dt desired vehicle angular rate setpoint
 	 * @return [-1,1] normalized torque vector to apply to the vehicle
 	 */
-	matrix::Vector3f update(const matrix::Vector3f &rate, const matrix::Vector3f &rate_sp, const float dt,
-				const bool landed);
+	matrix::Vector3f update(const matrix::Vector3f &rate, const matrix::Vector3f &rate_sp,
+				const matrix::Vector3f &angular_accel, const float dt, const bool landed);
 
 	/**
 	 * Set the integral term to 0 to prevent windup
@@ -119,10 +111,8 @@ private:
 	matrix::Vector3f _gain_ff; ///< direct rate to torque feed forward gain only useful for helicopters
 
 	// States
-	matrix::Vector3f _rate_prev; ///< angular rates of previous update
-	matrix::Vector3f _rate_prev_filtered; ///< low-pass filtered angular rates of previous update
 	matrix::Vector3f _rate_int; ///< integral term of the rate controller
-	math::LowPassFilter2pVector3f _lp_filters_d{0.f, 0.f}; ///< low-pass filters for D-term (roll, pitch & yaw)
+
 	bool _mixer_saturation_positive[3] {};
 	bool _mixer_saturation_negative[3] {};
 };

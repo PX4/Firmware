@@ -44,12 +44,15 @@
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_rc_input.h>
-#include <perf/perf_counter.h>
 #include <systemlib/ppm_decode.h>
 #include <rc/st24.h>
 #include <rc/sumd.h>
 #include <rc/sbus.h>
 #include <rc/dsm.h>
+
+#if defined(PX4IO_PERF)
+# include <perf/perf_counter.h>
+#endif
 
 #include "px4io.h"
 
@@ -59,9 +62,11 @@
 static bool	ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len);
 static bool	dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated);
 
+#if defined(PX4IO_PERF)
 static perf_counter_t c_gather_dsm;
 static perf_counter_t c_gather_sbus;
 static perf_counter_t c_gather_ppm;
+#endif
 
 static int _dsm_fd = -1;
 int _sbus_fd = -1;
@@ -78,7 +83,9 @@ static uint16_t _rssi = 0;
 
 bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated)
 {
+#if defined(PX4IO_PERF)
 	perf_begin(c_gather_dsm);
+#endif
 	uint8_t n_bytes = 0;
 	uint8_t *bytes;
 	bool dsm_11_bit;
@@ -107,7 +114,9 @@ bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool 
 		}
 	}
 
+#if defined(PX4IO_PERF)
 	perf_end(c_gather_dsm);
+#endif
 
 	/* get data from FD and attempt to parse with DSM and ST24 libs */
 	uint8_t st24_rssi, lost_count;
@@ -196,9 +205,11 @@ controls_init(void)
 		r_page_rc_input_config[base + PX4IO_P_RC_CONFIG_OPTIONS]    = PX4IO_P_RC_CONFIG_OPTIONS_ENABLED;
 	}
 
+#if defined(PX4IO_PERF)
 	c_gather_dsm = perf_alloc(PC_ELAPSED, "c_gather_dsm");
 	c_gather_sbus = perf_alloc(PC_ELAPSED, "c_gather_sbus");
 	c_gather_ppm = perf_alloc(PC_ELAPSED, "c_gather_ppm");
+#endif
 }
 
 void
@@ -239,7 +250,9 @@ controls_tick()
 		_rssi = 0;
 	}
 
+#if defined(PX4IO_PERF)
 	perf_begin(c_gather_sbus);
+#endif
 
 	bool sbus_failsafe, sbus_frame_drop;
 	bool sbus_updated = sbus_input(_sbus_fd, r_raw_rc_values, &r_raw_rc_count, &sbus_failsafe, &sbus_frame_drop,
@@ -272,14 +285,18 @@ controls_tick()
 
 	}
 
+#if defined(PX4IO_PERF)
 	perf_end(c_gather_sbus);
+#endif
 
 	/*
 	 * XXX each S.bus frame will cause a PPM decoder interrupt
 	 * storm (lots of edges).  It might be sensible to actually
 	 * disable the PPM decoder completely if we have S.bus signal.
 	 */
+#if defined(PX4IO_PERF)
 	perf_begin(c_gather_ppm);
+#endif
 	bool ppm_updated = ppm_input(r_raw_rc_values, &r_raw_rc_count, &r_page_raw_rc_input[PX4IO_P_RAW_RC_DATA]);
 
 	if (ppm_updated) {
@@ -289,12 +306,16 @@ controls_tick()
 		r_raw_rc_flags &= ~(PX4IO_P_RAW_RC_FLAGS_FAILSAFE);
 	}
 
+#if defined(PX4IO_PERF)
 	perf_end(c_gather_ppm);
+#endif
 
 	bool dsm_updated = false, st24_updated = false, sumd_updated = false;
 
 	if (!((r_status_flags & PX4IO_P_STATUS_FLAGS_RC_SBUS) || (r_status_flags & PX4IO_P_STATUS_FLAGS_RC_PPM))) {
+#if defined(PX4IO_PERF)
 		perf_begin(c_gather_dsm);
+#endif
 
 		(void)dsm_port_input(&_rssi, &dsm_updated, &st24_updated, &sumd_updated);
 
@@ -310,7 +331,9 @@ controls_tick()
 			atomic_modify_or(&r_status_flags, PX4IO_P_STATUS_FLAGS_RC_SUMD);
 		}
 
+#if defined(PX4IO_PERF)
 		perf_end(c_gather_dsm);
+#endif
 	}
 
 	/* limit number of channels to allowable data size */

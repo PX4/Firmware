@@ -6,7 +6,18 @@ from __future__ import print_function
 import xml.etree.ElementTree as ET
 import codecs
 import argparse
-from jinja2 import Environment, FileSystemLoader
+import sys
+
+try:
+    from jinja2 import Environment, FileSystemLoader
+except ImportError as e:
+    print("Failed to import jinja2: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user jinja2")
+    print("")
+    sys.exit(1)
+
 import os
 
 def generate(xml_file, dest='.'):

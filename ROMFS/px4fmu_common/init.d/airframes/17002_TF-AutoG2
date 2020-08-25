@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# @name ThunderFly Auto-G2
+#
+# @type Autogyro
+# @class Autogyro
+#
+# @output MAIN1 rotor_head_L
+# @output MAIN2 rotor_head_R
+# @output MAIN3 elevator
+# @output MAIN4 rudder
+# @output MAIN5 rudder (second, optional)
+# @output MAIN6 throttle
+# @output MAIN7 wheel
+#
+# @output AUX1 feed-through of RC AUX1 channel for prerotator (optional)
+# @output AUX2 feed-through of RC AUX2 channel for release device (optional)
+#
+# @url https://github.com/ThunderFly-aerospace/Auto-G2/
+# @maintainer ThunderFly s.r.o., Roman Dvorak <dvorakroman@thunderfly.cz>
+#
+# @board px4_fmu-v2 exclude
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+sh /etc/init.d/rc.fw_defaults
+
+if [ $AUTOCNF = yes ]
+then
+	param set BAT_CAPACITY 2500.0
+	param set BAT_N_CELLS 3
+
+	param set PWM_AUX_RATE 50
+	param set PWM_RATE 50
+
+	param set SENS_BOARD_ROT 8
+
+	param set FW_AIRSPD_MAX 20
+	param set FW_AIRSPD_MIN 7
+	param set FW_AIRSPD_TRIM 13
+	param set FW_THR_CRUISE 0.8
+
+	param set FW_MAN_P_MAX 25.0
+	param set FW_MAN_R_MAX 25.0
+	param set FW_PR_I 0.02
+	param set FW_R_LIM 40
+	param set FW_P_LIM_MAX 25.0
+	param set FW_P_LIM_MIN -5.0
+	param set FW_P_RMAX_NEG 20.0
+fi
+
+set MIXER TF-AutoG2
+set MIXER_AUX pass

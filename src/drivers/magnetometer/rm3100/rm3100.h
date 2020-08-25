@@ -152,7 +152,7 @@ private:
 
 	struct mag_calibration_s _scale;
 
-	struct mag_report _last_report {};      /**< used for info() */
+	sensor_mag_s _last_report {};      /**< used for info() */
 
 	orb_advert_t _mag_topic;
 

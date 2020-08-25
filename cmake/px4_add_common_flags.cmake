@@ -92,10 +92,12 @@ function(px4_add_common_flags)
 		)
 
 	# compiler specific flags
-	if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "AppleClang"))
 
 		# force color for clang (needed for clang + ccache)
 		add_compile_options(-fcolor-diagnostics)
+		# force absolute paths
+		add_compile_options(-fdiagnostics-absolute-paths)
 
 		# QuRT 6.4.X compiler identifies as Clang but does not support this option
 		if (NOT "${PX4_PLATFORM}" STREQUAL "qurt")
@@ -177,10 +179,12 @@ function(px4_add_common_flags)
 		${PX4_SOURCE_DIR}/src
 		${PX4_SOURCE_DIR}/src/include
 		${PX4_SOURCE_DIR}/src/lib
-		${PX4_SOURCE_DIR}/src/lib/DriverFramework/framework/include
 		${PX4_SOURCE_DIR}/src/lib/matrix
 		${PX4_SOURCE_DIR}/src/modules
-		)
+	)
+	if(EXISTS ${PX4_BOARD_DIR}/include)
+		include_directories(${PX4_BOARD_DIR}/include)
+	endif()
 
 	add_definitions(
 		-DCONFIG_ARCH_BOARD_${PX4_BOARD_NAME}

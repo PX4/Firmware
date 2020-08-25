@@ -68,7 +68,6 @@ void init_once();
 void init_once()
 {
 	_shell_task_id = pthread_self();
-	//printf("[init] shell id: %lu\n", (unsigned long)_shell_task_id);
 
 	work_queues_init();
 	hrt_work_queue_init();

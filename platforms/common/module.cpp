@@ -89,6 +89,35 @@ void PRINT_MODULE_USAGE_PARAM_COMMENT(const char *comment)
 	PX4_INFO_RAW("\n %s\n", comment);
 }
 
+void PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(bool i2c_support, bool spi_support)
+{
+	// Note: this must be kept in sync with Tools/px4moduledoc/srcparser.py
+	if (i2c_support) {
+		PRINT_MODULE_USAGE_PARAM_FLAG('I', "Internal I2C bus(es)", true);
+		PRINT_MODULE_USAGE_PARAM_FLAG('X', "External I2C bus(es)", true);
+	}
+
+	if (spi_support) {
+		PRINT_MODULE_USAGE_PARAM_FLAG('s', "Internal SPI bus(es)", true);
+		PRINT_MODULE_USAGE_PARAM_FLAG('S', "External SPI bus", true);
+	}
+
+	PRINT_MODULE_USAGE_PARAM_INT('b', -1, 0, 16, "bus (board-specific internal (default=all) or n-th external (default=1))",
+				     true);
+
+	if (spi_support) {
+		PRINT_MODULE_USAGE_PARAM_INT('c', 1, 1, 10, "chip-select index (for external SPI)", true);
+		PRINT_MODULE_USAGE_PARAM_INT('m', -1, 0, 3, "SPI mode", true);
+	}
+
+	PRINT_MODULE_USAGE_PARAM_INT('f', -1, 0, 100000, "bus frequency in kHz", true);
+}
+
+void PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(uint8_t default_address)
+{
+	PRINT_MODULE_USAGE_PARAM_INT('a', default_address, 0, 0xff, "I2C address", true);
+}
+
 void PRINT_MODULE_USAGE_PARAM_INT(char option_char, int default_val, int min_val, int max_val,
 				  const char *description, bool is_optional)
 {

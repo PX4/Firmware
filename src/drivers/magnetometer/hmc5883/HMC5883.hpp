@@ -52,10 +52,9 @@
 #include <math.h>
 #include <unistd.h>
 
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 #include <lib/perf/perf_counter.h>
-#include <systemlib/err.h>
 
 #include <drivers/drv_mag.h>
 #include <drivers/drv_hrt.h>
@@ -65,7 +64,6 @@
 #include <uORB/uORB.h>
 
 #include <float.h>
-#include <px4_platform_common/getopt.h>
 #include <lib/conversion/rotation.h>
 
 #include "hmc5883.h"
@@ -110,32 +108,29 @@
 
 #define HMC5983_TEMP_SENSOR_ENABLE	(1 << 7)
 
-class HMC5883 : public device::CDev, public px4::ScheduledWorkItem
+class HMC5883 : public device::CDev, public I2CSPIDriver<HMC5883>
 {
 public:
-	HMC5883(device::Device *interface, const char *path, enum Rotation rotation);
+	HMC5883(device::Device *interface, enum Rotation rotation, I2CSPIBusOption bus_option, int bus);
 	virtual ~HMC5883();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	virtual ssize_t		read(cdev::file_t *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(cdev::file_t *filp, int cmd, unsigned long arg);
+	void			RunImpl();
 
-	/**
-	 * Stop the automatic measurement state machine.
-	 */
-	void			stop();
+	int		init() override;
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	ssize_t		read(cdev::file_t *filp, char *buffer, size_t buflen) override;
+	int		ioctl(cdev::file_t *filp, int cmd, unsigned long arg) override;
 
 protected:
-	Device			*_interface;
+	void print_status() override;
 
 private:
 
+	Device			*_interface;
 	unsigned		_measure_interval{0};
 
 	ringbuffer::RingBuffer	*_reports;
@@ -158,7 +153,7 @@ private:
 
 	enum Rotation		_rotation;
 
-	struct mag_report	_last_report {};         /**< used for info() */
+	sensor_mag_s	_last_report {};         /**< used for info() */
 
 	uint8_t			_range_bits;
 	uint8_t			_conf_reg;
@@ -229,21 +224,6 @@ private:
 	 * change
 	 */
 	void 			check_conf(void);
-
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 *
-	 * This is the heart of the measurement state machine.  This function
-	 * alternately starts a measurement, or collects the data from the
-	 * previous measurement.
-	 *
-	 * When the interval between measurements is greater than the minimum
-	 * measurement interval, a gap is inserted between collection
-	 * and measurement to provide the most recent measurement possible
-	 * at the next interval.
-	 */
-	void			Run() override;
 
 	/**
 	 * Write a register.

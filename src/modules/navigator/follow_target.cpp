@@ -229,7 +229,7 @@ void FollowTarget::on_active()
 	// 3 degrees of facing target
 
 	if (PX4_ISFINITE(_yaw_rate)) {
-		if (fabsf(fabsf(_yaw_angle) - fabsf(_navigator->get_global_position()->yaw)) < math::radians(3.0F)) {
+		if (fabsf(fabsf(_yaw_angle) - fabsf(_navigator->get_local_position()->yaw)) < math::radians(3.0F)) {
 			_yaw_rate = NAN;
 		}
 	}

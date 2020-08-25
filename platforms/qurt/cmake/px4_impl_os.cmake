@@ -108,24 +108,20 @@ endfunction()
 #
 function(px4_os_add_flags)
 
-	set(DSPAL_ROOT src/lib/DriverFramework/dspal)
+	set(DSPAL_ROOT platforms/qurt/dspal)
 	include_directories(
 		${DSPAL_ROOT}/include
-		${DSPAL_ROOT}/mpu_spi/inc
 		${DSPAL_ROOT}/sys
 		${DSPAL_ROOT}/sys/sys
-		${DSPAL_ROOT}/uart_esc/inc
 
 		platforms/posix/include
 		platforms/qurt/include
-		)
+	)
 
 	add_definitions(
 		-D__PX4_POSIX
 		-D__PX4_QURT
-
-		-D__DF_QURT # For DriverFramework
-		)
+	)
 
 	add_compile_options(
 		-fPIC
@@ -138,8 +134,6 @@ function(px4_os_add_flags)
 	# Clear -rdynamic flag which fails for hexagon
 	set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 	set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
-
-	set(DF_TARGET "qurt" CACHE STRING "DriverFramework target" FORCE)
 
 endfunction()
 

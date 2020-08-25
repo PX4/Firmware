@@ -40,6 +40,7 @@ add_subdirectory(../stm32_common/dshot dshot)
 add_subdirectory(../stm32_common/hrt hrt)
 add_subdirectory(../stm32_common/led_pwm led_pwm)
 add_subdirectory(../stm32_common/io_pins io_pins)
+add_subdirectory(../stm32_common/spi spi)
 add_subdirectory(../stm32_common/tone_alarm tone_alarm)
 add_subdirectory(../stm32_common/version version)
 

@@ -1,0 +1,29 @@
+{
+    "mode": "sitl",
+    "simulator": "gazebo",
+    "mavlink_connection": "udp://:14540",
+    "tests":
+    [
+        {
+            "model": "iris",
+            "test_filter": "[multicopter],[offboard]",
+            "timeout_min": 5
+        },
+        {
+            "model": "iris_opt_flow_mockup",
+            "test_filter": "[multicopter][offboard][nogps]",
+            "timeout_min": 5
+        },
+        {
+            "model": "iris_vision",
+            "test_filter": "[multicopter][offboard][nogps]",
+            "timeout_min": 5,
+            "max_speed_factor": 1
+        },
+        {
+            "model": "standard_vtol",
+            "test_filter": "[multicopter][vtol]",
+            "timeout_min": 5
+        }
+    ]
+}

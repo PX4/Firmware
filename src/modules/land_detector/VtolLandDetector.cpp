@@ -40,6 +40,7 @@
  */
 
 #include <drivers/drv_hrt.h>
+#include <matrix/math.hpp>
 
 #include "VtolLandDetector.h"
 
@@ -49,7 +50,7 @@ namespace land_detector
 void VtolLandDetector::_update_topics()
 {
 	MulticopterLandDetector::_update_topics();
-	_airspeed_sub.update(&_airspeed);
+	_airspeed_validated_sub.update(&_airspeed_validated);
 	_vehicle_status_sub.update(&_vehicle_status);
 }
 
@@ -74,10 +75,9 @@ bool VtolLandDetector::_get_landed_state()
 	bool landed = MulticopterLandDetector::_get_landed_state();
 
 	// for vtol we additionally consider airspeed
-	if (hrt_elapsed_time(&_airspeed.timestamp) < 500 * 1000 && _airspeed.confidence > 0.99f
-	    && PX4_ISFINITE(_airspeed.indicated_airspeed_m_s)) {
+	if (hrt_elapsed_time(&_airspeed_validated.timestamp) < 1_s && PX4_ISFINITE(_airspeed_validated.true_airspeed_m_s)) {
 
-		_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * _airspeed.indicated_airspeed_m_s;
+		_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * _airspeed_validated.true_airspeed_m_s;
 
 	} else {
 		// if airspeed does not update, set it to zero and rely on multicopter land detector
@@ -93,6 +93,15 @@ bool VtolLandDetector::_get_landed_state()
 	_was_in_air = !landed;
 
 	return landed;
+}
+
+bool VtolLandDetector::_get_freefall_state()
+{
+	bool free_fall_detected =
+		MulticopterLandDetector::_get_freefall_state(); // true if falling or in a parabolic flight (low gravity)
+
+	// only return a positive free fall detected if not in fixed-wing mode
+	return _vehicle_status.vehicle_type != vehicle_status_s::VEHICLE_TYPE_FIXED_WING && free_fall_detected;
 }
 
 } // namespace land_detector

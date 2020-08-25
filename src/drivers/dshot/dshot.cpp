@@ -127,8 +127,6 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
-
 	/** @see ModuleBase::print_status() */
 	int print_status() override;
 
@@ -165,6 +163,9 @@ public:
 	bool telemetryEnabled() const { return _telemetry != nullptr; }
 
 private:
+
+	void Run() override;
+
 	static constexpr uint16_t DISARMED_VALUE = 0;
 
 	enum class DShotConfig {

@@ -44,8 +44,6 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <poll.h>
-#include <stdint.h>
 
 #if defined(__PX4_QURT)
 #include <dspal_types.h>
@@ -60,7 +58,10 @@
 
 #ifdef __PX4_NUTTX
 
+#include <poll.h>
+
 typedef struct pollfd px4_pollfd_struct_t;
+typedef pollevent_t px4_pollevent_t;
 
 #if defined(__cplusplus)
 #define _GLOBAL ::
@@ -73,7 +74,6 @@ typedef struct pollfd px4_pollfd_struct_t;
 #define px4_write 	_GLOBAL write
 #define px4_read 	_GLOBAL read
 #define px4_poll 	_GLOBAL poll
-#define px4_fsync 	_GLOBAL fsync
 #define px4_access 	_GLOBAL access
 #define px4_getpid 	_GLOBAL getpid
 
@@ -83,34 +83,31 @@ typedef struct pollfd px4_pollfd_struct_t;
 
 #define	 PX4_STACK_OVERHEAD	(1024 * 11)
 
-/**
- * Terminates the calling process immediately.
- * @return 0 on success, 1 on error
- */
-#define px4_exit(status) ({return status;})
-
 __BEGIN_DECLS
 
-typedef short pollevent_t;
+typedef short px4_pollevent_t;
 
 typedef struct {
 	/* This part of the struct is POSIX-like */
 	int		fd;       /* The descriptor being polled */
-	pollevent_t 	events;   /* The input event flags */
-	pollevent_t 	revents;  /* The output event flags */
+	px4_pollevent_t 	events;   /* The input event flags */
+	px4_pollevent_t 	revents;  /* The output event flags */
 
 	/* Required for PX4 compatibility */
 	px4_sem_t   *sem;  	/* Pointer to semaphore used to post output event */
 	void   *priv;     	/* For use by drivers */
 } px4_pollfd_struct_t;
 
+#ifndef POLLIN
+#define POLLIN       (0x01)
+#endif
+
 __EXPORT int 		px4_open(const char *path, int flags, ...);
 __EXPORT int 		px4_close(int fd);
 __EXPORT ssize_t	px4_read(int fd, void *buffer, size_t buflen);
 __EXPORT ssize_t	px4_write(int fd, const void *buffer, size_t buflen);
 __EXPORT int		px4_ioctl(int fd, int cmd, unsigned long arg);
-__EXPORT int		px4_poll(px4_pollfd_struct_t *fds, nfds_t nfds, int timeout);
-__EXPORT int		px4_fsync(int fd);
+__EXPORT int		px4_poll(px4_pollfd_struct_t *fds, unsigned int nfds, int timeout);
 __EXPORT int		px4_access(const char *pathname, int mode);
 __EXPORT px4_task_t	px4_getpid(void);
 
@@ -127,22 +124,7 @@ __END_DECLS
 #define PX4_STACK_ADJUSTED(_s) (_s * (__SIZEOF_POINTER__ >> 2) + PX4_STACK_OVERHEAD)
 
 __BEGIN_DECLS
-extern int px4_errno;
 
-__EXPORT void		px4_show_devices(void);
 __EXPORT void		px4_show_files(void);
-__EXPORT const char 	*px4_get_device_names(unsigned int *handle);
-
-__EXPORT void		px4_show_topics(void);
-__EXPORT const char 	*px4_get_topic_names(unsigned int *handle);
-
-#ifndef __PX4_QURT
-/*
- * The UNIX epoch system time following the system clock
- */
-__EXPORT uint64_t	hrt_system_time(void);
-
-
-#endif
 
 __END_DECLS

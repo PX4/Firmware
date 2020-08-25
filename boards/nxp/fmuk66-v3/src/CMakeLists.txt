@@ -35,11 +35,12 @@ add_library(drivers_board
 	autoleds.c
 	automount.c
 	can.c
+	i2c.cpp
 	init.c
 	led.c
 	sdhc.c
-	spi.c
-	timer_config.c
+	spi.cpp
+	timer_config.cpp
 	usb.c
 )
 

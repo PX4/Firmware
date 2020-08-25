@@ -40,21 +40,20 @@ using namespace ST_ISM330DLC;
 
 static constexpr int16_t combine(uint8_t lsb, uint8_t msb) { return (msb << 8u) | lsb; }
 
+static constexpr uint32_t FIFO_INTERVAL{1000}; // 1000 us / 1000 Hz interval
+
 ISM330DLC::ISM330DLC(int bus, uint32_t device, enum Rotation rotation) :
 	SPI(MODULE_NAME, nullptr, bus, device, SPIDEV_MODE3, SPI_SPEED),
 	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
 	_px4_accel(get_device_id(), ORB_PRIO_DEFAULT, rotation),
 	_px4_gyro(get_device_id(), ORB_PRIO_DEFAULT, rotation)
 {
-	set_device_type(DRV_DEVTYPE_ST_ISM330DLC);
-	_px4_accel.set_device_type(DRV_DEVTYPE_ST_ISM330DLC);
-	_px4_gyro.set_device_type(DRV_DEVTYPE_ST_ISM330DLC);
+	set_device_type(DRV_IMU_DEVTYPE_ST_ISM330DLC);
+	_px4_accel.set_device_type(DRV_IMU_DEVTYPE_ST_ISM330DLC);
+	_px4_gyro.set_device_type(DRV_IMU_DEVTYPE_ST_ISM330DLC);
 
-	_px4_accel.set_sample_rate(ST_ISM330DLC::LA_ODR);
-	_px4_gyro.set_sample_rate(ST_ISM330DLC::G_ODR);
-
-	_px4_accel.set_update_rate(1000000 / _fifo_interval);
-	_px4_gyro.set_update_rate(1000000 / _fifo_interval);
+	_px4_accel.set_update_rate(1000000 / FIFO_INTERVAL);
+	_px4_gyro.set_update_rate(1000000 / FIFO_INTERVAL);
 }
 
 ISM330DLC::~ISM330DLC()
@@ -74,18 +73,19 @@ ISM330DLC::~ISM330DLC()
 	perf_free(_drdy_interval_perf);
 }
 
-int
-ISM330DLC::probe()
+int ISM330DLC::probe()
 {
-	if (RegisterRead(Register::WHO_AM_I) == ISM330DLC_WHO_AM_I) {
-		return PX4_OK;
+	const uint8_t whoami = RegisterRead(Register::WHO_AM_I);
+
+	if (whoami != ISM330DLC_WHO_AM_I) {
+		PX4_WARN("unexpected WHO_AM_I 0x%02x", whoami);
+		return PX4_ERROR;
 	}
 
-	return PX4_ERROR;
+	return PX4_OK;
 }
 
-bool
-ISM330DLC::Init()
+bool ISM330DLC::Init()
 {
 	if (SPI::init() != PX4_OK) {
 		PX4_ERR("SPI::init failed");
@@ -110,43 +110,34 @@ ISM330DLC::Init()
 	return true;
 }
 
-bool
-ISM330DLC::Reset()
+bool ISM330DLC::Reset()
 {
-	for (int i = 0; i < 5; i++) {
-		// Reset
-		// CTRL3_C: SW_RESET
-		// Note: When the FIFO is used, the IF_INC and BDU bits must be equal to 1.
-		RegisterSetBits(Register::CTRL3_C, CTRL3_C_BIT::BDU | CTRL3_C_BIT::IF_INC | CTRL3_C_BIT::SW_RESET);
-		usleep(50);	// Wait 50 μs (or wait until the SW_RESET bit of the CTRL3_C register returns to 0).
+	// CTRL3_C: SW_RESET
+	// Note: When the FIFO is used, the IF_INC and BDU bits must be equal to 1.
+	RegisterSetBits(Register::CTRL3_C, CTRL3_C_BIT::BDU | CTRL3_C_BIT::IF_INC | CTRL3_C_BIT::SW_RESET);
+	usleep(50);	// Wait 50 μs (or wait until the SW_RESET bit of the CTRL3_C register returns to 0).
 
-		// Accelerometer configuration
-		// CTRL1_XL: Accelerometer 16 G range and ODR 6.66 kHz
-		RegisterWrite(Register::CTRL1_XL, CTRL1_XL_BIT::ODR_XL_6_66KHZ | CTRL1_XL_BIT::FS_XL_16);
-		_px4_accel.set_scale(0.488f * (CONSTANTS_ONE_G / 1000.0f));	// 0.488 mg/LSB
-		_px4_accel.set_range(16.0f * CONSTANTS_ONE_G);
+	// Accelerometer configuration
+	// CTRL1_XL: Accelerometer 16 G range and ODR 6.66 kHz
+	RegisterWrite(Register::CTRL1_XL, CTRL1_XL_BIT::ODR_XL_6_66KHZ | CTRL1_XL_BIT::FS_XL_16);
+	_px4_accel.set_scale(0.488f * (CONSTANTS_ONE_G / 1000.0f));	// 0.488 mg/LSB
+	_px4_accel.set_range(16.0f * CONSTANTS_ONE_G);
 
-		// Gyroscope configuration
-		// CTRL2_G: Gyroscope 2000 degrees/second and ODR 6.66 kHz
-		// CTRL6_C: Gyroscope low-pass filter bandwidth 937 Hz (maximum)
-		RegisterWrite(Register::CTRL2_G, CTRL2_G_BIT::ODR_G_6_66KHZ | CTRL2_G_BIT::FS_G_2000);
-		RegisterSetBits(Register::CTRL6_C, CTRL6_C_BIT::FTYPE_GYRO_LPF_BW_937_HZ);
-		_px4_gyro.set_scale(math::radians(70.0f / 1000.0f));	// 70 mdps/LSB
-		_px4_gyro.set_range(math::radians(2000.0f));
+	// Gyroscope configuration
+	// CTRL2_G: Gyroscope 2000 degrees/second and ODR 6.66 kHz
+	// CTRL6_C: Gyroscope low-pass filter bandwidth 937 Hz (maximum)
+	RegisterWrite(Register::CTRL2_G, CTRL2_G_BIT::ODR_G_6_66KHZ | CTRL2_G_BIT::FS_G_2000);
+	RegisterSetBits(Register::CTRL6_C, CTRL6_C_BIT::FTYPE_GYRO_LPF_BW_937_HZ);
+	_px4_gyro.set_scale(math::radians(70.0f / 1000.0f));	// 70 mdps/LSB
+	_px4_gyro.set_range(math::radians(2000.0f));
 
-		const bool reset_done = ((RegisterRead(Register::CTRL3_C) & CTRL3_C_BIT::SW_RESET) == 0);
+	// reset is considered done once data is ready
+	const bool reset_done = ((RegisterRead(Register::CTRL3_C) & CTRL3_C_BIT::SW_RESET) == 0);
 
-		// reset done once data is ready
-		if (reset_done) {
-			return true;
-		}
-	}
-
-	return false;
+	return reset_done;
 }
 
-void
-ISM330DLC::ResetFIFO()
+void ISM330DLC::ResetFIFO()
 {
 	perf_count(_fifo_reset_perf);
 
@@ -163,8 +154,7 @@ ISM330DLC::ResetFIFO()
 	RegisterWrite(Register::FIFO_CTRL5, FIFO_CTRL5_BIT::ODR_FIFO_6_66_KHZ | FIFO_CTRL5_BIT::FIFO_MODE_CONTINUOUS);
 }
 
-uint8_t
-ISM330DLC::RegisterRead(Register reg)
+uint8_t ISM330DLC::RegisterRead(Register reg)
 {
 	uint8_t cmd[2] {};
 	cmd[0] = static_cast<uint8_t>(reg) | DIR_READ;
@@ -172,15 +162,13 @@ ISM330DLC::RegisterRead(Register reg)
 	return cmd[1];
 }
 
-void
-ISM330DLC::RegisterWrite(Register reg, uint8_t value)
+void ISM330DLC::RegisterWrite(Register reg, uint8_t value)
 {
 	uint8_t cmd[2] { (uint8_t)reg, value };
 	transfer(cmd, cmd, sizeof(cmd));
 }
 
-void
-ISM330DLC::RegisterSetBits(Register reg, uint8_t setbits)
+void ISM330DLC::RegisterSetBits(Register reg, uint8_t setbits)
 {
 	uint8_t val = RegisterRead(reg);
 
@@ -190,8 +178,7 @@ ISM330DLC::RegisterSetBits(Register reg, uint8_t setbits)
 	}
 }
 
-void
-ISM330DLC::RegisterClearBits(Register reg, uint8_t clearbits)
+void ISM330DLC::RegisterClearBits(Register reg, uint8_t clearbits)
 {
 	uint8_t val = RegisterRead(reg);
 
@@ -201,18 +188,14 @@ ISM330DLC::RegisterClearBits(Register reg, uint8_t clearbits)
 	}
 }
 
-int
-ISM330DLC::DataReadyInterruptCallback(int irq, void *context, void *arg)
+int ISM330DLC::DataReadyInterruptCallback(int irq, void *context, void *arg)
 {
 	ISM330DLC *dev = reinterpret_cast<ISM330DLC *>(arg);
-
 	dev->DataReady();
-
 	return 0;
 }
 
-void
-ISM330DLC::DataReady()
+void ISM330DLC::DataReady()
 {
 	_time_data_ready = hrt_absolute_time();
 
@@ -223,8 +206,7 @@ ISM330DLC::DataReady()
 	ScheduleNow();
 }
 
-void
-ISM330DLC::Start()
+void ISM330DLC::Start()
 {
 	Stop();
 
@@ -244,13 +226,11 @@ ISM330DLC::Start()
 	RegisterWrite(Register::INT1_CTRL, INT1_CTRL_BIT::INT1_FULL_FLAG | INT1_CTRL_BIT::INT1_FIFO_OVR |
 		      INT1_CTRL_BIT::INT1_FTH);
 #else
-
-	ScheduleOnInterval(_fifo_interval, _fifo_interval);
+	ScheduleOnInterval(FIFO_INTERVAL, FIFO_INTERVAL);
 #endif
 }
 
-void
-ISM330DLC::Stop()
+void ISM330DLC::Stop()
 {
 #if defined(GPIO_SPI2_DRDY1_ISM330) && false	// TODO: enable
 	// Disable data ready callback
@@ -262,13 +242,16 @@ ISM330DLC::Stop()
 #endif
 }
 
-void
-ISM330DLC::Run()
+void ISM330DLC::Run()
 {
 	perf_count(_interval_perf);
 
+	// use timestamp from the data ready interrupt if available,
+	//  otherwise use the time now roughly corresponding with the last sample we'll pull from the FIFO
+	const hrt_abstime timestamp_sample = (hrt_elapsed_time(&_time_data_ready) < FIFO_INTERVAL) ? _time_data_ready :
+					     hrt_absolute_time();
+
 	// Number of unread words (16-bit axes) stored in FIFO.
-	const hrt_abstime timestamp_fifo_level = hrt_absolute_time();
 	const uint8_t fifo_words = RegisterRead(Register::FIFO_STATUS1);
 
 	// check for FIFO status
@@ -291,7 +274,7 @@ ISM330DLC::Run()
 	const uint8_t fifo_pattern = RegisterRead(Register::FIFO_STATUS3);
 
 	if (fifo_pattern != 0) {
-		PX4_ERR("check fifo pattern: %d", fifo_pattern);
+		PX4_DEBUG("check FIFO pattern: %d", fifo_pattern);
 	}
 
 	// Transfer data
@@ -302,20 +285,22 @@ ISM330DLC::Run()
 		perf_count(_fifo_empty_perf);
 		return;
 
-	} else if (samples > 8) {
+	} else if (samples > 16) {
 		// not technically an overflow, but more samples than we expected
 		perf_count(_fifo_overflow_perf);
 		ResetFIFO();
 		return;
 	}
 
-	const size_t transfer_size = math::min(samples * sizeof(FIFO::DATA) + 1, FIFO::SIZE);
-
-	struct ISM_Report {
+	// Transfer data
+	struct TransferBuffer {
 		uint8_t cmd;
-		FIFO::DATA f[8]; // we never transfer more than 8 samples
+		FIFO::DATA f[16]; // max 16 samples
 	};
-	ISM_Report *report = (ISM_Report *)_dma_data_buffer;
+	static_assert(sizeof(TransferBuffer) == (sizeof(uint8_t) + 16 * sizeof(FIFO::DATA))); // ensure no struct padding
+
+	TransferBuffer *report = (TransferBuffer *)_dma_data_buffer;
+	const size_t transfer_size = math::min(samples * sizeof(FIFO::DATA) + 1, FIFO::SIZE);
 	memset(report, 0, transfer_size);
 	report->cmd = static_cast<uint8_t>(Register::FIFO_DATA_OUT_L) | DIR_READ;
 
@@ -328,20 +313,15 @@ ISM330DLC::Run()
 
 	perf_end(_transfer_perf);
 
-	static constexpr uint32_t gyro_dt = 1000000 / ST_ISM330DLC::G_ODR;
-
-	// estimate timestamp of first sample in the FIFO from number of samples and fill rate
-	const hrt_abstime timestamp_sample = timestamp_fifo_level - ((samples - 1) * gyro_dt);
-
-	PX4Accelerometer::FIFOSample accel{};
+	PX4Accelerometer::FIFOSample accel;
 	accel.timestamp_sample = timestamp_sample;
 	accel.samples = samples;
-	accel.dt = gyro_dt;
+	accel.dt = 1000000 / ST_ISM330DLC::LA_ODR;
 
-	PX4Gyroscope::FIFOSample gyro{};
+	PX4Gyroscope::FIFOSample gyro;
 	gyro.timestamp_sample = timestamp_sample;
 	gyro.samples = samples;
-	gyro.dt = gyro_dt;
+	gyro.dt = 1000000 / ST_ISM330DLC::G_ODR;
 
 	for (int i = 0; i < samples; i++) {
 		const FIFO::DATA &fifo_sample = report->f[i];
@@ -367,7 +347,7 @@ ISM330DLC::Run()
 
 		// 16 bits in two’s complement format with a sensitivity of 256 LSB/°C. The output zero level corresponds to 25 °C.
 		const int16_t OUT_TEMP = combine(temperature_buf[1], temperature_buf[2]);
-		const float temperature = (OUT_TEMP / 256.0f) + 25.0f;
+		const float temperature = ((float)OUT_TEMP / 256.0f) + 25.0f;
 
 		_px4_accel.set_temperature(temperature);
 		_px4_gyro.set_temperature(temperature);
@@ -377,14 +357,15 @@ ISM330DLC::Run()
 	_px4_accel.updateFIFO(accel);
 }
 
-void
-ISM330DLC::PrintInfo()
+void ISM330DLC::PrintInfo()
 {
 	perf_print_counter(_interval_perf);
 	perf_print_counter(_transfer_perf);
 	perf_print_counter(_fifo_empty_perf);
 	perf_print_counter(_fifo_overflow_perf);
 	perf_print_counter(_fifo_reset_perf);
+	perf_print_counter(_drdy_count_perf);
+	perf_print_counter(_drdy_interval_perf);
 
 	_px4_accel.print_status();
 	_px4_gyro.print_status();

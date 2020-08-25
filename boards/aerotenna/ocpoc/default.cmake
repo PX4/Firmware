@@ -1,3 +1,6 @@
+add_definitions(
+	-D__PX4_LINUX
+)
 
 px4_add_board(
 	VENDOR aerotenna
@@ -7,6 +10,14 @@ px4_add_board(
 	ARCHITECTURE cortex-a9
 	TOOLCHAIN arm-linux-gnueabihf
 	TESTING
+	SERIAL_PORTS
+		GPS1:/dev/ttyS3  # GPS/Compass #1           (OcPoC Port 6)
+		GPS2:/dev/ttyS7  # GPS/Compass #2           (OcPoC Port 7)
+		GPS3:/dev/ttyS1  # GPS/Compass #3           (OcPoC Port 9)
+		TEL1:/dev/ttyPS1 # Radio Telemetry          (OcPoC Port 4)
+		TEL2:/dev/ttyS6  # uLanding Radar Altimeter (OcPoC Port 8)
+		TEL3:/dev/ttyS2  #                          (OcPoC Port 2)
+		TEL4:/dev/ttyS0  # uSharp-Patch             (OcPoC Port 5)
 	DRIVERS
 		#barometer # all available barometer drivers
 		barometer/ms5611
@@ -20,15 +31,11 @@ px4_add_board(
 		imu/mpu9250
 		lights/rgbled
 		linux_pwm_out
-		linux_sbus
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
 		pwm_out_sim
+		rc_input
 		#telemetry # all available telemetry drivers
-	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers
-		hmc5883
-		mpu9250
-		ms5611
 	MODULES
 		airspeed_selector
 		attitude_estimator_q
@@ -42,11 +49,12 @@ px4_add_board(
 		fw_pos_control_l1
 		land_detector
 		landing_target_estimator
-		load_mon
+		#load_mon
 		local_position_estimator
 		logger
 		mavlink
 		mc_att_control
+		mc_hover_thrust_estimator
 		mc_pos_control
 		mc_rate_control
 		#micrortps_bridge
@@ -54,6 +62,7 @@ px4_add_board(
 		rc_update
 		rover_pos_control
 		sensors
+		temperature_compensation
 		sih
 		#simulator
 		vmount
@@ -70,13 +79,12 @@ px4_add_board(
 		sd_bench
 		shutdown
 		tests # tests and test runner
-		top
+		#top
 		topic_listener
 		tune_control
 		ver
 		work_queue
 	EXAMPLES
-		bottle_drop # OBC challenge
 		fixedwing_control # Tutorial code from https://px4.io/dev/example_fixedwing_control
 		hello
 		#hwtest # Hardware test

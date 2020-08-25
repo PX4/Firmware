@@ -13,12 +13,18 @@
 import os
 
 import genmsg.msgs
-import gencpp
+
 from px_generate_uorb_topic_helper import * # this is in Tools/
 from px_generate_uorb_topic_files import MsgScope # this is in Tools/
 
 send_topics = [(alias[idx] if alias[idx] else s.short_name) for idx, s in enumerate(spec) if scope[idx] == MsgScope.SEND]
 recv_topics = [(alias[idx] if alias[idx] else s.short_name) for idx, s in enumerate(spec) if scope[idx] == MsgScope.RECEIVE]
+package = package[0]
+fastrtps_version = fastrtps_version[0]
+try:
+    ros2_distro = ros2_distro[0].decode("utf-8")
+except AttributeError:
+    ros2_distro = ros2_distro[0]
 }@
 /****************************************************************************
  *
@@ -57,6 +63,8 @@ recv_topics = [(alias[idx] if alias[idx] else s.short_name) for idx, s in enumer
 #include <condition_variable>
 #include <queue>
 
+#include "microRTPS_timesync.h"
+
 @[for topic in send_topics]@
 #include "@(topic)_Publisher.h"
 @[end for]@
@@ -64,9 +72,27 @@ recv_topics = [(alias[idx] if alias[idx] else s.short_name) for idx, s in enumer
 #include "@(topic)_Subscriber.h"
 @[end for]@
 
+
+@[for topic in (recv_topics + send_topics)]@
+@[    if fastrtps_version <= 1.7]@
+@[        if ros2_distro]@
+using @(topic)_msg_t = @(package)::msg::dds_::@(topic)_;
+@[        else]@
+using @(topic)_msg_t = @(topic)_;
+@[        end if]@
+@[    else]@
+@[        if ros2_distro]@
+using @(topic)_msg_t = @(package)::msg::@(topic);
+@[        else]@
+using @(topic)_msg_t = @(topic);
+@[        end if]@
+@[    end if]@
+@[end for]@
+
 class RtpsTopics {
 public:
     bool init(std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue);
+    void set_timesync(const std::shared_ptr<TimeSync>& timesync) { _timesync = timesync; };
 @[if send_topics]@
     void publish(uint8_t topic_ID, char data_buffer[], size_t len);
 @[end if]@
@@ -76,17 +102,65 @@ public:
 
 private:
 @[if send_topics]@
-    // Publishers
+    /** Publishers **/
 @[for topic in send_topics]@
     @(topic)_Publisher _@(topic)_pub;
 @[end for]@
 @[end if]@
 
 @[if recv_topics]@
-    // Subscribers
+    /** Subscribers **/
 @[for topic in recv_topics]@
     @(topic)_Subscriber _@(topic)_sub;
 @[end for]@
-
 @[end if]@
+
+    /** Msg metada Getters **/
+@[if fastrtps_version <= 1.7 or not ros2_distro]@
+    template <class T>
+    inline uint64_t getMsgTimestamp(const T* msg) { return msg->timestamp_(); }
+
+    template <class T>
+    inline uint8_t getMsgSysID(const T* msg) { return msg->sys_id_(); }
+
+    template <class T>
+    inline uint8_t getMsgSeq(const T* msg) { return msg->seq_(); }
+@[elif ros2_distro]@
+    template <class T>
+    inline uint64_t getMsgTimestamp(const T* msg) { return msg->timestamp(); }
+
+    template <class T>
+    inline uint8_t getMsgSysID(const T* msg) { return msg->sys_id(); }
+
+    template <class T>
+    inline uint8_t getMsgSeq(const T* msg) { return msg->seq(); }
+@[end if]@
+
+    /** Msg metadata Setters **/
+@[if fastrtps_version <= 1.7 or not ros2_distro]@
+    template <class T>
+    inline uint64_t setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
+
+    template <class T>
+    inline uint8_t setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
+
+    template <class T>
+    inline uint8_t setMsgSeq(T* msg, const uint8_t& seq) { msg->seq_() = seq; }
+@[elif ros2_distro]@
+    template <class T>
+    inline uint64_t setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
+
+    template <class T>
+    inline uint8_t setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
+
+    template <class T>
+    inline uint8_t setMsgSeq(T* msg, const uint8_t& seq) { msg->seq() = seq; }
+@[end if]@
+
+    /**
+     * @@brief Timesync object ptr.
+     *         This object is used to compuyte and apply the time offsets to the
+     *         messages timestamps.
+     */
+    std::shared_ptr<TimeSync> _timesync;
 };

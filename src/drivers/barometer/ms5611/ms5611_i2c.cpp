@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,26 +37,24 @@
  * I2C interface for MS5611
  */
 
+#include <drivers/device/i2c.h>
+
 #include "ms5611.h"
 
 #define MS5611_ADDRESS_1		0x76	/* address select pins pulled high (PX4FMU series v1.6+) */
 #define MS5611_ADDRESS_2		0x77    /* address select pins pulled low (PX4FMU prototypes) */
 
-
-
-device::Device *MS5611_i2c_interface(ms5611::prom_u &prom_buf);
-
 class MS5611_I2C : public device::I2C
 {
 public:
-	MS5611_I2C(uint8_t bus, ms5611::prom_u &prom_buf);
-	virtual ~MS5611_I2C() = default;
+	MS5611_I2C(uint8_t bus, ms5611::prom_u &prom_buf, int bus_frequency);
+	~MS5611_I2C() override = default;
 
-	virtual int	read(unsigned offset, void *data, unsigned count);
-	virtual int	ioctl(unsigned operation, unsigned &arg);
+	int	read(unsigned offset, void *data, unsigned count) override;
+	int	ioctl(unsigned operation, unsigned &arg) override;
 
 protected:
-	virtual int	probe();
+	int	probe() override;
 
 private:
 	ms5611::prom_u	&_prom;
@@ -87,13 +85,13 @@ private:
 };
 
 device::Device *
-MS5611_i2c_interface(ms5611::prom_u &prom_buf, uint8_t busnum)
+MS5611_i2c_interface(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum, int bus_frequency)
 {
-	return new MS5611_I2C(busnum, prom_buf);
+	return new MS5611_I2C(busnum, prom_buf, bus_frequency);
 }
 
-MS5611_I2C::MS5611_I2C(uint8_t bus, ms5611::prom_u &prom) :
-	I2C("MS5611_I2C", nullptr, bus, 0, 400000),
+MS5611_I2C::MS5611_I2C(uint8_t bus, ms5611::prom_u &prom, int bus_frequency) :
+	I2C("MS5611_I2C", nullptr, bus, 0, bus_frequency),
 	_prom(prom)
 {
 }
@@ -240,7 +238,7 @@ MS5611_I2C::_read_prom()
 			last_val = prom_buf[0];
 		}
 
-		if (prom_buf[0] != last_val || prom_buf[1] != last_val) {
+		if ((prom_buf[0] != last_val) || (prom_buf[1] != last_val)) {
 			bits_stuck = false;
 		}
 

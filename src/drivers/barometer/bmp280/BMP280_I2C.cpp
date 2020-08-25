@@ -42,12 +42,11 @@
 #include <px4_platform_common/px4_config.h>
 #include <drivers/device/i2c.h>
 
-#if defined(PX4_I2C_OBDEV_BMP280) || defined(PX4_I2C_EXT_OBDEV_BMP280)
 
 class BMP280_I2C: public device::I2C, public bmp280::IBMP280
 {
 public:
-	BMP280_I2C(uint8_t bus, uint32_t device);
+	BMP280_I2C(uint8_t bus, uint32_t device, int bus_frequency);
 	virtual ~BMP280_I2C() override = default;
 
 	int init() override { return I2C::init(); }
@@ -60,18 +59,19 @@ public:
 
 	uint32_t get_device_id() const override { return device::I2C::get_device_id(); }
 
+	uint8_t get_device_address() const override { return device::I2C::get_device_address(); }
 private:
 	bmp280::calibration_s	_cal{};
 	bmp280::data_s		_data{};
 };
 
-bmp280::IBMP280 *bmp280_i2c_interface(uint8_t busnum, uint32_t device)
+bmp280::IBMP280 *bmp280_i2c_interface(uint8_t busnum, uint32_t device, int bus_frequency)
 {
-	return new BMP280_I2C(busnum, device);
+	return new BMP280_I2C(busnum, device, bus_frequency);
 }
 
-BMP280_I2C::BMP280_I2C(uint8_t bus, uint32_t device) :
-	I2C("BMP280_I2C", nullptr, bus, device, 100 * 1000)
+BMP280_I2C::BMP280_I2C(uint8_t bus, uint32_t device, int bus_frequency) :
+	I2C("BMP280_I2C", nullptr, bus, device, bus_frequency)
 {
 }
 
@@ -117,4 +117,3 @@ BMP280_I2C::get_calibration(uint8_t addr)
 	}
 }
 
-#endif /* PX4_I2C_OBDEV_BMP280 || PX4_I2C_EXT_OBDEV_BMP280 */

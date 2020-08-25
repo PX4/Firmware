@@ -48,8 +48,7 @@ namespace events
 namespace status
 {
 
-StatusDisplay::StatusDisplay(const events::SubscriberHandler &subscriber_handler)
-	: _subscriber_handler(subscriber_handler)
+StatusDisplay::StatusDisplay()
 {
 	// set the base color
 	_led_control.priority = 0;
@@ -66,23 +65,19 @@ bool StatusDisplay::check_for_updates()
 {
 	bool got_updates = false;
 
-	if (_subscriber_handler.battery_status_updated()) {
-		orb_copy(ORB_ID(battery_status), _subscriber_handler.get_battery_status_sub(), &_battery_status);
+	if (_battery_status_sub.update()) {
 		got_updates = true;
 	}
 
-	if (_subscriber_handler.cpuload_updated()) {
-		orb_copy(ORB_ID(cpuload), _subscriber_handler.get_cpuload_sub(), &_cpu_load);
+	if (_cpu_load_sub.update()) {
 		got_updates = true;
 	}
 
-	if (_subscriber_handler.vehicle_status_flags_updated()) {
-		orb_copy(ORB_ID(vehicle_status_flags), _subscriber_handler.get_vehicle_status_flags_sub(), &_vehicle_status_flags);
+	if (_vehicle_status_flags_sub.update()) {
 		got_updates = true;
 	}
 
-	if (_subscriber_handler.vehicle_status_updated()) {
-		orb_copy(ORB_ID(vehicle_status), _subscriber_handler.get_vehicle_status_sub(), &_vehicle_status);
+	if (_vehicle_status_sub.update()) {
 		got_updates = true;
 	}
 

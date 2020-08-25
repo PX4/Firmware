@@ -37,23 +37,27 @@
 
 #include <drivers/drv_hrt.h>
 #include <px4_platform_common/px4_config.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/perf/perf_counter.h>
 
-class BMP280 : public px4::ScheduledWorkItem
+class BMP280 : public I2CSPIDriver<BMP280>
 {
 public:
-	BMP280(bmp280::IBMP280 *interface);
+	BMP280(I2CSPIBusOption bus_option, int bus, bmp280::IBMP280 *interface);
 	virtual ~BMP280();
 
-	int			init();
-	void			print_info();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
+	int			init();
+	void			print_status();
+
+	void			RunImpl();
 private:
-	void			Run() override;
 	void			Start();
-	void			Stop();
 
 	int			measure(); //start measure
 	int			collect(); //get results and publish

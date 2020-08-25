@@ -52,42 +52,47 @@ bool FlightTaskAutoMapper::update()
 	// always reset constraints because they might change depending on the type
 	_setDefaultConstraints();
 
-	bool follow_line = _type == WaypointType::loiter || _type == WaypointType::position;
-	bool follow_line_prev = _type_previous == WaypointType::loiter || _type_previous == WaypointType::position;
-
-	// 1st time that vehicle starts to follow line. Reset all setpoints to current vehicle state.
-	if (follow_line && !follow_line_prev) {
-		_reset();
-	}
-
 	// The only time a thrust set-point is sent out is during
 	// idle. Hence, reset thrust set-point to NAN in case the
 	// vehicle exits idle.
 
 	if (_type_previous == WaypointType::idle) {
-		_thrust_setpoint = Vector3f(NAN, NAN, NAN);
+		_thrust_setpoint.setNaN();
 	}
 
 	// during mission and reposition, raise the landing gears but only
 	// if altitude is high enough
 	if (_highEnoughForLandingGear()) {
-		_gear.landing_gear = _mission_gear;
+		_gear.landing_gear = landing_gear_s::GEAR_UP;
 	}
 
-	if (_type == WaypointType::idle) {
-		_generateIdleSetpoints();
+	switch (_type) {
+	case WaypointType::idle:
+		_prepareIdleSetpoints();
+		break;
 
-	} else if (_type == WaypointType::land) {
-		_generateLandSetpoints();
+	case WaypointType::land:
+		_prepareLandSetpoints();
+		break;
 
-	} else if (follow_line) {
-		_generateSetpoints();
+	case WaypointType::loiter:
 
-	} else if (_type == WaypointType::takeoff) {
-		_generateTakeoffSetpoints();
+	/* fallthrought */
+	case WaypointType::position:
+		_preparePositionSetpoints();
+		break;
 
-	} else if (_type == WaypointType::velocity) {
-		_generateVelocitySetpoints();
+	case WaypointType::takeoff:
+		_prepareTakeoffSetpoints();
+		break;
+
+	case WaypointType::velocity:
+		_prepareVelocitySetpoints();
+		break;
+
+	default:
+		_preparePositionSetpoints();
+		break;
 	}
 
 	if (_param_com_obs_avoid.get()) {
@@ -95,6 +100,9 @@ bool FlightTaskAutoMapper::update()
 		_obstacle_avoidance.injectAvoidanceSetpoints(_position_setpoint, _velocity_setpoint, _yaw_setpoint,
 				_yawspeed_setpoint);
 	}
+
+
+	_generateSetpoints();
 
 	// update previous type
 	_type_previous = _type;
@@ -109,45 +117,50 @@ void FlightTaskAutoMapper::_reset()
 	_position_setpoint = _position;
 }
 
-void FlightTaskAutoMapper::_generateIdleSetpoints()
+void FlightTaskAutoMapper::_prepareIdleSetpoints()
 {
 	// Send zero thrust setpoint
-	_position_setpoint = Vector3f(NAN, NAN, NAN); // Don't require any position/velocity setpoints
-	_velocity_setpoint = Vector3f(NAN, NAN, NAN);
+	_position_setpoint.setNaN(); // Don't require any position/velocity setpoints
+	_velocity_setpoint.setNaN();
 	_thrust_setpoint.zero();
 }
 
-void FlightTaskAutoMapper::_generateLandSetpoints()
+void FlightTaskAutoMapper::_prepareLandSetpoints()
 {
+	float land_speed = _getLandSpeed();
+
 	// Keep xy-position and go down with landspeed
 	_position_setpoint = Vector3f(_target(0), _target(1), NAN);
-	_velocity_setpoint = Vector3f(Vector3f(NAN, NAN, _param_mpc_land_speed.get()));
+	_velocity_setpoint = Vector3f(Vector3f(NAN, NAN, land_speed));
+
 	// set constraints
 	_constraints.tilt = math::radians(_param_mpc_tiltmax_lnd.get());
-	_constraints.speed_down = _param_mpc_land_speed.get();
 	_gear.landing_gear = landing_gear_s::GEAR_DOWN;
 }
 
-void FlightTaskAutoMapper::_generateTakeoffSetpoints()
+void FlightTaskAutoMapper::_prepareTakeoffSetpoints()
 {
 	// Takeoff is completely defined by target position
 	_position_setpoint = _target;
 	_velocity_setpoint = Vector3f(NAN, NAN, NAN);
 
-	// limit vertical speed during takeoff
-	_constraints.speed_up = math::gradual(_dist_to_ground, _param_mpc_land_alt2.get(),
-					      _param_mpc_land_alt1.get(), _param_mpc_tko_speed.get(), _constraints.speed_up);
-
 	_gear.landing_gear = landing_gear_s::GEAR_DOWN;
 }
 
-void FlightTaskAutoMapper::_generateVelocitySetpoints()
+void FlightTaskAutoMapper::_prepareVelocitySetpoints()
 {
-	// TODO: Remove velocity force logic from navigator, since
-	// navigator should only send out waypoints.
+	// XY Velocity waypoint
+	// TODO : Rewiew that. What is the expected behavior?
 	_position_setpoint = Vector3f(NAN, NAN, _position(2));
 	Vector2f vel_sp_xy = Vector2f(_velocity).unit_or_zero() * _mc_cruise_speed;
 	_velocity_setpoint = Vector3f(vel_sp_xy(0), vel_sp_xy(1), NAN);
+}
+
+void FlightTaskAutoMapper::_preparePositionSetpoints()
+{
+	// Simple waypoint navigation: go to xyz target, with standard limitations
+	_position_setpoint = _target;
+	_velocity_setpoint.setNaN(); // No special velocity limitations
 }
 
 void FlightTaskAutoMapper::updateParams()
@@ -162,4 +175,37 @@ bool FlightTaskAutoMapper::_highEnoughForLandingGear()
 {
 	// return true if altitude is above two meters
 	return _dist_to_ground > 2.0f;
+}
+
+float FlightTaskAutoMapper::_getLandSpeed()
+{
+	bool rc_assist_enabled = _param_mpc_land_rc_help.get();
+	bool rc_is_valid = !_sub_vehicle_status.get().rc_signal_lost;
+
+	float throttle = 0.5f;
+
+	if (rc_is_valid && rc_assist_enabled) {
+		throttle = _sub_manual_control_setpoint.get().z;
+	}
+
+	float speed = 0;
+
+	if (_dist_to_ground > _param_mpc_land_alt1.get()) {
+		speed = _constraints.speed_down;
+
+	} else {
+		const float land_speed = math::gradual(_dist_to_ground,
+						       _param_mpc_land_alt2.get(), _param_mpc_land_alt1.get(),
+						       _param_mpc_land_speed.get(), _constraints.speed_down);
+		const float head_room = _constraints.speed_down - land_speed;
+
+		speed = land_speed + 2 * (0.5f - throttle) * head_room;
+
+		// Allow minimum assisted land speed to be half of parameter
+		if (speed < land_speed * 0.5f) {
+			speed = land_speed * 0.5f;
+		}
+	}
+
+	return speed;
 }

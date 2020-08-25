@@ -42,6 +42,9 @@
 
 #include "../CDev.hpp"
 
+#include <nuttx/spi/spi.h>
+#include <px4_platform_common/spi.h>
+
 namespace device __EXPORT
 {
 
@@ -164,7 +167,7 @@ protected:
 
 	int	_transferhword(uint16_t *send, uint16_t *recv, unsigned len);
 
-	virtual bool	external() const override { return px4_spi_bus_external(get_device_bus()); }
+	bool	external() const override { return px4_spi_bus_external(get_device_bus()); }
 
 };
 

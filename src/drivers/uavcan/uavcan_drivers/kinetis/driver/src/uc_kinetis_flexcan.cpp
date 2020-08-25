@@ -693,7 +693,7 @@ void CanIface::handleRxInterrupt(uavcan::uint32_t rx_iflags, uavcan::uint64_t ut
 		frame.data[7] = rf.data.b7;
 
 		volatile uavcan::uint32_t idhit = can_->RXFIR;
-		UNUSED(idhit);
+
 		(void)can_->TIMER;
 		can_->IFLAG1 = flexcan::CAN_FIFO_NE;
 

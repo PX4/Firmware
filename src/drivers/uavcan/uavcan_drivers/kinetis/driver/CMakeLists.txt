@@ -2,6 +2,7 @@ include_directories(
     ./include
     )
 
+add_compile_options(-Wno-unused-variable)
 add_library(uavcan_kinetis_driver STATIC
     ./src/uc_kinetis_flexcan.cpp
     ./src/uc_kinetis_clock.cpp

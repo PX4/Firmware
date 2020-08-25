@@ -33,37 +33,21 @@
 
 #ifndef _uORBTest_UnitTest_hpp_
 #define _uORBTest_UnitTest_hpp_
-#include "../uORBCommon.hpp"
-#include "../uORB.h"
+
+#include <uORB/uORB.h>
+#include <uORB/topics/orb_test.h>
+#include <uORB/topics/orb_test_medium.h>
+#include <uORB/topics/orb_test_large.h>
+
+#include <px4_platform_common/defines.h>
+#include <px4_platform_common/posix.h>
 #include <px4_platform_common/time.h>
 #include <px4_platform_common/tasks.h>
+
+#include <drivers/drv_hrt.h>
+
+#include <errno.h>
 #include <unistd.h>
-
-struct orb_test {
-	int val;
-	hrt_abstime time;
-};
-ORB_DECLARE(orb_test);
-ORB_DECLARE(orb_multitest);
-
-
-struct orb_test_medium {
-	int val;
-	hrt_abstime time;
-	char junk[64];
-};
-ORB_DECLARE(orb_test_medium);
-ORB_DECLARE(orb_test_medium_multi);
-ORB_DECLARE(orb_test_medium_queue);
-ORB_DECLARE(orb_test_medium_queue_poll);
-
-struct orb_test_large {
-	int val;
-	hrt_abstime time;
-	char junk[512];
-};
-ORB_DECLARE(orb_test_large);
-
 
 namespace uORBTest
 {
@@ -125,9 +109,9 @@ template<typename S>
 int uORBTest::UnitTest::latency_test(orb_id_t T, bool print)
 {
 	test_note("---------------- LATENCY TEST ------------------");
-	S t;
+	S t{};
 	t.val = 308;
-	t.time = hrt_absolute_time();
+	t.timestamp = hrt_absolute_time();
 
 	orb_advert_t pfd0 = orb_advertise(T, &t);
 
@@ -148,14 +132,14 @@ int uORBTest::UnitTest::latency_test(orb_id_t T, bool print)
 	int pubsub_task = px4_task_spawn_cmd("uorb_latency",
 					     SCHED_DEFAULT,
 					     SCHED_PRIORITY_MAX,
-					     2000,
+					     3000,
 					     (px4_main_t)&uORBTest::UnitTest::pubsubtest_threadEntry,
 					     args);
 
 	/* give the test task some data */
 	while (!pubsubtest_passed) {
 		++t.val;
-		t.time = hrt_absolute_time();
+		t.timestamp = hrt_absolute_time();
 
 		if (PX4_OK != orb_publish(T, pfd0, &t)) {
 			return test_fail("mult. pub0 timing fail");

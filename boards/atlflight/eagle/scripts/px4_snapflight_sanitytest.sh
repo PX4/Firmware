@@ -147,7 +147,7 @@ installpx4() {
    # Reboot the target before beginning the installation
    echo -e "Rebooting the target..."
    adb reboot
-   adb wait-for-devices
+   adb wait-for-usb-device
    # Wait a bit longer after bootup, before copying binaries to the target.
    sleep 30
    adb devices
@@ -157,8 +157,8 @@ installpx4() {
    if [ $mode == 0 ]; then
       # copy default binaries
       echo -e "Copying the PX4 binaries from the eagle_default build tree..."
-      adb push $workspace/build/atlflight_eagle_qurt-default/platforms/qurt/libpx4.so /usr/share/data/adsp
-      adb push $workspace/build/atlflight_eagle_qurt-default/platforms/qurt/libpx4muorb_skel.so /usr/share/data/adsp
+      adb push $workspace/build/atlflight_eagle_qurt/platforms/qurt/libpx4.so /usr/share/data/adsp
+      adb push $workspace/build/atlflight_eagle_qurt/platforms/qurt/libpx4muorb_skel.so /usr/share/data/adsp
       adb push $workspace/build/atlflight_eagle_default/bin/px4 /home/linaro
       adb push $workspace/posix-configs/eagle/flight/px4.config /usr/share/data/adsp
       adb push $workspace/posix-configs/eagle/flight/mainapp.config /home/linaro

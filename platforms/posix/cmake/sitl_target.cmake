@@ -45,14 +45,27 @@ ExternalProject_Add(sitl_gazebo
 	BUILD_ALWAYS 1
 )
 
+ExternalProject_Add(mavsdk_tests
+	SOURCE_DIR ${PX4_SOURCE_DIR}/test/mavsdk_tests
+	CMAKE_ARGS
+		-DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+	BINARY_DIR ${PX4_BINARY_DIR}/mavsdk_tests
+	INSTALL_COMMAND ""
+	USES_TERMINAL_CONFIGURE true
+	USES_TERMINAL_BUILD true
+	EXCLUDE_FROM_ALL true
+	BUILD_ALWAYS 1
+)
+
 # create targets for each viewer/model/debugger combination
 set(viewers none jmavsim gazebo)
 set(debuggers none ide gdb lldb ddd valgrind callgrind)
 set(models none shell
-	if750a iris iris_opt_flow iris_vision iris_rplidar iris_irlock iris_obs_avoid iris_rtps solo typhoon_h480
-	plane
+	if750a iris iris_opt_flow iris_opt_flow_mockup iris_vision iris_rplidar iris_irlock iris_obs_avoid iris_rtps solo typhoon_h480
+	plane plane_cam plane_catapult
 	standard_vtol tailsitter tiltrotor
-	hippocampus rover)
+	rover boat
+	uuv_hippocampus)
 set(all_posix_vmd_make_targets)
 foreach(viewer ${viewers})
 	foreach(debugger ${debuggers})
@@ -103,4 +116,8 @@ add_custom_target(list_vmd_make_targets
 	)
 
 # vscode launch.json
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/launch.json.in ${PX4_SOURCE_DIR}/.vscode/launch.json COPYONLY)
+if(${PX4_BOARD_LABEL} MATCHES "replay")
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/launch_replay.json.in ${PX4_SOURCE_DIR}/.vscode/launch.json COPYONLY)
+else()
+	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/launch_sim.json.in ${PX4_SOURCE_DIR}/.vscode/launch.json COPYONLY)
+endif()

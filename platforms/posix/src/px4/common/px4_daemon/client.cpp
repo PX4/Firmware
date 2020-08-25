@@ -78,7 +78,7 @@ Client::process_args(const int argc, const char **argv)
 	strncpy(addr.sun_path, sock_path.c_str(), sizeof(addr.sun_path) - 1);
 
 	if (connect(_fd, (sockaddr *)&addr, sizeof(addr)) < 0) {
-		PX4_ERR("error connecting to socket");
+		PX4_ERR("error connecting to socket: %s", strerror(errno));
 		return -1;
 	}
 

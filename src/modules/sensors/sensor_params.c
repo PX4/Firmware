@@ -32,14 +32,6 @@
  ****************************************************************************/
 
 /**
- * Primary baro ID
- *
- * @category system
- * @group Sensor Calibration
- */
-PARAM_DEFINE_INT32(CAL_BARO_PRIME, 0);
-
-/**
  * Airspeed sensor compensation model for the SDP3x
  *
  * Model with Pitot
@@ -107,19 +99,6 @@ PARAM_DEFINE_FLOAT(SENS_DPRES_OFF, 0.0f);
  * @group Sensor Calibration
  */
 PARAM_DEFINE_FLOAT(SENS_DPRES_ANSC, 0);
-
-/**
- * QNH for barometer
- *
- * @min 500
- * @max 1500
- * @group Sensors
- * @unit hPa
- *
- * @reboot_required true
- *
- */
-PARAM_DEFINE_FLOAT(SENS_BARO_QNH, 1013.25f);
 
 /**
  * Board rotation
@@ -212,51 +191,3 @@ PARAM_DEFINE_FLOAT(SENS_BOARD_Z_OFF, 0.0f);
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_EN_THERMAL, -1);
-
-/**
-* Driver level cutoff frequency for gyro
-*
-* The cutoff frequency for the 2nd order butterworth filter on the gyro driver.
-* This only affects the signal sent to the controllers, not the estimators. 0 disables the filter.
-*
-* @min 0
-* @max 1000
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(IMU_GYRO_CUTOFF, 30.0f);
-
-/**
-* Gyro control data maximum publication rate
-*
-* This is the maximum rate the gyro control data (sensor_gyro_control) will be allowed to publish at.
-* Set to 0 to disable and publish at the native sensor sample rate.
-*
-* @min 0
-* @max 2000
-* @value 0 0 (no limit)
-* @value 50 50 Hz
-* @value 250 250 Hz
-* @value 400 400 Hz
-* @value 1000 1000 Hz
-* @value 2000 2000 Hz
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_INT32(IMU_GYRO_RATEMAX, 0);
-
-/**
-* Driver level cutoff frequency for accel
-*
-* The cutoff frequency for the 2nd order butterworth filter on the accel driver.
-* This only affects the signal sent to the controllers, not the estimators. 0 disables the filter.
-*
-* @min 0
-* @max 1000
-* @unit Hz
-* @reboot_required true
-* @group Sensors
-*/
-PARAM_DEFINE_FLOAT(IMU_ACCEL_CUTOFF, 30.0f);

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2014-2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2014-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,8 +43,14 @@
 #include <cstring>
 
 #include "mavlink_ftp.h"
-#include "mavlink_main.h"
 #include "mavlink_tests/mavlink_ftp_test.h"
+
+#ifndef MAVLINK_FTP_UNIT_TEST
+#include "mavlink_main.h"
+#else
+#include <v2.0/standard/mavlink.h>
+#endif
+
 
 constexpr const char MavlinkFTP::_root_dir[];
 
@@ -171,7 +177,11 @@ MavlinkFTP::_process_request(
 		if (payload->seq_number + 1 == last_payload->seq_number) {
 			// this is the same request as the one we replied to last. It means the (n)ack got lost, and the GCS
 			// resent the request
+#ifdef MAVLINK_FTP_UNIT_TEST
+			_utRcvMsgFunc(last_reply, _worker_data);
+#else
 			mavlink_msg_file_transfer_protocol_send_struct(_mavlink->get_channel(), last_reply);
+#endif
 			return;
 		}
 	}
@@ -269,6 +279,9 @@ out:
 
 		if (r_errno == EEXIST) {
 			errorCode = kErrFailFileExists;
+
+		} else if (r_errno == ENOENT && errorCode == kErrFailErrno) {
+			errorCode = kErrFileNotFound;
 		}
 
 		payload->data[0] = errorCode;
@@ -336,7 +349,7 @@ MavlinkFTP::_reply(mavlink_file_transfer_protocol_t *ftp_req)
 
 /// @brief Responds to a List command
 MavlinkFTP::ErrorCode
-MavlinkFTP::_workList(PayloadHeader *payload, bool list_hidden)
+MavlinkFTP::_workList(PayloadHeader *payload)
 {
 	strncpy(_work_buffer1, _root_dir, _work_buffer1_len);
 	strncpy(_work_buffer1 + _root_dir_len, _data_as_cstring(payload), _work_buffer1_len - _root_dir_len);
@@ -350,9 +363,7 @@ MavlinkFTP::_workList(PayloadHeader *payload, bool list_hidden)
 
 	if (dp == nullptr) {
 		PX4_WARN("File open failed %s", _work_buffer1);
-		// this is not an FTP error, abort directory by setting errno to ENOENT "No such file or directory"
-		errno = ENOENT;
-		return kErrFailErrno;
+		return kErrFileNotFound;
 	}
 
 #ifdef MAVLINK_FTP_DEBUG
@@ -428,8 +439,7 @@ MavlinkFTP::_workList(PayloadHeader *payload, bool list_hidden)
 #else
 		case DT_DIR:
 #endif
-			if ((!list_hidden && (strncmp(result->d_name, ".", 1) == 0)) ||
-			    strcmp(result->d_name, ".") == 0 || strcmp(result->d_name, "..") == 0) {
+			if (strcmp(result->d_name, ".") == 0 || strcmp(result->d_name, "..") == 0) {
 				// Don't bother sending these back
 				direntType = kDirentSkip;
 

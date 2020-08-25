@@ -34,8 +34,6 @@
 
 
 __BEGIN_DECLS
-#include <nuttx/spi/spi.h>
-#include <nuttx/i2c/i2c_master.h>
 
 /* For historical reasons (NuttX STM32 numbering) PX4 bus numbering is 1 based
  * All PX4 code, including, board code is written to assuming 1 based numbering.

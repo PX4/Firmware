@@ -53,12 +53,6 @@
 #include <output_limit/output_limit.h>
 
 /*
- hotfix: we are critically short of memory in px4io and this is the
- easiest way to reclaim about 800 bytes.
- */
-#define perf_alloc(a,b) NULL
-
-/*
  * Constants and limits.
  */
 #define PX4IO_BL_VERSION			3

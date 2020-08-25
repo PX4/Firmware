@@ -94,11 +94,14 @@ class MPU9250;
 
 #pragma pack(push, 1)
 struct ak8963_regs {
-	uint8_t st1;
-	int16_t x;
-	int16_t y;
-	int16_t z;
-	uint8_t st2;
+	uint8_t ST1;
+	uint8_t HXL;
+	uint8_t HXH;
+	uint8_t HYL;
+	uint8_t HYH;
+	uint8_t HZL;
+	uint8_t HZH;
+	uint8_t ST2;
 };
 #pragma pack(pop)
 
@@ -115,10 +118,7 @@ public:
 	MPU9250_mag(MPU9250 *parent, device::Device *interface, enum Rotation rotation);
 	~MPU9250_mag();
 
-	void set_passthrough(uint8_t reg, uint8_t size, uint8_t *out = NULL);
-	void passthrough_read(uint8_t reg, uint8_t *buf, uint8_t size);
-	void passthrough_write(uint8_t reg, uint8_t val);
-	void read_block(uint8_t reg, uint8_t *val, uint8_t count);
+	void set_passthrough(uint8_t reg, uint8_t size, uint8_t *out = nullptr);
 
 	int ak8963_reset();
 	int ak8963_setup();
@@ -134,10 +134,13 @@ protected:
 	friend class MPU9250;
 
 	void measure();
-	void _measure(hrt_abstime timestamp_sample, ak8963_regs data);
+	bool _measure(const hrt_abstime &timestamp_sample, const ak8963_regs &data);
 
 	uint8_t read_reg(unsigned reg);
 	void write_reg(unsigned reg, uint8_t value);
+	void write_imu_reg_verified(int reg, uint8_t val, uint8_t mask);
+	void read_reg_through_mpu9250(uint8_t reg, uint8_t *val);
+	void write_reg_through_mpu9250(uint8_t reg, uint8_t val);
 
 	bool is_passthrough() { return _interface == nullptr; }
 

@@ -114,50 +114,6 @@ Integrator::put(const hrt_abstime &timestamp, const matrix::Vector3f &val, matri
 	}
 }
 
-bool
-Integrator::put_with_interval(unsigned interval_us, matrix::Vector3f &val, matrix::Vector3f &integral,
-			      uint32_t &integral_dt)
-{
-	if (_last_integration_time == 0) {
-		/* this is the first item in the integrator */
-		hrt_abstime now = hrt_absolute_time();
-		_last_integration_time = now;
-		_last_reset_time = now;
-		_last_val = val;
-
-		return false;
-	}
-
-	// Create the timestamp artifically.
-	const hrt_abstime timestamp = _last_integration_time + interval_us;
-
-	return put(timestamp, val, integral, integral_dt);
-}
-
-matrix::Vector3f
-Integrator::get(bool reset, uint32_t &integral_dt)
-{
-	matrix::Vector3f val = _alpha;
-
-	if (reset) {
-		_reset(integral_dt);
-	}
-
-	return val;
-}
-
-matrix::Vector3f
-Integrator::get_and_filtered(bool reset, uint32_t &integral_dt, matrix::Vector3f &filtered_val)
-{
-	// Do the usual get with reset first but don't return yet.
-	const matrix::Vector3f ret_integral = get(reset, integral_dt);
-
-	// Because we need both the integral and the integral_dt.
-	filtered_val = ret_integral * 1000000 / integral_dt;
-
-	return ret_integral;
-}
-
 void
 Integrator::_reset(uint32_t &integral_dt)
 {

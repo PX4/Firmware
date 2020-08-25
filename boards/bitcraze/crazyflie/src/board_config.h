@@ -121,9 +121,9 @@
 #define PX4_FLOW_BUS_CS_GPIO					{ GPIO_SPI1_CS0_EXT, GPIO_SPI1_CS1_EXT, GPIO_SPI1_CS2_EXT }
 
 /* SPI1 Devices */
-#define PX4_SPIDEV_EXPANSION_1      			PX4_MK_SPI_SEL(PX4_SPI_BUS_EXPANSION, 0)		// SD CARD BREAKOUT
-#define PX4_SPIDEV_EXPANSION_2      			PX4_MK_SPI_SEL(PX4_SPI_BUS_EXPANSION, 1) 		// OPTICAL FLOW BREAKOUT
-#define PX4_SPIDEV_EXPANSION_3      			PX4_MK_SPI_SEL(PX4_SPI_BUS_EXPANSION, 2)
+#define PX4_SPIDEV_EXPANSION_1      			SPIDEV_MMCSD(0)		// SD CARD BREAKOUT
+#define PX4_SPIDEV_EXPANSION_2      			PX4_MK_SPI_SEL(0, DRV_FLOW_DEVTYPE_PMW3901) 		// OPTICAL FLOW BREAKOUT
+#define PX4_SPIDEV_EXPANSION_3      			PX4_MK_SPI_SEL(0, DRV_DEVTYPE_UNUSED)
 
 #define PX4_FLOW_BUS_FIRST_CS  					PX4_SPIDEV_EXPANSION_1
 #define PX4_FLOW_BUS_LAST_CS  					PX4_SPIDEV_EXPANSION_3
@@ -161,28 +161,9 @@
 #define GPIO_TONE_ALARM_NEG (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN3)
 
 /* PWM
-*
-* Four PWM motor outputs are configured.
-*
-* Pins:
-*
-* CH1 : PA1  : TIM2_CH2
-* CH2 : PB11 : TIM2_CH4
-* CH3 : PA15 : TIM2_CH1
-* CH4 : PB9  : TIM4_CH4
 */
 
-#define GPIO_TIM2_CH2OUT	GPIO_TIM2_CH2OUT_1
-#define GPIO_TIM2_CH4OUT	GPIO_TIM2_CH4OUT_2
-#define GPIO_TIM2_CH1OUT	GPIO_TIM2_CH1OUT_2
-#define GPIO_TIM4_CH4OUT	GPIO_TIM4_CH4OUT_1
 #define DIRECT_PWM_OUTPUT_CHANNELS	4
-
-#define GPIO_TIM2_CH2IN		GPIO_TIM2_CH2IN_1
-#define GPIO_TIM2_CH4IN		GPIO_TIM2_CH4IN_2
-#define GPIO_TIM2_CH1IN		GPIO_TIM2_CH1IN_2
-#define GPIO_TIM4_CH4IN		GPIO_TIM4_CH4IN_1
-
 
 /* This board overrides the defaults by providing
  * PX4_PWM_ALTERNATE_RANGES and a replacement set of
@@ -279,8 +260,6 @@ extern void stm32_spiinitialize(void);
  ************************************************************************************/
 
 extern int stm32_spi_bus_initialize(void);
-
-void board_spi_reset(int ms);
 
 
 #include <px4_platform_common/board_common.h>

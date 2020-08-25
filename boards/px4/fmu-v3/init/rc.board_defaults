@@ -4,7 +4,28 @@
 #------------------------------------------------------------------------------
 
 
+#
+# Bootloader upgrade
+#
+set BL_FILE /etc/extras/px4fmuv3_bl.bin
+if [ -f $BL_FILE ]
+then
+	if param compare SYS_BL_UPDATE 1
+	then
+		param set SYS_BL_UPDATE 0
+		param save
+		echo "BL update..." >> $LOG_FILE
+		bl_update $BL_FILE
+		echo "BL update done" >> $LOG_FILE
+		reboot
+	fi
+fi
+unset BL_FILE
+
 if [ $AUTOCNF = yes ]
 then
+
+	# to minimize cpu usage on older boards limit inner loop to 400 Hz
+	param set IMU_GYRO_RATEMAX 400
 
 fi

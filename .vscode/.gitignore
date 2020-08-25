@@ -7,3 +7,5 @@ launch.json
 
 # C/C++ extension does some local caching in this folder
 ipch/
+
+browse.vc.db*

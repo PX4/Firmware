@@ -43,15 +43,19 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Publication.hpp>
+#include <uORB/PublicationQueued.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/safety.h>
+#include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/led_control.h>
+#include <uORB/topics/tune_control.h>
 
 class SafetyButton : public ModuleBase<SafetyButton>, public px4::ScheduledWorkItem
 {
 public:
-	SafetyButton() : ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default) {}
-	virtual ~SafetyButton();
+	SafetyButton();
+	~SafetyButton() override;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -62,22 +66,34 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	void Run() override;
+	/** @see ModuleBase::print_status() */
+	int print_status() override;
 
 	int Start();
 
 private:
+	void Run() override;
 
 	void CheckButton();
 	void FlashButton();
+	void CheckPairingRequest(bool button_pressed);
 
 
 	uORB::Subscription		_armed_sub{ORB_ID(actuator_armed)};
 	uORB::Publication<safety_s>	_to_safety{ORB_ID(safety)};
+	uORB::PublicationQueued<vehicle_command_s>	_to_command{ORB_ID(vehicle_command)};
+	uORB::PublicationQueued<led_control_s> _to_led_control{ORB_ID(led_control)};
+	uORB::Publication<tune_control_s> _to_tune_control{ORB_ID(tune_control)};
+
 
 	uint8_t				_button_counter{0};
 	uint8_t				_blink_counter{0};
-	bool				_safety_off{false};		///< State of the safety button from the subscribed safety topic
+	bool				_safety_disabled{false};	///< circuit breaker to disable the safety button
 	bool				_safety_btn_off{false};		///< State of the safety button read from the HW button
+	bool				_safety_btn_prev_sate{false};	///< Previous state of the HW button
+
+	// Pairing request
+	hrt_abstime		_pairing_start{0};
+	int			_pairing_button_counter{0};
 
 };

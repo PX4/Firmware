@@ -42,6 +42,7 @@
 #include <lib/cdev/CDev.hpp>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <systemlib/err.h>
 #include <uORB/uORB.h>
@@ -77,24 +78,26 @@ static constexpr uint8_t TEMP_OUT_L = 0x2B;
 static constexpr uint8_t TEMP_OUT_H = 0x2C;
 
 /* interface factories */
-extern device::Device *LPS22HB_SPI_interface(int bus);
-extern device::Device *LPS22HB_I2C_interface(int bus);
-typedef device::Device *(*LPS22HB_constructor)(int);
+extern device::Device *LPS22HB_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *LPS22HB_I2C_interface(int bus, int bus_frequency);
 
-class LPS22HB : public cdev::CDev, public px4::ScheduledWorkItem
+class LPS22HB : public cdev::CDev, public I2CSPIDriver<LPS22HB>
 {
 public:
-	LPS22HB(device::Device *interface, const char *path);
+	LPS22HB(I2CSPIBusOption bus_option, int bus, device::Device *interface);
 	virtual ~LPS22HB();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	virtual int		init();
 
 	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	void			print_status();
+
+	void			RunImpl();
 
 protected:
 	device::Device			*_interface;
@@ -123,29 +126,10 @@ private:
 	void			start();
 
 	/**
-	 * Stop the automatic measurement state machine.
-	 */
-	void			stop();
-
-	/**
 	 * Reset the device
 	 */
 	int			reset();
 
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 *
-	 * This is the heart of the measurement state machine.  This function
-	 * alternately starts a measurement, or collects the data from the
-	 * previous measurement.
-	 *
-	 * When the interval between measurements is greater than the minimum
-	 * measurement interval, a gap is inserted between collection
-	 * and measurement to provide the most recent measurement possible
-	 * at the next interval.
-	 */
-	void			Run() override;
 
 	/**
 	 * Write a register.

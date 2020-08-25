@@ -40,6 +40,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 // TODO: move to a central header
 static constexpr uint8_t Bit0 = (1 << 0);
 static constexpr uint8_t Bit1 = (1 << 1);
@@ -52,11 +54,13 @@ static constexpr uint8_t Bit7 = (1 << 7);
 
 namespace InvenSense_ICM20602
 {
-static constexpr uint32_t SPI_SPEED = 10 * 1000 *
-				      1000; // 10MHz SPI serial interface for communicating with all registers
+static constexpr uint32_t SPI_SPEED = 10 * 1000 * 1000; // 10MHz SPI serial interface
 static constexpr uint8_t DIR_READ = 0x80;
 
 static constexpr uint8_t WHOAMI = 0x12;
+
+static constexpr float TEMPERATURE_SENSITIVITY = 326.8f; // LSB/C
+static constexpr float ROOM_TEMPERATURE_OFFSET = 25.f; // C
 
 enum class Register : uint8_t {
 	CONFIG        = 0x1A,
@@ -66,16 +70,18 @@ enum class Register : uint8_t {
 
 	FIFO_EN       = 0x23,
 
-	INT_STATUS    = 0x3A,
-
-	INT_PIN_CFG   = 0x37,
 	INT_ENABLE    = 0x38,
 
 	TEMP_OUT_H    = 0x41,
 	TEMP_OUT_L    = 0x42,
 
+	FIFO_WM_TH1   = 0x60,
+	FIFO_WM_TH2   = 0x61,
+
 	USER_CTRL     = 0x6A,
 	PWR_MGMT_1    = 0x6B,
+
+	I2C_IF        = 0x70,
 
 	FIFO_COUNTH   = 0x72,
 	FIFO_COUNTL   = 0x73,
@@ -85,7 +91,6 @@ enum class Register : uint8_t {
 
 // CONFIG
 enum CONFIG_BIT : uint8_t {
-	FIFO_WM   = Bit7,
 	FIFO_MODE = Bit6, // when the FIFO is full, additional writes will not be written to FIFO
 
 	DLPF_CFG_BYPASS_DLPF_8KHZ = 7, // Rate 8 kHz [2:0]
@@ -100,7 +105,7 @@ enum GYRO_CONFIG_BIT : uint8_t {
 	FS_SEL_2000_DPS	= Bit4 | Bit3, // 0b11000
 
 	// FCHOICE_B [1:0]
-	FCHOICE_B_8KHZ_BYPASS_DLPF = Bit1 | Bit0, // 0b10 - 3-dB BW: 3281 Noise BW (Hz): 3451.0   8 kHz
+	FCHOICE_B_8KHZ_BYPASS_DLPF = Bit1 | Bit0, // 0b00 - 3-dB BW: 3281 Noise BW (Hz): 3451.0   8 kHz
 };
 
 // ACCEL_CONFIG
@@ -129,24 +134,26 @@ enum INT_ENABLE_BIT : uint8_t {
 	DATA_RDY_INT_EN = Bit0
 };
 
-// INT_STATUS
-enum INT_STATUS_BIT : uint8_t {
-	FIFO_OFLOW_INT = Bit4,
-	DATA_RDY_INT   = Bit0,
-};
-
 // USER_CTRL
 enum USER_CTRL_BIT : uint8_t {
-	FIFO_EN  = Bit6,
-	FIFO_RST = Bit2,
+	FIFO_EN      = Bit6,
+	FIFO_RST     = Bit2,
+	SIG_COND_RST = Bit0,
 };
 
 // PWR_MGMT_1
 enum PWR_MGMT_1_BIT : uint8_t {
 	DEVICE_RESET = Bit7,
+	SLEEP        = Bit6,
+
 	CLKSEL_2     = Bit2,
 	CLKSEL_1     = Bit1,
 	CLKSEL_0     = Bit0,
+};
+
+// I2C_IF
+enum I2C_IF_BIT : uint8_t {
+	I2C_IF_DIS = Bit6, // 1 – Disable I2C Slave module and put the serial interface in SPI mode only.
 };
 
 
@@ -171,7 +178,6 @@ struct DATA {
 	uint8_t GYRO_ZOUT_H;
 	uint8_t GYRO_ZOUT_L;
 };
-static_assert(sizeof(DATA) == 14);
 }
 
 } // namespace InvenSense_ICM20602

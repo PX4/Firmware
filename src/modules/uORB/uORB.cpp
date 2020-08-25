@@ -97,11 +97,6 @@ int  orb_check(int handle, bool *updated)
 	return uORB::Manager::get_instance()->orb_check(handle, updated);
 }
 
-int  orb_stat(int handle, uint64_t *time)
-{
-	return uORB::Manager::get_instance()->orb_stat(handle, time);
-}
-
 int  orb_exists(const struct orb_metadata *meta, int instance)
 {
 	return uORB::Manager::get_instance()->orb_exists(meta, instance);

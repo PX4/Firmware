@@ -33,6 +33,7 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/console_buffer.h>
+#include "logged_topics.h"
 #include "logger.h"
 #include "messages.h"
 #include "watchdog.h"
@@ -45,9 +46,10 @@
 #include <time.h>
 
 #include <uORB/PublicationQueued.hpp>
-#include <uORB/uORBTopics.h>
+#include <uORB/topics/uORBTopics.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_command_ack.h>
+#include <uORB/topics/battery_status.h>
 
 #include <drivers/drv_hrt.h>
 #include <mathlib/math/Limits.hpp>
@@ -174,6 +176,8 @@ int Logger::task_spawn(int argc, char *argv[])
 int Logger::print_status()
 {
 	PX4_INFO("Running in mode: %s", configured_backend_mode());
+	PX4_INFO("Number of subscriptions: %i (%i bytes)", _num_subscriptions,
+		 (int)(_num_subscriptions * sizeof(LoggerSubscription)));
 
 	bool is_logging = false;
 
@@ -234,8 +238,6 @@ Logger *Logger::instantiate(int argc, char *argv[])
 {
 	uint32_t log_interval = 3500;
 	int log_buffer_size = 12 * 1024;
-	bool log_on_start = false;
-	bool log_until_shutdown = false;
 	Logger::LogMode log_mode = Logger::LogMode::while_armed;
 	bool error_flag = false;
 	bool log_name_timestamp = false;
@@ -264,7 +266,16 @@ Logger *Logger::instantiate(int argc, char *argv[])
 			break;
 
 		case 'e':
-			log_on_start = true;
+			if (log_mode != Logger::LogMode::boot_until_shutdown) {
+				//setting boot_until_shutdown can't lower mode to boot_until_disarm
+				log_mode = Logger::LogMode::boot_until_disarm;
+
+			}
+
+			break;
+
+		case 'f':
+			log_mode = Logger::LogMode::boot_until_shutdown;
 			break;
 
 		case 'b': {
@@ -282,10 +293,6 @@ Logger *Logger::instantiate(int argc, char *argv[])
 			log_name_timestamp = true;
 			break;
 
-		case 'f':
-			log_on_start = true;
-			log_until_shutdown = true;
-			break;
 
 		case 'm':
 			if (!strcmp(myoptarg, "file")) {
@@ -316,15 +323,6 @@ Logger *Logger::instantiate(int argc, char *argv[])
 			PX4_WARN("unrecognized flag");
 			error_flag = true;
 			break;
-		}
-	}
-
-	if (log_on_start) {
-		if (log_until_shutdown) {
-			log_mode = Logger::LogMode::boot_until_shutdown;
-
-		} else {
-			log_mode = Logger::LogMode::boot_until_disarm;
 		}
 	}
 
@@ -359,19 +357,14 @@ Logger *Logger::instantiate(int argc, char *argv[])
 	return logger;
 }
 
-
 Logger::Logger(LogWriter::Backend backend, size_t buffer_size, uint32_t log_interval, const char *poll_topic_name,
 	       LogMode log_mode, bool log_name_timestamp) :
+	ModuleParams(nullptr),
 	_log_mode(log_mode),
 	_log_name_timestamp(log_name_timestamp),
 	_writer(backend, buffer_size),
 	_log_interval(log_interval)
 {
-	_log_utc_offset = param_find("SDLOG_UTC_OFFSET");
-	_log_dirs_max = param_find("SDLOG_DIRS_MAX");
-	_sdlog_profile_handle = param_find("SDLOG_PROFILE");
-	_mission_log = param_find("SDLOG_MISSION");
-
 	if (poll_topic_name) {
 		const orb_metadata *const *topics = orb_get_topics();
 
@@ -394,8 +387,20 @@ Logger::~Logger()
 		free(_replay_file_name);
 	}
 
-	if (_msg_buffer) {
-		delete[](_msg_buffer);
+	delete[](_msg_buffer);
+	delete[](_subscriptions);
+}
+
+void Logger::update_params()
+{
+	// check for parameter updates
+	if (_parameter_update_sub.updated()) {
+		// clear update
+		parameter_update_s pupdate;
+		_parameter_update_sub.copy(&pupdate);
+
+		// update parameters from storage
+		ModuleParams::updateParams();
 	}
 }
 
@@ -404,78 +409,6 @@ bool Logger::request_stop_static()
 	if (is_running()) {
 		get_instance()->request_stop();
 		return false;
-	}
-
-	return true;
-}
-
-LoggerSubscription *Logger::add_topic(const orb_metadata *topic, uint32_t interval_ms, uint8_t instance)
-{
-	LoggerSubscription *subscription = nullptr;
-	size_t fields_len = strlen(topic->o_fields) + strlen(topic->o_name) + 1; //1 for ':'
-
-	if (fields_len > sizeof(ulog_message_format_s::format)) {
-		PX4_WARN("skip topic %s, format string is too large: %zu (max is %zu)", topic->o_name, fields_len,
-			 sizeof(ulog_message_format_s::format));
-
-		return nullptr;
-	}
-
-	if (_subscriptions.push_back(LoggerSubscription{topic, interval_ms, instance})) {
-		subscription = &_subscriptions[_subscriptions.size() - 1];
-
-	} else {
-		PX4_WARN("Too many subscriptions, failed to add: %s %d", topic->o_name, instance);
-	}
-
-	return subscription;
-}
-
-bool Logger::add_topic(const char *name, uint32_t interval_ms, uint8_t instance)
-{
-	// if we poll on a topic, we don't use the interval and let the polled topic define the maximum interval
-	if (_polling_topic_meta) {
-		interval_ms = 0;
-	}
-
-	const orb_metadata *const *topics = orb_get_topics();
-	LoggerSubscription *subscription = nullptr;
-
-	for (size_t i = 0; i < orb_topics_count(); i++) {
-		if (strcmp(name, topics[i]->o_name) == 0) {
-			bool already_added = false;
-
-			// check if already added: if so, only update the interval
-			for (size_t j = 0; j < _subscriptions.size(); ++j) {
-				if ((_subscriptions[j].get_topic() == topics[i]) && (_subscriptions[j].get_instance() == instance)) {
-
-					PX4_DEBUG("logging topic %s(%d), interval: %i, already added, only setting interval",
-						  topics[i]->o_name, instance, interval_ms);
-
-					_subscriptions[j].set_interval_ms(interval_ms);
-
-					subscription = &_subscriptions[j];
-					already_added = true;
-					break;
-				}
-			}
-
-			if (!already_added) {
-				subscription = add_topic(topics[i], interval_ms, instance);
-				PX4_DEBUG("logging topic: %s(%d), interval: %i", topics[i]->o_name, instance, interval_ms);
-				break;
-			}
-		}
-	}
-
-	return (subscription != nullptr);
-}
-
-bool Logger::add_topic_multi(const char *name, uint32_t interval_ms)
-{
-	// add all possible instances
-	for (uint8_t instance = 0; instance < ORB_MULTI_MAX_INSTANCES; instance++) {
-		add_topic(name, interval_ms, instance);
 	}
 
 	return true;
@@ -506,213 +439,6 @@ bool Logger::copy_if_updated(int sub_idx, void *buffer, bool try_to_subscribe)
 	return updated;
 }
 
-void Logger::add_default_topics()
-{
-	add_topic("actuator_controls_0", 100);
-	add_topic("actuator_controls_1", 100);
-	add_topic("airspeed", 200);
-	add_topic("airspeed_validated", 200);
-	add_topic("camera_capture");
-	add_topic("camera_trigger");
-	add_topic("camera_trigger_secondary");
-	add_topic("cpuload");
-	add_topic("estimator_innovations", 200);
-	add_topic("estimator_innovation_variances", 200);
-	add_topic("estimator_innovation_test_ratios", 200);
-	add_topic("ekf_gps_drift");
-	add_topic("esc_status", 250);
-	add_topic("estimator_status", 200);
-	add_topic("home_position");
-	add_topic("input_rc", 200);
-	add_topic("manual_control_setpoint", 200);
-	add_topic("mission");
-	add_topic("mission_result");
-	add_topic("optical_flow", 50);
-	add_topic("position_controller_status", 500);
-	add_topic("position_setpoint_triplet", 200);
-	add_topic("radio_status");
-	add_topic("rate_ctrl_status", 200);
-	add_topic("sensor_combined", 100);
-	add_topic("sensor_preflight", 200);
-	add_topic("system_power", 500);
-	add_topic("tecs_status", 200);
-	add_topic("trajectory_setpoint", 200);
-	add_topic("vehicle_air_data", 200);
-	add_topic("vehicle_angular_velocity", 20);
-	add_topic("vehicle_attitude", 50);
-	add_topic("vehicle_attitude_setpoint", 100);
-	add_topic("vehicle_command");
-	add_topic("vehicle_global_position", 200);
-	add_topic("vehicle_land_detected");
-	add_topic("vehicle_local_position", 100);
-	add_topic("vehicle_local_position_setpoint", 100);
-	add_topic("vehicle_magnetometer", 200);
-	add_topic("vehicle_rates_setpoint", 20);
-	add_topic("vehicle_status", 200);
-	add_topic("vehicle_status_flags");
-	add_topic("vtol_vehicle_status", 200);
-	add_topic("uwb_report");
-	add_topic("landing_target_pose");
-
-	add_topic_multi("actuator_outputs", 100);
-	add_topic_multi("battery_status", 500);
-	add_topic_multi("distance_sensor", 100);
-	add_topic_multi("sensor_accel_status", 1000);
-	add_topic_multi("sensor_gyro_status", 1000);
-	add_topic_multi("telemetry_status");
-	add_topic_multi("vehicle_gps_position");
-	add_topic_multi("wind_estimate", 200);
-
-#ifdef CONFIG_ARCH_BOARD_PX4_SITL
-
-	add_topic("actuator_controls_virtual_fw");
-	add_topic("actuator_controls_virtual_mc");
-	add_topic("fw_virtual_attitude_setpoint");
-	add_topic("mc_virtual_attitude_setpoint");
-	add_topic("offboard_control_mode");
-	add_topic("position_controller_status");
-	add_topic("time_offset");
-	add_topic("vehicle_angular_velocity", 10);
-	add_topic("vehicle_attitude_groundtruth", 10);
-	add_topic("vehicle_global_position_groundtruth", 100);
-	add_topic("vehicle_local_position_groundtruth", 100);
-	add_topic("vehicle_roi");
-
-	add_topic_multi("multirotor_motor_limits");
-
-#endif /* CONFIG_ARCH_BOARD_PX4_SITL */
-}
-
-void Logger::add_high_rate_topics()
-{
-	// maximum rate to analyze fast maneuvers (e.g. for racing)
-	add_topic("actuator_controls_0");
-	add_topic("actuator_outputs");
-	add_topic("manual_control_setpoint");
-	add_topic("rate_ctrl_status");
-	add_topic("sensor_combined");
-	add_topic("vehicle_angular_velocity");
-	add_topic("vehicle_attitude");
-	add_topic("vehicle_attitude_setpoint");
-	add_topic("vehicle_rates_setpoint");
-}
-
-void Logger::add_debug_topics()
-{
-	add_topic("debug_array");
-	add_topic("debug_key_value");
-	add_topic("debug_value");
-	add_topic("debug_vect");
-}
-
-void Logger::add_estimator_replay_topics()
-{
-	// for estimator replay (need to be at full rate)
-	add_topic("ekf2_timestamps");
-	add_topic("ekf_gps_position");
-
-	// current EKF2 subscriptions
-	add_topic("airspeed");
-	add_topic("optical_flow");
-	add_topic("sensor_combined");
-	add_topic("sensor_selection");
-	add_topic("vehicle_air_data");
-	add_topic("vehicle_land_detected");
-	add_topic("vehicle_magnetometer");
-	add_topic("vehicle_status");
-	add_topic("vehicle_visual_odometry");
-	add_topic("vehicle_visual_odometry_aligned");
-	add_topic_multi("distance_sensor");
-	add_topic_multi("vehicle_gps_position");
-}
-
-void Logger::add_thermal_calibration_topics()
-{
-	add_topic_multi("sensor_accel", 100);
-	add_topic_multi("sensor_baro", 100);
-	add_topic_multi("sensor_gyro", 100);
-}
-
-void Logger::add_sensor_comparison_topics()
-{
-	add_topic_multi("sensor_accel", 100);
-	add_topic_multi("sensor_baro", 100);
-	add_topic_multi("sensor_gyro", 100);
-	add_topic_multi("sensor_mag", 100);
-}
-
-void Logger::add_vision_and_avoidance_topics()
-{
-	add_topic("cellular_status", 200);
-	add_topic("collision_constraints");
-	add_topic("obstacle_distance_fused");
-	add_topic("onboard_computer_status", 200);
-	add_topic("vehicle_mocap_odometry", 30);
-	add_topic("vehicle_trajectory_waypoint", 200);
-	add_topic("vehicle_trajectory_waypoint_desired", 200);
-	add_topic("vehicle_visual_odometry", 30);
-}
-
-void Logger::add_system_identification_topics()
-{
-	// for system id need to log imu and controls at full rate
-	add_topic("actuator_controls_0");
-	add_topic("actuator_controls_1");
-	add_topic("sensor_combined");
-}
-
-int Logger::add_topics_from_file(const char *fname)
-{
-	int ntopics = 0;
-
-	/* open the topic list file */
-	FILE *fp = fopen(fname, "r");
-
-	if (fp == nullptr) {
-		return -1;
-	}
-
-	/* call add_topic for each topic line in the file */
-	for (;;) {
-		/* get a line, bail on error/EOF */
-		char line[80];
-		line[0] = '\0';
-
-		if (fgets(line, sizeof(line), fp) == nullptr) {
-			break;
-		}
-
-		/* skip comment lines */
-		if ((strlen(line) < 2) || (line[0] == '#')) {
-			continue;
-		}
-
-		// read line with format: <topic_name>[, <interval>]
-		char topic_name[80];
-		uint32_t interval_ms = 0;
-		int nfields = sscanf(line, "%s %u", topic_name, &interval_ms);
-
-		if (nfields > 0) {
-			int name_len = strlen(topic_name);
-
-			if (name_len > 0 && topic_name[name_len - 1] == ',') {
-				topic_name[name_len - 1] = '\0';
-			}
-
-			/* add topic with specified interval_ms */
-			if (add_topic(topic_name, interval_ms)) {
-				ntopics++;
-
-			} else {
-				PX4_ERR("Failed to add topic %s", topic_name);
-			}
-		}
-	}
-
-	fclose(fp);
-	return ntopics;
-}
-
 const char *Logger::configured_backend_mode() const
 {
 	switch (_writer.backend()) {
@@ -726,81 +452,65 @@ const char *Logger::configured_backend_mode() const
 	}
 }
 
-void Logger::initialize_mission_topics(MissionLogType type)
-{
-	if (type == MissionLogType::Complete) {
-		add_mission_topic("camera_capture");
-		add_mission_topic("mission_result");
-		add_mission_topic("vehicle_global_position", 1000);
-		add_mission_topic("vehicle_status", 1000);
-
-	} else if (type == MissionLogType::Geotagging) {
-		add_mission_topic("camera_capture");
-	}
-}
-
-void Logger::initialize_configured_topics()
+bool Logger::initialize_topics()
 {
 	// get the logging profile
-	SDLogProfileMask sdlog_profile = SDLogProfileMask::DEFAULT;
-
-	if (_sdlog_profile_handle != PARAM_INVALID) {
-		param_get(_sdlog_profile_handle, (int32_t *)&sdlog_profile);
-	}
+	SDLogProfileMask sdlog_profile = (SDLogProfileMask)_param_sdlog_profile.get();
 
 	if ((int32_t)sdlog_profile == 0) {
 		PX4_WARN("No logging profile selected. Using default set");
 		sdlog_profile = SDLogProfileMask::DEFAULT;
 	}
 
-	// load appropriate topics for profile
-	// the order matters: if several profiles add the same topic, the logging rate of the last one will be used
-	if (sdlog_profile & SDLogProfileMask::DEFAULT) {
-		add_default_topics();
+	LoggedTopics logged_topics;
+
+	// initialize mission topics
+	logged_topics.initialize_mission_topics((MissionLogType)_param_sdlog_mission.get());
+	_num_mission_subs = logged_topics.numMissionSubscriptions();
+
+	if (_num_mission_subs > 0) {
+		if (_num_mission_subs >= MAX_MISSION_TOPICS_NUM) {
+			PX4_ERR("Max num mission topics exceeded (%i)", _num_mission_subs);
+			_num_mission_subs = MAX_MISSION_TOPICS_NUM;
+		}
+
+		for (int i = 0; i < _num_mission_subs; ++i) {
+			_mission_subscriptions[i].min_delta_ms = logged_topics.subscriptions().sub[i].interval_ms;
+			_mission_subscriptions[i].next_write_time = 0;
+		}
+
+		int mkdir_ret = mkdir(LOG_ROOT[(int)LogType::Mission], S_IRWXU | S_IRWXG | S_IRWXO);
+
+		if (mkdir_ret != 0 && errno != EEXIST) {
+			PX4_ERR("failed creating log root dir: %s (%i)", LOG_ROOT[(int)LogType::Mission], errno);
+		}
 	}
 
-	if (sdlog_profile & SDLogProfileMask::ESTIMATOR_REPLAY) {
-		add_estimator_replay_topics();
+	if (!logged_topics.initialize_logged_topics(sdlog_profile)) {
+		return false;
 	}
 
-	if (sdlog_profile & SDLogProfileMask::THERMAL_CALIBRATION) {
-		add_thermal_calibration_topics();
+	delete[](_subscriptions);
+	_subscriptions = nullptr;
+
+	if (logged_topics.subscriptions().count > 0) {
+		_subscriptions = new LoggerSubscription[logged_topics.subscriptions().count];
+
+		if (!_subscriptions) {
+			PX4_ERR("alloc failed");
+			return false;
+		}
+
+		for (int i = 0; i < logged_topics.subscriptions().count; ++i) {
+			const LoggedTopics::RequestedSubscription &sub = logged_topics.subscriptions().sub[i];
+			// if we poll on a topic, we don't use the interval and let the polled topic define the maximum interval
+			uint16_t interval_ms = _polling_topic_meta ? 0 : sub.interval_ms;
+			_subscriptions[i] = LoggerSubscription(sub.id, interval_ms, sub.instance);
+		}
 	}
 
-	if (sdlog_profile & SDLogProfileMask::SYSTEM_IDENTIFICATION) {
-		add_system_identification_topics();
-	}
-
-	if (sdlog_profile & SDLogProfileMask::HIGH_RATE) {
-		add_high_rate_topics();
-	}
-
-	if (sdlog_profile & SDLogProfileMask::DEBUG_TOPICS) {
-		add_debug_topics();
-	}
-
-	if (sdlog_profile & SDLogProfileMask::SENSOR_COMPARISON) {
-		add_sensor_comparison_topics();
-	}
-
-	if (sdlog_profile & SDLogProfileMask::VISION_AND_AVOIDANCE) {
-		add_vision_and_avoidance_topics();
-	}
-}
-
-
-void Logger::add_mission_topic(const char *name, uint32_t interval_ms)
-{
-	if (_num_mission_subs >= MAX_MISSION_TOPICS_NUM) {
-		PX4_ERR("Max num mission topics exceeded");
-		return;
-	}
-
-	if (add_topic(name, interval_ms)) {
-		_mission_subscriptions[_num_mission_subs].min_delta_ms = interval_ms;
-		_mission_subscriptions[_num_mission_subs].next_write_time = 0;
-		++_num_mission_subs;
-	}
+	_num_subscriptions = logged_topics.subscriptions().count;
+	return true;
 }
 
 void Logger::run()
@@ -821,13 +531,7 @@ void Logger::run()
 			}
 		}
 
-		int32_t max_log_dirs_to_keep = 0;
-
-		if (_log_dirs_max != PARAM_INVALID) {
-			param_get(_log_dirs_max, &max_log_dirs_to_keep);
-		}
-
-		if (util::check_free_space(LOG_ROOT[(int)LogType::Full], max_log_dirs_to_keep, _mavlink_log_pub,
+		if (util::check_free_space(LOG_ROOT[(int)LogType::Full], _param_sdlog_dirs_max.get(), _mavlink_log_pub,
 					   _file_name[(int)LogType::Full].sess_dir_index) == 1) {
 			return;
 		}
@@ -835,38 +539,17 @@ void Logger::run()
 
 	uORB::Subscription parameter_update_sub(ORB_ID(parameter_update));
 
-	// mission log topics if enabled (must be added first)
-	int32_t mission_log_mode = 0;
-
-	if (_mission_log != PARAM_INVALID) {
-		param_get(_mission_log, &mission_log_mode);
-		initialize_mission_topics((MissionLogType)mission_log_mode);
-
-		if (_num_mission_subs > 0) {
-			int mkdir_ret = mkdir(LOG_ROOT[(int)LogType::Mission], S_IRWXU | S_IRWXG | S_IRWXO);
-
-			if (mkdir_ret != 0 && errno != EEXIST) {
-				PX4_ERR("failed creating log root dir: %s (%i)", LOG_ROOT[(int)LogType::Mission], errno);
-			}
-		}
-	}
-
-	int ntopics = add_topics_from_file(PX4_STORAGEDIR "/etc/logging/logger_topics.txt");
-
-	if (ntopics > 0) {
-		PX4_INFO("logging %d topics from logger_topics.txt", ntopics);
-
-	} else {
-		initialize_configured_topics();
+	if (!initialize_topics()) {
+		return;
 	}
 
 	//all topics added. Get required message buffer size
 	int max_msg_size = 0;
 
-	for (const auto &subscription : _subscriptions) {
+	for (int sub = 0; sub < _num_subscriptions; ++sub) {
 		//use o_size, because that's what orb_copy will use
-		if (subscription.get_topic()->o_size > max_msg_size) {
-			max_msg_size = subscription.get_topic()->o_size;
+		if (_subscriptions[sub].get_topic()->o_size > max_msg_size) {
+			max_msg_size = _subscriptions[sub].get_topic()->o_size;
 		}
 	}
 
@@ -906,7 +589,9 @@ void Logger::run()
 
 	px4_register_shutdown_hook(&Logger::request_stop_static);
 
-	if (_log_mode == LogMode::boot_until_disarm || _log_mode == LogMode::boot_until_shutdown) {
+	const bool disable_boot_logging = get_disable_boot_logging();
+
+	if ((_log_mode == LogMode::boot_until_disarm || _log_mode == LogMode::boot_until_shutdown) && !disable_boot_logging) {
 		start_log_file(LogType::Full);
 	}
 
@@ -946,9 +631,8 @@ void Logger::run()
 	int next_subscribe_topic_index = -1; // this is used to distribute the checks over time
 
 	while (!should_exit()) {
-
 		// Start/stop logging (depending on logging mode, by default when arming/disarming)
-		const bool logging_started = start_stop_logging((MissionLogType)mission_log_mode);
+		const bool logging_started = start_stop_logging();
 
 		if (logging_started) {
 #ifdef DBGPRINT
@@ -996,9 +680,8 @@ void Logger::run()
 			/* wait for lock on log buffer */
 			_writer.lock();
 
-			int sub_idx = 0;
-
-			for (LoggerSubscription &sub : _subscriptions) {
+			for (int sub_idx = 0; sub_idx < _num_subscriptions; ++sub_idx) {
+				LoggerSubscription &sub = _subscriptions[sub_idx];
 				/* if this topic has been updated, copy the new data into the message buffer
 				 * and write a message to the log
 				 */
@@ -1042,8 +725,6 @@ void Logger::run()
 						}
 					}
 				}
-
-				++sub_idx;
 			}
 
 			// check for new logging message(s)
@@ -1095,6 +776,43 @@ void Logger::run()
 				}
 			}
 
+
+#ifndef ORB_USE_PUBLISHER_RULES
+
+			// publish logger status
+			//  - this is disabled in replay builds to ensure all data in ekf2 replay logs only contain
+			//    the same time range, otherwise the plots can be unreadable using common tools
+			if (hrt_elapsed_time(&_logger_status_last) >= 1_s) {
+				for (int i = 0; i < (int)LogType::Count; ++i) {
+
+					const LogType log_type = static_cast<LogType>(i);
+
+					if (_writer.is_started(log_type)) {
+
+						const size_t buffer_fill_count_file = _writer.get_buffer_fill_count_file(log_type);
+
+						const float kb_written = _writer.get_total_written_file(log_type) / 1024.0f;
+						const float seconds = hrt_elapsed_time(&_statistics[i].start_time_file) * 1e-6f;
+
+						logger_status_s status;
+						status.type = i;
+						status.backend = _writer.backend();
+						status.total_written_kb = kb_written;
+						status.write_rate_kb_s = kb_written / seconds;
+						status.dropouts = _statistics[i].write_dropouts;
+						status.buffer_used_bytes = buffer_fill_count_file;
+						status.buffer_size_bytes = _writer.get_buffer_size_file(log_type);
+						status.num_messages = _num_subscriptions;
+						status.timestamp = hrt_absolute_time();
+						_logger_status_pub[i].publish(status);
+					}
+				}
+
+				_logger_status_last = hrt_absolute_time();
+			}
+
+#endif // !ORB_USE_PUBLISHER_RULES
+
 			/* release the log buffer */
 			_writer.unlock();
 
@@ -1103,7 +821,7 @@ void Logger::run()
 
 			/* subscription update */
 			if (next_subscribe_topic_index != -1) {
-				if (++next_subscribe_topic_index >= (int)_subscriptions.size()) {
+				if (++next_subscribe_topic_index >= _num_subscriptions) {
 					next_subscribe_topic_index = -1;
 					next_subscribe_check = loop_time + TRY_SUBSCRIBE_INTERVAL;
 				}
@@ -1124,7 +842,7 @@ void Logger::run()
 					_subscriptions[next_subscribe_topic_index].subscribe();
 				}
 
-				if (++next_subscribe_topic_index >= (int)_subscriptions.size()) {
+				if (++next_subscribe_topic_index >= _num_subscriptions) {
 					next_subscribe_topic_index = -1;
 					next_subscribe_check = loop_time + TRY_SUBSCRIBE_INTERVAL;
 				}
@@ -1133,6 +851,8 @@ void Logger::run()
 				next_subscribe_topic_index = 0;
 			}
 		}
+
+		update_params();
 
 		// wait for next loop iteration...
 		if (polling_topic_sub >= 0) {
@@ -1205,78 +925,83 @@ void Logger::debug_print_buffer(uint32_t &total_bytes, hrt_abstime &timer_start)
 #endif /* DBGPRINT */
 }
 
-bool Logger::start_stop_logging(MissionLogType mission_log_type)
+bool Logger::get_disable_boot_logging()
 {
-	bool bret = false;
-	bool want_start = false;
-	bool want_stop = false;
+	if (_param_sdlog_boot_bat.get()) {
+		battery_status_s battery_status;
+		uORB::Subscription battery_status_sub{ORB_ID(battery_status)};
+
+		if (battery_status_sub.copy(&battery_status)) {
+			if (!battery_status.connected) {
+				return true;
+			}
+
+		} else {
+			PX4_WARN("battery_status not published. Logging anyway");
+		}
+	}
+
+	return false;
+}
+
+bool Logger::start_stop_logging()
+{
+	bool updated = false;
+	bool desired_state = false;
 
 	if (_log_mode == LogMode::rc_aux1) {
-
 		// aux1-based logging
 		manual_control_setpoint_s manual_sp;
 
 		if (_manual_control_sp_sub.update(&manual_sp)) {
 
-			bool should_start = ((manual_sp.aux1 > 0.3f) || _manually_logging_override);
-
-			if (_prev_state != should_start) {
-				_prev_state = should_start;
-
-				if (should_start) {
-					want_start = true;
-
-				} else {
-					want_stop = true;
-				}
-			}
+			desired_state = (manual_sp.aux1 > 0.3f);
+			updated = true;
 		}
 
-	} else {
+	} else if (_log_mode != LogMode::boot_until_shutdown) {
 		// arming-based logging
 		vehicle_status_s vehicle_status;
 
 		if (_vehicle_status_sub.update(&vehicle_status)) {
 
-			bool armed = (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) || _manually_logging_override;
+			desired_state = (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
+			updated = true;
+		}
+	}
 
-			if (_prev_state != armed && _log_mode != LogMode::boot_until_shutdown) {
-				_prev_state = armed;
+	desired_state = desired_state || _manually_logging_override;
 
-				if (armed) {
-					want_start = true;
+	// only start/stop if this is a state transition
+	if (updated && _prev_state != desired_state) {
+		_prev_state = desired_state;
 
-				} else {
-					want_stop = true;
-				}
+		if (desired_state) {
+			if (_should_stop_file_log) { // happens on quick stop/start toggling
+				_should_stop_file_log = false;
+				stop_log_file(LogType::Full);
+			}
+
+			start_log_file(LogType::Full);
+
+			if ((MissionLogType)_param_sdlog_mission.get() != MissionLogType::Disabled) {
+				start_log_file(LogType::Mission);
+			}
+
+			return true;
+
+		} else {
+			// delayed stop: we measure the process loads and then stop
+			initialize_load_output(PrintLoadReason::Postflight);
+			_should_stop_file_log = true;
+
+			if ((MissionLogType)_param_sdlog_mission.get() != MissionLogType::Disabled) {
+				stop_log_file(LogType::Mission);
 			}
 		}
 	}
 
-	if (want_start) {
-		if (_should_stop_file_log) { // happens on quick stop/start toggling
-			_should_stop_file_log = false;
-			stop_log_file(LogType::Full);
-		}
-
-		start_log_file(LogType::Full);
-		bret = true;
-
-		if (mission_log_type != MissionLogType::Disabled) {
-			start_log_file(LogType::Mission);
-		}
-
-	} else if (want_stop) {
-		// delayed stop: we measure the process loads and then stop
-		initialize_load_output(PrintLoadReason::Postflight);
-		_should_stop_file_log = true;
-
-		if (mission_log_type != MissionLogType::Disabled) {
-			stop_log_file(LogType::Mission);
-		}
-	}
-
-	return bret;
+	return false;
 }
 
 void Logger::handle_vehicle_command_update()
@@ -1400,14 +1125,8 @@ int Logger::get_log_file_name(LogType type, char *file_name, size_t file_name_si
 	bool time_ok = false;
 
 	if (_log_name_timestamp) {
-		int32_t utc_offset = 0;
-
-		if (_log_utc_offset != PARAM_INVALID) {
-			param_get(_log_utc_offset, &utc_offset);
-		}
-
 		/* use RTC time for log file naming, e.g. /fs/microsd/log/2014-01-19/19_37_52.ulg */
-		time_ok = util::get_log_time(&tt, utc_offset * 60, false);
+		time_ok = util::get_log_time(&tt, _param_sdlog_utc_offset.get() * 60, false);
 	}
 
 	const char *replay_suffix = "";
@@ -1487,7 +1206,7 @@ void Logger::start_log_file(LogType type)
 
 	if (type == LogType::Full) {
 		/* print logging path, important to find log file later */
-		mavlink_log_info(&_mavlink_log_pub, "[logger] file: %s", file_name);
+		mavlink_log_info(&_mavlink_log_pub, "[logger] file:%s", file_name);
 	}
 
 	_writer.start_log_file(type, file_name);
@@ -1694,7 +1413,7 @@ void Logger::write_console_output()
 }
 
 void Logger::write_format(LogType type, const orb_metadata &meta, WrittenFormats &written_formats,
-			  ulog_message_format_s &msg, int level)
+			  ulog_message_format_s &msg, int subscription_index, int level)
 {
 	if (level > 3) {
 		// precaution: limit recursion level. If we land here it's either a bug or nested topic definitions. In the
@@ -1703,12 +1422,22 @@ void Logger::write_format(LogType type, const orb_metadata &meta, WrittenFormats
 		return;
 	}
 
-	// check if we already wrote the format
+	// check if we already wrote the format: either if at a previous _subscriptions index or in written_formats
 	for (const auto &written_format : written_formats) {
 		if (written_format == &meta) {
+			PX4_DEBUG("already added: %s", meta.o_name);
 			return;
 		}
 	}
+
+	for (int i = 0; i < subscription_index; ++i) {
+		if (_subscriptions[i].get_topic() == &meta) {
+			PX4_DEBUG("already in _subscriptions: %s", meta.o_name);
+			return;
+		}
+	}
+
+	PX4_DEBUG("writing format for %s", meta.o_name);
 
 	// Write the current format (we don't need to check if we already added it to written_formats)
 	int format_len = snprintf(msg.format, sizeof(msg.format), "%s:%s", meta.o_name, meta.o_fields);
@@ -1717,7 +1446,7 @@ void Logger::write_format(LogType type, const orb_metadata &meta, WrittenFormats
 
 	write_message(type, &msg, msg_size);
 
-	if (!written_formats.push_back(&meta)) {
+	if (level > 1 && !written_formats.push_back(&meta)) {
 		PX4_ERR("Array too small");
 	}
 
@@ -1782,7 +1511,7 @@ void Logger::write_format(LogType type, const orb_metadata &meta, WrittenFormats
 
 			if (found_topic) {
 
-				write_format(type, *found_topic, written_formats, msg, level + 1);
+				write_format(type, *found_topic, written_formats, msg, subscription_index, level + 1);
 
 			} else {
 				PX4_ERR("No definition for topic %s found", fmt);
@@ -1804,15 +1533,15 @@ void Logger::write_formats(LogType type)
 	WrittenFormats written_formats;
 
 	// write all subscribed formats
-	size_t sub_count = _subscriptions.size();
+	int sub_count = _num_subscriptions;
 
 	if (type == LogType::Mission) {
 		sub_count = _num_mission_subs;
 	}
 
-	for (size_t i = 0; i < sub_count; ++i) {
+	for (int i = 0; i < sub_count; ++i) {
 		const LoggerSubscription &sub = _subscriptions[i];
-		write_format(type, *sub.get_topic(), written_formats, msg);
+		write_format(type, *sub.get_topic(), written_formats, msg, i);
 	}
 
 	_writer.unlock();
@@ -1822,13 +1551,13 @@ void Logger::write_all_add_logged_msg(LogType type)
 {
 	_writer.lock();
 
-	size_t sub_count = _subscriptions.size();
+	int sub_count = _num_subscriptions;
 
 	if (type == LogType::Mission) {
 		sub_count = _num_mission_subs;
 	}
 
-	for (size_t i = 0; i < sub_count; ++i) {
+	for (int i = 0; i < sub_count; ++i) {
 		LoggerSubscription &sub = _subscriptions[i];
 
 		if (sub.valid()) {
@@ -2034,28 +1763,17 @@ void Logger::write_version(LogType type)
 	}
 
 #ifndef BOARD_HAS_NO_UUID
+
 	/* write the UUID if enabled */
-	param_t write_uuid_param = param_find("SDLOG_UUID");
-
-	if (write_uuid_param != PARAM_INVALID) {
-		int32_t write_uuid;
-		param_get(write_uuid_param, &write_uuid);
-
-		if (write_uuid == 1) {
-			char px4_uuid_string[PX4_GUID_FORMAT_SIZE];
-			board_get_px4_guid_formated(px4_uuid_string, sizeof(px4_uuid_string));
-			write_info(type, "sys_uuid", px4_uuid_string);
-		}
+	if (_param_sdlog_uuid.get() == 1) {
+		char px4_uuid_string[PX4_GUID_FORMAT_SIZE];
+		board_get_px4_guid_formated(px4_uuid_string, sizeof(px4_uuid_string));
+		write_info(type, "sys_uuid", px4_uuid_string);
 	}
 
 #endif /* BOARD_HAS_NO_UUID */
 
-	int32_t utc_offset = 0;
-
-	if (_log_utc_offset != PARAM_INVALID) {
-		param_get(_log_utc_offset, &utc_offset);
-		write_info(type, "time_ref_utc", utc_offset * 60);
-	}
+	write_info(type, "time_ref_utc", _param_sdlog_utc_offset.get() * 60);
 
 	if (_replay_file_name) {
 		write_info(type, "replay", _replay_file_name);

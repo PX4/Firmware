@@ -602,24 +602,6 @@ PARAM_DEFINE_FLOAT(FW_T_INTEG_GAIN, 0.1f);
 PARAM_DEFINE_FLOAT(FW_T_VERT_ACC, 7.0f);
 
 /**
- * Complementary filter "omega" parameter for height
- *
- * This is the cross-over frequency (in radians/second) of the complementary
- * filter used to fuse vertical acceleration and barometric height to obtain
- * an estimate of height rate and height. Increasing this frequency weights
- * the solution more towards use of the barometer, whilst reducing it weights
- * the solution more towards use of the accelerometer data.
- *
- * @unit rad/s
- * @min 1.0
- * @max 10.0
- * @decimal 1
- * @increment 0.5
- * @group FW TECS
- */
-PARAM_DEFINE_FLOAT(FW_T_HGT_OMEGA, 3.0f);
-
-/**
  * Complementary filter "omega" parameter for speed
  *
  * This is the cross-over frequency (in radians/second) of the complementary

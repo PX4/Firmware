@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,36 +48,35 @@ bool PreFlightCheck::powerCheck(orb_advert_t *mavlink_log_pub, const vehicle_sta
 	if (!prearm) {
 		// Ignore power check after arming.
 		return true;
+	}
 
-	} else {
-		uORB::SubscriptionData<system_power_s> system_power_sub{ORB_ID(system_power)};
-		system_power_sub.update();
-		const system_power_s &system_power = system_power_sub.get();
+	uORB::SubscriptionData<system_power_s> system_power_sub{ORB_ID(system_power)};
+	system_power_sub.update();
+	const system_power_s &system_power = system_power_sub.get();
 
-		if (hrt_elapsed_time(&system_power.timestamp) < 200_ms) {
+	if (hrt_elapsed_time(&system_power.timestamp) < 200_ms) {
 
-			/* copy avionics voltage */
-			float avionics_power_rail_voltage = system_power.voltage5v_v;
+		/* copy avionics voltage */
+		float avionics_power_rail_voltage = system_power.voltage5v_v;
 
-			// avionics rail
-			// Check avionics rail voltages
-			if (avionics_power_rail_voltage < 4.5f) {
-				success = false;
+		// avionics rail
+		// Check avionics rail voltages
+		if (avionics_power_rail_voltage < 4.5f) {
+			success = false;
 
-				if (report_fail) {
-					mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Avionics Power low: %6.2f Volt",
-							     (double)avionics_power_rail_voltage);
-				}
+			if (report_fail) {
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Avionics Power low: %6.2f Volt",
+						     (double)avionics_power_rail_voltage);
+			}
 
-			} else if (avionics_power_rail_voltage < 4.9f) {
-				if (report_fail) {
-					mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power low: %6.2f Volt", (double)avionics_power_rail_voltage);
-				}
+		} else if (avionics_power_rail_voltage < 4.9f) {
+			if (report_fail) {
+				mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power low: %6.2f Volt", (double)avionics_power_rail_voltage);
+			}
 
-			} else if (avionics_power_rail_voltage > 5.4f) {
-				if (report_fail) {
-					mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power high: %6.2f Volt", (double)avionics_power_rail_voltage);
-				}
+		} else if (avionics_power_rail_voltage > 5.4f) {
+			if (report_fail) {
+				mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power high: %6.2f Volt", (double)avionics_power_rail_voltage);
 			}
 		}
 	}

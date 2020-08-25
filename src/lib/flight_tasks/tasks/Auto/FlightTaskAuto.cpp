@@ -137,10 +137,13 @@ bool FlightTaskAuto::_evaluateTriplets()
 	// Check if triplet is valid. There must be at least a valid altitude.
 
 	if (!_sub_triplet_setpoint.get().current.valid || !PX4_ISFINITE(_sub_triplet_setpoint.get().current.alt)) {
-		// Best we can do is to just set all waypoints to current state and return false.
+		// Best we can do is to just set all waypoints to current state
 		_prev_prev_wp = _triplet_prev_wp = _triplet_target = _triplet_next_wp = _position;
-		_type = WaypointType::position;
-		return false;
+		_type = WaypointType::loiter;
+		_yaw_setpoint = _yaw;
+		_yawspeed_setpoint = NAN;
+		_updateInternalWaypoints();
+		return true;
 	}
 
 	_type = (WaypointType)_sub_triplet_setpoint.get().current.type;
@@ -238,14 +241,25 @@ bool FlightTaskAuto::_evaluateTriplets()
 
 	if (_ext_yaw_handler != nullptr) {
 		// activation/deactivation of weather vane is based on parameter WV_EN and setting of navigator (allow_weather_vane)
-		(_param_wv_en.get() && _sub_triplet_setpoint.get().current.allow_weather_vane) ?	_ext_yaw_handler->activate() :
+		(_param_wv_en.get() && !_sub_triplet_setpoint.get().current.disable_weather_vane) ?	_ext_yaw_handler->activate() :
 		_ext_yaw_handler->deactivate();
 	}
 
 	// set heading
 	if (_ext_yaw_handler != nullptr && _ext_yaw_handler->is_active()) {
 		_yaw_setpoint = _yaw;
-		_yawspeed_setpoint = _ext_yaw_handler->get_weathervane_yawrate();
+		// use the yawrate setpoint from WV only if not moving lateral (velocity setpoint below half of _param_mpc_xy_cruise)
+		// otherwise, keep heading constant (as output from WV is not according to wind in this case)
+		bool vehicle_is_moving_lateral = _velocity_setpoint.xy().longerThan(_param_mpc_xy_cruise.get() / 2.0f);
+
+		if (vehicle_is_moving_lateral) {
+			_yawspeed_setpoint = 0.0f;
+
+		} else {
+			_yawspeed_setpoint = _ext_yaw_handler->get_weathervane_yawrate();
+		}
+
+
 
 	} else if (_type == WaypointType::follow_target && _sub_triplet_setpoint.get().current.yawspeed_valid) {
 		_yawspeed_setpoint = _sub_triplet_setpoint.get().current.yawspeed;
@@ -479,7 +493,7 @@ bool FlightTaskAuto::_compute_heading_from_2D_vector(float &heading, Vector2f v)
 		// and multiply by the sign given of cross product of x and v.
 		// Dot product: (x(0)*v(0)+(x(1)*v(1)) = v(0)
 		// Cross product: x(0)*v(1) - v(0)*x(1) = v(1)
-		heading =  math::sign(v(1)) * wrap_pi(acosf(v(0)));
+		heading =  sign(v(1)) * wrap_pi(acosf(v(0)));
 		return true;
 	}
 

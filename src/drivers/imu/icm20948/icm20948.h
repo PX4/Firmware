@@ -369,9 +369,9 @@ protected:
 
 	friend class ICM20948_mag;
 
-	void Run() override;
-
 private:
+
+	void Run() override;
 
 	PX4Accelerometer	_px4_accel;
 	PX4Gyroscope		_px4_gyro;

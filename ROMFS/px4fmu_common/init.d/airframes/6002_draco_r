@@ -12,18 +12,20 @@
 # @output MAIN5 motor 5
 # @output MAIN6 motor 6
 #
+# @output AUX1 feed-through of RC AUX1 channel
+# @output AUX2 feed-through of RC AUX2 channel
+#
+# @maintainer Hyon Lim <lim@uvify.com>
+#
 # @board px4_fmu-v2 exclude
 # @board px4_fmu-v3 exclude
 # @board px4_fmu-v4pro exclude
 # @board px4_fmu-v5 exclude
 # @board px4_fmu-v5x exclude
 # @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
 #
-# @output AUX1 feed-through of RC AUX1 channel
-# @output AUX2 feed-through of RC AUX2 channel
-#
-# @maintainer Hyon Lim <lim@uvify.com>
-#
+
 sh /etc/init.d/rc.mc_defaults
 set MIXER hexa_x
 set PWM_OUT 12345678
@@ -78,7 +80,7 @@ then
 	param set RC_FLT_CUTOFF 0.00000
 
 	# Filter settings
-	param set MC_DTERM_CUTOFF 90.00000
+	param set IMU_DGYRO_CUTOFF 90.00000
 	param set IMU_GYRO_CUTOFF 100.00000
 
 	# Thrust curve (avoids the need for TPA)

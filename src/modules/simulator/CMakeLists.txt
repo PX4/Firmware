@@ -53,8 +53,6 @@ if (NOT ${PX4_PLATFORM} STREQUAL "qurt")
 		simulator_mavlink.cpp)
 endif()
 
-add_subdirectory(ledsim)
-
 px4_add_module(
 	MODULE modules__simulator
 	MAIN simulator
@@ -70,7 +68,6 @@ px4_add_module(
 		git_mavlink_v2
 		battery
 		conversion
-		drivers__ledsim
 		git_ecl
 		ecl_geo
 		drivers_accelerometer
@@ -79,5 +76,3 @@ px4_add_module(
 		drivers_magnetometer
 	)
 target_include_directories(modules__simulator INTERFACE ${PX4_SOURCE_DIR}/mavlink/include/mavlink)
-
-add_subdirectory(gpssim)

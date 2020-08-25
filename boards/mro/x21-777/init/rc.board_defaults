@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# mRo x21-777 specific board defaults
+#------------------------------------------------------------------------------
+
+
+if [ $AUTOCNF = yes ]
+then
+
+fi
+
+set LOGGER_BUF 64

@@ -76,6 +76,7 @@ MulticopterLandDetector::MulticopterLandDetector()
 	_paramHandle.landSpeed      = param_find("MPC_LAND_SPEED");
 	_paramHandle.minManThrottle = param_find("MPC_MANTHR_MIN");
 	_paramHandle.minThrottle    = param_find("MPC_THR_MIN");
+	_paramHandle.useHoverThrustEstimate = param_find("MPC_USE_HTE");
 	_paramHandle.hoverThrottle  = param_find("MPC_THR_HOVER");
 
 	// Use Trigger time when transitioning from in-air (false) to landed (true) / ground contact (true).
@@ -93,6 +94,14 @@ void MulticopterLandDetector::_update_topics()
 	_vehicle_angular_velocity_sub.update(&_vehicle_angular_velocity);
 	_vehicle_control_mode_sub.update(&_vehicle_control_mode);
 	_vehicle_local_position_setpoint_sub.update(&_vehicle_local_position_setpoint);
+
+	if (_params.useHoverThrustEstimate) {
+		hover_thrust_estimate_s hte;
+
+		if (_hover_thrust_estimate_sub.update(&hte)) {
+			_params.hoverThrottle = hte.hover_thrust;
+		}
+	}
 }
 
 void MulticopterLandDetector::_update_params()
@@ -102,9 +111,16 @@ void MulticopterLandDetector::_update_params()
 	_freefall_hysteresis.set_hysteresis_time_from(false, (hrt_abstime)(1e6f * _param_lndmc_ffall_ttri.get()));
 
 	param_get(_paramHandle.minThrottle, &_params.minThrottle);
-	param_get(_paramHandle.hoverThrottle, &_params.hoverThrottle);
 	param_get(_paramHandle.minManThrottle, &_params.minManThrottle);
 	param_get(_paramHandle.landSpeed, &_params.landSpeed);
+
+	int32_t use_hover_thrust_estimate = 0;
+	param_get(_paramHandle.useHoverThrustEstimate, &use_hover_thrust_estimate);
+	_params.useHoverThrustEstimate = (use_hover_thrust_estimate == 1);
+
+	if (!_params.useHoverThrustEstimate) {
+		param_get(_paramHandle.hoverThrottle, &_params.hoverThrottle);
+	}
 }
 
 bool MulticopterLandDetector::_get_freefall_state()
@@ -147,7 +163,6 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 		vertical_movement = fabsf(_vehicle_local_position.vz) > _param_lndmc_z_vel_max.get()  * 2.5f;
 
 	} else {
-
 		// Adjust max_climb_rate if land_speed is lower than 2x max_climb_rate
 		float max_climb_rate = ((land_speed_threshold * 0.5f) < _param_lndmc_z_vel_max.get()) ? (0.5f * land_speed_threshold) :
 				       _param_lndmc_z_vel_max.get();
@@ -171,9 +186,6 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 
 bool MulticopterLandDetector::_get_maybe_landed_state()
 {
-	// Time base for this function
-	const hrt_abstime now = hrt_absolute_time();
-
 	// When not armed, consider to be maybe-landed
 	if (!_actuator_armed.armed) {
 		return true;
@@ -181,7 +193,7 @@ bool MulticopterLandDetector::_get_maybe_landed_state()
 
 	if (_has_minimal_thrust()) {
 		if (_min_trust_start == 0) {
-			_min_trust_start = now;
+			_min_trust_start = hrt_absolute_time();
 		}
 
 	} else {
@@ -224,19 +236,15 @@ bool MulticopterLandDetector::_get_landed_state()
 
 	// reset the landed_time
 	if (!_maybe_landed_hysteresis.get_state()) {
-
 		_landed_time = 0;
 
 	} else if (_landed_time == 0) {
-
 		_landed_time = hrt_absolute_time();
-
 	}
 
 	// if we have maybe_landed, the mc_pos_control goes into idle (thrust_sp = 0.0)
 	// therefore check if all other condition of the landed state remain true
 	return _maybe_landed_hysteresis.get_state();
-
 }
 
 float MulticopterLandDetector::_get_max_altitude()
@@ -265,9 +273,7 @@ float MulticopterLandDetector::_get_max_altitude()
 
 bool MulticopterLandDetector::_has_altitude_lock()
 {
-	return _vehicle_local_position.timestamp != 0 &&
-	       hrt_elapsed_time(&_vehicle_local_position.timestamp) < 500_ms &&
-	       _vehicle_local_position.z_valid;
+	return (hrt_elapsed_time(&_vehicle_local_position.timestamp) < 1_s) && _vehicle_local_position.z_valid;
 }
 
 bool MulticopterLandDetector::_has_position_lock()
@@ -277,8 +283,7 @@ bool MulticopterLandDetector::_has_position_lock()
 
 bool MulticopterLandDetector::_is_climb_rate_enabled()
 {
-	bool has_updated = (_vehicle_local_position_setpoint.timestamp != 0)
-			   && (hrt_elapsed_time(&_vehicle_local_position_setpoint.timestamp) < 500_ms);
+	bool has_updated = (hrt_elapsed_time(&_vehicle_local_position_setpoint.timestamp) < 1_s);
 
 	return (_vehicle_control_mode.flag_control_climb_rate_enabled && has_updated
 		&& PX4_ISFINITE(_vehicle_local_position_setpoint.vz));

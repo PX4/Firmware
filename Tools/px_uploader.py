@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ############################################################################
 #
 #   Copyright (c) 2012-2017 PX4 Development Team. All rights reserved.
@@ -742,7 +742,10 @@ def main():
 
     if not pyserial_installed:
         print("Error: pyserial not installed!")
-        print("    (Install using: sudo pip install pyserial)")
+        print("")
+        print("You may need to install it using:")
+        print("    pip3 install --user pyserial")
+        print("")
         sys.exit(1)
 
     # Load the firmware file

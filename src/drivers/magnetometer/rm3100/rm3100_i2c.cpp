@@ -48,7 +48,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <arch/board/board.h>
+
 
 #include <drivers/device/i2c.h>
 #include <drivers/drv_mag.h>

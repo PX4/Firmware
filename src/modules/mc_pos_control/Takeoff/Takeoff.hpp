@@ -59,8 +59,8 @@ public:
 	~Takeoff() = default;
 
 	// initialize parameters
-	void setTakeoffRampTime(const float seconds) { _takeoff_ramp_time = seconds; }
 	void setSpoolupTime(const float seconds) { _spoolup_time_hysteresis.set_hysteresis_time_from(false, (hrt_abstime)(seconds * (float)1_s)); }
+	void setTakeoffRampTime(const float seconds) { _takeoff_ramp_time = seconds; }
 
 	/**
 	 * Calculate a vertical velocity to initialize the takeoff ramp
@@ -93,9 +93,9 @@ public:
 private:
 	TakeoffState _takeoff_state = TakeoffState::disarmed;
 
+	systemlib::Hysteresis _spoolup_time_hysteresis{false}; /**< becomes true MPC_SPOOLUP_TIME seconds after the vehicle was armed */
+
 	float _takeoff_ramp_time = 0.f;
 	float _takeoff_ramp_vz_init = 0.f;
 	float _takeoff_ramp_vz = 0.f;
-
-	systemlib::Hysteresis _spoolup_time_hysteresis{false}; /**< becomes true MPC_SPOOLUP_TIME seconds after the vehicle was armed */
 };

@@ -62,8 +62,8 @@ public:
 	/**
 	 * @brief Sends a block read command.
 	 * @param cmd_code The command code.
-	 * @param data The returned data.
-	 * @param length The number of bytes being read
+	 * @param data The returned data. The returned data will always contain 2 bytes of address information followed by data[length].
+	 * @param length The number of bytes being read.
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
 	int block_read(const uint8_t cmd_code, void *data, const uint8_t length, bool use_pec);

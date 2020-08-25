@@ -53,11 +53,15 @@ static constexpr uint8_t CONFIG  	= 0x0A; // Control, clock and miscellaneous co
 static constexpr uint8_t DEC_RATE  	= 0x0C; // Control, output sample rate decimation
 static constexpr uint8_t NULL_CNFG  	= 0x0E; // Control, automatic bias correction configuration
 static constexpr uint8_t SYNC_SCALE  	= 0x10; // Control, automatic bias correction configuration
-static constexpr uint8_t RANG_MDL   	= 0x12; // Measurement range (model-specific) Identifier TODO use this
+static constexpr uint8_t RANG_MDL   	= 0x12; // Measurement range (model-specific) identifier
 static constexpr uint8_t FILTR_BNK_0   	= 0x16; // Filter selection
 static constexpr uint8_t FILTR_BNK_1   	= 0x18; // Filter selection
 
-static constexpr uint16_t PROD_ID_ADIS16497 = 0x4071;	// ADIS16497 Identification, device number
+static constexpr uint16_t PROD_ID_ADIS16497 = 0x4071; // ADIS16497 device number
+
+static constexpr uint16_t RANG_MDL_1BMLZ = 0b0011; // ADIS16497-1 (±125°/sec)
+static constexpr uint16_t RANG_MDL_2BMLZ = 0b0111; // ADIS16497-2 (±450°/sec)
+static constexpr uint16_t RANG_MDL_3BMLZ = 0b1111; // ADIS16497-3 (±2000°/sec)
 
 // Stall time between SPI transfers
 static constexpr uint8_t T_STALL = 2;
@@ -80,12 +84,8 @@ ADIS16497::ADIS16497(int bus, uint32_t device, enum Rotation rotation) :
 #endif // GPIO_SPI1_RESET_ADIS16497
 
 	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_ADIS16497);
-	_px4_accel.set_sample_rate(ADIS16497_DEFAULT_RATE);
-	_px4_accel.set_scale(1.25f * CONSTANTS_ONE_G / 1000.0f); // accel 1.25 mg/LSB
 
 	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_ADIS16497);
-	_px4_gyro.set_sample_rate(ADIS16497_DEFAULT_RATE);
-	_px4_gyro.set_scale(math::radians(0.025f)); // gyro 0.025 °/sec/LSB
 }
 
 ADIS16497::~ADIS16497()
@@ -247,7 +247,19 @@ ADIS16497::probe()
 			PX4_DEBUG("PRODUCT: %X", product_id);
 
 			if (self_test()) {
-				return PX4_OK;
+
+				// Switch to config page
+				write_reg16(PAGE_ID, 0x03);
+
+				uint16_t model_id = read_reg16(RANG_MDL);
+
+				if (set_measurement_range(model_id)) {
+					return PX4_OK;
+
+				} else {
+					PX4_ERR("probe attempt %d: reading model id failed, resetting", i);
+					reset();
+				}
 
 			} else {
 				PX4_ERR("probe attempt %d: self test failed, resetting", i);
@@ -269,7 +281,7 @@ ADIS16497::self_test()
 	// Switch to configuration page
 	write_reg16(PAGE_ID, 0x03);
 
-	// Self test (globa l command bit 1)
+	// Self test (global command bit 1)
 	uint8_t value[2] {};
 	value[0] = (1 << 1);
 	write_reg16(GLOB_CMD, (uint16_t)value[0]);
@@ -292,6 +304,36 @@ ADIS16497::self_test()
 			PX4_ERR("DIAG_STS: %#X", diag_sts_flag);
 		}
 
+		return false;
+	}
+
+	return true;
+}
+
+bool
+ADIS16497::set_measurement_range(uint16_t model)
+{
+	_px4_accel.set_scale(1.25f * CONSTANTS_ONE_G / 1000.0f); // 1.25 mg/LSB
+	_px4_accel.set_range(40.0f * CONSTANTS_ONE_G); // 40g
+
+	switch (model) {
+	case RANG_MDL_1BMLZ:
+		_px4_gyro.set_scale(math::radians(0.00625f)); // 0.00625 °/sec/LSB
+		_px4_gyro.set_range(math::radians(125.0f)); // 125 °/s
+		break;
+
+	case RANG_MDL_2BMLZ:
+		_px4_gyro.set_scale(math::radians(0.025f)); // 0.025 °/sec/LSB
+		_px4_gyro.set_range(math::radians(450.0f)); // 450 °/s
+		break;
+
+	case RANG_MDL_3BMLZ:
+		_px4_gyro.set_scale(math::radians(0.1f)); // 0.1 °/sec/LSB
+		_px4_gyro.set_range(math::radians(2000.0f)); // 2000 °/s
+		break;
+
+	default:
+		PX4_ERR("RANG_MDL: %#X", model);
 		return false;
 	}
 

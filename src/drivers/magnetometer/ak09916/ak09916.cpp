@@ -42,101 +42,17 @@
 #include <drivers/drv_hrt.h>
 #include <lib/conversion/rotation.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
 #include "ak09916.hpp"
 
 
-extern "C" { __EXPORT int ak09916_main(int argc, char *argv[]); }
+extern "C" __EXPORT int ak09916_main(int argc, char *argv[]);
 
 
-namespace ak09916
-{
-
-AK09916 *g_dev_ext;
-AK09916 *g_dev_int;
-
-void start(bool, enum Rotation);
-void info(bool);
-void usage();
-
-void start(bool external_bus, enum Rotation rotation)
-{
-	AK09916 **g_dev_ptr = (external_bus ? &g_dev_ext : &g_dev_int);
-	const char *path = (external_bus ? AK09916_DEVICE_PATH_MAG_EXT : AK09916_DEVICE_PATH_MAG);
-
-	if (*g_dev_ptr != nullptr) {
-		PX4_ERR("already started");
-		exit(0);
-	}
-
-	if (external_bus) {
-#if defined(PX4_I2C_BUS_EXPANSION)
-		*g_dev_ptr = new AK09916(PX4_I2C_BUS_EXPANSION, path, rotation);
-#else
-		PX4_ERR("External I2C not available");
-		exit(0);
-#endif
-
-	} else {
-		PX4_ERR("Internal I2C not available");
-		exit(0);
-	}
-
-	if (*g_dev_ptr == nullptr || (OK != (*g_dev_ptr)->init())) {
-		PX4_ERR("driver start failed");
-		delete (*g_dev_ptr);
-		*g_dev_ptr = nullptr;
-		exit(1);
-	}
-
-	exit(0);
-}
-
-void
-stop(bool external_bus)
-{
-	AK09916 **g_dev_ptr = external_bus ? &g_dev_ext : &g_dev_int;
-
-	if (*g_dev_ptr == nullptr) {
-		PX4_ERR("driver not running");
-		exit(1);
-	}
-
-	(*g_dev_ptr)->stop();
-
-	exit(0);
-}
-
-void
-info(bool external_bus)
-{
-	AK09916 **g_dev_ptr = external_bus ? &g_dev_ext : &g_dev_int;
-
-	if (*g_dev_ptr == nullptr) {
-		PX4_ERR("driver not running");
-		exit(1);
-	}
-
-	printf("state @ %p\n", *g_dev_ptr);
-	(*g_dev_ptr)->print_info();
-
-	exit(0);
-}
-
-void
-usage()
-{
-	PX4_INFO("missing command: try 'start', 'info', stop'");
-	PX4_INFO("options:");
-	PX4_INFO("    -X    (external bus)");
-	PX4_INFO("    -R    (rotation)");
-}
-
-} // namespace ak09916
-
-AK09916::AK09916(int bus, const char *path, enum Rotation rotation) :
-	I2C("AK09916", path, bus, AK09916_I2C_ADDR, 400000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+AK09916::AK09916(I2CSPIBusOption bus_option, const int bus, int bus_frequency, enum Rotation rotation) :
+	I2C("AK09916", nullptr, bus, AK09916_I2C_ADDR, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_px4_mag(get_device_id(), ORB_PRIO_MAX, rotation),
 	_mag_reads(perf_alloc(PC_COUNT, "ak09916_mag_reads")),
 	_mag_errors(perf_alloc(PC_COUNT, "ak09916_mag_errors")),
@@ -161,7 +77,7 @@ AK09916::init()
 	int ret = I2C::init();
 
 	if (ret != OK) {
-		PX4_WARN("AK09916 mag init failed");
+		DEVICE_DEBUG("AK09916 mag init failed (%i)", ret);
 		return ret;
 	}
 
@@ -229,8 +145,9 @@ AK09916::measure()
 }
 
 void
-AK09916::print_info()
+AK09916::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_mag_reads);
 	perf_print_counter(_mag_errors);
 	perf_print_counter(_mag_overruns);
@@ -308,78 +225,83 @@ AK09916::setup()
 void
 AK09916::start()
 {
-	_cycle_interval = AK09916_CONVERSION_INTERVAL_us;
-
 	ScheduleNow();
 }
 
 void
-AK09916::stop()
+AK09916::RunImpl()
 {
-	// Ensure no new items are queued while we cancel this one.
-	_cycle_interval = 0;
+	try_measure();
+	ScheduleDelayed(_cycle_interval);
+}
 
-	ScheduleClear();
+I2CSPIDriverBase *
+AK09916::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator, int runtime_instance)
+{
+	AK09916 *interface = new AK09916(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency, cli.rotation);
+
+	if (interface == nullptr) {
+		PX4_ERR("failed creating interface for bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	if (interface->init() != OK) {
+		delete interface;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	return interface;
 }
 
 void
-AK09916::Run()
+AK09916::print_usage()
 {
-	if (_cycle_interval == 0) {
-		return;
-	}
-
-	try_measure();
-
-	if (_cycle_interval > 0) {
-		ScheduleDelayed(_cycle_interval);
-	}
+	PRINT_MODULE_USAGE_NAME("ak09916", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("magnetometer");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
 int
 ak09916_main(int argc, char *argv[])
 {
-	int myoptind = 1;
 	int ch;
-	const char *myoptarg = nullptr;
-	bool external_bus = false;
-	enum Rotation rotation = ROTATION_NONE;
+	using ThisDriver = AK09916;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 400000;
 
-	while ((ch = px4_getopt(argc, argv, "XR:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'X':
-			external_bus = true;
-			break;
-
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		default:
-			ak09916::usage();
-			return 0;
 		}
 	}
 
-	if (myoptind >= argc) {
-		ak09916::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
 		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_MAG_DEVTYPE_AK09916);
 
 	if (!strcmp(verb, "start")) {
-		ak09916::start(external_bus, rotation);
+		return ThisDriver::module_start(cli, iterator);
 	}
 
 	if (!strcmp(verb, "stop")) {
-		ak09916::stop(external_bus);
+		return ThisDriver::module_stop(iterator);
 	}
 
-	if (!strcmp(verb, "info")) {
-		ak09916::info(external_bus);
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	ak09916::usage();
-	return -1;
+	ThisDriver::print_usage();
+	return 1;
 }

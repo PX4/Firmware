@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 import os
 import re
 import codecs
@@ -24,7 +25,7 @@ class SourceScanner(object):
                             if not self.ScanFile(path, parser):
                                 return False
                         except:
-                            print("Exception in file %s" % path)
+                            print(("Exception in file %s" % path))
                             raise
         return True
 
@@ -44,6 +45,6 @@ class SourceScanner(object):
                 contents = f.read()
             except:
                 contents = ''
-                print('Failed reading file: %s, skipping content.' % path)
+                print(('Failed reading file: %s, skipping content.' % path))
                 pass
         return parser.Parse(scope, contents)

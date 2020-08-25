@@ -44,54 +44,13 @@
 
 using namespace time_literals;
 
-static constexpr uint32_t OSD_UPDATE_RATE{500_ms};	// 2 Hz
+static constexpr uint32_t OSD_UPDATE_RATE{50_ms};	// 20 Hz
 
-OSDatxxxx::OSDatxxxx(int bus) :
-	SPI("OSD", nullptr, bus, PX4_MK_SPI_SEL(bus, OSD_SPIDEV), SPIDEV_MODE0, OSD_SPI_BUS_SPEED),
+OSDatxxxx::OSDatxxxx(I2CSPIBusOption bus_option, int bus, int devid, int bus_frequency, spi_mode_e spi_mode) :
+	SPI("OSD", nullptr, bus, devid, spi_mode, bus_frequency),
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id()))
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus)
 {
-}
-
-OSDatxxxx::~OSDatxxxx()
-{
-	ScheduleClear();
-}
-
-int
-OSDatxxxx::task_spawn(int argc, char *argv[])
-{
-	int ch;
-	int myoptind = 1;
-	const char *myoptarg = nullptr;
-	int spi_bus = OSD_BUS;
-
-	while ((ch = px4_getopt(argc, argv, "b:", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'b':
-			spi_bus = (uint8_t)atoi(myoptarg);
-			break;
-		}
-	}
-
-	OSDatxxxx *osd = new OSDatxxxx(spi_bus);
-
-	if (!osd) {
-		PX4_ERR("alloc failed");
-		return PX4_ERROR;
-	}
-
-	if (osd->init() != PX4_OK) {
-		delete osd;
-		return PX4_ERROR;
-	}
-
-	_object.store(osd);
-	_task_id = task_id_is_work_queue;
-
-	osd->start();
-
-	return PX4_OK;
 }
 
 int
@@ -437,8 +396,6 @@ OSDatxxxx::get_flight_mode(uint8_t nav_state)
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER:
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTGS:
 	case vehicle_status_s::NAVIGATION_STATE_DESCEND:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LAND:
@@ -521,7 +478,7 @@ OSDatxxxx::reset()
 }
 
 void
-OSDatxxxx::Run()
+OSDatxxxx::RunImpl()
 {
 	if (should_exit()) {
 		exit_and_cleanup();
@@ -533,13 +490,9 @@ OSDatxxxx::Run()
 	update_screen();
 }
 
-int
-OSDatxxxx::print_usage(const char *reason)
+void
+OSDatxxxx::print_usage()
 {
-	if (reason) {
-		printf("%s\n\n", reason);
-	}
-
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
@@ -549,21 +502,61 @@ It can be enabled with the OSD_ATXXXX_CFG parameter.
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("atxxxx", "driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start the driver");
-	PRINT_MODULE_USAGE_PARAM_INT('b', -1, 0, 100, "SPI bus (default: use board-specific bus)", true);
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
-
-	return 0;
 }
 
-int
-OSDatxxxx::custom_command(int argc, char *argv[])
+I2CSPIDriverBase *OSDatxxxx::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	return print_usage("unrecognized command");
+	OSDatxxxx *instance = new OSDatxxxx(iterator.configuredBusOption(), iterator.bus(), iterator.devid(),
+					cli.bus_frequency, cli.spi_mode);
+
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
+
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
+	}
+
+	instance->start();
+
+	return instance;
 }
 
 int
 atxxxx_main(int argc, char *argv[])
 {
-	return OSDatxxxx::main(argc, argv);
+	using ThisDriver = OSDatxxxx;
+	BusCLIArguments cli{false, true};
+	cli.spi_mode = SPIDEV_MODE0;
+	cli.default_spi_frequency = OSD_SPI_BUS_SPEED;
+
+	const char *verb = cli.parseDefaultArguments(argc, argv);
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
+	}
+
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_OSD_DEVTYPE_ATXXXX);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
+	}
+
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

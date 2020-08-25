@@ -126,8 +126,8 @@ bool MixingOutput::updateSubscriptions(bool allow_wq_switch)
 
 	if (_scheduling_policy == SchedulingPolicy::Auto) {
 		// first clear everything
-		_interface.ScheduleClear();
 		unregister();
+		_interface.ScheduleClear();
 
 		// if subscribed to control group 0 or 1 then move to the rate_ctrl WQ
 		const bool sub_group_0 = (_groups_required & (1 << 0));

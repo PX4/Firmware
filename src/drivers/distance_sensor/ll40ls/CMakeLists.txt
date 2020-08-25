@@ -37,9 +37,7 @@ px4_add_module(
 		-Wno-cast-align # TODO: fix and enable
 	SRCS
 		ll40ls.cpp
-		LidarLite.cpp
 		LidarLiteI2C.cpp
-		LidarLitePWM.cpp
 	DEPENDS
 		drivers_rangefinder
 	)

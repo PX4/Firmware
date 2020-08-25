@@ -67,7 +67,26 @@ public:
 	MissionBlock(const MissionBlock &) = delete;
 	MissionBlock &operator=(const MissionBlock &) = delete;
 
+	/**
+	 * Check if the mission item contains a navigation position
+	 *
+	 * @return false if the mission item does not contain a valid position
+	 */
 	static bool item_contains_position(const mission_item_s &item);
+
+	/**
+	 * Check if the mission item contains a gate condition
+	 *
+	 * @return true if mission item is a gate
+	 */
+	static bool item_contains_gate(const mission_item_s &item);
+
+	/**
+	 * Check if the mission item contains a marker
+	 *
+	 * @return true if mission item is a marker
+	 */
+	static bool item_contains_marker(const mission_item_s &item);
 
 protected:
 	/**

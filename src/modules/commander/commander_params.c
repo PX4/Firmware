@@ -99,7 +99,7 @@ PARAM_DEFINE_FLOAT(TRIM_YAW, 0.0f);
  * @min 5
  * @max 300
  * @decimal 1
- * @increment 0.5
+ * @increment 1
  */
 PARAM_DEFINE_INT32(COM_DL_LOSS_T, 10);
 
@@ -303,10 +303,7 @@ PARAM_DEFINE_INT32(COM_ARM_WO_GPS, 1);
  * If parameter set button gets handled like stick arming.
  *
  * @group Commander
- * @min 0
- * @max 1
- * @value 0 Arm switch is a switch that stays on when armed
- * @value 1 Arm switch is a button that only triggers arming and disarming
+ * @boolean
  */
 PARAM_DEFINE_INT32(COM_ARM_SWISBTN, 0);
 
@@ -333,9 +330,9 @@ PARAM_DEFINE_INT32(COM_LOW_BAT_ACT, 0);
  * @unit s
  * @min 0
  * @max 60
- * @increment 1
+ * @increment 0.01
  */
-PARAM_DEFINE_FLOAT(COM_OF_LOSS_T, 0.0f);
+PARAM_DEFINE_FLOAT(COM_OF_LOSS_T, 0.5f);
 
 /**
  * Set offboard loss failsafe mode
@@ -521,7 +518,6 @@ PARAM_DEFINE_INT32(COM_FLTMODE6, -1);
  * Maximum EKF position innovation test ratio that will allow arming
  *
  * @group Commander
- * @unit m
  * @min 0.1
  * @max 1.0
  * @decimal 2
@@ -533,7 +529,6 @@ PARAM_DEFINE_FLOAT(COM_ARM_EKF_POS, 0.5f);
  * Maximum EKF velocity innovation test ratio that will allow arming
  *
  * @group Commander
- * @unit m/s
  * @min 0.1
  * @max 1.0
  * @decimal 2
@@ -545,7 +540,6 @@ PARAM_DEFINE_FLOAT(COM_ARM_EKF_VEL, 0.5f);
  * Maximum EKF height innovation test ratio that will allow arming
  *
  * @group Commander
- * @unit m
  * @min 0.1
  * @max 1.0
  * @decimal 2
@@ -557,7 +551,6 @@ PARAM_DEFINE_FLOAT(COM_ARM_EKF_HGT, 1.0f);
  * Maximum EKF yaw innovation test ratio that will allow arming
  *
  * @group Commander
- * @unit rad
  * @min 0.1
  * @max 1.0
  * @decimal 2
@@ -626,14 +619,30 @@ PARAM_DEFINE_FLOAT(COM_ARM_IMU_GYR, 0.25f);
 PARAM_DEFINE_INT32(COM_ARM_MAG_ANG, 30);
 
 /**
- * Enable RC stick override of auto modes
+ * Enable mag strength preflight check
  *
- * When an auto mode is active (except a critical battery reaction) moving the RC sticks
- * gives control back to the pilot in manual position mode immediately.
- *
- * Only has an effect on multicopters and VTOLS in multicopter mode.
+ * Deny arming if the estimator detects a strong magnetic
+ * disturbance (check enabled by EKF2_MAG_CHECK)
  *
  * @boolean
+ * @group Commander
+ */
+PARAM_DEFINE_INT32(COM_ARM_MAG_STR, 1);
+
+/**
+ * Enable RC stick override of auto and/or offboard modes
+ *
+ * When RC stick override is enabled, moving the RC sticks immediately gives control back
+ * to the pilot (switches to manual position mode):
+ * bit 0: Enable for auto modes (except for in critical battery reaction),
+ * bit 1: Enable for offboard mode.
+ *
+ * Only has an effect on multicopters, and VTOLS in multicopter mode.
+ *
+ * @min 0
+ * @max 3
+ * @bit 0  Enable override in auto modes
+ * @bit 1  Enable override in offboard mode
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_RC_OVERRIDE, 1);
@@ -790,15 +799,12 @@ PARAM_DEFINE_INT32(COM_TAKEOFF_ACT, 0);
  *
  * The data link loss failsafe will only be entered after a timeout,
  * set by COM_DL_LOSS_T in seconds. Once the timeout occurs the selected
- * action will be executed. Setting this parameter to 4 will enable CASA
- * Outback Challenge rules, which are only recommended to participants
- * of that competition.
+ * action will be executed.
  *
  * @value 0 Disabled
  * @value 1 Hold mode
  * @value 2 Return mode
  * @value 3 Land mode
- * @value 4 Data Link Auto Recovery (CASA Outback Challenge rules)
  * @value 5 Terminate
  * @value 6 Lockdown
  *
@@ -812,14 +818,11 @@ PARAM_DEFINE_INT32(NAV_DLL_ACT, 0);
  * The RC loss failsafe will only be entered after a timeout,
  * set by COM_RC_LOSS_T in seconds. If RC input checks have been disabled
  * by setting the COM_RC_IN_MODE param it will not be triggered.
- * Setting this parameter to 4 will enable CASA Outback Challenge rules,
- * which are only recommended to participants of that competition.
  *
  * @value 0 Disabled
  * @value 1 Hold mode
  * @value 2 Return mode
  * @value 3 Land mode
- * @value 4 RC Auto Recovery (CASA Outback Challenge rules)
  * @value 5 Terminate
  * @value 6 Lockdown
  *
@@ -834,19 +837,6 @@ PARAM_DEFINE_INT32(NAV_RCL_ACT, 2);
  * @group Mission
  */
 PARAM_DEFINE_INT32(COM_OBS_AVOID, 0);
-
-/**
- * Set avoidance system bootup timeout.
- *
- * The avoidance system running on the companion computer is expected to boot
- * within this time and start providing trajectory points.
- * If no avoidance system is detected a MAVLink warning message is sent.
- * @group Commander
- * @unit s
- * @min 0
- * @max 200
- */
-PARAM_DEFINE_INT32(COM_OA_BOOT_T, 100);
 
 /**
  * User Flight Profile

@@ -15,6 +15,7 @@ uint8 FAILURE_NONE = 0
 uint8 FAILURE_ROLL = 1 	# (1 << 0)
 uint8 FAILURE_PITCH = 2	# (1 << 1)
 uint8 FAILURE_ALT = 4 	# (1 << 2)
+uint8 FAILURE_EXT = 8 	# (1 << 3)
 
 # HIL
 uint8 HIL_STATE_OFF = 0
@@ -27,8 +28,6 @@ uint8 NAVIGATION_STATE_POSCTL = 2		# Position control mode
 uint8 NAVIGATION_STATE_AUTO_MISSION = 3		# Auto mission mode
 uint8 NAVIGATION_STATE_AUTO_LOITER = 4		# Auto loiter mode
 uint8 NAVIGATION_STATE_AUTO_RTL = 5		# Auto return to launch mode
-uint8 NAVIGATION_STATE_AUTO_RCRECOVER = 6	# RC recover mode
-uint8 NAVIGATION_STATE_AUTO_RTGS = 7		# Auto return to groundstation on data link loss
 uint8 NAVIGATION_STATE_AUTO_LANDENGFAIL = 8 	# Auto land on engine failure
 uint8 NAVIGATION_STATE_AUTO_LANDGPSFAIL = 9	# Auto land on gps failure (e.g. open loop loiter down)
 uint8 NAVIGATION_STATE_ACRO = 10		# Acro mode

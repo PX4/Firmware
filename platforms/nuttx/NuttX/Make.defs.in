@@ -64,6 +64,11 @@ ifeq ($(WINTOOL),y)
   MKDEP = $(TOPDIR)/tools/mknulldeps.sh
 endif
 
+ifeq ($(CONFIG_BOARD_USE_PROBES),y)
+   ARCHINCLUDES += -I$(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP)
+   ARCHXXINCLUDES += -I$(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP)
+endif
+
 FLAGS = -Os -g2 \
 	-fdata-sections \
 	-ffunction-sections \
@@ -109,7 +114,7 @@ CFLAGS = $(ARCHINCLUDES) \
 	-Wno-type-limits
 
 CXXFLAGS = $(ARCHXXINCLUDES) \
-	-std=gnu++11 \
+	-std=c++14 \
 	-nostdinc++ \
 	${CMAKE_CXX_FLAGS} \
 	$(FLAGS) \
@@ -117,6 +122,7 @@ CXXFLAGS = $(ARCHXXINCLUDES) \
 	-fno-builtin \
 	-fno-exceptions \
 	-fno-rtti \
+	-fno-sized-deallocation \
 	-nostdinc++ \
 	-Wno-double-promotion \
 	-Wno-missing-declarations

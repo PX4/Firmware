@@ -6,15 +6,18 @@
 adc start
 
 # Internal SPI
-ms5611 -T 0 -s start
+if ! ms5611 -T 5607 -s start
+then
+	ms5611 -s start
+fi
 
 # Draco-R
 if param compare SYS_AUTOSTART 6002
 then
 	# GPS LED
-	rgbled_ncp5623c start -a 0x38
+	rgbled_ncp5623c start -X -a 0x38
 
-	#mpu6000 -R 4 -T 20608 start
+	#mpu6000 -s -R 4 -T 20608 start
 	mpu9250 -R 4 start
 
 	# Default GNSS with LIS3MDL magnetometer with external i2c.
@@ -31,7 +34,7 @@ fi
 if param compare SYS_AUTOSTART 4071
 then
 	# IFO GPS LED
-	rgbled_ncp5623c start -a 0x38
+	rgbled_ncp5623c start -X -a 0x38
 
 	# IFO rgb LED
 	pca9685 start

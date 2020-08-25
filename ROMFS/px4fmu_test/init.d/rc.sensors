@@ -13,7 +13,7 @@ then
 fi
 
 # Blacksheep telemetry
-if bst start
+if bst start -X
 then
 fi
 
@@ -21,31 +21,19 @@ if adc start
 then
 fi
 
-if sdp3x_airspeed start
+if sdp3x_airspeed start -X
 then
 fi
 
-if ms5525_airspeed start
+if ms5525_airspeed start -X
 then
 fi
 
-if ms5525_airspeed start -b 2
+if ms4525_airspeed start -X
 then
 fi
 
-if ms4525_airspeed start
-then
-fi
-
-if ms4525_airspeed start -b 2
-then
-fi
-
-if ets_airspeed start
-then
-fi
-
-if ets_airspeed start -b 1
+if ets_airspeed start -X
 then
 fi
 

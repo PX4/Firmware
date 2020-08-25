@@ -108,7 +108,7 @@ int up_dshot_init(uint32_t channel_mask, unsigned dshot_pwm_freq)
 #pragma GCC diagnostic ignored "-Wcast-align"
 		dshot_burst_buffer[timer] = (uint32_t *)&dshot_burst_buffer_array[buffer_offset];
 #pragma GCC diagnostic pop
-		buffer_offset += DSHOT_BURST_BUFFER_SIZE(io_timers[timer].dshot.channels_number);
+		buffer_offset += DSHOT_BURST_BUFFER_SIZE(io_timers_channel_mapping.element[timer].channel_count);
 
 		if (buffer_offset > sizeof(dshot_burst_buffer_array)) {
 			return -EINVAL; // something is wrong with the board configuration or some other logic
@@ -143,8 +143,9 @@ int up_dshot_init(uint32_t channel_mask, unsigned dshot_pwm_freq)
 	for (uint8_t timer_index = 0; (timer_index < DSHOT_TIMERS) && (OK == ret_val); timer_index++) {
 
 		if (true == dshot_handler[timer_index].init) {
-			dshot_handler[timer_index].dma_size = io_timers[timer_index].dshot.channels_number * ONE_MOTOR_BUFF_SIZE;
-			io_timer_set_dshot_mode(timer_index, dshot_pwm_freq, io_timers[timer_index].dshot.channels_number);
+			dshot_handler[timer_index].dma_size = io_timers_channel_mapping.element[timer_index].channel_count *
+							      ONE_MOTOR_BUFF_SIZE;
+			io_timer_set_dshot_mode(timer_index, dshot_pwm_freq, io_timers_channel_mapping.element[timer_index].channel_count);
 
 			dshot_handler[timer_index].dma_handle = stm32_dmachannel(io_timers[timer_index].dshot.dmamap);
 
@@ -165,7 +166,7 @@ void up_dshot_trigger(void)
 
 		if (true == dshot_handler[timer].init) {
 
-			uint8_t motors_number = io_timers[timer].dshot.channels_number;
+			uint8_t motors_number = io_timers_channel_mapping.element[timer].channel_count;
 			dshot_dmar_data_prepare(timer, first_motor, motors_number);
 
 			// Flush cache so DMA sees the data

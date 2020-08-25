@@ -34,7 +34,7 @@
 /**
  * @file board_config.h
  *
- * OCPOC internal definitions
+ * Aerotenna Ocpoc internal definitions
  */
 
 #pragma once
@@ -43,22 +43,39 @@
 #define PX4_SOC_ARCH_ID     PX4_SOC_ARCH_ID_OCPOC
 
 #define BOARD_BATTERY1_V_DIV   (10.177939394f)
+
 #define BOARD_HAS_NO_RESET
 #define BOARD_HAS_NO_BOOTLOADER
 
-#define BOARD_NUMBER_I2C_BUSES 4
 #define BOARD_MAX_LEDS 1 // Number of external LED's this board has
-#define PX4_I2C_BUS_LED 1
-#define PX4_I2C_BUS_EXPANSION 1
 
-// Battery ADC channels
-#define ADC_BATTERY_VOLTAGE_CHANNEL     10
-#define ADC_BATTERY_CURRENT_CHANNEL     ((uint8_t)(-1))
-#define ADC_AIRSPEED_VOLTAGE_CHANNEL    11
+
+// I2C
+#define PX4_I2C_BUS_EXPANSION  2 // i2c-2: Air Data Probe or I2C Splitter
+#define PX4_I2C_BUS_EXPANSION1 4 // i2c-4: GPS/Compass #1
+#define PX4_I2C_BUS_EXPANSION2 5 // i2c-5: GPS/Compass #2
+#define PX4_I2C_BUS_EXPANSION3 3 // i2c-3: GPS/Compass #3
+
+#define PX4_NUMBER_I2C_BUSES   4
+
+#define PX4_I2C_BUS_LED 1
 
 // SPI
-#define PX4_SPI_BUS_SENSORS		1
-#define PX4_SPIDEV_MPU			PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS, 1)
+#include <drivers/drv_sensor.h>
+#define PX4_SPI_BUS_SENSORS    1
+#define PX4_SPIDEV_MPU         PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250) // spidev1.0 - mpu9250
+#define PX4_SPIDEV_BARO        PX4_MK_SPI_SEL(0, DRV_BARO_DEVTYPE_MS5611) // spidev1.1 - ms5611
+//#define PX4_SPIDEV_MPU2      PX4_MK_SPI_SEL(0, 2) // TODO: where is the 2nd mpu9250?
+
+#define PX4_SPI_BUS_BARO PX4_SPI_BUS_SENSORS
+
+
+// ADC channels:
+#define ADC_CHANNELS (1 << 8)
+
+#define ADC_BATTERY_VOLTAGE_CHANNEL  8
+#define ADC_BATTERY_CURRENT_CHANNEL  ((uint8_t)(-1))
+
 
 #include <system_config.h>
 #include <px4_platform_common/board_common.h>

@@ -43,13 +43,15 @@
  * Address 0x6A - measures battery voltage and current with a 0.0005 ohm sense resistor
  * Address 0x6B - measures 5VDC ouptut voltage and current
  */
-VOXLPM::VOXLPM(const char *path, int bus, int address, VOXLPM_CH_TYPE ch_type) :
-	I2C("voxlpm", path, bus, address, 400000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(I2C::get_device_id())),
-	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample"))
+VOXLPM::VOXLPM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, VOXLPM_CH_TYPE ch_type) :
+	I2C("voxlpm", nullptr, bus, (ch_type == VOXLPM_CH_TYPE_VBATT) ? VOXLPM_LTC2946_ADDR_VBATT : VOXLPM_LTC2946_ADDR_P5VD,
+	    bus_frequency),
+	ModuleParams(nullptr),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample")),
+	_ch_type(ch_type),
+	_battery(1, this)
 {
-	_ch_type = ch_type;
-
 	if (_ch_type == VOXLPM_CH_TYPE_VBATT) {
 		_rsense = VOXLPM_RSENSE_VBATT;
 
@@ -60,8 +62,6 @@ VOXLPM::VOXLPM(const char *path, int bus, int address, VOXLPM_CH_TYPE ch_type) :
 
 VOXLPM::~VOXLPM()
 {
-	// make sure we are truly inactive
-	stop();
 	perf_free(_sample_perf);
 }
 
@@ -86,7 +86,7 @@ VOXLPM::init()
 }
 
 void
-VOXLPM::print_info()
+VOXLPM::print_status()
 {
 	perf_print_counter(_sample_perf);
 
@@ -106,22 +106,11 @@ VOXLPM::print_info()
 void
 VOXLPM::start()
 {
-	/* make sure we are stopped first */
-	uint32_t last_meas_interval = _meas_interval;
-	stop();
-	_meas_interval = last_meas_interval;
-
 	ScheduleOnInterval(_meas_interval, 1000);
 }
 
 void
-VOXLPM::stop()
-{
-	ScheduleClear();
-}
-
-void
-VOXLPM::Run()
+VOXLPM::RunImpl()
 {
 	measure();
 }
@@ -129,6 +118,13 @@ VOXLPM::Run()
 int
 VOXLPM::measure()
 {
+	parameter_update_s update;
+
+	if (_parameter_sub.update(&update)) {
+		updateParams();
+	}
+
+
 	_voltage = 0.0f;
 	_amperage = 0.0f;
 
@@ -153,7 +149,7 @@ VOXLPM::measure()
 
 		switch (_ch_type) {
 		case VOXLPM_CH_TYPE_VBATT: {
-				_battery.updateBatteryStatus(tnow, _voltage, _amperage, true, true, 0, 0, false, true);
+				_battery.updateBatteryStatus(tnow, _voltage, _amperage, true, true, 0, 0, true);
 			}
 
 		// fallthrough
@@ -174,7 +170,7 @@ VOXLPM::measure()
 	} else {
 		switch (_ch_type) {
 		case VOXLPM_CH_TYPE_VBATT: {
-				_battery.updateBatteryStatus(tnow, 0.0, 0.0, true, true, 0, 0, false, true);
+				_battery.updateBatteryStatus(tnow, 0.0, 0.0, true, true, 0, 0, true);
 			}
 			break;
 

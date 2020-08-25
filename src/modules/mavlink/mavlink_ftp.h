@@ -43,7 +43,11 @@
 #include <systemlib/err.h>
 #include <drivers/drv_hrt.h>
 
+#ifndef MAVLINK_FTP_UNIT_TEST
 #include "mavlink_bridge_header.h"
+#else
+#include <v2.0/standard/mavlink.h>
+#endif
 
 class MavlinkFtpTest;
 class Mavlink;
@@ -119,8 +123,9 @@ public:
 		kErrNoSessionsAvailable,	///< All available Sessions in use
 		kErrEOF,			///< Offset past end of file for List and Read commands
 		kErrUnknownCommand,		///< Unknown command opcode
-		kErrFailFileExists,		///< File exists already
-		kErrFailFileProtected		///< File is write protected
+		kErrFailFileExists,		///< File/directory exists already
+		kErrFailFileProtected,		///< File/directory is write protected
+		kErrFileNotFound                ///< File/directory not found
 	};
 
 	unsigned get_size();
@@ -132,7 +137,7 @@ private:
 	void		_reply(mavlink_file_transfer_protocol_t *ftp_req);
 	int		_copy_file(const char *src_path, const char *dst_path, size_t length);
 
-	ErrorCode	_workList(PayloadHeader *payload, bool list_hidden = false);
+	ErrorCode	_workList(PayloadHeader *payload);
 	ErrorCode	_workOpen(PayloadHeader *payload, int oflag);
 	ErrorCode	_workRead(PayloadHeader *payload);
 	ErrorCode	_workBurst(PayloadHeader *payload, uint8_t target_system_id, uint8_t target_component_id);

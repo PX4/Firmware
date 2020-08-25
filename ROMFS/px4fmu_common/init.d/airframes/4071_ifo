@@ -10,14 +10,15 @@
 # @output MAIN3 motor 3
 # @output MAIN4 motor 4
 #
+# @maintainer Hyon Lim <lim@uvify.com>
+#
 # @board px4_fmu-v2 exclude
 # @board px4_fmu-v3 exclude
 # @board px4_fmu-v4pro exclude
 # @board px4_fmu-v5 exclude
 # @board px4_fmu-v5x exclude
 # @board intel_aerofc-v1 exclude
-#
-# @maintainer Hyon Lim <lim@uvify.com>
+# @board bitcraze_crazyflie exclude
 #
 
 set VEHICLE_TYPE mc
@@ -60,7 +61,7 @@ then
 	param set RC_FLT_CUTOFF 0.00000
 
 	# Filter settings
-	param set MC_DTERM_CUTOFF 90.00000
+	param set IMU_DGYRO_CUTOFF 90.00000
 	param set IMU_GYRO_CUTOFF 100.00000
 
 	# Thrust curve (avoids the need for TPA)
@@ -106,7 +107,7 @@ then
 
 	# Filter settings
 	param set IMU_GYRO_CUTOFF 90.00000
-	param set MC_DTERM_CUTOFF 70.00000
+	param set IMU_DGYRO_CUTOFF 70.00000
 
 	# Don't try to be intelligent on RC loss: just cut the motors
 	param set NAV_RCL_ACT 6

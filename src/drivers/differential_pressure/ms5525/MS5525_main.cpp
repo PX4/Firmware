@@ -33,199 +33,66 @@
 
 #include "MS5525.hpp"
 
-// Driver 'main' command.
 extern "C" __EXPORT int ms5525_airspeed_main(int argc, char *argv[]);
 
-// Local functions in support of the shell command.
-namespace ms5525_airspeed
+I2CSPIDriverBase *MS5525::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				      int runtime_instance)
 {
-MS5525 *g_dev = nullptr;
+	MS5525 *instance = new MS5525(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency);
 
-int start();
-int start_bus(uint8_t i2c_bus);
-int stop();
-int reset();
-
-/**
-* Attempt to start driver on all available I2C busses.
-*
-* This function will return as soon as the first sensor
-* is detected on one of the available busses or if no
-* sensors are detected.
-*
-*/
-int
-start()
-{
-	for (unsigned i = 0; i < NUM_I2C_BUS_OPTIONS; i++) {
-		if (start_bus(i2c_bus_options[i]) == PX4_OK) {
-			return PX4_OK;
-		}
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	return PX4_ERROR;
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
+
+	instance->ScheduleNow();
+	return instance;
 }
 
-/**
- * Start the driver on a specific bus.
- *
- * This function call only returns once the driver is up and running
- * or failed to detect the sensor.
- */
-int
-start_bus(uint8_t i2c_bus)
+
+void
+MS5525::print_usage()
 {
-	int fd = -1;
-
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		goto fail;
-	}
-
-	g_dev = new MS5525(i2c_bus, I2C_ADDRESS_1_MS5525DSO, PATH_MS5525);
-
-	/* check if the MS4525DO was instantiated */
-	if (g_dev == nullptr) {
-		goto fail;
-	}
-
-	/* try to initialize */
-	if (g_dev->init() != PX4_OK) {
-		goto fail;
-	}
-
-	/* set the poll rate to default, starts automatic data collection */
-	fd = px4_open(PATH_MS5525, O_RDONLY);
-
-	if (fd < 0) {
-		goto fail;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		goto fail;
-	}
-
-	return PX4_OK;
-
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	return PX4_ERROR;
-}
-
-// stop the driver
-int stop()
-{
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-
-	} else {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-// reset the driver
-int reset()
-{
-	int fd = px4_open(PATH_MS5525, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("failed ");
-		return PX4_ERROR;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCRESET, 0) < 0) {
-		PX4_ERR("driver reset failed");
-		return PX4_ERROR;
-	}
-
-	if (px4_ioctl(fd, SENSORIOCSPOLLRATE, SENSOR_POLLRATE_DEFAULT) < 0) {
-		PX4_ERR("driver poll restart failed");
-		return PX4_ERROR;
-	}
-
-	return PX4_OK;
-}
-
-} // namespace ms5525_airspeed
-
-
-static void
-ms5525_airspeed_usage()
-{
-	PX4_INFO("usage: ms5525_airspeed command [options]");
-	PX4_INFO("options:");
-	PX4_INFO("\t-b --bus i2cbus (%d)", PX4_I2C_BUS_DEFAULT);
-	PX4_INFO("\t-a --all");
-	PX4_INFO("command:");
-	PX4_INFO("\tstart|stop|reset");
+	PRINT_MODULE_USAGE_NAME("ms5525_airspeed", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
 int
 ms5525_airspeed_main(int argc, char *argv[])
 {
-	uint8_t i2c_bus = PX4_I2C_BUS_DEFAULT;
+	using ThisDriver = MS5525;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 100000;
 
-	int myoptind = 1;
-	int ch;
-	const char *myoptarg = nullptr;
-	bool start_all = false;
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-	while ((ch = px4_getopt(argc, argv, "ab:", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'b':
-			i2c_bus = atoi(myoptarg);
-			break;
-
-		case 'a':
-			start_all = true;
-			break;
-
-		default:
-			ms5525_airspeed_usage();
-			return 0;
-		}
-	}
-
-	if (myoptind >= argc) {
-		ms5525_airspeed_usage();
+	if (!verb) {
+		ThisDriver::print_usage();
 		return -1;
 	}
 
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(argv[myoptind], "start")) {
-		if (start_all) {
-			return ms5525_airspeed::start();
+	BusInstanceIterator iterator(MODULE_NAME, cli,
+				     DRV_DIFF_PRESS_DEVTYPE_MS5525);
 
-		} else {
-			return ms5525_airspeed::start_bus(i2c_bus);
-		}
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Stop the driver
-	 */
-	if (!strcmp(argv[myoptind], "stop")) {
-		return ms5525_airspeed::stop();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	/*
-	 * Reset the driver.
-	 */
-	if (!strcmp(argv[myoptind], "reset")) {
-		return ms5525_airspeed::reset();
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	ms5525_airspeed_usage();
-	return 0;
+	ThisDriver::print_usage();
+	return -1;
 }

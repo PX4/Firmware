@@ -196,9 +196,9 @@ serial_port_to_wq(const char *serial)
 		return wq_configurations::UART8;
 	}
 
-	PX4_ERR("unknown serial port: %s", serial);
+	PX4_DEBUG("unknown serial port: %s", serial);
 
-	return wq_configurations::hp_default;
+	return wq_configurations::UART_UNKNOWN;
 }
 
 static void *
@@ -264,6 +264,7 @@ WorkQueueManagerRun(int, char **)
 			}
 
 #ifndef __PX4_QURT
+
 			// schedule policy FIFO
 			int ret_setschedpolicy = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
 
@@ -313,7 +314,7 @@ WorkQueueManagerStart()
 
 		int task_id = px4_task_spawn_cmd("wq:manager",
 						 SCHED_DEFAULT,
-						 PX4_WQ_HP_BASE,
+						 SCHED_PRIORITY_MAX,
 						 1280,
 						 (px4_main_t)&WorkQueueManagerRun,
 						 nullptr);

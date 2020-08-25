@@ -47,15 +47,6 @@ void RateControl::setGains(const Vector3f &P, const Vector3f &I, const Vector3f 
 	_gain_d = D;
 }
 
-void RateControl::setDTermCutoff(const float loop_rate, const float cutoff, const bool force)
-{
-	// only do expensive filter update if the cutoff changed
-	if (force || fabsf(_lp_filters_d.get_cutoff_freq() - cutoff) > 0.01f) {
-		_lp_filters_d.set_cutoff_frequency(loop_rate, cutoff);
-		_lp_filters_d.reset(_rate_prev);
-	}
-}
-
 void RateControl::setSaturationStatus(const MultirotorMixer::saturation_status &status)
 {
 	_mixer_saturation_positive[0] = status.flags.roll_pos;
@@ -66,24 +57,14 @@ void RateControl::setSaturationStatus(const MultirotorMixer::saturation_status &
 	_mixer_saturation_negative[2] = status.flags.yaw_neg;
 }
 
-Vector3f RateControl::update(const Vector3f &rate, const Vector3f &rate_sp, const float dt, const bool landed)
+Vector3f RateControl::update(const Vector3f &rate, const Vector3f &rate_sp, const Vector3f &angular_accel,
+			     const float dt, const bool landed)
 {
 	// angular rates error
 	Vector3f rate_error = rate_sp - rate;
 
-	// prepare D-term based on low-pass filtered rates
-	const Vector3f rate_filtered(_lp_filters_d.apply(rate));
-	Vector3f rate_d;
-
-	if (dt > FLT_EPSILON) {
-		rate_d = (rate_filtered - _rate_prev_filtered) / dt;
-	}
-
 	// PID control with feed forward
-	const Vector3f torque = _gain_p.emult(rate_error) + _rate_int - _gain_d.emult(rate_d) + _gain_ff.emult(rate_sp);
-
-	_rate_prev = rate;
-	_rate_prev_filtered = rate_filtered;
+	const Vector3f torque = _gain_p.emult(rate_error) + _rate_int - _gain_d.emult(angular_accel) + _gain_ff.emult(rate_sp);
 
 	// update integral only if we are not landed
 	if (!landed) {

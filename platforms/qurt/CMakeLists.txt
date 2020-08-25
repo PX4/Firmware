@@ -1,5 +1,7 @@
 
-list(APPEND CMAKE_MODULE_PATH "${PX4_SOURCE_DIR}/boards/atlflight/cmake_hexagon")
+px4_add_git_submodule(TARGET git_dspal PATH "${PX4_SOURCE_DIR}/platforms/qurt/dspal")
+
+list(APPEND CMAKE_MODULE_PATH "${PX4_SOURCE_DIR}/platforms/qurt/dspal/cmake_hexagon")
 include(toolchain/Toolchain-qurt)
 include(fastrpc)
 include(qurt_lib)
@@ -33,7 +35,7 @@ if ("${QURT_ENABLE_STUBS}" STREQUAL "1")
 		${PX4_BINARY_DIR}/platforms/qurt/px4muorb_skel.c
 	)
 
-	target_link_libraries(px4 PRIVATE ${module_libraries} ${df_driver_libs})
+	target_link_libraries(px4 PRIVATE ${module_libraries})
 
 else()
 	# Generate the DSP lib and stubs but not the apps side executable
@@ -45,8 +47,12 @@ else()
 		LINK_LIBS
 			modules__muorb__adsp
 			${module_libraries}
-			${df_driver_libs}
 			m
 		)
 
+endif()
+
+# board defined upload helper
+if(EXISTS "${PX4_BOARD_DIR}/cmake/upload.cmake")
+	include(${PX4_BOARD_DIR}/cmake/upload.cmake)
 endif()

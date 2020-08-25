@@ -3,25 +3,28 @@
 # PX4 FMUv3 specific board sensors init
 #------------------------------------------------------------------------------
 
+rgbled start -I
+
 adc start
 
 # External I2C bus
-hmc5883 -C -T -X start
+hmc5883 -T -X start
 lis3mdl -X start
-ist8310 -C start
+ist8310 -X start
 qmc5883 -X start
 
 # Internal I2C bus
-hmc5883 -C -T -I -R 4 start
+hmc5883 -T -I -R 4 start
 
 # Internal SPI bus ICM-20608-G
-mpu6000 -T 20608 start
+mpu6000 -s -T 20608 start
 
-# External SPI
-ms5611 -S start
 
 # Internal SPI (auto detect ms5611 or ms5607)
-ms5611 -T 0 -s start
+if ! ms5611 -T 5607 -s start
+then
+	ms5611 -s start
+fi
 
 set BOARD_FMUV3 0
 
@@ -29,8 +32,8 @@ set BOARD_FMUV3 0
 if ver hwtypecmp V30
 then
 	# Check for Pixhawk 2.0 cube
-	# external MPU6K is rotated 180 degrees yaw
-	if mpu6000 -S -R 4 start
+	# MPU6K is rotated 180 degrees yaw
+	if mpu6000 -s -R 4 start
 	then
 		set BOARD_FMUV3 20
 	else
@@ -49,8 +52,8 @@ then
 	# Pixhawk Mini doesn't have these sensors,
 	# so if they are found we know its a Pixhack
 
-	# external MPU6K is rotated 180 degrees yaw
-	if mpu6000 -S -R 4 start
+	# MPU6K is rotated 180 degrees yaw
+	if mpu6000 -s -R 4 start
 	then
 		set BOARD_FMUV3 20
 	else
@@ -75,9 +78,6 @@ then
 		ak09916 -X -R 6 start
 	fi
 
-	# External SPI
-	ms5611 -S start
-
 	# external L3GD20H is rotated 180 degrees yaw
 	l3gd20 -X -R 4 start
 
@@ -87,7 +87,7 @@ then
 	if [ $BOARD_FMUV3 = 20 ]
 	then
 		# v2.0 internal MPU6000 is rotated 180 deg roll, 270 deg yaw
-		mpu6000 -R 14 start
+		mpu6000 -s -R 14 start
 
 		# v2.0 Has internal hmc5883 on SPI1
 		hmc5883 -C -T -S -R 8 start
@@ -102,7 +102,7 @@ then
 else
 	# $BOARD_FMUV3 = 0 -> FMUv2
 
-	mpu6000 start
+	mpu6000 -s start
 
 	# As we will use the external mag and the ICM-20608-G
 	# V2 build hwtypecmp is always false

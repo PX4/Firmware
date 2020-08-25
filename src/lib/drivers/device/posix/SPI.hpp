@@ -41,6 +41,7 @@
 #define _DEVICE_SPI_H
 
 #include "../CDev.hpp"
+#include <px4_platform_common/spi.h>
 
 #ifdef __PX4_LINUX
 
@@ -185,6 +186,14 @@ protected:
 
 } // namespace device
 
+#else
+
+enum spi_mode_e {
+	SPIDEV_MODE0 = 0, /* CPOL=0 CHPHA=0 */
+	SPIDEV_MODE1 = 1, /* CPOL=0 CHPHA=1 */
+	SPIDEV_MODE2 = 2, /* CPOL=1 CHPHA=0 */
+	SPIDEV_MODE3 = 3  /* CPOL=1 CHPHA=1 */
+};
 #endif // __PX4_LINUX
 
 #endif /* _DEVICE_SPI_H */

@@ -12,7 +12,7 @@
 @###############################################
 @{
 import genmsg.msgs
-import gencpp
+
 from px_generate_uorb_topic_helper import * # this is in Tools/
 
 topic = alias if alias else spec.short_name
@@ -70,9 +70,15 @@ except AttributeError:
 
 #include "@(topic)_Subscriber.h"
 
-@(topic)_Subscriber::@(topic)_Subscriber() : mp_participant(nullptr), mp_subscriber(nullptr) {}
+@(topic)_Subscriber::@(topic)_Subscriber()
+    : mp_participant(nullptr),
+      mp_subscriber(nullptr)
+{ }
 
-@(topic)_Subscriber::~@(topic)_Subscriber() {   Domain::removeParticipant(mp_participant);}
+@(topic)_Subscriber::~@(topic)_Subscriber()
+{
+    Domain::removeParticipant(mp_participant);
+}
 
 bool @(topic)_Subscriber::init(uint8_t topic_ID, std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue)
 {
@@ -84,23 +90,31 @@ bool @(topic)_Subscriber::init(uint8_t topic_ID, std::condition_variable* t_send
     // Create RTPSParticipant
     ParticipantAttributes PParam;
     PParam.rtps.builtin.domainId = 0; // MUST BE THE SAME AS IN THE PUBLISHER
-@[if 1.5 <= fastrtpsgen_version <= 1.7 or ros2_distro == "ardent" or ros2_distro == "bouncy" or ros2_distro == "crystal" or ros2_distro == "dashing"]@
+@[if fastrtps_version <= 1.8]@
     PParam.rtps.builtin.leaseDuration = c_TimeInfinite;
 @[else]@
     PParam.rtps.builtin.discovery_config.leaseDuration = c_TimeInfinite;
 @[end if]@
-    PParam.rtps.setName("@(topic)_subscriber"); //You can put the name you want
+    PParam.rtps.setName("@(topic)_subscriber");
     mp_participant = Domain::createParticipant(PParam);
     if(mp_participant == nullptr)
             return false;
 
+@[if ros2_distro and (ros2_distro == "dashing" or ros2_distro == "eloquent")]@
+    // Type name should match the expected type name on ROS2
+    // Note: the change is being done here since the 'fastrtpsgen' example
+    // generator does not allow to change the type naming on the template of
+    // "*PubSubTypes.cpp" file
+    @(topic)DataType.setName("@(package)::msg::dds_::@(topic)_");
+@[end if]@
+
     //Register the type
-    Domain::registerType(mp_participant, static_cast<TopicDataType*>(&myType));
+    Domain::registerType(mp_participant, static_cast<TopicDataType*>(&@(topic)DataType));
 
     // Create Subscriber
     SubscriberAttributes Rparam;
     Rparam.topic.topicKind = NO_KEY;
-    Rparam.topic.topicDataType = myType.getName(); //Must be registered before the creation of the subscriber
+    Rparam.topic.topicDataType = @(topic)DataType.getName();
 @[if ros2_distro]@
 @[    if ros2_distro == "ardent"]@
     Rparam.qos.m_partition.push_back("rt");
@@ -119,29 +133,49 @@ bool @(topic)_Subscriber::init(uint8_t topic_ID, std::condition_variable* t_send
 
 void @(topic)_Subscriber::SubListener::onSubscriptionMatched(Subscriber* sub, MatchingInfo& info)
 {
+@# Since the time sync runs on the bridge itself, it is required that there is a
+@# match between two topics of the same entity
+@[if topic != 'Timesync' and topic != 'timesync']@
+    // The first 6 values of the ID guidPrefix of an entity in a DDS-RTPS Domain
+    // are the same for all its subcomponents (publishers, subscribers)
+    bool is_different_endpoint = false;
+    for (size_t i = 0; i < 6; i++) {
+        if (sub->getGuid().guidPrefix.value[i] != info.remoteEndpointGuid.guidPrefix.value[i]) {
+            is_different_endpoint = true;
+            break;
+        }
+    }
+
+    // If the matching happens for the same entity, do not make a match
+    if (is_different_endpoint) {
+        if (info.status == MATCHED_MATCHING) {
+            n_matched++;
+            std::cout << " - @(topic) subscriber matched" << std::endl;
+        } else {
+            n_matched--;
+            std::cout << " - @(topic) subscriber unmatched" << std::endl;
+        }
+    }
+@[else]@
     (void)sub;
 
-    if (info.status == MATCHED_MATCHING)
-    {
+    if (info.status == MATCHED_MATCHING) {
         n_matched++;
-        std::cout << "Subscriber matched" << std::endl;
-    }
-    else
-    {
+    } else {
         n_matched--;
-        std::cout << "Subscriber unmatched" << std::endl;
     }
+@[end if]@
 }
 
 void @(topic)_Subscriber::SubListener::onNewDataMessage(Subscriber* sub)
 {
+    if (n_matched > 0) {
         std::unique_lock<std::mutex> has_msg_lock(has_msg_mutex);
         if(has_msg.load() == true) // Check if msg has been fetched
         {
             has_msg_cv.wait(has_msg_lock); // Wait till msg has been fetched
         }
         has_msg_lock.unlock();
-
 
         // Take data
         if(sub->takeNextData(&msg, &m_info))
@@ -159,41 +193,29 @@ void @(topic)_Subscriber::SubListener::onNewDataMessage(Subscriber* sub)
 
             }
         }
-}
-
-void @(topic)_Subscriber::run()
-{
-    std::cout << "Waiting for Data, press Enter to stop the Subscriber. "<<std::endl;
-    std::cin.ignore();
-    std::cout << "Shutting down the Subscriber." << std::endl;
+    }
 }
 
 bool @(topic)_Subscriber::hasMsg()
 {
-    return m_listener.has_msg.load();
+    if (m_listener.n_matched > 0) {
+        return m_listener.has_msg.load();
+    }
+
+    return false;
 }
 
-@[if 1.5 <= fastrtpsgen_version <= 1.7]@
-@[    if ros2_distro]@
-@(package)::msg::dds_::@(topic)_ @(topic)_Subscriber::getMsg()
-@[    else]@
-@(topic)_ @(topic)_Subscriber::getMsg()
-@[    end if]@
-@[else]@
-@[    if ros2_distro]@
-@(package)::msg::@(topic) @(topic)_Subscriber::getMsg()
-@[    else]@
-@(topic) @(topic)_Subscriber::getMsg()
-@[    end if]@
-@[end if]@
+@(topic)_msg_t @(topic)_Subscriber::getMsg()
 {
     return m_listener.msg;
 }
 
 void @(topic)_Subscriber::unlockMsg()
 {
-    std::unique_lock<std::mutex> has_msg_lock(m_listener.has_msg_mutex);
-    m_listener.has_msg = false;
-    has_msg_lock.unlock();
-    m_listener.has_msg_cv.notify_one();
+    if (m_listener.n_matched > 0) {
+        std::unique_lock<std::mutex> has_msg_lock(m_listener.has_msg_mutex);
+        m_listener.has_msg = false;
+        has_msg_lock.unlock();
+        m_listener.has_msg_cv.notify_one();
+    }
 }

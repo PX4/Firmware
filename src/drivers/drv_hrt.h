@@ -78,6 +78,12 @@ typedef struct hrt_call {
 	void			*arg;
 } *hrt_call_t;
 
+
+#define LATENCY_BUCKET_COUNT 8
+extern const uint16_t latency_bucket_count;
+extern const uint16_t latency_buckets[LATENCY_BUCKET_COUNT];
+extern uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
+
 /**
  * Get absolute time in [us] (does not wrap).
  */
@@ -184,8 +190,6 @@ __EXPORT extern void	hrt_call_delay(struct hrt_call *entry, hrt_abstime delay);
 __EXPORT extern void	hrt_init(void);
 
 #ifdef __PX4_POSIX
-
-__EXPORT extern hrt_abstime hrt_reset(void);
 
 __EXPORT extern hrt_abstime hrt_absolute_time_offset(void);
 

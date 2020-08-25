@@ -40,6 +40,7 @@
  * @author Mohammed Kabir <kabir@uasys.io>
  * @author Kelly Steich <kelly.steich@wingtra.com>
  * @author Andreas Bircher <andreas@wingtra.com>
+ * @author Lorenz Meier <lorenz@px4.io>
  */
 
 #include <stdio.h>
@@ -161,8 +162,10 @@ private:
 
 	float			_activation_time;
 	float			_interval;
+	float			_min_interval;
 	float 			_distance;
 	uint32_t 		_trigger_seq;
+	hrt_abstime		_last_trigger_timestamp;
 	bool			_trigger_enabled;
 	bool			_trigger_paused;
 	bool			_one_shot;
@@ -181,6 +184,7 @@ private:
 	param_t			_p_mode;
 	param_t			_p_activation_time;
 	param_t			_p_interval;
+	param_t			_p_min_interval;
 	param_t			_p_distance;
 	param_t			_p_interface;
 	param_t 		_p_cam_cap_fback;
@@ -242,8 +246,10 @@ CameraTrigger::CameraTrigger() :
 	_keepalivecall_down {},
 	_activation_time(0.5f /* ms */),
 	_interval(100.0f /* ms */),
+	_min_interval(1.0f /* ms */),
 	_distance(25.0f /* m */),
 	_trigger_seq(0),
+	_last_trigger_timestamp(0),
 	_trigger_enabled(false),
 	_trigger_paused(false),
 	_one_shot(false),
@@ -266,6 +272,7 @@ CameraTrigger::CameraTrigger() :
 
 	// Parameters
 	_p_interval = param_find("TRIG_INTERVAL");
+	_p_min_interval = param_find("TRIG_MIN_INTERVA");
 	_p_distance = param_find("TRIG_DISTANCE");
 	_p_activation_time = param_find("TRIG_ACT_TIME");
 	_p_mode = param_find("TRIG_MODE");
@@ -274,6 +281,7 @@ CameraTrigger::CameraTrigger() :
 
 	param_get(_p_activation_time, &_activation_time);
 	param_get(_p_interval, &_interval);
+	param_get(_p_min_interval, &_min_interval);
 	param_get(_p_distance, &_distance);
 	param_get(_p_mode, (int32_t *)&_trigger_mode);
 	param_get(_p_interface, (int32_t *)&_camera_interface_mode);
@@ -357,32 +365,32 @@ CameraTrigger::update_intervalometer()
 void
 CameraTrigger::update_distance()
 {
-	if (_turning_on) {
+	if (_turning_on || !_trigger_enabled || _trigger_paused) {
 		return;
 	}
 
-	if (_trigger_enabled) {
-		vehicle_local_position_s local{};
-		_lpos_sub.copy(&local);
+	vehicle_local_position_s local{};
+	_lpos_sub.copy(&local);
 
-		if (local.xy_valid) {
+	if (local.xy_valid) {
 
-			// Initialize position if not done yet
-			matrix::Vector2f current_position(local.x, local.y);
+		// Initialize position if not done yet
+		matrix::Vector2f current_position(local.x, local.y);
 
-			if (!_valid_position) {
-				// First time valid position, take first shot
-				_last_shoot_position = current_position;
-				_valid_position = local.xy_valid;
+		if (!_valid_position) {
+			// First time valid position, take first shot
+			_last_shoot_position = current_position;
+			_valid_position = local.xy_valid;
+
+			if (!_one_shot) {
 				shoot_once();
 			}
+		}
 
-			// Check that distance threshold is exceeded
-			if (matrix::Vector2f(_last_shoot_position - current_position).length() >= _distance) {
-				shoot_once();
-				_last_shoot_position = current_position;
-
-			}
+		// Check that distance threshold is exceeded
+		if (matrix::Vector2f(_last_shoot_position - current_position).length() >= _distance) {
+			shoot_once();
+			_last_shoot_position = current_position;
 		}
 	}
 }
@@ -419,14 +427,12 @@ CameraTrigger::toggle_power()
 void
 CameraTrigger::shoot_once()
 {
-	if (!_trigger_paused) {
-		// schedule trigger on and off calls
-		hrt_call_after(&_engagecall, 0,
-			       (hrt_callout)&CameraTrigger::engage, this);
+	// schedule trigger on and off calls
+	hrt_call_after(&_engagecall, 0,
+		       (hrt_callout)&CameraTrigger::engage, this);
 
-		hrt_call_after(&_disengagecall, 0 + (_activation_time * 1000),
-			       (hrt_callout)&CameraTrigger::disengage, this);
-	}
+	hrt_call_after(&_disengagecall, 0 + (_activation_time * 1000),
+		       (hrt_callout)&CameraTrigger::disengage, this);
 }
 
 bool
@@ -526,18 +532,27 @@ CameraTrigger::Run()
 		if (cmd.command == vehicle_command_s::VEHICLE_CMD_DO_DIGICAM_CONTROL) {
 
 			need_ack = true;
+			hrt_abstime now = hrt_absolute_time();
 
-			if (commandParamToInt(cmd.param7) == 1) {
-				// test shots are not logged or forwarded to GCS for geotagging
-				_test_shot = true;
+			if (now - _last_trigger_timestamp < _min_interval * 1000) {
+				// triggering too fast, abort
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
+
+			} else {
+				if (commandParamToInt(cmd.param7) == 1) {
+					// test shots are not logged or forwarded to GCS for geotagging
+					_test_shot = true;
+
+				}
+
+				if (commandParamToInt((float)cmd.param5) == 1) {
+					// Schedule shot
+					_one_shot = true;
+
+				}
+
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 			}
-
-			if (commandParamToInt((float)cmd.param5) == 1) {
-				// Schedule shot
-				_one_shot = true;
-			}
-
-			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 
 		} else if (cmd.command == vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL) {
 
@@ -571,7 +586,7 @@ CameraTrigger::Run()
 
 			/*
 			 * TRANSITIONAL SUPPORT ADDED AS OF 11th MAY 2017 (v1.6 RELEASE)
-			*/
+			 */
 
 			if (cmd.param1 > 0.0f) {
 				_distance = cmd.param1;
@@ -579,6 +594,7 @@ CameraTrigger::Run()
 
 				_trigger_enabled = true;
 				_trigger_paused = false;
+				_valid_position = false;
 
 			} else if (commandParamToInt(cmd.param1) == 0) {
 				_trigger_paused = true;
@@ -677,6 +693,9 @@ CameraTrigger::Run()
 		}
 	}
 
+	// order matters - one_shot has to be handled LAST
+	// as the other trigger handlers will back off from it
+
 	// run every loop iteration and trigger if needed
 	if (_trigger_mode == TRIGGER_MODE_DISTANCE_ON_CMD ||
 	    _trigger_mode == TRIGGER_MODE_DISTANCE_ALWAYS_ON) {
@@ -718,8 +737,16 @@ CameraTrigger::engage(void *arg)
 {
 	CameraTrigger *trig = static_cast<CameraTrigger *>(arg);
 
+	hrt_abstime now = hrt_absolute_time();
+
+	if ((trig->_last_trigger_timestamp > 0) && (now - trig->_last_trigger_timestamp < trig->_min_interval * 1000)) {
+		return;
+	}
+
 	// Trigger the camera
 	trig->_camera_interface->trigger(true);
+	// set last timestamp
+	trig->_last_trigger_timestamp = now;
 
 	if (trig->_test_shot) {
 		// do not send messages or increment frame count for test shots
@@ -732,7 +759,7 @@ CameraTrigger::engage(void *arg)
 	struct camera_trigger_s	trigger = {};
 
 	// Set timestamp the instant after the trigger goes off
-	trigger.timestamp = hrt_absolute_time();
+	trigger.timestamp = now;
 
 	timespec tv = {};
 	px4_clock_gettime(CLOCK_REALTIME, &tv);

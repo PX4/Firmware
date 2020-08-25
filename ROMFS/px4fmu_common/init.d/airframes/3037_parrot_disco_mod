@@ -17,12 +17,15 @@
 #
 # @maintainer Jan Liphardt <JTLiphardt@gmail.com>
 #
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
 
 sh /etc/init.d/rc.fw_defaults
 
 if [ $AUTOCNF = yes ]
 then
-	
+
 	####################################
 	# Airspeed
 	####################################
@@ -30,13 +33,13 @@ then
 	param set FW_AIRSPD_MIN  15 # = 29 knots
 	param set FW_AIRSPD_TRIM 20 # = 39 knots
 	param set FW_AIRSPD_MAX  27 # = 52 knots
-	
+
 	####################################
 	# The Main L1 Controller
 	####################################
 
 	param set FW_L1_PERIOD 20 #units of meters
-	
+
 	# Damping factor for L1 control (def = 0.75)
 	param set FW_L1_DAMPING 0.75
 
@@ -47,7 +50,7 @@ then
 	# Basic limits (def = +/- 45 deg)
 	param set FW_P_LIM_MAX  45
 	param set FW_P_LIM_MIN -45
-	
+
 	# Time Constant (def = 0.4s)
 	param set FW_P_TC 0.4
 
@@ -72,7 +75,7 @@ then
 
 	# Roll Time Constant (def = 0.4 s)
 	param set FW_R_TC 0.4
-	
+
 	# Roll rate feed forward (def = 0.5 %/rad/sec)
 	param set FW_RR_FF 0.5
 

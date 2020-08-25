@@ -50,7 +50,6 @@ px4_add_module(
 		mavlink_main.cpp
 		mavlink_messages.cpp
 		mavlink_mission.cpp
-		mavlink_orb_subscription.cpp
 		mavlink_parameters.cpp
 		mavlink_rate_limiter.cpp
 		mavlink_receiver.cpp
@@ -63,6 +62,10 @@ px4_add_module(
 		module.yaml
 	DEPENDS
 		airspeed
+		drivers_accelerometer
+		drivers_barometer
+		drivers_gyroscope
+		drivers_magnetometer
 		git_mavlink_v2
 		conversion
 		git_ecl

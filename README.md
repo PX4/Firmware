@@ -13,7 +13,7 @@ This repository holds the [PX4](http://px4.io) flight control solution for drone
   * [Multicopters](https://docs.px4.io/en/airframes/airframe_reference.html#copter)
   * [Fixed wing](https://docs.px4.io/en/airframes/airframe_reference.html#plane)
   * [VTOL](https://docs.px4.io/en/airframes/airframe_reference.html#vtol)
-  * many more experimental types (Rovers, Blimps, Boats, Submarines, etc)
+  * many more experimental types (Rovers, Blimps, Boats, Submarines, Autogyros, etc)
 * Releases: [Downloads](https://github.com/PX4/Firmware/releases)
 
 
@@ -73,7 +73,6 @@ This repository contains code supporting these boards:
   * [Snapdragon Flight](https://docs.px4.io/master/en/flight_controller/snapdragon_flight.html)
   * [Intel Aero](https://docs.px4.io/master/en/flight_controller/intel_aero.html)
   * [Raspberry PI with Navio 2](https://docs.px4.io/master/en/flight_controller/raspberry_pi_navio2.html)
-  * [Parrot Bebop 2](https://dev.px4.io/master/en/advanced/parrot_bebop.html)
   * FMUv2
     * [Pixhawk](https://docs.px4.io/master/en/flight_controller/pixhawk.html)
     * [Pixfalcon](https://docs.px4.io/master/en/flight_controller/pixfalcon.html)

@@ -5,7 +5,7 @@
 adc start
 
 # Internal SPI bus ICM-20689
-mpu6000 -R 8 -z -T 20689 start
+mpu6000 -R 8 -s -T 20689 start
 
 # Internal SPI bus BMI088 accel
 bmi088 -A -R 10 start
@@ -14,14 +14,13 @@ bmi088 -A -R 10 start
 bmi088 -G -R 10 start
 
 # Possible external compasses
-ist8310 -C -b 1 start
-ist8310 -C -b 2 start
-hmc5883 -C -T -X start
+ist8310 -X start
+hmc5883 -T -X start
 qmc5883 -X start
 lis3mdl -X start
 
 # Possible internal compass
-ist8310 -C -b 5 start
+ist8310 -I start
 
 # Baro on internal SPI
 ms5611 -s start

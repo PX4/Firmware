@@ -1,5 +1,5 @@
 uint64 timestamp		# time since system start (microseconds)
-bool flag_armed			# is set whenever the writing thread stores new data
+bool flag_armed			# synonym for actuator_armed.armed
 
 bool flag_external_manual_override_ok		# external override non-fatal for system. Only true for fixed wing
 

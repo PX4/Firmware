@@ -340,7 +340,7 @@ public:
 
 	CanDriver driver;
 
-	CanInitHelper() :
+	CanInitHelper(uint32_t unused = 0x7) :
 		driver(queue_storage_)
 	{
 	}

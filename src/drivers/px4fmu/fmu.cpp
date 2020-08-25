@@ -1497,7 +1497,7 @@ PX4FMU::sensor_reset(int ms)
 		ms = 1;
 	}
 
-	board_spi_reset(ms);
+	board_spi_reset(ms, 0xffff);
 }
 
 void

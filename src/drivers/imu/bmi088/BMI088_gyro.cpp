@@ -63,7 +63,7 @@ BMI088_gyro::BMI088_gyro(int bus, const char *path_gyro, uint32_t device, enum R
 	_bad_transfers(perf_alloc(PC_COUNT, "bmi088_gyro_bad_transfers")),
 	_bad_registers(perf_alloc(PC_COUNT, "bmi088_gyro_bad_registers"))
 {
-	_px4_gyro.set_device_type(DRV_DEVTYPE_BMI088);
+	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_BMI088);
 }
 
 BMI088_gyro::~BMI088_gyro()

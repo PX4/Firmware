@@ -32,7 +32,9 @@
 ############################################################################
 
 # jlink_upload (flash binary)
-find_program(JLinkGDBServerCLExe_PATH JLinkGDBServerCLExe)
+find_program(JLinkGDBServerCLExe_PATH JLinkGDBServerCLExe
+	HINTS /Applications/SEGGER/JLink
+)
 if(JLinkGDBServerCLExe_PATH)
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/jlink_gdb_start.sh.in ${PX4_BINARY_DIR}/jlink_gdb_start.sh @ONLY)
 	add_custom_target(jlink_upload
@@ -48,7 +50,9 @@ if(JLinkGDBServerCLExe_PATH)
 endif()
 
 # jlink_debug_gdb (flash binary and run with gdb attached)
-find_program(JLinkGDBServerExe_PATH JLinkGDBServerExe)
+find_program(JLinkGDBServerExe_PATH JLinkGDBServerExe
+	HINTS /Applications/SEGGER/JLink
+)
 if(JLinkGDBServerExe_PATH AND CMAKE_GDB)
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/jlink_debug_gdb.sh.in ${PX4_BINARY_DIR}/jlink_debug_gdb.sh @ONLY)
 	add_custom_target(jlink_debug_gdb
@@ -63,7 +67,9 @@ if(JLinkGDBServerExe_PATH AND CMAKE_GDB)
 endif()
 
 # jlink_debug_ozone (run Segger Ozone debugger with current target configuration)
-find_program(Ozone_PATH Ozone)
+find_program(Ozone_PATH Ozone
+	HINTS /Applications/Ozone.app/Contents/MacOS/
+)
 if(Ozone_PATH)
 	configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/jlink_debug_ozone.sh.in ${PX4_BINARY_DIR}/jlink_debug_ozone.sh @ONLY)
 	add_custom_target(jlink_debug_ozone

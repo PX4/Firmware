@@ -164,6 +164,11 @@ private:
 	// ADIS16497 onboard self test
 	bool 			self_test();
 
+	/**
+	 * Set measurement range based on the sensor model.
+	 */
+	bool 			set_measurement_range(uint16_t model);
+
 	uint32_t crc32(const uint16_t *data, size_t len) const
 	{
 		uint32_t crc = 0xffffffff;

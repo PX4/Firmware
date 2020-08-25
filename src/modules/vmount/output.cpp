@@ -103,7 +103,7 @@ void OutputBase::_set_angle_setpoints(const ControlData *control_data)
 	switch (control_data->type) {
 	case ControlData::Type::Angle:
 		for (int i = 0; i < 3; ++i) {
-			if (control_data->type_data.angle.is_speed[i]) {
+			if (control_data->type_data.angle.frames[i] == ControlData::TypeData::TypeAngle::Frame::AngularRate) {
 				_angle_speeds[i] = control_data->type_data.angle.angles[i];
 
 			} else {

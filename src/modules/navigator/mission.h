@@ -177,7 +177,8 @@ private:
 	 * @return true if current mission item available
 	 */
 	bool prepare_mission_items(mission_item_s *mission_item,
-				   mission_item_s *next_position_mission_item, bool *has_next_position_item);
+				   mission_item_s *next_position_mission_item, bool *has_next_position_item,
+				   mission_item_s *next_next_position_mission_item = nullptr, bool *has_next_next_position_item = nullptr);
 
 	/**
 	 * Read current (offset == 0) or a specific (offset > 0) mission item
@@ -218,9 +219,9 @@ private:
 	void reset_mission(struct mission_s &mission);
 
 	/**
-	 * Returns true if we need to reset the mission
+	 * Returns true if we need to reset the mission (call this only when inactive)
 	 */
-	bool need_to_reset_mission(bool active);
+	bool need_to_reset_mission();
 
 	/**
 	 * Project current location with heading to far away location and fill setpoint.

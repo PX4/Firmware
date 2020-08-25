@@ -78,9 +78,10 @@ const struct {
 	{"rc",			rc_tests_main,		0},
 #endif /* __PX4_NUTTX */
 
-
+	{"atomic_bitset",	test_atomic_bitset,	0},
 	{"autodeclination",	test_autodeclination,	0},
 	{"bezier",		test_bezierQuad,	0},
+	{"bitset",		test_bitset,		0},
 	{"bson",		test_bson,		0},
 	{"conv",		test_conv,		0},
 	{"dataman",		test_dataman,		OPT_NOJIGTEST | OPT_NOALLTEST},
@@ -89,6 +90,7 @@ const struct {
 	{"hott_telemetry",	test_hott_telemetry,	OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"hrt",			test_hrt,		OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"int",			test_int,		0},
+	{"i2c_spi_cli",		test_i2c_spi_cli,		0},
 	{"IntrusiveQueue",	test_IntrusiveQueue,	0},
 	{"jig_voltages",	test_jig_voltages,	OPT_NOALLTEST},
 	{"List",		test_List,		0},
@@ -120,9 +122,8 @@ const struct {
 	/* external tests */
 	{"commander",		commander_tests_main,	0},
 	{"controllib",		controllib_test_main,	0},
-#ifndef __PX4_NUTTX
 	{"mavlink",		mavlink_tests_main,	0},
-#else
+#ifdef __PX4_NUTTX
 	{"sf0x",		sf0x_tests_main,	0},
 #endif
 	{"uorb",		uorb_tests_main,	0},

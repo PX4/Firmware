@@ -53,7 +53,7 @@ static constexpr uint8_t Bit7 = (1 << 7);
 namespace ST_ISM330DLC
 {
 
-static constexpr uint8_t DIR_READ	= 0x80;
+static constexpr uint8_t DIR_READ = 0x80;
 
 static constexpr uint8_t ISM330DLC_WHO_AM_I = 0b01101010; // Who I am ID
 

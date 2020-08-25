@@ -363,7 +363,6 @@ LSM303D::accel_set_samplerate(unsigned frequency)
 	}
 
 	_call_accel_interval = 1000000 / accel_samplerate;
-	_px4_accel.set_sample_rate(accel_samplerate);
 
 	modify_reg(ADDR_CTRL_REG1, clearbits, setbits);
 

@@ -43,6 +43,7 @@
 #include <drivers/drv_hrt.h>
 #include <lib/cdev/CDev.hpp>
 #include <perf/perf_counter.h>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 
@@ -297,25 +298,29 @@ public:
 	// write reg value
 	virtual int set_reg(uint8_t value, uint8_t addr) = 0;
 
-	// bulk read of data into buffer, return same pointer
-	virtual data_s *get_data(uint8_t addr) = 0;
-
 	// bulk read of calibration data into buffer, return same pointer
 	virtual calibration_s *get_calibration(uint8_t addr) = 0;
 
 	virtual uint32_t get_device_id() const = 0;
+
+	virtual uint8_t get_device_address() const = 0;
 };
 
-class BMP388 : public px4::ScheduledWorkItem
+class BMP388 : public I2CSPIDriver<BMP388>
 {
 public:
-	BMP388(IBMP388 *interface);
+	BMP388(I2CSPIBusOption bus_option, int bus, IBMP388 *interface);
 	virtual ~BMP388();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	virtual int		init();
 
-	void			print_info();
+	void			print_status();
 
+	void 			RunImpl();
 private:
 	PX4Barometer		_px4_baro;
 	IBMP388			*_interface{nullptr};
@@ -334,9 +339,7 @@ private:
 
 	bool			_collect_phase{false};
 
-	void 			Run() override;
 	void 			start();
-	void 			stop();
 	int 			measure();
 	int			collect(); //get results and publish
 	uint32_t		get_measurement_time(uint8_t osr_t, uint8_t osr_p);
@@ -353,6 +356,5 @@ private:
 
 
 /* interface factories */
-extern IBMP388 *bmp388_spi_interface(uint8_t busnum, uint32_t device);
-extern IBMP388 *bmp388_i2c_interface(uint8_t busnum, uint32_t device);
-typedef IBMP388 *(*BMP388_constructor)(uint8_t, uint32_t);
+extern IBMP388 *bmp388_spi_interface(uint8_t busnum, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
+extern IBMP388 *bmp388_i2c_interface(uint8_t busnum, uint32_t device, int bus_frequency);

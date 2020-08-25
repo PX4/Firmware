@@ -48,6 +48,8 @@ public:
 	PX4Barometer(uint32_t device_id, uint8_t priority = ORB_PRIO_DEFAULT);
 	~PX4Barometer() override;
 
+	const sensor_baro_s &get() { return _sensor_baro_pub.get(); }
+
 	void set_device_type(uint8_t devtype);
 	void set_error_count(uint64_t error_count) { _sensor_baro_pub.get().error_count = error_count; }
 

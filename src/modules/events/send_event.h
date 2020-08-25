@@ -33,11 +33,10 @@
 
 #pragma once
 
-#include "subscriber_handler.h"
 #include "status_display.h"
 #include "rc_loss_alarm.h"
 
-#include <px4_platform_common/workqueue.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <uORB/PublicationQueued.hpp>
@@ -50,7 +49,7 @@ namespace events
 extern "C" __EXPORT int send_event_main(int argc, char *argv[]);
 
 /** @class SendEvent The SendEvent class manages the RC loss audible alarm, LED status display, and thermal calibration. */
-class SendEvent : public ModuleBase<SendEvent>, public ModuleParams
+class SendEvent : public ModuleBase<SendEvent>, public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
 
@@ -94,21 +93,9 @@ private:
 	void answer_command(const vehicle_command_s &cmd, unsigned result);
 
 	/**
-	 * @brief Process cycle trampoline for the work queue.
-	 * @param arg Pointer to the task startup arguments.
-	 */
-	static void cycle_trampoline(void *arg);
-
-	/**
 	 * @brief Calls process_commands() and schedules the next cycle.
 	 */
-	void cycle();
-
-	/**
-	 * @brief Trampoline for initialisation.
-	 * @param arg Pointer to the task startup arguments.
-	 */
-	static void initialize_trampoline(void *arg);
+	void Run() override;
 
 	/**
 	 * @brief Checks for new commands and processes them.
@@ -121,11 +108,7 @@ private:
 	 */
 	int start();
 
-	/** @struct _work The work queue struct. */
-	static struct work_s _work;
-
-	/** @var _subscriber_handler The uORB subscriber handler. */
-	SubscriberHandler _subscriber_handler;
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 
 	/** @var _status_display Pointer to the status display object. */
 	status::StatusDisplay *_status_display = nullptr;

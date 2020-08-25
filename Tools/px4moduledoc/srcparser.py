@@ -1,7 +1,10 @@
+#! /usr/bin/env python3
 import sys
 import re
 import math
 import textwrap
+from functools import reduce
+
 
 class ModuleDocumentation(object):
     """
@@ -12,7 +15,8 @@ class ModuleDocumentation(object):
     # TOC in https://github.com/PX4/Devguide/blob/master/en/SUMMARY.md
     valid_categories = ['driver', 'estimator', 'controller', 'system',
                         'communication', 'command', 'template', 'simulation']
-    valid_subcategories = ['', 'distance_sensor']
+    valid_subcategories = ['', 'distance_sensor', 'imu', 'airspeed_sensor',
+                           'magnetometer', 'baro']
 
     max_line_length = 80 # wrap lines that are longer than this
 
@@ -29,8 +33,11 @@ class ModuleDocumentation(object):
         self._scope = scope
 
         self._options = '' # all option chars
+        self._explicit_options = '' # all option chars (explicit in the module)
         self._all_values = [] # list of all values
         self._all_commands = []
+
+        self._paring_implicit_options = False
 
         for func_name, args in function_calls:
             attribute_name = '_handle_'+func_name.lower()
@@ -95,7 +102,7 @@ class ModuleDocumentation(object):
     def _handle_usage_param_int(self, args):
         assert(len(args) == 6) # option_char, default_val, min_val, max_val, description, is_optional
         option_char = self._get_option_char(args[0])
-        default_val = int(args[1])
+        default_val = int(args[1], 0)
         description = self._get_string(args[4])
         if self._is_bool_true(args[5]):
             self._usage_string += "     [-%s <val>]  %s\n" % (option_char, description)
@@ -115,6 +122,33 @@ class ModuleDocumentation(object):
                 self._usage_string += "                 default: %.1f\n" % default_val
         else:
             self._usage_string += "     -%s <val>    %s\n" % (option_char, description)
+
+    def _handle_usage_params_i2c_spi_driver(self, args):
+        assert(len(args) == 2) # i2c_support, spi_support
+        self._paring_implicit_options = True
+        if self._is_bool_true(args[0]):
+            self._handle_usage_param_flag(['\'I\'', "\"Internal I2C bus(es)\"", 'true'])
+            self._handle_usage_param_flag(['\'X\'', "\"External I2C bus(es\")", 'true'])
+        if self._is_bool_true(args[1]):
+            self._handle_usage_param_flag(['\'s\'', "\"Internal SPI bus(es)\"", 'true'])
+            self._handle_usage_param_flag(['\'S\'', "\"External SPI bus(es)\"", 'true'])
+
+        self._handle_usage_param_int(['\'b\'', '-1', '0', '16',
+            "\"bus (board-specific internal (default=all) or n-th external (default=1))\"", 'true'])
+
+        if self._is_bool_true(args[1]):
+            self._handle_usage_param_int(['\'c\'', '1', '1', '10',
+                "\"chip-select index (for external SPI)\"", 'true'])
+            self._handle_usage_param_int(['\'m\'', '-1', '0', '3', "\"SPI mode\"", 'true'])
+
+        self._handle_usage_param_int(['\'f\'', '-1', '0', '1000000', "\"bus frequency in kHz\"", 'true'])
+        self._paring_implicit_options = False
+
+    def _handle_usage_params_i2c_address(self, args):
+        assert(len(args) == 1) # i2c_address
+        self._paring_implicit_options = True
+        self._handle_usage_param_int(['\'a\'', args[0], '0', '0xff', "\"I2C address\"", 'true'])
+        self._paring_implicit_options = False
 
     def _handle_usage_param_flag(self, args):
         assert(len(args) == 3) # option_char, description, is_optional
@@ -183,6 +217,8 @@ class ModuleDocumentation(object):
         assert(len(argument) == 3) # must have the form: 'p' (assume there's no escaping)
         option_char = argument[1]
         self._options += option_char
+        if not self._paring_implicit_options:
+            self._explicit_options += option_char
         return option_char
 
 
@@ -230,9 +266,10 @@ class ModuleDocumentation(object):
 
     def options(self):
         """
-        get all the -p options as string of chars
+        get all the -p options as string of chars, that are explicitly set in
+        the module
         """
-        return self._options
+        return self._explicit_options
 
     def all_values(self):
         """
@@ -253,7 +290,7 @@ class SourceParser(object):
     """
 
     # Regex to extract module doc function calls, starting with PRINT_MODULE_
-    re_doc_definition = re.compile(r'PRINT_MODULE_([A-Z_]*)\s*\(')
+    re_doc_definition = re.compile(r'PRINT_MODULE_([A-Z0-9_]*)\s*\(')
 
     def __init__(self):
         self._modules = {} # all found modules: key is the module name
@@ -367,9 +404,9 @@ class SourceParser(object):
                             failed = True
 
                 if failed:
-                    print("Warning: documentation inconsistency in %s:" % scope)
-                    print(" Documented options       : %s" % sorted_module_options)
-                    print(" Options found in getopt(): %s" % sorted_getopt_args)
+                    print(("Warning: documentation inconsistency in %s:" % scope))
+                    print((" Documented options       : %s" % sorted_module_options))
+                    print((" Options found in getopt(): %s" % sorted_getopt_args))
                     self._consistency_checks_failure = True
 
 
@@ -391,7 +428,7 @@ class SourceParser(object):
                 continue # handled in the base class
 
             if not command in doc_commands:
-                print("Warning: undocumented command '%s' in %s" %(command, scope))
+                print(("Warning: undocumented command '%s' in %s" %(command, scope)))
                 self._consistency_checks_failure = True
 
         # limit the maximum line length in the module doc string
@@ -407,8 +444,8 @@ class SourceParser(object):
             elif not verbatim_mode:
                 if not 'www.' in line and not 'http' in line:
                     if len(line) > max_line_length:
-                        print('Line too long (%i > %i) in %s:' % (len(line), max_line_length, scope))
-                        print(' '+line)
+                        print(('Line too long (%i > %i) in %s:' % (len(line), max_line_length, scope)))
+                        print((' '+line))
                         self._consistency_checks_failure = True
 
 
@@ -440,7 +477,7 @@ class SourceParser(object):
                 while next_position < len(contents):
                     if contents[next_position] == '\\': # escaping
                         if contents[next_position + 1] != '\n': # skip if continued on next line
-                            string += contents[next_position:next_position+2].decode('string_escape')
+                            string += contents[next_position:next_position+2].encode().decode('unicode_escape')
                         next_position += 2
                     elif contents[next_position] == '"':
                         next_position += 1
@@ -517,4 +554,3 @@ class SourceParser(object):
             for subcategory in group:
                 group[subcategory] = sorted(group[subcategory], key=lambda x: x.name())
         return groups
-

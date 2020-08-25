@@ -53,7 +53,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <arch/board/board.h>
+
 
 #include "drivers/drv_pwm_output.h"
 

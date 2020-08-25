@@ -5,6 +5,13 @@
 # @type Quadrotor H
 # @class Copter
 #
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+#
+# @maintainer Beat Kueng <beat-kueng@gmx.net>
+#
 # @board px4_fmu-v2 exclude
 # @board px4_fmu-v3 exclude
 # @board px4_fmu-v4 exclude
@@ -12,13 +19,7 @@
 # @board px4_fmu-v5 exclude
 # @board px4_fmu-v5x exclude
 # @board intel_aerofc-v1 exclude
-#
-# @output MAIN1 motor 1
-# @output MAIN2 motor 2
-# @output MAIN3 motor 3
-# @output MAIN4 motor 4
-#
-# @maintainer Beat Kueng <beat-kueng@gmx.net>
+# @board bitcraze_crazyflie exclude
 #
 
 sh /etc/init.d/rc.mc_defaults
@@ -29,7 +30,7 @@ then
 	param set CBRK_USB_CHK 197848
 
 	param set IMU_GYRO_CUTOFF 100
-	param set MC_DTERM_CUTOFF 60
+	param set IMU_DGYRO_CUTOFF 60
 
 	param set MC_AIRMODE 2
 	param set MC_PITCHRATE_D 0.0010

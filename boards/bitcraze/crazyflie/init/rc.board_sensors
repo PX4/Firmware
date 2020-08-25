@@ -9,7 +9,7 @@ adc start
 mpu9250 -R 12 start
 
 # I2C bypass of mpu
-lps25h start
+lps25h -I start
 
 # Optical flow deck
-vl53lxx start
+vl53lxx start -X

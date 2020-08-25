@@ -54,7 +54,7 @@
 
 #include <parameters/param.h>
 
-#include <arch/board/board.h>
+
 #include "RoboClaw.hpp"
 
 static bool thread_running = false;     /**< Deamon status flag */

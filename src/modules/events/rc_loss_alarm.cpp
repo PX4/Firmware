@@ -52,40 +52,27 @@ namespace events
 namespace rc_loss
 {
 
-RC_Loss_Alarm::RC_Loss_Alarm(const events::SubscriberHandler &subscriber_handler)
-	: _subscriber_handler(subscriber_handler)
-{
-}
-
-bool RC_Loss_Alarm::check_for_updates()
-{
-	if (_subscriber_handler.vehicle_status_updated()) {
-		orb_copy(ORB_ID(vehicle_status), _subscriber_handler.get_vehicle_status_sub(), &_vehicle_status);
-		return true;
-	}
-
-	return false;
-}
-
 void RC_Loss_Alarm::process()
 {
-	if (!check_for_updates()) {
+	vehicle_status_s status{};
+
+	if (!_vehicle_status_sub.update(&status)) {
 		return;
 	}
 
 	if (!_was_armed &&
-	    _vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+	    status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 
 		_was_armed = true;	// Once true, impossible to go back to false
 	}
 
-	if (!_had_rc && !_vehicle_status.rc_signal_lost) {
+	if (!_had_rc && !status.rc_signal_lost) {
 
 		_had_rc = true;
 	}
 
-	if (_was_armed && _had_rc && _vehicle_status.rc_signal_lost &&
-	    _vehicle_status.arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+	if (_was_armed && _had_rc && status.rc_signal_lost &&
+	    status.arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
 		play_tune();
 		_alarm_playing = true;
 

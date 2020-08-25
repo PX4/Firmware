@@ -21,8 +21,7 @@ bmi088 -G -R 10 start
 dps310 -s start
 
 # Possible external compasses
-ist8310 -C -b 1 start
-ist8310 -C -b 2 start
-hmc5883 -C -T -X start
+ist8310 -X start
+hmc5883 -T -X start
 qmc5883 -X start
 lis3mdl -X start

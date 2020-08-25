@@ -31,6 +31,8 @@
 #
 ############################################################################
 
+option(PX4IO_PERF "Enable px4io perf counters" OFF)
+
 add_library(px4iofirmware
 	adc.c
 	controls.c
@@ -39,7 +41,7 @@ add_library(px4iofirmware
 	registers.c
 	safety.c
 	serial.c
-	)
+)
 
 set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES px4iofirmware)
 target_link_libraries(px4iofirmware
@@ -50,6 +52,10 @@ target_link_libraries(px4iofirmware
 		nuttx_c
 		mixer
 		rc
-		perf
 		output_limit
 )
+
+if(PX4IO_PERF)
+	target_compile_definitions(px4iofirmware PRIVATE PX4IO_PERF)
+	target_link_libraries(px4iofirmware PRIVATE perf)
+endif()

@@ -48,12 +48,11 @@
 #include <drivers/drv_range_finder.h>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <px4_platform_common/module.h>
 #include <uORB/topics/distance_sensor.h>
 
 /* Configuration Constants */
-#define VL53LXX_BUS_DEFAULT                             PX4_I2C_BUS_EXPANSION
-
 #define VL53LXX_BASEADDR                                0x29
 #define VL53LXX_DEVICE_PATH                             "/dev/vl53lxx"
 
@@ -86,20 +85,24 @@
 
 #define VL53LXX_BUS_CLOCK                               400000 // 400kHz bus clock speed
 
-class VL53LXX : public device::I2C, public px4::ScheduledWorkItem
+class VL53LXX : public device::I2C, public I2CSPIDriver<VL53LXX>
 {
 public:
-	VL53LXX(uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING,
-		int bus = VL53LXX_BUS_DEFAULT, int address = VL53LXX_BASEADDR);
+	VL53LXX(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency,
+		int address = VL53LXX_BASEADDR);
 
 	virtual ~VL53LXX();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
 	virtual int init() override;
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
 	 */
-	void print_info();
+	void print_status() override;
 
 	virtual ssize_t read(device::file_t *file_pointer, char *buffer, size_t buflen);
 
@@ -109,9 +112,10 @@ public:
 	void start();
 
 	/**
-	 * Stop the automatic measurement state machine.
+	 * Perform a poll cycle; collect from the previous measurement
+	 * and start a new one.
 	 */
-	void stop();
+	void RunImpl();
 
 protected:
 	virtual int probe() override;
@@ -127,12 +131,6 @@ private:
 	 * Sends an i2c measure command to the sensor.
 	 */
 	int measure();
-
-	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 */
-	void Run() override;
 
 	int readRegister(const uint8_t reg_address, uint8_t &value);
 	int readRegisterMulti(const uint8_t reg_address, uint8_t *value, const uint8_t length);
@@ -165,9 +163,9 @@ private:
 };
 
 
-VL53LXX::VL53LXX(uint8_t rotation, int bus, int address) :
-	I2C("VL53LXX", VL53LXX_DEVICE_PATH, bus, address, 400000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
+VL53LXX::VL53LXX(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency, int address) :
+	I2C("VL53LXX", VL53LXX_DEVICE_PATH, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_rotation(rotation)
 {
 	// Allow 3 retries as the device typically misses the first measure attempts.
@@ -176,9 +174,6 @@ VL53LXX::VL53LXX(uint8_t rotation, int bus, int address) :
 
 VL53LXX::~VL53LXX()
 {
-	// Ensure we are truly inactive.
-	stop();
-
 	// Free any existing reports.
 	if (_reports != nullptr) {
 		delete _reports;
@@ -346,8 +341,9 @@ VL53LXX::measure()
 }
 
 void
-VL53LXX::print_info()
+VL53LXX::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_comms_errors);
 	perf_print_counter(_sample_perf);
 	PX4_INFO("measure interval:  %u msec", _measure_interval / 1000);
@@ -468,7 +464,7 @@ VL53LXX::readRegisterMulti(const uint8_t reg_address, uint8_t *value, const uint
 }
 
 void
-VL53LXX::Run()
+VL53LXX::RunImpl()
 {
 	measure();
 
@@ -738,12 +734,6 @@ VL53LXX::start()
 	ScheduleNow();
 }
 
-void
-VL53LXX::stop()
-{
-	ScheduleClear();
-}
-
 int
 VL53LXX::writeRegister(const uint8_t reg_address, const uint8_t value)
 {
@@ -787,172 +777,35 @@ VL53LXX::writeRegisterMulti(const uint8_t reg_address, const uint8_t *value,
 	return PX4_OK;
 }
 
-
-/**
- * Local functions in support of the shell command.
- */
-namespace vl53lxx
+void
+VL53LXX::print_usage()
 {
-
-VL53LXX *g_dev;
-
-int reset();
-int start(const uint8_t rotation);
-int start_bus(const uint8_t rotation = 0, const int i2c_bus = VL53LXX_BUS_DEFAULT);
-int status();
-int stop();
-int test();
-int usage();
-
-/**
- * Reset the driver.
- */
-int
-reset()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	g_dev->stop();
-	g_dev->start();
-	PX4_INFO("driver reset");
-	return PX4_OK;
+	PRINT_MODULE_USAGE_NAME("vl53lxx", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 1, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-/**
- * Attempt to start driver on all available I2C busses.
- *
- * This function will return as soon as the first sensor
- * is detected on one of the available busses or if no
- * sensors are detected.
- */
-int
-start(const uint8_t rotation)
+I2CSPIDriverBase *VL53LXX::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	for (size_t i = 0; i < NUM_I2C_BUS_OPTIONS; i++) {
-		if (start_bus(rotation, i2c_bus_options[i]) == PX4_OK) {
-			return PX4_OK;
-		}
+	VL53LXX *instance = new VL53LXX(iterator.configuredBusOption(), iterator.bus(), cli.orientation, cli.bus_frequency);
+
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	return PX4_ERROR;
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		return nullptr;
+	}
+
+	instance->start();
+	return instance;
 }
-
-/**
- * Start the driver on a specific bus.
- *
- * This function only returns if the sensor is up and running
- * or could not be detected successfully.
- */
-int
-start_bus(const uint8_t rotation, const int i2c_bus)
-{
-	if (g_dev != nullptr) {
-		PX4_ERR("already started");
-		return PX4_OK;
-	}
-
-	// Instantiate the driver.
-	g_dev = new VL53LXX(rotation, i2c_bus);
-
-	if (g_dev == nullptr) {
-		delete g_dev;
-		return PX4_ERROR;
-	}
-
-	// Initialize the sensor.
-	if (g_dev->init() != PX4_OK) {
-		delete g_dev;
-		g_dev = nullptr;
-		return PX4_ERROR;
-	}
-
-	// Start the driver.
-	g_dev->start();
-	PX4_INFO("driver started");
-	return PX4_OK;
-}
-
-/**
- * Print the driver status.
- */
-int
-status()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running");
-		return PX4_ERROR;
-	}
-
-	g_dev->print_info();
-
-	return PX4_OK;
-}
-
-/**
- * Stop the driver
- */
-int
-stop()
-{
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-
-	}
-
-	PX4_INFO("driver stopped");
-	return PX4_OK;
-}
-
-/**
- * Perform some basic functional tests on the driver;
- * make sure we can collect data from the sensor in polled
- * and automatic modes.
- */
-int
-test()
-{
-	int fd = px4_open(VL53LXX_DEVICE_PATH, O_RDONLY);
-
-	if (fd < 0) {
-		PX4_ERR("%s open failed (try 'vl53lxx start' if the driver is not running)", VL53LXX_DEVICE_PATH);
-		return PX4_ERROR;
-	}
-
-	// Perform a simple demand read.
-	distance_sensor_s report {};
-	ssize_t num_bytes = read(fd, &report, sizeof(report));
-
-	if (num_bytes != sizeof(report)) {
-		PX4_ERR("immediate read failed");
-		return PX4_ERROR;
-	}
-
-	print_message(report);
-
-	px4_close(fd);
-
-	PX4_INFO("PASS");
-	return PX4_OK;
-}
-
-int
-usage()
-{
-	PX4_INFO("usage: vl53lxx command [options]");
-	PX4_INFO("options:");
-	PX4_INFO("\t-a --all available busses");
-	PX4_INFO("\t-b --bus i2cbus (%d)", VL53LXX_BUS_DEFAULT);
-	PX4_INFO("\t-R --rotation (%d)", distance_sensor_s::ROTATION_DOWNWARD_FACING);
-	PX4_INFO("command:");
-	PX4_INFO("\treset|start|status|stop|test|usage");
-	return PX4_OK;
-}
-
-} // namespace vl53lxx
 
 
 /**
@@ -960,70 +813,41 @@ usage()
  */
 extern "C" __EXPORT int vl53lxx_main(int argc, char *argv[])
 {
-	const char *myoptarg = nullptr;
+	int ch;
+	using ThisDriver = VL53LXX;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 400000;
+	cli.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 
-	int ch = 0;
-	int i2c_bus = VL53LXX_BUS_DEFAULT;
-	int myoptind = 1;
-
-	uint8_t rotation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
-
-	bool start_all = false;
-
-	while ((ch = px4_getopt(argc, argv, "ab:R:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'a':
-			start_all = true;
-			break;
-
-		case 'b':
-			i2c_bus = atoi(myoptarg);
-			break;
-
 		case 'R':
-			rotation = (uint8_t)atoi(myoptarg);
+			cli.orientation = atoi(cli.optarg());
 			break;
-
-		default:
-			PX4_WARN("Unknown option!");
-			return vl53lxx::usage();
 		}
 	}
 
-	if (myoptind >= argc) {
-		return vl53lxx::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	// Reset the driver.
-	if (!strcmp(argv[myoptind], "reset")) {
-		return vl53lxx::reset();
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_DIST_DEVTYPE_VL53LXX);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	// Start/load the driver.
-	if (!strcmp(argv[myoptind], "start")) {
-		if (start_all) {
-			return vl53lxx::start(rotation);
-
-		} else {
-			return vl53lxx::start_bus(rotation, i2c_bus);
-		}
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	// Print the driver status.
-	if (!strcmp(argv[myoptind], "status")) {
-		return vl53lxx::status();
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
 	}
 
-	// Stop the driver.
-	if (!strcmp(argv[myoptind], "stop")) {
-		return vl53lxx::stop();
-	}
-
-	// Test the driver/device.
-	if (!strcmp(argv[myoptind], "test")) {
-		return vl53lxx::test();
-	}
-
-	// Print driver usage information.
-	return vl53lxx::usage();
+	ThisDriver::print_usage();
+	return -1;
 }

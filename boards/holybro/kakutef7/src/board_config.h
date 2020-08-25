@@ -70,6 +70,8 @@
 #define PX4_SPI_BUS_OSD   	2
 #define PX4_SPI_BUS_SENSORS   4
 
+#include <drivers/drv_sensor.h>
+
 /*  Define the Chip Selects, Data Ready and Control signals per SPI bus */
 
 #define GPIO_SPI1_CS1_SD_CARD    /* PA4 */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN4)
@@ -77,7 +79,7 @@
 #define PX4_SD_CARD_BUS_CS_GPIO      {GPIO_SPI1_CS1_SD_CARD}
 
 #define GPIO_SPI2_CS1_OSD    /* PB12 */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN12)
-#define PX4_SPIDEV_OSD              1
+#define PX4_SPIDEV_OSD              PX4_MK_SPI_SEL(0,DRV_OSD_DEVTYPE_ATXXXX)
 
 #define PX4_OSD_BUS_CS_GPIO      {GPIO_SPI2_CS1_OSD}
 
@@ -91,8 +93,8 @@
 #define GPIO_SPI4_DRDY1_ICM20689    /* PE1 */   (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN1)
 
 
-#define PX4_SPIDEV_MPU              PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS,0)
-#define PX4_SPIDEV_ICM_20689        PX4_MK_SPI_SEL(PX4_SPI_BUS_SENSORS,0)
+#define PX4_SPIDEV_MPU              PX4_MK_SPI_SEL(0,DRV_IMU_DEVTYPE_MPU6000)
+#define PX4_SPIDEV_ICM_20689        PX4_MK_SPI_SEL(0,DRV_IMU_DEVTYPE_ICM20689)
 #define PX4_SENSOR_BUS_CS_GPIO      {GPIO_SPI4_CS1_ICM20689}
 
 /* I2C busses */
@@ -102,8 +104,6 @@
 
 #define BOARD_NUMBER_I2C_BUSES      1
 #define BOARD_I2C_BUS_CLOCK_INIT    {100000}
-
-#define PX4_I2C_OBDEV_BMP280        0x76
 
 /*
  * ADC channels
@@ -139,35 +139,8 @@
 
 /* PWM
  */
-#define GPIO_TIM5_CH4OUT      /* PA3   T5C4   PWM6 */ GPIO_TIM5_CH4OUT_1
-#define GPIO_TIM8_CH4OUT      /* PC9   T8C4   PWM5 */ GPIO_TIM8_CH4OUT_1
-#define GPIO_TIM1_CH2OUT      /* PE11  T1C2   PWM4 */ GPIO_TIM1_CH2OUT_2
-#define GPIO_TIM1_CH1OUT      /* PE9   T1C1   PWM3 */ GPIO_TIM1_CH1OUT_2
-#define GPIO_TIM3_CH4OUT      /* PB1   T3C4   PWM2 */ GPIO_TIM3_CH4OUT_1
-#define GPIO_TIM3_CH3OUT      /* PB0   T3C3   PWM1 */ GPIO_TIM3_CH3OUT_1
-
 #define DIRECT_PWM_OUTPUT_CHANNELS  6
-
-#define GPIO_TIM5_CH4IN       /* PA3   T5C4   PWM6 */ GPIO_TIM5_CH4IN_1
-#define GPIO_TIM8_CH4IN       /* PC9   T8C4   PWM5 */ GPIO_TIM8_CH4IN_1
-#define GPIO_TIM1_CH2IN       /* PE11  T1C2   PWM4 */ GPIO_TIM1_CH2IN_2
-#define GPIO_TIM1_CH1IN       /* PE9   T1C1   PWM3 */ GPIO_TIM1_CH1IN_2
-#define GPIO_TIM3_CH4IN       /* PB1   T3C4   PWM2 */ GPIO_TIM3_CH4IN_1
-#define GPIO_TIM3_CH3IN       /* PB0   T3C3   PWM1 */ GPIO_TIM3_CH3IN_1
-
 #define DIRECT_INPUT_TIMER_CHANNELS  6
-
-/* User GPIOs
- */
-
-#define _MK_GPIO_INPUT(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT|GPIO_PULLDOWN))
-
-#define GPIO_GPIO5_INPUT        /* PWM6 */ _MK_GPIO_INPUT(GPIO_TIM5_CH4IN)
-#define GPIO_GPIO4_INPUT        /* PWM5 */ _MK_GPIO_INPUT(GPIO_TIM8_CH4IN)
-#define GPIO_GPIO3_INPUT        /* PWM4 */ _MK_GPIO_INPUT(GPIO_TIM1_CH2IN)
-#define GPIO_GPIO2_INPUT        /* PWM3 */ _MK_GPIO_INPUT(GPIO_TIM1_CH1IN)
-#define GPIO_GPIO1_INPUT        /* PWM2 */ _MK_GPIO_INPUT(GPIO_TIM3_CH4IN)
-#define GPIO_GPIO0_INPUT        /* PWM1 */ _MK_GPIO_INPUT(GPIO_TIM3_CH3IN)
 
 /* Tone alarm output */
 #define GPIO_TONE_ALARM_IDLE    /* PD15 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN15)
@@ -196,17 +169,6 @@
 
 /* This board provides the board_on_reset interface */
 #define BOARD_HAS_ON_RESET 1
-
-/* The list of GPIO that will be initialized */
-
-#define PX4_GPIO_PWM_INIT_LIST { \
-		GPIO_GPIO5_INPUT, \
-		GPIO_GPIO4_INPUT, \
-		GPIO_GPIO3_INPUT, \
-		GPIO_GPIO2_INPUT, \
-		GPIO_GPIO1_INPUT, \
-		GPIO_GPIO0_INPUT, \
-	}
 
 #define PX4_GPIO_INIT_LIST { \
 		PX4_ADC_GPIO,                     \
@@ -243,8 +205,6 @@ __BEGIN_DECLS
  ****************************************************************************************************/
 
 extern void stm32_spiinitialize(void);
-
-void board_spi_reset(int ms);
 
 extern void stm32_usbinitialize(void);
 

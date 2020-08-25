@@ -71,9 +71,21 @@ int OutputMavlink::update(const ControlData *control_data)
 		if (control_data->type == ControlData::Type::Neutral) {
 			vehicle_command.param1 = vehicle_command_s::VEHICLE_MOUNT_MODE_NEUTRAL;
 
+			vehicle_command.param5 = 0.0;
+			vehicle_command.param6 = 0.0;
+			vehicle_command.param7 = 0.0f;
+
 		} else {
 			vehicle_command.param1 = vehicle_command_s::VEHICLE_MOUNT_MODE_MAVLINK_TARGETING;
+
+			vehicle_command.param5 = static_cast<double>(control_data->type_data.angle.frames[0]);
+			vehicle_command.param6 = static_cast<double>(control_data->type_data.angle.frames[1]);
+			vehicle_command.param7 = static_cast<float>(control_data->type_data.angle.frames[2]);
 		}
+
+		vehicle_command.param2 = control_data->stabilize_axis[0];
+		vehicle_command.param3 = control_data->stabilize_axis[1];
+		vehicle_command.param4 = control_data->stabilize_axis[2];
 
 		_vehicle_command_pub.publish(vehicle_command);
 	}

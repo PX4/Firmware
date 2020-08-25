@@ -137,7 +137,7 @@ private:
 
 	uORB::PublicationMulti<input_rc_s>		_rc_pub{ORB_ID(input_rc)};
 
-	Battery _battery;
+	Battery _battery{1, nullptr};
 
 	int32_t _rssi;
 	battery_state _bstate;

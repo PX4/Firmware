@@ -34,10 +34,6 @@
 px4_add_module(
 	MODULE drivers__barometer__bmp388
 	MAIN bmp388
-	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
-	STACK_MAIN
-		1200
 	SRCS
 		bmp388_spi.cpp
 		bmp388_i2c.cpp

@@ -272,7 +272,7 @@ TEST_F(CollisionPreventionTest, testPurgeOldData)
 	cp.paramsChanged();
 
 	// AND: an obstacle message
-	obstacle_distance_s message, message_empty;
+	obstacle_distance_s message, message_lost_data;
 	memset(&message, 0xDEAD, sizeof(message));
 	message.frame = message.MAV_FRAME_GLOBAL; //north aligned
 	message.min_distance = 100;
@@ -281,19 +281,22 @@ TEST_F(CollisionPreventionTest, testPurgeOldData)
 	message.timestamp = start_time;
 	int distances_array_size = sizeof(message.distances) / sizeof(message.distances[0]);
 	message.increment = 360 / distances_array_size;
-	message_empty = message;
+	message_lost_data = message;
 
 	for (int i = 0; i < distances_array_size; i++) {
 		if (i < 10) {
 			message.distances[i] = 10001;
+			message_lost_data.distances[i] = UINT16_MAX;
+
+		} else if (i > 15 && i < 18) {
+			message.distances[i] = 10001;
+			message_lost_data.distances[i] = 10001;
 
 		} else {
 			message.distances[i] = UINT16_MAX;
+			message_lost_data.distances[i] = UINT16_MAX;
 		}
-
-		message_empty.distances[i] = UINT16_MAX;
 	}
-
 
 	// WHEN: we publish the message and set the parameter and then run the setpoint modification
 	orb_advert_t obstacle_distance_pub = orb_advertise(ORB_ID(obstacle_distance), &message);
@@ -307,16 +310,25 @@ TEST_F(CollisionPreventionTest, testPurgeOldData)
 		cp.modifySetpoint(modified_setpoint, max_speed, curr_pos, curr_vel);
 
 		mocked_time = mocked_time + 100000; //advance time by 0.1 seconds
-		message_empty.timestamp = mocked_time;
-		orb_publish(ORB_ID(obstacle_distance), obstacle_distance_pub, &message_empty);
+		message_lost_data.timestamp = mocked_time;
+		orb_publish(ORB_ID(obstacle_distance), obstacle_distance_pub, &message_lost_data);
+
+		//at iteration 8 change the CP_GO_NO_DATA to True
+		if (i == 8) {
+			param_t param_allow = param_handle(px4::params::CP_GO_NO_DATA);
+			float value_allow = 1;
+			param_set(param_allow, &value_allow);
+			cp.paramsChanged();
+		}
 
 		if (i < 6) {
 			// THEN: If the data is new enough, the velocity setpoint should stay the same as the input
 			// Note: direction will change slightly due to guidance
-			EXPECT_EQ(original_setpoint.norm(), modified_setpoint.norm());
+			EXPECT_FLOAT_EQ(original_setpoint.norm(), modified_setpoint.norm());
 
 		} else {
 			// THEN: If the data is expired, the velocity setpoint should be cut down to zero because there is no data
+			//(even if CP_GO_NO_DATA is set to true, because we once had data in those bins and now lost the sensor)
 			EXPECT_FLOAT_EQ(0.f, modified_setpoint.norm()) << modified_setpoint(0) << "," << modified_setpoint(1);
 		}
 	}
@@ -381,7 +393,7 @@ TEST_F(CollisionPreventionTest, testNoRangeData)
 		if (i < 5) {
 			// THEN: If the data is new enough, the velocity setpoint should stay the same as the input
 			// Note: direction will change slightly due to guidance
-			EXPECT_EQ(original_setpoint.norm(), modified_setpoint.norm());
+			EXPECT_FLOAT_EQ(original_setpoint.norm(), modified_setpoint.norm());
 
 		} else {
 			// THEN: If the data is expired, the velocity setpoint should be cut down to zero because there is no data
@@ -505,12 +517,34 @@ TEST_F(CollisionPreventionTest, goNoData)
 	matrix::Vector2f curr_pos(0, 0);
 	matrix::Vector2f curr_vel(2, 0);
 
+	// AND: an obstacle message
+	obstacle_distance_s message;
+	memset(&message, 0xDEAD, sizeof(message));
+	message.frame = message.MAV_FRAME_GLOBAL; //north aligned
+	message.min_distance = 100;
+	message.max_distance = 2000;
+	int distances_array_size = sizeof(message.distances) / sizeof(message.distances[0]);
+	message.increment = 360.f / distances_array_size;
+
+	//fov from 0deg to 20deg
+	for (int i = 0; i < distances_array_size; i++) {
+		float angle = i * message.increment;
+
+		if (angle > 0.f && angle < 40.f) {
+			message.distances[i] = 700;
+
+		} else {
+			message.distances[i] = UINT16_MAX;
+		}
+	}
+
 	// AND: a parameter handle
 	param_t param = param_handle(px4::params::CP_DIST);
 	float value = 5; // try to keep 5m distance
 	param_set(param, &value);
 	cp.paramsChanged();
 
+	// AND: a setpoint outside the field of view
 	matrix::Vector2f original_setpoint = {-5, 0};
 	matrix::Vector2f modified_setpoint = original_setpoint;
 
@@ -524,10 +558,20 @@ TEST_F(CollisionPreventionTest, goNoData)
 	param_set(param_allow, &value_allow);
 	cp.paramsChanged();
 
-	//THEN: the modified setpoint should stay the same as the input
+	//THEN: When all bins contain UINT_16MAX the setpoint should be zero even if CP_GO_NO_DATA=1
+	modified_setpoint = original_setpoint;
+	cp.modifySetpoint(modified_setpoint, max_speed, curr_pos, curr_vel);
+	EXPECT_FLOAT_EQ(modified_setpoint.norm(), 0.f);
+
+	//THEN: As soon as the range data contains any valid number, flying outside the FOV is allowed
+	message.timestamp = hrt_absolute_time();
+	orb_advert_t obstacle_distance_pub = orb_advertise(ORB_ID(obstacle_distance), &message);
+	orb_publish(ORB_ID(obstacle_distance), obstacle_distance_pub, &message);
+
 	modified_setpoint = original_setpoint;
 	cp.modifySetpoint(modified_setpoint, max_speed, curr_pos, curr_vel);
 	EXPECT_FLOAT_EQ(modified_setpoint.norm(), original_setpoint.norm());
+	orb_unadvertise(obstacle_distance_pub);
 }
 
 TEST_F(CollisionPreventionTest, jerkLimit)
@@ -1008,8 +1052,8 @@ TEST_F(CollisionPreventionTest, adaptSetpointDirection_flat_minimum)
 
 	//THEN: the setpoint direction should be modified correctly
 	EXPECT_EQ(sp_index, 2);
-	EXPECT_FLOAT_EQ(setpoint_dir(0), 0.93969262);
-	EXPECT_FLOAT_EQ(setpoint_dir(1), 0.34202012);
+	EXPECT_FLOAT_EQ(setpoint_dir(0), 0.93969262f);
+	EXPECT_FLOAT_EQ(setpoint_dir(1), 0.34202012f);
 }
 
 TEST_F(CollisionPreventionTest, overlappingSensors)
