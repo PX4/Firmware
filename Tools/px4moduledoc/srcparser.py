@@ -16,7 +16,7 @@ class ModuleDocumentation(object):
     valid_categories = ['driver', 'estimator', 'controller', 'system',
                         'communication', 'command', 'template', 'simulation']
     valid_subcategories = ['', 'distance_sensor', 'imu', 'airspeed_sensor',
-                           'magnetometer', 'baro']
+                           'magnetometer', 'baro', 'optical_flow']
 
     max_line_length = 80 # wrap lines that are longer than this
 

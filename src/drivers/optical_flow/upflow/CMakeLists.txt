@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,8 +30,15 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+px4_add_module(
+	MODULE drivers__optical_flow__upflow
+	MAIN upflow
+	STACK_MAIN 1200
+	COMPILE_FLAGS
+	SRCS
+		upflow.cpp
+	MODULE_CONFIG
+		module.yaml
+	DEPENDS
 
-add_subdirectory(paw3902)
-add_subdirectory(pmw3901)
-add_subdirectory(px4flow)
-add_subdirectory(upflow)
+	)
