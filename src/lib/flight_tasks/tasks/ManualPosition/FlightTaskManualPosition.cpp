@@ -56,12 +56,10 @@ bool FlightTaskManualPosition::updateInitialize()
 	       && PX4_ISFINITE(_velocity(1));
 }
 
-bool FlightTaskManualPosition::activate(vehicle_local_position_setpoint_s last_setpoint)
+bool FlightTaskManualPosition::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	// all requirements from altitude-mode still have to hold
 	bool ret = FlightTaskManualAltitude::activate(last_setpoint);
-
-	_constraints.tilt = math::radians(_param_mpc_tiltmax_air.get());
 
 	// set task specific constraint
 	if (_constraints.speed_xy >= _param_mpc_vel_manual.get()) {
@@ -84,7 +82,7 @@ void FlightTaskManualPosition::_scaleSticks()
 	FlightTaskManualAltitude::_scaleSticks();
 
 	/* Constrain length of stick inputs to 1 for xy*/
-	Vector2f stick_xy = _sticks_expo.slice<2, 1>(0, 0);
+	Vector2f stick_xy = _sticks.getPositionExpo().slice<2, 1>(0, 0);
 
 	const float mag = math::constrain(stick_xy.length(), 0.0f, 1.0f);
 
@@ -165,6 +163,7 @@ void FlightTaskManualPosition::_updateXYlock()
 void FlightTaskManualPosition::_updateSetpoints()
 {
 	FlightTaskManualAltitude::_updateSetpoints(); // needed to get yaw and setpoints in z-direction
+	_acceleration_setpoint.setNaN(); // don't use the horizontal setpoints from FlightTaskAltitude
 
 	_updateXYlock(); // check for position lock
 
@@ -177,8 +176,5 @@ void FlightTaskManualPosition::_updateSetpoints()
 			// vehicle is steady
 			_yawspeed_setpoint += _weathervane_yaw_handler->get_weathervane_yawrate();
 		}
-
 	}
-
-	_thrust_setpoint.setAll(NAN); // don't require any thrust setpoints
 }

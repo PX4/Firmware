@@ -41,21 +41,3 @@
 #endif
 
 #include <board_config.h>
-
-
-static const int i2c_bus_options[] = {
-#ifdef PX4_I2C_BUS_EXPANSION
-	PX4_I2C_BUS_EXPANSION,
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION1
-	PX4_I2C_BUS_EXPANSION1,
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION2
-	PX4_I2C_BUS_EXPANSION2,
-#endif
-#ifdef PX4_I2C_BUS_ONBOARD
-	PX4_I2C_BUS_ONBOARD,
-#endif
-};
-
-#define NUM_I2C_BUS_OPTIONS (sizeof(i2c_bus_options)/sizeof(i2c_bus_options[0]))

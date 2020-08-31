@@ -259,6 +259,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		    missionitem.nav_cmd != NAV_CMD_IMAGE_STOP_CAPTURE &&
 		    missionitem.nav_cmd != NAV_CMD_VIDEO_START_CAPTURE &&
 		    missionitem.nav_cmd != NAV_CMD_VIDEO_STOP_CAPTURE &&
+		    missionitem.nav_cmd != NAV_CMD_DO_CONTROL_VIDEO &&
 		    missionitem.nav_cmd != NAV_CMD_DO_MOUNT_CONFIGURE &&
 		    missionitem.nav_cmd != NAV_CMD_DO_MOUNT_CONTROL &&
 		    missionitem.nav_cmd != NAV_CMD_DO_SET_ROI &&
@@ -268,6 +269,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		    missionitem.nav_cmd != NAV_CMD_DO_SET_CAM_TRIGG_DIST &&
 		    missionitem.nav_cmd != NAV_CMD_DO_SET_CAM_TRIGG_INTERVAL &&
 		    missionitem.nav_cmd != NAV_CMD_SET_CAMERA_MODE &&
+		    missionitem.nav_cmd != NAV_CMD_SET_CAMERA_ZOOM &&
 		    missionitem.nav_cmd != NAV_CMD_DO_VTOL_TRANSITION) {
 
 			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: item %i: unsupported cmd: %d", (int)(i + 1),
@@ -383,6 +385,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 					  missionitem.nav_cmd != NAV_CMD_IMAGE_STOP_CAPTURE &&
 					  missionitem.nav_cmd != NAV_CMD_VIDEO_START_CAPTURE &&
 					  missionitem.nav_cmd != NAV_CMD_VIDEO_STOP_CAPTURE &&
+					  missionitem.nav_cmd != NAV_CMD_DO_CONTROL_VIDEO &&
 					  missionitem.nav_cmd != NAV_CMD_DO_MOUNT_CONFIGURE &&
 					  missionitem.nav_cmd != NAV_CMD_DO_MOUNT_CONTROL &&
 					  missionitem.nav_cmd != NAV_CMD_DO_SET_ROI &&
@@ -392,6 +395,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 					  missionitem.nav_cmd != NAV_CMD_DO_SET_CAM_TRIGG_DIST &&
 					  missionitem.nav_cmd != NAV_CMD_DO_SET_CAM_TRIGG_INTERVAL &&
 					  missionitem.nav_cmd != NAV_CMD_SET_CAMERA_MODE &&
+					  missionitem.nav_cmd != NAV_CMD_SET_CAMERA_ZOOM &&
 					  missionitem.nav_cmd != NAV_CMD_DO_VTOL_TRANSITION);
 		}
 	}
@@ -672,7 +676,6 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 
 	double last_lat = (double)NAN;
 	double last_lon = (double)NAN;
-	float last_alt = NAN;
 	int last_cmd = 0;
 
 	/* Go through all waypoints */
@@ -711,15 +714,16 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 
 				/* do not allow waypoints that are literally on top of each other */
 
-			} else if ((dist_between_waypoints < 0.05f && fabsf(last_alt - mission_item.altitude) < 0.05f) ||
-				   /* and do not allow condition gates that are at the same position as a navigation waypoint */
-				   (dist_between_waypoints < 0.05f && (mission_item.nav_cmd == NAV_CMD_CONDITION_GATE
-						   || last_cmd == NAV_CMD_CONDITION_GATE))) {
-				/* waypoints are at the exact same position,
-				 * which indicates an invalid mission and makes calculating
-				 * the direction from one waypoint to another impossible. */
+				/* and do not allow condition gates that are at the same position as a navigation waypoint */
+
+			} else if (dist_between_waypoints < 0.05f &&
+				   (mission_item.nav_cmd == NAV_CMD_CONDITION_GATE || last_cmd == NAV_CMD_CONDITION_GATE)) {
+
+				/* Waypoints and gate are at the exact same position, which indicates an
+				 * invalid mission and makes calculating the direction from one waypoint
+				 * to another impossible. */
 				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
-						     "Distance between waypoints too close: %d meters",
+						     "Distance between waypoint and gate too close: %d meters",
 						     (int)dist_between_waypoints);
 
 				_navigator->get_mission_result()->warning = true;
@@ -729,7 +733,6 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 
 		last_lat = mission_item.lat;
 		last_lon = mission_item.lon;
-		last_alt = mission_item.altitude;
 		last_cmd = mission_item.nav_cmd;
 	}
 

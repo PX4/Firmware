@@ -34,11 +34,7 @@
 #include "LPS22HB.hpp"
 #include <px4_platform_common/module.h>
 
-extern "C" __EXPORT int lps22hb_main(int argc, char *argv[]);
-
-
-void
-LPS22HB::print_usage()
+void LPS22HB::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("lps22hb", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("baro");
@@ -85,7 +81,7 @@ I2CSPIDriverBase *LPS22HB::instantiate(const BusCLIArguments &cli, const BusInst
 	return dev;
 }
 
-extern "C" int lps22hb_main(int argc, char *argv[])
+extern "C" __EXPORT int lps22hb_main(int argc, char *argv[])
 {
 	using ThisDriver = LPS22HB;
 	BusCLIArguments cli{true, true};

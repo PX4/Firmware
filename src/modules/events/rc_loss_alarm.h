@@ -57,12 +57,6 @@ public:
 	void process();
 
 private:
-	/**
-	 * check for topic updates
-	 * @return true if one or more topics got updated
-	 */
-	bool check_for_updates();
-
 	/** Publish tune control to sound alarm */
 	void play_tune();
 

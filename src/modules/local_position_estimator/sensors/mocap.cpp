@@ -25,14 +25,14 @@ void BlockLocalPositionEstimator::mocapInit()
 
 	// if finished
 	if (_mocapStats.getCount() > REQ_MOCAP_INIT_COUNT) {
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] mocap position init: "
-					     "%5.2f, %5.2f, %5.2f m std %5.2f, %5.2f, %5.2f m",
-					     double(_mocapStats.getMean()(0)),
-					     double(_mocapStats.getMean()(1)),
-					     double(_mocapStats.getMean()(2)),
-					     double(_mocapStats.getStdDev()(0)),
-					     double(_mocapStats.getStdDev()(1)),
-					     double(_mocapStats.getStdDev()(2)));
+		mavlink_log_info(&mavlink_log_pub, "[lpe] mocap position init: "
+				 "%5.2f, %5.2f, %5.2f m std %5.2f, %5.2f, %5.2f m",
+				 double(_mocapStats.getMean()(0)),
+				 double(_mocapStats.getMean()(1)),
+				 double(_mocapStats.getMean()(2)),
+				 double(_mocapStats.getStdDev()(0)),
+				 double(_mocapStats.getStdDev()(1)),
+				 double(_mocapStats.getStdDev()(2)));
 		_sensorTimeout &= ~SENSOR_MOCAP;
 		_sensorFault &= ~SENSOR_MOCAP;
 
@@ -43,8 +43,8 @@ void BlockLocalPositionEstimator::mocapInit()
 
 		if (!_map_ref.init_done && _is_global_cov_init && !_visionUpdated) {
 			// initialize global origin using the mocap estimator reference (only if the vision estimation is not being fused as well)
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] global origin init (mocap) : lat %6.2f lon %6.2f alt %5.1f m",
-						     double(_ref_lat), double(_ref_lon), double(_ref_alt));
+			mavlink_log_info(&mavlink_log_pub, "[lpe] global origin init (mocap) : lat %6.2f lon %6.2f alt %5.1f m",
+					 double(_ref_lat), double(_ref_lon), double(_ref_alt));
 			map_projection_init(&_map_ref, _ref_lat, _ref_lon);
 			// set timestamp when origin was set to current time
 			_time_origin = _timeStamp;
@@ -79,11 +79,11 @@ int BlockLocalPositionEstimator::mocapMeasure(Vector<float, n_y_mocap> &y)
 	}
 
 	if (!_mocap_xy_valid || !_mocap_z_valid) {
-		_time_last_mocap = _sub_mocap_odom.get().timestamp;
+		_time_last_mocap = _sub_mocap_odom.get().timestamp_sample;
 		return -1;
 
 	} else {
-		_time_last_mocap = _sub_mocap_odom.get().timestamp;
+		_time_last_mocap = _sub_mocap_odom.get().timestamp_sample;
 
 		if (PX4_ISFINITE(_sub_mocap_odom.get().x)) {
 			y.setZero();
@@ -106,8 +106,8 @@ void BlockLocalPositionEstimator::mocapCorrect()
 	Vector<float, n_y_mocap> y;
 
 	if (mocapMeasure(y) != OK) {
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] mocap data invalid. eph: %f epv: %f", (double)_mocap_eph,
-					     (double)_mocap_epv);
+		mavlink_log_info(&mavlink_log_pub, "[lpe] mocap data invalid. eph: %f epv: %f", (double)_mocap_eph,
+				 (double)_mocap_epv);
 		return;
 	}
 
@@ -168,13 +168,13 @@ void BlockLocalPositionEstimator::mocapCorrect()
 
 	if (beta > BETA_TABLE[n_y_mocap]) {
 		if (!(_sensorFault & SENSOR_MOCAP)) {
-			//mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] mocap fault, beta %5.2f", double(beta));
+			//mavlink_log_info(&mavlink_log_pub, "[lpe] mocap fault, beta %5.2f", double(beta));
 			_sensorFault |= SENSOR_MOCAP;
 		}
 
 	} else if (_sensorFault & SENSOR_MOCAP) {
 		_sensorFault &= ~SENSOR_MOCAP;
-		//mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] mocap OK");
+		//mavlink_log_info(&mavlink_log_pub, "[lpe] mocap OK");
 	}
 
 	// kalman filter correction always
@@ -190,7 +190,7 @@ void BlockLocalPositionEstimator::mocapCheckTimeout()
 		if (!(_sensorTimeout & SENSOR_MOCAP)) {
 			_sensorTimeout |= SENSOR_MOCAP;
 			_mocapStats.reset();
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] mocap timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] mocap timeout ");
 		}
 	}
 }

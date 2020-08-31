@@ -50,6 +50,23 @@ void thrustToAttitude(const Vector3f &thr_sp, const float yaw_sp, vehicle_attitu
 	att_sp.thrust_body[2] = -thr_sp.length();
 }
 
+void limitTilt(Vector3f &body_unit, const Vector3f &world_unit, const float max_angle)
+{
+	// determine tilt
+	const float dot_product_unit = body_unit.dot(world_unit);
+	float angle = acosf(dot_product_unit);
+	// limit tilt
+	angle = math::min(angle, max_angle);
+	Vector3f rejection = body_unit - (dot_product_unit * world_unit);
+
+	// corner case exactly parallel vectors
+	if (rejection.norm_squared() < FLT_EPSILON) {
+		rejection(0) = 1.f;
+	}
+
+	body_unit = cosf(angle) * world_unit + sinf(angle) * rejection.unit();
+}
+
 void bodyzToAttitude(Vector3f body_z, const float yaw_sp, vehicle_attitude_setpoint_s &att_sp)
 {
 	// zero vector, no direction, set safe level value
@@ -60,7 +77,7 @@ void bodyzToAttitude(Vector3f body_z, const float yaw_sp, vehicle_attitude_setpo
 	body_z.normalize();
 
 	// vector of desired yaw direction in XY plane, rotated by PI/2
-	Vector3f y_C(-sinf(yaw_sp), cosf(yaw_sp), 0.0f);
+	const Vector3f y_C{-sinf(yaw_sp), cosf(yaw_sp), 0.f};
 
 	// desired body_x axis, orthogonal to body_z
 	Vector3f body_x = y_C % body_z;
@@ -80,7 +97,7 @@ void bodyzToAttitude(Vector3f body_z, const float yaw_sp, vehicle_attitude_setpo
 	body_x.normalize();
 
 	// desired body_y axis
-	Vector3f body_y = body_z % body_x;
+	const Vector3f body_y = body_z % body_x;
 
 	Dcmf R_sp;
 
@@ -92,14 +109,14 @@ void bodyzToAttitude(Vector3f body_z, const float yaw_sp, vehicle_attitude_setpo
 	}
 
 	// copy quaternion setpoint to attitude setpoint topic
-	Quatf q_sp = R_sp;
+	const Quatf q_sp{R_sp};
 	q_sp.copyTo(att_sp.q_d);
 
 	// calculate euler angles, for logging only, must not be used for control
-	Eulerf euler = R_sp;
-	att_sp.roll_body = euler(0);
-	att_sp.pitch_body = euler(1);
-	att_sp.yaw_body = euler(2);
+	const Eulerf euler{R_sp};
+	att_sp.roll_body = euler.phi();
+	att_sp.pitch_body = euler.theta();
+	att_sp.yaw_body = euler.psi();
 }
 
 Vector2f constrainXY(const Vector2f &v0, const Vector2f &v1, const float &max)

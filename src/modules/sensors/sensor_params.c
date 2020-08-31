@@ -59,7 +59,7 @@ PARAM_DEFINE_INT32(CAL_AIR_CMODEL, 0);
  *
  * @min 0.01
  * @max 2.00
- * @unit meter
+ * @unit m
  *
  * @group Sensors
  */
@@ -70,7 +70,7 @@ PARAM_DEFINE_FLOAT(CAL_AIR_TUBELEN, 0.2f);
  *
  * @min 0.1
  * @max 100
- * @unit millimeter
+ * @unit mm
  *
  * @group Sensors
  */
@@ -191,3 +191,14 @@ PARAM_DEFINE_FLOAT(SENS_BOARD_Z_OFF, 0.0f);
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_EN_THERMAL, -1);
+
+/**
+ * External I2C probe.
+ *
+ * Probe for optional external I2C devices.
+ *
+ * @boolean
+ * @category system
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_EXT_I2C_PRB, 1);

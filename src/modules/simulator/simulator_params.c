@@ -40,44 +40,6 @@
  */
 
 /**
- * Simulator Battery drain interval
- *
- * @min 1
- * @max 86400
- * @increment 1
- * @unit s
- *
- * @group SITL
- */
-PARAM_DEFINE_FLOAT(SIM_BAT_DRAIN, 60);
-
-/**
- * Simulator Battery minimal percentage. Can be used to alter
- * the battery level during SITL- or HITL-simulation on the fly.
- * Particularly useful for testing different low-battery behaviour.
- *
- * @min 0
- * @max 100
- * @increment 0.1
- * @unit %
- *
- * @group SITL
- */
-PARAM_DEFINE_FLOAT(SIM_BAT_MIN_PCT, 50.0f);
-
-/**
- * Simulator GPS noise multiplier.
- *
- * @min 0
- * @max 10
- * @increment 0.1
- * @unit %
- *
- * @group SITL
- */
-PARAM_DEFINE_FLOAT(SIM_GPS_NOISE_X, 0.0f);
-
-/**
  * Simulator block GPS data.
  *
  * Enable to block the publication of any incoming simulation GPS data.

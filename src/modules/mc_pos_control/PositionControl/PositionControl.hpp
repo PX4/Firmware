@@ -109,7 +109,7 @@ public:
 
 	/**
 	 * Set the maximum tilt angle in radians the output attitude is allowed to have
-	 * @param tilt angle from level orientation in radians
+	 * @param tilt angle in radians from level orientation
 	 */
 	void setTiltLimit(const float tilt) { _lim_tilt = tilt; }
 
@@ -164,11 +164,6 @@ public:
 	void resetIntegral() { _vel_int.setZero(); }
 
 	/**
-	 * @return the value of the velocity integrator
-	 */
-	matrix::Vector3f getIntegral() const { return _vel_int; }
-
-	/**
 	 * Get the controllers output local position setpoint
 	 * These setpoints are the ones which were executed on including PID output and feed-forward.
 	 * The acceleration or thrust setpoints can be used for attitude control.
@@ -189,6 +184,7 @@ private:
 
 	void _positionControl(); ///< Position proportional control
 	void _velocityControl(const float dt); ///< Velocity PID control
+	void _accelerationControl(); ///< Acceleration setpoint processing
 
 	// Gains
 	matrix::Vector3f _gain_pos_p; ///< Position control proportional gain
@@ -204,7 +200,7 @@ private:
 	float _lim_thr_max{}; ///< Maximum collective thrust allowed as output [-1,0] e.g. -0.1
 	float _lim_tilt{}; ///< Maximum tilt from level the output attitude is allowed to have
 
-	float _hover_thrust{}; ///< Thrust [0,1] with which the vehicle hovers not aacelerating down or up with level orientation
+	float _hover_thrust{}; ///< Thrust [0,1] with which the vehicle hovers not accelerating down or up with level orientation
 
 	// States
 	matrix::Vector3f _pos; /**< current position */

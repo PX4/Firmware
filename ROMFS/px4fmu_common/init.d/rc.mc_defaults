@@ -18,6 +18,8 @@ then
 	param set PWM_MAX 1950
 	param set PWM_MIN 1075
 	param set PWM_RATE 400
+
+	param set GPS_UBX_DYNMODEL 6
 fi
 
 #

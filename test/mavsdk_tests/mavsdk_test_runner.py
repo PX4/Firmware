@@ -9,6 +9,7 @@ import psutil  # type: ignore
 import signal
 import subprocess
 import sys
+import time
 from logger_helper import color, colorize
 import process_helper as ph
 from typing import Any, Dict, List, NoReturn, TextIO, Optional
@@ -133,7 +134,7 @@ class Tester:
         self.gui = gui
         self.verbose = verbose
         self.start_time = datetime.datetime.now()
-        self.combined_log_fd = TextIO
+        self.log_fd: Any[TextIO] = None
 
     @classmethod
     def determine_tests(cls,
@@ -325,11 +326,12 @@ class Tester:
         test_timeout_s = test['timeout_min']*60
         while self.active_runners[-1].time_elapsed_s() < test_timeout_s:
             returncode = self.active_runners[-1].poll()
+
+            self.collect_runner_output()
+
             if returncode is not None:
                 is_success = (returncode == 0)
                 break
-
-            self.collect_runner_output()
 
         else:
             print(colorize(
@@ -339,6 +341,8 @@ class Tester:
             is_success = False
 
         self.stop_runners()
+        # Collect what was left in output buffers.
+        self.collect_runner_output()
         self.stop_combined_log()
 
         result = {'success': is_success,
@@ -375,11 +379,19 @@ class Tester:
                 gzserver_runner = ph.GzserverRunner(
                     os.getcwd(),
                     log_dir,
-                    test['model'],
+                    test['vehicle'],
                     case,
                     self.get_max_speed_factor(test),
                     self.verbose)
                 self.active_runners.append(gzserver_runner)
+
+                gzmodelspawn_runner = ph.GzmodelspawnRunner(
+                    os.getcwd(),
+                    log_dir,
+                    test['vehicle'],
+                    case,
+                    self.verbose)
+                self.active_runners.append(gzmodelspawn_runner)
 
                 if self.gui:
                     gzclient_runner = ph.GzclientRunner(
@@ -399,10 +411,28 @@ class Tester:
             self.verbose)
         self.active_runners.append(mavsdk_tests_runner)
 
+        abort = False
         for runner in self.active_runners:
             runner.set_log_filename(
                 self.determine_logfile_path(log_dir, runner.name))
-            runner.start()
+            try:
+                runner.start()
+            except TimeoutError:
+                abort = True
+                print("A timeout happened for runner: {}"
+                      .format(runner.name))
+                break
+
+            # Workaround to prevent gz not being able to communicate
+            # with gzserver. In CI it tends to take longer.
+            if os.getenv("GITHUB_WORKFLOW") and runner.name == "gzserver":
+                time.sleep(10)
+            else:
+                time.sleep(2)
+
+        if abort:
+            self.stop_runners()
+            sys.exit(1)
 
     def stop_runners(self) -> None:
         for runner in self.active_runners:
@@ -412,20 +442,22 @@ class Tester:
         max_name = max(len(runner.name) for runner in self.active_runners)
 
         for runner in self.active_runners:
-            output = runner.get_output()
-            if not output:
-                continue
+            while True:
+                line = runner.get_output_line()
+                if not line:
+                    break
 
-            output = self.add_name_prefix(max_name, runner.name, output)
-            self.add_to_combined_log(output)
-            if self.verbose:
-                print(output, end="")
+                line = self.add_name_prefix(max_name, runner.name, line)
+                self.add_to_combined_log(line)
+                if self.verbose:
+                    print(line, end="")
 
     def start_combined_log(self, filename: str) -> None:
         self.log_fd = open(filename, 'w')
 
     def stop_combined_log(self) -> None:
-        self.log_fd.close()
+        if self.log_fd:
+            self.log_fd.close()
 
     def add_to_combined_log(self, output: str) -> None:
         self.log_fd.write(output)

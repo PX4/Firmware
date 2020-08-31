@@ -68,11 +68,11 @@ void LaunchDetector::reset()
 	_activeLaunchDetectionMethodIndex = -1;
 }
 
-void LaunchDetector::update(float accel_x)
+void LaunchDetector::update(const float dt, float accel_x)
 {
 	if (launchDetectionEnabled()) {
 		for (const auto launchMethod : _launchMethods) {
-			launchMethod->update(accel_x);
+			launchMethod->update(dt, accel_x);
 		}
 	}
 }

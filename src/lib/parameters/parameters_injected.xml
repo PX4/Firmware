@@ -5,7 +5,7 @@
     <parameter default="75" name="ctl_bw" type="INT32">
       <short_desc>Speed controller bandwidth</short_desc>
       <long_desc>Speed controller bandwidth, in Hz. Higher values result in faster speed and current rise times, but may result in overshoot and higher current consumption. For fixed-wing aircraft, this value should be less than 50 Hz; for multirotors, values up to 100 Hz may provide improvements in responsiveness.</long_desc>
-      <unit>Hertz</unit>
+      <unit>Hz</unit>
       <min>10</min>
       <max>250</max>
     </parameter>
@@ -24,7 +24,7 @@
             decreased. Higher values result in faster response, but may result
             in oscillation and excessive overshoot. Lower values result in a
             slower, smoother response.</long_desc>
-      <unit>amp-seconds per radian</unit>
+      <unit>C/rad</unit>
       <decimal>3</decimal>
       <min>0.00</min>
       <max>1.00</max>
@@ -32,7 +32,7 @@
     <parameter default="3.5" name="ctl_hz_idle" type="FLOAT">
       <short_desc>Idle speed (e Hz)</short_desc>
       <long_desc>Idle speed (e Hz)</long_desc>
-      <unit>Hertz</unit>
+      <unit>Hz</unit>
       <decimal>3</decimal>
       <min>0.0</min>
       <max>100.0</max>
@@ -40,14 +40,13 @@
     <parameter default="25" name="ctl_start_rate" type="INT32">
       <short_desc>Spin-up rate (e Hz/s)</short_desc>
       <long_desc>Spin-up rate (e Hz/s)</long_desc>
-      <unit>Hz/s</unit>
+      <unit>1/s^2</unit>
       <min>5</min>
       <max>1000</max>
     </parameter>
     <parameter default="0" name="esc_index" type="INT32">
       <short_desc>Index of this ESC in throttle command messages.</short_desc>
       <long_desc>Index of this ESC in throttle command messages.</long_desc>
-      <unit>Index</unit>
       <min>0</min>
       <max>15</max>
     </parameter>
@@ -60,14 +59,14 @@
     <parameter default="50000" name="int_ext_status" type="INT32">
       <short_desc>Extended status interval (µs)</short_desc>
       <long_desc>Extended status interval (µs)</long_desc>
-      <unit>µs</unit>
+      <unit>us</unit>
       <min>0</min>
       <max>1000000</max>
     </parameter>
     <parameter default="50000" name="int_status" type="INT32">
       <short_desc>ESC status interval (µs)</short_desc>
       <long_desc>ESC status interval (µs)</long_desc>
-      <unit>µs</unit>
+      <unit>us</unit>
       <max>1000000</max>
     </parameter>
     <parameter default="12" name="mot_i_max" type="FLOAT">
@@ -78,7 +77,7 @@
             the continuous current rating listed in the motor’s specification
             sheet, or set equal to the motor’s specified continuous power
             divided by the motor voltage limit.</long_desc>
-      <unit>Amps</unit>
+      <unit>A</unit>
       <decimal>3</decimal>
       <min>1</min>
       <max>80</max>
@@ -88,14 +87,14 @@
       <long_desc>Motor Kv in RPM per volt. This can be taken from the motor’s
             specification sheet; accuracy will help control performance but
             some deviation from the specified value is acceptable.</long_desc>
-      <unit>RPM/v</unit>
+      <unit>rpm/V</unit>
       <min>0</min>
       <max>4000</max>
     </parameter>
     <parameter default="0.0" name="mot_ls" type="FLOAT">
       <short_desc>READ ONLY: Motor inductance in henries.</short_desc>
       <long_desc>READ ONLY: Motor inductance in henries. This is measured on start-up.</long_desc>
-      <unit>henries</unit>
+      <unit>H</unit>
       <decimal>3</decimal>
     </parameter>
     <parameter default="14" name="mot_num_poles" type="INT32">
@@ -103,7 +102,6 @@
       <long_desc>Number of motor poles. Used to convert mechanical speeds to
             electrical speeds. This number should be taken from the motor’s
             specification sheet.</long_desc>
-      <unit>Poles</unit>
       <min>2</min>
       <max>40</max>
     </parameter>
@@ -112,13 +110,13 @@
       <long_desc>READ ONLY: Motor resistance in ohms. This is measured on start-up. When
             tuning a new motor, check that this value is approximately equal
             to the value shown in the motor’s specification sheet.</long_desc>
-      <unit>Ohms</unit>
+      <unit>Ohm</unit>
       <decimal>3</decimal>
     </parameter>
     <parameter default="0.5" name="mot_v_accel" type="FLOAT">
       <short_desc>Acceleration limit (V)</short_desc>
       <long_desc>Acceleration limit (V)</long_desc>
-      <unit>Volts</unit>
+      <unit>V</unit>
       <decimal>3</decimal>
       <min>0.01</min>
       <max>1.00</max>
@@ -130,7 +128,7 @@
             safely be above the nominal voltage of the motor; to determine the
             actual motor voltage limit, divide the motor’s rated power by the
             motor current limit.</long_desc>
-      <unit>Volts</unit>
+      <unit>V</unit>
       <decimal>3</decimal>
       <min>0</min>
     </parameter>
@@ -192,7 +190,7 @@
         used in the GNSS solution is below this threshold. Zero
         disables the feature
       </long_desc>
-      <unit>microseconds</unit>
+      <unit>us</unit>
       <min>0</min>
       <max>1000000</max>
     </parameter>

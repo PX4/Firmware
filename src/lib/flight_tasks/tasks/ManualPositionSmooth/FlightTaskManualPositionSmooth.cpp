@@ -41,7 +41,7 @@ using namespace matrix;
 
 FlightTaskManualPositionSmooth::FlightTaskManualPositionSmooth() :
 	_smoothingXY(this, Vector2f(_velocity)),
-	_smoothingZ(this, _velocity(2), _sticks(2))
+	_smoothingZ(this, _velocity(2), _sticks.getPosition()(2))
 {}
 
 void FlightTaskManualPositionSmooth::_updateSetpoints()

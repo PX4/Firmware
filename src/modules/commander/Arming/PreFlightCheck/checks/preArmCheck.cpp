@@ -103,6 +103,14 @@ bool PreFlightCheck::preArmCheck(orb_advert_t *mavlink_log_pub, const vehicle_st
 
 			prearm_ok = false;
 		}
+
+		if (!status_flags.condition_home_position_valid) {
+			if (prearm_ok) {
+				if (report_fail) { mavlink_log_critical(mavlink_log_pub, "Arming denied! Home position invalid"); }
+			}
+
+			prearm_ok = false;
+		}
 	}
 
 	// safety button

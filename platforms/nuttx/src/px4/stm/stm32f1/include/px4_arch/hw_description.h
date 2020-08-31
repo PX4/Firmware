@@ -40,4 +40,3 @@ static inline constexpr uint32_t getTimerUpdateDMAMap(Timer::Timer timer, const 
 	// not used on STM32F1
 	return 0;
 }
-

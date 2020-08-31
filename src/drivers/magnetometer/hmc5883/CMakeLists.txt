@@ -34,7 +34,6 @@ px4_add_module(
 	MODULE drivers__hmc5883
 	MAIN hmc5883
 	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
 	SRCS
 		HMC5883.cpp
 		HMC5883.hpp
@@ -42,6 +41,7 @@ px4_add_module(
 		hmc5883_spi.cpp
 		hmc5883_main.cpp
 	DEPENDS
+		drivers_magnetometer
 		px4_work_queue
 	)
 

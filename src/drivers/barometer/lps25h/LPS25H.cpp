@@ -40,8 +40,6 @@ LPS25H::LPS25H(I2CSPIBusOption bus_option, int bus, device::Device *interface) :
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
 	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comms_errors"))
 {
-	_interface->set_device_type(DRV_BARO_DEVTYPE_LPS25H);
-	_px4_barometer.set_device_type(DRV_BARO_DEVTYPE_LPS25H);
 }
 
 LPS25H::~LPS25H()
@@ -201,6 +199,4 @@ void LPS25H::print_status()
 	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-
-	_px4_barometer.print_status();
 }

@@ -75,7 +75,7 @@ public:
 	virtual ~BlockRandUniform() = default;
 	float update()
 	{
-		static float rand_max = RAND_MAX;
+		static float rand_max = static_cast<float>(RAND_MAX);
 		float rand_val = rand();
 		float bounds = getMax() - getMin();
 		return getMin() + (rand_val * bounds) / rand_max;

@@ -106,7 +106,8 @@ PARAM_DEFINE_INT32(CBRK_AIRSPD_CHK, 0);
  *
  * Setting this parameter to 121212 will disable the flight termination action if triggered
  * by the FailureDetector logic or if FMU is lost.
- * This circuit breaker does not affect the RC loss, data link loss and geofence safety logic.
+ * This circuit breaker does not affect the RC loss, data link loss, geofence,
+ * and takeoff failure detection safety logic.
  *
  * @reboot_required true
  * @min 0

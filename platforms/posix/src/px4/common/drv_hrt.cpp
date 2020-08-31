@@ -583,4 +583,24 @@ int px4_pthread_cond_timedwait(pthread_cond_t *cond,
 	const uint64_t scheduled = time_us + px4_timestart_monotonic;
 	return lockstep_scheduler->cond_timedwait(cond, mutex, scheduled);
 }
+
+int px4_lockstep_register_component()
+{
+	return lockstep_scheduler->components().register_component();
+}
+
+void px4_lockstep_unregister_component(int component)
+{
+	lockstep_scheduler->components().unregister_component(component);
+}
+
+void px4_lockstep_progress(int component)
+{
+	lockstep_scheduler->components().lockstep_progress(component);
+}
+
+void px4_lockstep_wait_for_components()
+{
+	lockstep_scheduler->components().wait_for_components();
+}
 #endif

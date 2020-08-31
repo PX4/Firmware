@@ -32,3 +32,5 @@
 ############################################################################
 
 px4_add_library(conversion rotation.cpp)
+
+px4_add_unit_gtest(SRC RotationTest.cpp LINKLIBS conversion)

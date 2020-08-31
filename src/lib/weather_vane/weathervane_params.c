@@ -54,7 +54,7 @@ PARAM_DEFINE_INT32(WV_EN, 0);
  *
  * @min 0.0
  * @max 3.0
- * @unit 1/s
+ * @unit Hz
  * @increment 0.01
  * @decimal 3
  * @group VTOL Attitude Control

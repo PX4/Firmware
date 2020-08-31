@@ -39,6 +39,7 @@ px4_add_module(
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
 		-Wno-address-of-packed-member # TODO: fix in c_library_v2
+		#-DDEBUG_BUILD
 	INCLUDES
 		${PX4_SOURCE_DIR}/mavlink/include/mavlink
 	SRCS
@@ -58,6 +59,7 @@ px4_add_module(
 		mavlink_stream.cpp
 		mavlink_ulog.cpp
 		mavlink_timesync.cpp
+		tune_publisher.cpp
 	MODULE_CONFIG
 		module.yaml
 	DEPENDS

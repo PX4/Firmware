@@ -57,7 +57,6 @@ px4_add_romfs_files(
 	IO_pass.main.mix
 	mount.aux.mix
 	mount_legs.aux.mix
-	ocpoc_quad_x.main.mix
 	octo_cox.main.mix
 	octo_cox_w.main.mix
 	octo_+.main.mix
@@ -84,7 +83,6 @@ px4_add_romfs_files(
 	vtol_convergence.main.mix
 	vtol_delta.aux.mix
 	wingwing.main.mix
-	zmr250.main.mix
 	TF-AutoG2.main.mix
 	uuv_x.main.mix
 )

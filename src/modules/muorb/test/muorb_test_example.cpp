@@ -44,7 +44,6 @@
 #include <stdio.h>
 #include <px4_platform_common/defines.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/Subscription.hpp>
 
 px4::AppState MuorbTestExample::appState;

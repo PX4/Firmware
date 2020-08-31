@@ -104,7 +104,7 @@ Serial bus driver for the LightWare SF02/F, SF10/a, SF10/b, SF10/c, SF11/c Laser
 
 Most boards are configured to enable/start the driver on a specified UART using the SENS_SF0X_CFG parameter.
 
-Setup/usage information: https://docs.px4.io/en/sensor/sfxx_lidar.html
+Setup/usage information: https://docs.px4.io/master/en/sensor/sfxx_lidar.html
 
 ### Examples
 
@@ -118,7 +118,7 @@ $ sf0x stop
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start driver");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, nullptr, "Serial device", false);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 1, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop driver");
 	return PX4_OK;
 }

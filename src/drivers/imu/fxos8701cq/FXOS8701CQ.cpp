@@ -53,33 +53,26 @@ const uint8_t FXOS8701CQ::_checked_registers[FXOS8701C_NUM_CHECKED_REGISTERS] = 
 	FXOS8701CQ_M_CTRL_REG2,
 };
 
-FXOS8701CQ::FXOS8701CQ(int bus, uint32_t device, enum Rotation rotation) :
-	SPI("FXOS8701CQ", nullptr, bus, device, SPIDEV_MODE0, 1 * 1000 * 1000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
-	_px4_accel(get_device_id(), ORB_PRIO_LOW, rotation),
+FXOS8701CQ::FXOS8701CQ(device::Device *interface, I2CSPIBusOption bus_option, int bus, enum Rotation rotation,
+		       int i2c_address) :
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus, i2c_address),
+	_interface(interface),
+	_px4_accel(interface->get_device_id(), rotation),
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
-	_px4_mag(get_device_id(), ORB_PRIO_LOW, rotation),
+	_px4_mag(interface->get_device_id(), rotation),
 	_mag_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": mag read")),
 #endif
 	_accel_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": acc read")),
 	_bad_registers(perf_alloc(PC_COUNT, MODULE_NAME": bad reg")),
 	_accel_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": acc dupe"))
 {
-	set_device_type(DRV_ACC_DEVTYPE_FXOS8701C);
-
-	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_FXOS8701C);
-
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
-	_px4_mag.set_device_type(DRV_ACC_DEVTYPE_FXOS8701C);
 	_px4_mag.set_scale(0.001f);
 #endif
 }
 
 FXOS8701CQ::~FXOS8701CQ()
 {
-	// make sure we are truly inactive
-	stop();
-
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
 	perf_free(_mag_sample_perf);
 #endif
@@ -93,11 +86,20 @@ FXOS8701CQ::~FXOS8701CQ()
 int
 FXOS8701CQ::init()
 {
-	// do SPI init (and probe) first
-	int ret = SPI::init();
+	// do SPI/I2C init (and probe) first
+	int ret = _interface->init();
 
 	if (ret != OK) {
-		PX4_ERR("SPI init failed");
+		PX4_ERR("SPI/I2C interface init failed");
+		return ret;
+	}
+
+	// There are 2 possible WHOAMI return values,
+	// so probe here again to set proper _checked_values[0]
+	ret = probe();
+
+	if (ret != OK) {
+		PX4_ERR("FXOS8701CQ::probe() failed");
 		return ret;
 	}
 
@@ -141,32 +143,6 @@ FXOS8701CQ::probe()
 	}
 
 	return -EIO;
-}
-
-uint8_t
-FXOS8701CQ::read_reg(unsigned reg)
-{
-	uint8_t cmd[3];
-
-	cmd[0] = DIR_READ(reg);
-	cmd[1] = ADDR_7(reg);
-	cmd[2] = 0;
-
-	transfer(cmd, cmd, sizeof(cmd));
-
-	return cmd[2];
-}
-
-void
-FXOS8701CQ::write_reg(unsigned reg, uint8_t value)
-{
-	uint8_t cmd[3];
-
-	cmd[0] = DIR_WRITE(reg);
-	cmd[1] = ADDR_7(reg);
-	cmd[2] = value;
-
-	transfer(cmd, nullptr, sizeof(cmd));
 }
 
 void
@@ -281,24 +257,13 @@ FXOS8701CQ::accel_set_samplerate(unsigned frequency)
 	return OK;
 }
 
-void
-FXOS8701CQ::start()
+void FXOS8701CQ::start()
 {
-	// make sure we are stopped first
-	stop();
-
 	// start polling at the specified rate
-	ScheduleOnInterval(1000000 / (FXOS8701C_ACCEL_DEFAULT_RATE) - FXOS8701C_TIMER_REDUCTION, 10000);
+	ScheduleOnInterval((1_s / FXOS8701C_ACCEL_DEFAULT_RATE) / 2);
 }
 
-void
-FXOS8701CQ::stop()
-{
-	ScheduleClear();
-}
-
-void
-FXOS8701CQ::check_registers(void)
+void FXOS8701CQ::check_registers()
 {
 	uint8_t v;
 
@@ -327,25 +292,10 @@ FXOS8701CQ::check_registers(void)
 	_checked_next = (_checked_next + 1) % FXOS8701C_NUM_CHECKED_REGISTERS;
 }
 
-void
-FXOS8701CQ::Run()
+void FXOS8701CQ::RunImpl()
 {
 	// start the performance counter
 	perf_begin(_accel_sample_perf);
-
-	// status register and data as read back from the device
-#pragma pack(push, 1)
-	struct {
-		uint8_t		cmd[2];
-		uint8_t		status;
-		int16_t		x;
-		int16_t		y;
-		int16_t		z;
-		int16_t		mx;
-		int16_t		my;
-		int16_t		mz;
-	} raw_accel_mag_report{};
-#pragma pack(pop)
 
 	check_registers();
 
@@ -358,10 +308,10 @@ FXOS8701CQ::Run()
 	}
 
 	/* fetch data from the sensor */
-	raw_accel_mag_report.cmd[0] = DIR_READ(FXOS8701CQ_DR_STATUS);
-	raw_accel_mag_report.cmd[1] = ADDR_7(FXOS8701CQ_DR_STATUS);
+	RawAccelMagReport raw_accel_mag_report{};
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
-	transfer((uint8_t *)&raw_accel_mag_report, (uint8_t *)&raw_accel_mag_report, sizeof(raw_accel_mag_report));
+
+	_interface->read(FXOS8701CQ_DR_STATUS, (uint8_t *)&raw_accel_mag_report, sizeof(raw_accel_mag_report));
 
 	if (!(raw_accel_mag_report.status & DR_STATUS_ZYXDR)) {
 		perf_end(_accel_sample_perf);
@@ -369,27 +319,40 @@ FXOS8701CQ::Run()
 		return;
 	}
 
-	/*
-	 * Eight-bit 2’s complement sensor temperature value with 0.96 °C/LSB sensitivity.
-	 * Temperature data is only valid between –40 °C and 125 °C. The temperature sensor
-	 * output is only valid when M_CTRL_REG1[m_hms] > 0b00. Please note that the
-	 * temperature sensor is uncalibrated and its output for a given temperature will vary from
-	 * one device to the next
-	 */
-	float temperature = (read_reg(FXOS8701CQ_TEMP)) * 0.96f;
-
-	_px4_accel.set_temperature(temperature);
-
-	// report the error count as the sum of the number of bad
-	// register reads and bad values. This allows the higher level
-	// code to decide if it should use this sensor based on
-	// whether it has had failures
-	_px4_accel.set_error_count(perf_event_count(_bad_registers));
-
 	int16_t x = swap16RightJustify14(raw_accel_mag_report.x);
 	int16_t y = swap16RightJustify14(raw_accel_mag_report.y);
 	int16_t z = swap16RightJustify14(raw_accel_mag_report.z);
+
+	// don't publish duplicated reads
+	if ((x == _accel_prev[0]) && (y == _accel_prev[1]) && (z == _accel_prev[2])) {
+		perf_count(_accel_duplicates);
+		perf_end(_accel_sample_perf);
+		return;
+
+	} else {
+		_accel_prev[0] = x;
+		_accel_prev[1] = y;
+		_accel_prev[2] = z;
+	}
+
+	// report the error count as the sum of the number of bad register reads and bad values.
+	_px4_accel.set_error_count(perf_event_count(_bad_registers));
 	_px4_accel.update(timestamp_sample, x, y, z);
+
+	if (hrt_elapsed_time(&_last_temperature_update) > 100_ms) {
+		/*
+		 * Eight-bit 2’s complement sensor temperature value with 0.96 °C/LSB sensitivity.
+		 * Temperature data is only valid between –40 °C and 125 °C. The temperature sensor
+		 * output is only valid when M_CTRL_REG1[m_hms] > 0b00. Please note that the
+		 * temperature sensor is uncalibrated and its output for a given temperature will vary from
+		 * one device to the next
+		 */
+		_last_temperature_update = timestamp_sample;
+		float temperature = (read_reg(FXOS8701CQ_TEMP)) * 0.96f;
+
+		_px4_accel.set_temperature(temperature);
+	}
+
 
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
 
@@ -407,8 +370,9 @@ FXOS8701CQ::Run()
 }
 
 void
-FXOS8701CQ::print_info()
+FXOS8701CQ::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_accel_sample_perf);
 
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)

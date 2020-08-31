@@ -100,8 +100,8 @@ private:
 };
 
 RGBLED::RGBLED(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address) :
-	I2C("rgbled", nullptr, bus, address, bus_frequency),
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus)
+	I2C(DRV_LED_DEVTYPE_RGBLED, MODULE_NAME, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
 }
 

@@ -44,6 +44,7 @@ using namespace px4::logger;
 
 void LoggedTopics::add_default_topics()
 {
+	add_topic("actuator_armed");
 	add_topic("actuator_controls_0", 100);
 	add_topic("actuator_controls_1", 100);
 	add_topic("airspeed", 1000);
@@ -52,6 +53,7 @@ void LoggedTopics::add_default_topics()
 	add_topic("camera_trigger");
 	add_topic("camera_trigger_secondary");
 	add_topic("cellular_status", 200);
+	add_topic("commander_state");
 	add_topic("cpuload");
 	add_topic("ekf_gps_drift");
 	add_topic("esc_status", 250);
@@ -62,29 +64,35 @@ void LoggedTopics::add_default_topics()
 	add_topic("estimator_status", 200);
 	add_topic("home_position");
 	add_topic("hover_thrust_estimate", 100);
-	add_topic("input_rc", 200);
+	add_topic("input_rc", 500);
 	add_topic("manual_control_setpoint", 200);
 	add_topic("mission");
 	add_topic("mission_result");
-	add_topic("offboard_control_mode", 1000);
+	add_topic("offboard_control_mode", 100);
+	add_topic("onboard_computer_status", 10);
 	add_topic("position_controller_status", 500);
 	add_topic("position_setpoint_triplet", 200);
+	add_topic("px4io_status");
 	add_topic("radio_status");
 	add_topic("rate_ctrl_status", 200);
 	add_topic("rpm", 500);
-	add_topic("safety", 1000);
-	add_topic("sensor_combined", 100);
-	add_topic("sensor_correction", 1000);
-	add_topic("sensor_preflight", 200);
+	add_topic("safety");
+	add_topic("sensor_combined");
+	add_topic("sensor_correction");
+	add_topic("sensor_preflight_imu", 200);
+	add_topic("sensor_preflight_mag", 500);
 	add_topic("sensor_selection");
 	add_topic("system_power", 500);
 	add_topic("tecs_status", 200);
+	add_topic("test_motor", 500);
 	add_topic("trajectory_setpoint", 200);
+	add_topic("vehicle_acceleration", 50);
 	add_topic("vehicle_air_data", 200);
 	add_topic("vehicle_angular_velocity", 20);
 	add_topic("vehicle_attitude", 50);
 	add_topic("vehicle_attitude_setpoint", 100);
 	add_topic("vehicle_command");
+	add_topic("vehicle_control_mode");
 	add_topic("vehicle_global_position", 200);
 	add_topic("vehicle_land_detected");
 	add_topic("vehicle_local_position", 100);
@@ -92,7 +100,7 @@ void LoggedTopics::add_default_topics()
 	add_topic("vehicle_magnetometer", 200);
 	add_topic("vehicle_rates_setpoint", 20);
 	add_topic("vehicle_roi", 1000);
-	add_topic("vehicle_status", 200);
+	add_topic("vehicle_status");
 	add_topic("vehicle_status_flags");
 	add_topic("vtol_vehicle_status", 200);
 	add_topic("yaw_estimator_status", 200);
@@ -104,18 +112,18 @@ void LoggedTopics::add_default_topics()
 	add_topic_multi("telemetry_status", 1000);
 	add_topic_multi("wind_estimate", 1000);
 
-	// log all raw sensors at minimal rate (1 Hz)
-	add_topic_multi("battery_status", 1000);
+	// log all raw sensors at minimal rate (at least 1 Hz)
+	add_topic_multi("battery_status", 300);
 	add_topic_multi("differential_pressure", 1000);
 	add_topic_multi("distance_sensor", 1000);
 	add_topic_multi("optical_flow", 1000);
 	add_topic_multi("sensor_accel", 1000);
-	add_topic_multi("sensor_accel_status", 1000);
 	add_topic_multi("sensor_baro", 1000);
 	add_topic_multi("sensor_gyro", 1000);
-	add_topic_multi("sensor_gyro_status", 1000);
 	add_topic_multi("sensor_mag", 1000);
 	add_topic_multi("vehicle_gps_position", 1000);
+	add_topic_multi("vehicle_imu", 500);
+	add_topic_multi("vehicle_imu_status", 1000);
 
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 	add_topic("actuator_controls_virtual_fw");
@@ -194,11 +202,20 @@ void LoggedTopics::add_vision_and_avoidance_topics()
 {
 	add_topic("collision_constraints");
 	add_topic("obstacle_distance_fused");
-	add_topic("onboard_computer_status", 200);
 	add_topic("vehicle_mocap_odometry", 30);
 	add_topic("vehicle_trajectory_waypoint", 200);
 	add_topic("vehicle_trajectory_waypoint_desired", 200);
 	add_topic("vehicle_visual_odometry", 30);
+}
+
+void LoggedTopics::add_raw_imu_gyro_fifo()
+{
+	add_topic("sensor_gyro_fifo");
+}
+
+void LoggedTopics::add_raw_imu_accel_fifo()
+{
+	add_topic("sensor_accel_fifo");
 }
 
 void LoggedTopics::add_system_identification_topics()
@@ -363,7 +380,7 @@ bool LoggedTopics::initialize_logged_topics(SDLogProfileMask profile)
 		initialize_configured_topics(profile);
 	}
 
-	return true;
+	return _subscriptions.count > 0;
 }
 
 void LoggedTopics::initialize_configured_topics(SDLogProfileMask profile)
@@ -400,5 +417,13 @@ void LoggedTopics::initialize_configured_topics(SDLogProfileMask profile)
 
 	if (profile & SDLogProfileMask::VISION_AND_AVOIDANCE) {
 		add_vision_and_avoidance_topics();
+	}
+
+	if (profile & SDLogProfileMask::RAW_IMU_GYRO_FIFO) {
+		add_raw_imu_gyro_fifo();
+	}
+
+	if (profile & SDLogProfileMask::RAW_IMU_ACCEL_FIFO) {
+		add_raw_imu_accel_fifo();
 	}
 }

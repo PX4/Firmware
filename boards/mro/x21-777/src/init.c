@@ -34,34 +34,19 @@
 /**
  * @file init.c
  *
- * mRO x2.1 777 specific early startup code.  This file implements the
+ * board-specific early startup code. This file implements the
  * board_app_initialize() function that is called early by nsh during startup.
  *
  * Code here is run before the rcS script is invoked; it should start required
- * subsystems and perform board-specific initialization.
+ * subsystems and perform board-specific initialisation.
  */
-
-/****************************************************************************
- * Included Files
- ****************************************************************************/
 
 #include "board_config.h"
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <debug.h>
-#include <errno.h>
-
 #include <nuttx/config.h>
 #include <nuttx/board.h>
-#include <nuttx/spi/spi.h>
 #include <nuttx/sdio.h>
 #include <nuttx/mmcsd.h>
-#include <nuttx/analog/adc.h>
-#include <nuttx/mm/gran.h>
-#include <chip.h>
-#include <stm32_uart.h>
 #include <arch/board/board.h>
 #include "up_internal.h"
 
@@ -73,70 +58,11 @@
 #include <px4_platform/gpio.h>
 #include <px4_platform/board_dma_alloc.h>
 
-/****************************************************************************
- * Pre-Processor Definitions
- ****************************************************************************/
-
-/* Configuration ************************************************************/
-
-/*
- * Ideally we'd be able to get these from up_internal.h,
- * but since we want to be able to disable the NuttX use
- * of leds for system indication at will and there is no
- * separate switch, we need to build independent of the
- * CONFIG_ARCH_LEDS configuration switch.
- */
 __BEGIN_DECLS
 extern void led_init(void);
 extern void led_on(int led);
 extern void led_off(int led);
 __END_DECLS
-
-
-/************************************************************************************
- * Name: board_rc_input
- *
- * Description:
- *   All boards my optionally provide this API to invert the Serial RC input.
- *   This is needed on SoCs that support the notion RXINV or TXINV as apposed to
- *   and external XOR controlled by a GPIO
- *
- ************************************************************************************/
-
-__EXPORT void board_rc_input(bool invert_on, uint32_t uxart_base)
-{
-
-	irqstate_t irqstate = px4_enter_critical_section();
-
-	uint32_t cr1 =	getreg32(STM32_USART_CR1_OFFSET + uxart_base);
-	uint32_t cr2 =	getreg32(STM32_USART_CR2_OFFSET + uxart_base);
-	uint32_t regval = cr1;
-
-	/* {R|T}XINV bit fields can only be written when the USART is disabled (UE=0). */
-
-	regval &= ~USART_CR1_UE;
-
-	putreg32(regval, STM32_USART_CR1_OFFSET + uxart_base);
-
-	if (invert_on) {
-#if defined(BOARD_HAS_RX_TX_SWAP) &&	RC_SERIAL_PORT_IS_SWAPED == 1
-
-		/* This is only ever turned on */
-
-		cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV | USART_CR2_SWAP);
-#else
-		cr2 |= (USART_CR2_RXINV | USART_CR2_TXINV);
-#endif
-
-	} else {
-		cr2 &= ~(USART_CR2_RXINV | USART_CR2_TXINV);
-	}
-
-	putreg32(cr2, STM32_USART_CR2_OFFSET + uxart_base);
-	putreg32(cr1, STM32_USART_CR1_OFFSET + uxart_base);
-
-	leave_critical_section(irqstate);
-}
 
 /************************************************************************************
  * Name: board_peripheral_reset
@@ -147,8 +73,8 @@ __EXPORT void board_rc_input(bool invert_on, uint32_t uxart_base)
 __EXPORT void board_peripheral_reset(int ms)
 {
 	/* set the peripheral rails off */
-	stm32_configgpio(GPIO_VDD_5V_PERIPH_EN);
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 1);
+	stm32_configgpio(GPIO_nVDD_5V_PERIPH_EN);
+	stm32_gpiowrite(GPIO_nVDD_5V_PERIPH_EN, 1);
 
 	/* wait for the peripheral rail to reach GND */
 	usleep(ms * 1000);
@@ -157,7 +83,7 @@ __EXPORT void board_peripheral_reset(int ms)
 	/* re-enable power */
 
 	/* switch the peripheral rail back on */
-	stm32_gpiowrite(GPIO_VDD_5V_PERIPH_EN, 0);
+	stm32_gpiowrite(GPIO_nVDD_5V_PERIPH_EN, 0);
 }
 
 /************************************************************************************
@@ -188,31 +114,6 @@ __EXPORT void board_on_reset(int status)
 	}
 }
 
-/****************************************************************************
- * Name: board_app_finalinitialize
- *
- * Description:
- *   Perform application specific initialization.  This function is never
- *   called directly from application code, but only indirectly via the
- *   (non-standard) boardctl() interface using the command
- *   BOARDIOC_FINALINIT.
- *
- * Input Parameters:
- *   arg - The argument has no meaning.
- *
- * Returned Value:
- *   Zero (OK) is returned on success; a negated errno value is returned on
- *   any failure to indicate the nature of the failure.
- *
- ****************************************************************************/
-
-#ifdef CONFIG_BOARDCTL_FINALINIT
-int board_app_finalinitialize(uintptr_t arg)
-{
-	return 0;
-}
-#endif
-
 /************************************************************************************
  * Name: stm32_boardinitialize
  *
@@ -222,14 +123,12 @@ int board_app_finalinitialize(uintptr_t arg)
  *   and mapped but before any devices have been initialized.
  *
  ************************************************************************************/
-
-__EXPORT void
-stm32_boardinitialize(void)
+__EXPORT void stm32_boardinitialize(void)
 {
-	board_on_reset(-1); /* Reset PWM first thing */
+	/* Reset PWM first thing */
+	board_on_reset(-1);
 
 	/* configure LEDs */
-
 	board_autoled_initialize();
 
 	/* configure pins */
@@ -243,7 +142,7 @@ stm32_boardinitialize(void)
 	px4_arch_configgpio(GPIO_ADC1_IN15);	/* PRESSURE_SENS */
 
 	/* configure power supply control/sense pins */
-	px4_arch_configgpio(GPIO_VDD_5V_PERIPH_EN);
+	px4_arch_configgpio(GPIO_nVDD_5V_PERIPH_EN);
 	px4_arch_configgpio(GPIO_VDD_3V3_SENSORS_EN);
 	px4_arch_configgpio(GPIO_VDD_BRICK_VALID);
 	px4_arch_configgpio(GPIO_VDD_5V_PERIPH_OC);
@@ -253,13 +152,10 @@ stm32_boardinitialize(void)
 	px4_arch_configgpio(GPIO_CAN1_TX);
 
 	/* configure SPI interfaces */
-
 	stm32_spiinitialize();
 
 	/* configure USB interfaces */
-
 	stm32_usbinitialize();
-
 }
 
 /****************************************************************************
@@ -273,39 +169,38 @@ stm32_boardinitialize(void)
  * Input Parameters:
  *   arg - The boardctl() argument is passed to the board_app_initialize()
  *         implementation without modification.  The argument has no
- *         meaning to NuttX; the meaning of the argument is a contract
- *         between the board-specific initalization logic and the the
- *         matching application logic.  The value cold be such things as a
- *         mode enumeration value, a set of DIP switch switch settings, a
- *         pointer to configuration data read from a file or serial FLASH,
- *         or whatever you would like to do with it.  Every implementation
- *         should accept zero/NULL as a default configuration.
+ *         meaning to NuttX;
  *
  * Returned Value:
  *   Zero (OK) is returned on success; a negated errno value is returned on
  *   any failure to indicate the nature of the failure.
  *
  ****************************************************************************/
-
-
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
+	/* Power on Interfaces */
+	stm32_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, true);
+	stm32_gpiowrite(GPIO_nVDD_5V_PERIPH_EN, false);
+	board_control_spi_sensors_power(true, 0xffff);
+
 	px4_platform_init();
 
-	/* configure the DMA allocator */
+	stm32_spiinitialize();
 
+	/* configure the DMA allocator */
 	if (board_dma_alloc_init() < 0) {
 		syslog(LOG_ERR, "[boot] DMA alloc FAILED\n");
 	}
 
+#if defined(SERIAL_HAVE_RXDMA)
 	/* set up the serial DMA polling */
 	static struct hrt_call serial_dma_call;
-	struct timespec ts;
 
 	/*
 	 * Poll at 1ms intervals for received bytes that have not triggered
 	 * a DMA event.
 	 */
+	struct timespec ts;
 	ts.tv_sec = 0;
 	ts.tv_nsec = 1000000;
 
@@ -314,7 +209,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		       ts_to_abstime(&ts),
 		       (hrt_callout)stm32_serial_dma_poll,
 		       NULL);
-
+#endif
 
 	/* initial LED state */
 	drv_led_start();

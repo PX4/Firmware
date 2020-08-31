@@ -36,36 +36,12 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/time.h>
-
 #include <drivers/device/i2c.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
-
 #include <px4_platform_common/i2c_spi_buses.h>
-
 #include <lib/perf/perf_counter.h>
-
-#include <drivers/drv_mag.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/device/ringbuffer.h>
 #include <drivers/drv_device.h>
-
-#include <uORB/uORB.h>
-
-#include <float.h>
-#include <lib/conversion/rotation.h>
-
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 #include "hmc5883.h"
 
 /*
@@ -108,7 +84,7 @@
 
 #define HMC5983_TEMP_SENSOR_ENABLE	(1 << 7)
 
-class HMC5883 : public device::CDev, public I2CSPIDriver<HMC5883>
+class HMC5883 : public I2CSPIDriver<HMC5883>
 {
 public:
 	HMC5883(device::Device *interface, enum Rotation rotation, I2CSPIBusOption bus_option, int bus);
@@ -120,40 +96,23 @@ public:
 
 	void			RunImpl();
 
-	int		init() override;
-
-	ssize_t		read(cdev::file_t *filp, char *buffer, size_t buflen) override;
-	int		ioctl(cdev::file_t *filp, int cmd, unsigned long arg) override;
+	int		init();
 
 protected:
 	void print_status() override;
 
 private:
-
-	Device			*_interface;
+	PX4Magnetometer		_px4_mag;
+	device::Device		*_interface;
 	unsigned		_measure_interval{0};
 
-	ringbuffer::RingBuffer	*_reports;
-	struct mag_calibration_s	_scale;
-	float 			_range_scale;
 	float 			_range_ga;
 	bool			_collect_phase;
-	int			_class_instance;
-	int			_orb_class_instance;
-
-	orb_advert_t		_mag_topic;
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
 	perf_counter_t		_range_errors;
 	perf_counter_t		_conf_errors;
-
-	/* status reporting */
-	bool			_sensor_ok;		/**< sensor was found and reports ok */
-
-	enum Rotation		_rotation;
-
-	sensor_mag_s	_last_report {};         /**< used for info() */
 
 	uint8_t			_range_bits;
 	uint8_t			_conf_reg;
@@ -174,29 +133,6 @@ private:
 	int			reset();
 
 	/**
-	 * Perform the on-sensor scale calibration routine.
-	 *
-	 * @note The sensor will continue to provide measurements, these
-	 *	 will however reflect the uncalibrated sensor state until
-	 *	 the calibration routine has been completed.
-	 *
-	 * @param enable set to 1 to enable self-test strap, 0 to disable
-	 */
-	int			calibrate(cdev::file_t *filp, unsigned enable);
-
-	/**
-	 * Perform the on-sensor scale calibration routine.
-	 *
-	 * @note The sensor will continue to provide measurements, these
-	 *	 will however reflect the uncalibrated sensor state until
-	 *	 the calibration routine has been completed.
-	 *
-	 * @param enable set to 1 to enable self-test positive strap, -1 to enable
-	 *        negative strap, 0 to set to normal mode
-	 */
-	int			set_excitement(unsigned enable);
-
-	/**
 	 * enable hmc5983 temperature compensation
 	 */
 	int			set_temperature_compensation(unsigned enable);
@@ -214,7 +150,7 @@ private:
 	 * checks that the range of the sensor is correctly set, to
 	 * cope with communication errors causing the range to change
 	 */
-	void 			check_range(void);
+	void 			check_range();
 
 	/**
 	 * check the sensor configuration.
@@ -223,7 +159,7 @@ private:
 	 * cope with communication errors causing the configuration to
 	 * change
 	 */
-	void 			check_conf(void);
+	void 			check_conf();
 
 	/**
 	 * Write a register.
@@ -254,26 +190,4 @@ private:
 	 * Collect the result of the most recent measurement.
 	 */
 	int			collect();
-
-	/**
-	 * Convert a big-endian signed 16-bit value to a float.
-	 *
-	 * @param in		A signed 16-bit big-endian value.
-	 * @return		The floating-point representation of the value.
-	 */
-	float			meas_to_float(uint8_t in[2]);
-
-	/**
-	* Check the current scale calibration
-	*
-	* @return 0 if scale calibration is ok, 1 else
-	*/
-	int 			check_scale();
-
-	/**
-	* Check the current offset calibration
-	*
-	* @return 0 if offset calibration is ok, 1 else
-	*/
-	int 			check_offset();
 };

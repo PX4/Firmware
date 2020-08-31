@@ -101,9 +101,11 @@ public:
 		if (removeNode == _head) {
 			if (_head->next_intrusive_queue_node() != nullptr) {
 				_head = _head->next_intrusive_queue_node();
+				removeNode->set_next_intrusive_queue_node(nullptr);
 
 			} else {
 				_head = nullptr;
+				_tail = nullptr;
 			}
 
 			return true;
@@ -112,14 +114,13 @@ public:
 		for (T node = _head; node != nullptr; node = node->next_intrusive_queue_node()) {
 			// is sibling the node to remove?
 			if (node->next_intrusive_queue_node() == removeNode) {
-				// replace sibling
-				if (node->next_intrusive_queue_node() != nullptr) {
-					node->set_next_intrusive_queue_node(node->next_intrusive_queue_node()->next_intrusive_queue_node());
-
-				} else {
-					node->set_next_intrusive_queue_node(nullptr);
+				if (removeNode == _tail) {
+					_tail = node;
 				}
 
+				// replace sibling
+				node->set_next_intrusive_queue_node(removeNode->next_intrusive_queue_node());
+				removeNode->set_next_intrusive_queue_node(nullptr);
 				return true;
 			}
 		}

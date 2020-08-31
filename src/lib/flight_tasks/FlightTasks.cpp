@@ -36,6 +36,16 @@ const vehicle_local_position_setpoint_s FlightTasks::getPositionSetpoint()
 	}
 }
 
+const ekf_reset_counters_s FlightTasks::getResetCounters()
+{
+	if (isAnyTaskActive()) {
+		return _current_task.task->getResetCounters();
+
+	} else {
+		return FlightTask::zero_reset_counters;
+	}
+}
+
 const vehicle_constraints_s FlightTasks::getConstraints()
 {
 	if (isAnyTaskActive()) {
@@ -64,7 +74,8 @@ FlightTaskError FlightTasks::switchTask(FlightTaskIndex new_task_index)
 	}
 
 	// Save current setpoints for the next FlightTask
-	vehicle_local_position_setpoint_s last_setpoint = getPositionSetpoint();
+	const vehicle_local_position_setpoint_s last_setpoint = getPositionSetpoint();
+	const ekf_reset_counters_s last_reset_counters = getResetCounters();
 
 	if (_initTask(new_task_index)) {
 		// invalid task
@@ -83,6 +94,8 @@ FlightTaskError FlightTasks::switchTask(FlightTaskIndex new_task_index)
 		_current_task.index = FlightTaskIndex::None;
 		return FlightTaskError::ActivationFailed;
 	}
+
+	_current_task.task->setResetCounters(last_reset_counters);
 
 	return FlightTaskError::NoError;
 }

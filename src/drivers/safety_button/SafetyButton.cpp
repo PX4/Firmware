@@ -213,13 +213,18 @@ SafetyButton::Run()
 	if (!PX4_MFT_HW_SUPPORTED(PX4_MFT_PX4IO)) {
 		FlashButton();
 
-		safety_s safety{};
-		safety.timestamp = hrt_absolute_time();
-		safety.safety_switch_available = true;
-		safety.safety_off = _safety_btn_off || _safety_disabled;
+		const bool safety_off = _safety_btn_off || _safety_disabled;
 
-		// publish the safety status
-		_to_safety.publish(safety);
+		// publish immediately on change, otherwise at 1 Hz
+		if ((hrt_elapsed_time(&_safety.timestamp) >= 1_s)
+		    || (_safety.safety_off != safety_off)) {
+
+			_safety.safety_switch_available = true;
+			_safety.safety_off = safety_off;
+			_safety.timestamp = hrt_absolute_time();
+
+			_to_safety.publish(_safety);
+		}
 	}
 }
 

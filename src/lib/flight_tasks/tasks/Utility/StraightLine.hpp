@@ -66,7 +66,9 @@ public:
 	 *
 	 * @return false when on the way from start to end, true when end was reached
 	 */
-	bool isEndReached() { return end_reached; }
+	bool isEndReached() const { return _end_reached; }
+
+	void reset() { _end_reached = true; }
 
 private:
 	const matrix::Vector3f &_position; /**< vehicle position (dependency injection) */
@@ -75,5 +77,5 @@ private:
 	matrix::Vector3f _end; /**< End point of the straight line */
 	float _speed = 1.f; /**< desired speed between accelerating and decelerating */
 
-	bool end_reached = true; /**< Flag to lock further movement when end is reached */
+	bool _end_reached = true; /**< Flag to lock further movement when end is reached */
 };

@@ -49,7 +49,6 @@
 #include <px4_platform_common/time.h>
 #include <uORB/uORB.h>
 
-#define BUFFER_SIZE 1024
 #define LOOPS -1
 #define SLEEP_MS 1
 #define BAUDRATE 460800
@@ -81,6 +80,9 @@ struct options {
 	uint32_t baudrate = BAUDRATE;
 	uint32_t poll_ms = POLL_MS;
 	int loops = LOOPS;
+	bool sw_flow_control = false;
+	bool hw_flow_control = false;
+	bool verbose_debug = false;
 };
 
 extern struct options _options;

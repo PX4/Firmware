@@ -38,7 +38,10 @@
 
 #pragma once
 
+#include <px4_platform_common/px4_config.h>
+
 #include <stdbool.h>
+#include <inttypes.h>
 
 __BEGIN_DECLS
 
@@ -69,17 +72,34 @@ __EXPORT int px4_unregister_shutdown_hook(shutdown_hook_t hook);
 
 
 /**
- * Request the system to shut down or reboot.
+ * Request the system to reboot.
  * Note the following:
- * - The system might not support to shutdown (or reboot). In that case -EINVAL will
+ * - The system might not support reboot. In that case -EINVAL will
  *   be returned.
  * - The system might not shutdown immediately, so expect this method to return even
  *   on success.
- * @param reboot perform a reboot instead of a shutdown
  * @param to_bootloader reboot into bootloader mode (only used if reboot is true)
+ * @param delay_us optional delay in microseconds
  * @return 0 on success, <0 on error
  */
-__EXPORT int px4_shutdown_request(bool reboot, bool to_bootloader);
+#if defined(CONFIG_BOARDCTL_RESET)
+__EXPORT int px4_reboot_request(bool to_bootloader = false, uint32_t delay_us = 0);
+#endif // CONFIG_BOARDCTL_RESET
+
+
+/**
+ * Request the system to shut down or reboot.
+ * Note the following:
+ * - The system might not support shutdown. In that case -EINVAL will
+ *   be returned.
+ * - The system might not shutdown immediately, so expect this method to return even
+ *   on success.
+ * @param delay_us optional delay in microseconds
+ * @return 0 on success, <0 on error
+ */
+#if defined(CONFIG_BOARDCTL_POWEROFF) || defined(__PX4_POSIX)
+__EXPORT int px4_shutdown_request(uint32_t delay_us = 0);
+#endif // CONFIG_BOARDCTL_POWEROFF
 
 
 /**
@@ -89,10 +109,12 @@ __EXPORT int px4_shutdown_request(bool reboot, bool to_bootloader);
  */
 __EXPORT int px4_shutdown_lock(void);
 
+
 /**
  * Release the shutdown lock.
  * @return 0 on success, <0 on error
  */
 __EXPORT int px4_shutdown_unlock(void);
+
 
 __END_DECLS

@@ -11,43 +11,34 @@ adc start
 # schematic and BOM, leading to sensor brownouts
 # on boot. Original Pixracers following the
 # open hardware design do not require this.
-fmu sensor_reset 50
-
-
-# External I2C bus
-hmc5883 -T -X start
-lis3mdl -X start
-ist8310 -X start
-qmc5883 -X start
-rm3100 start
+pwm_out sensor_reset 50
 
 # Internal SPI
 ms5611 -s start
 
-# For Teal One airframe
-if param compare SYS_AUTOSTART 4250
-then
-	mpu9250 -s -R 14 start
-	mpu9250 -t -R 14 start
-fi
-
 # hmc5883 internal SPI bus is rotated 90 deg yaw
-if ! hmc5883 -T -S -R 2 start
+if ! hmc5883 -T -s -R 2 start
 then
 	# lis3mdl internal SPI bus is rotated 90 deg yaw
-	lis3mdl start
+	lis3mdl -s start
 fi
 
 # Start either ICM2060X. They are both connected to the same SPI bus and use the same
 # chip select pin. There are different boards with either one of them and the WHO_AM_I register
 # will prevent the incorrect driver from a successful initialization.
 
-# ICM20602 internal SPI bus ICM-20608-G is rotated 90 deg yaw
-if ! icm20602 -R 8 start
+# ICM20602 internal SPI bus ICM-20608-G
+if ! icm20602 -s -R 8 start
 then
-	# ICM20608 internal SPI bus ICM-20602-G is rotated 90 deg yaw
-	icm20608g -R 8 start
+	# ICM20608 internal SPI bus ICM-20602-G
+	icm20608g -s -R 8 start
 fi
 
-# mpu9250 internal SPI bus mpu9250 is rotated 90 deg yaw
-mpu9250 -R 2 start
+# For Teal One airframe
+if param compare SYS_AUTOSTART 4250
+then
+	mpu6500 -s -R 0 start
+else
+	# mpu9250 internal SPI bus mpu9250
+	mpu9250 -s -R 8 start
+fi

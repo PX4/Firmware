@@ -79,6 +79,8 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	_power_battery_info_publisher(_node),
 	_air_data_static_pressure_publisher(_node),
 	_air_data_static_temperature_publisher(_node),
+	_raw_air_data_publisher(_node),
+	_range_sensor_measurement(_node),
 	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle time")),
 	_interval_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": cycle interval")),
 	_reset_timer(_node)
@@ -221,7 +223,7 @@ void UavcanNode::busevent_signal_trampoline()
 
 static void cb_reboot(const uavcan::TimerEvent &)
 {
-	px4_systemreset(false);
+	board_reset(0);
 }
 
 void UavcanNode::cb_beginfirmware_update(const uavcan::ReceivedDataStructure<UavcanNode::BeginFirmwareUpdate::Request>
@@ -274,7 +276,7 @@ class RestartRequestHandler: public uavcan::IRestartRequestHandler
 	{
 		PX4_INFO("UAVCAN: Restarting by request from %i\n", int(request_source.get()));
 		usleep(20 * 1000 * 1000);
-		px4_systemreset(false);
+		board_reset(0);
 		return true; // Will never be executed BTW
 	}
 } restart_request_handler;
@@ -296,6 +298,12 @@ void UavcanNode::Run()
 		}
 
 		_node.setModeOperational();
+
+		_diff_pressure_sub.registerCallback();
+
+		for (auto &dist : _distance_sensor_sub) {
+			dist.registerCallback();
+		}
 
 		_sensor_baro_sub.registerCallback();
 		_sensor_mag_sub.registerCallback();
@@ -320,6 +328,104 @@ void UavcanNode::Run()
 
 	if (spin_res < 0) {
 		PX4_ERR("node spin error %i", spin_res);
+	}
+
+	// battery_status -> uavcan::equipment::power::BatteryInfo
+	if (_battery_status_sub.updated()) {
+		battery_status_s battery;
+
+		if (_battery_status_sub.copy(&battery)) {
+			uavcan::equipment::power::BatteryInfo battery_info{};
+			battery_info.voltage = battery.voltage_v;
+			battery_info.current = fabs(battery.current_a);
+			battery_info.temperature = battery.temperature - CONSTANTS_ABSOLUTE_NULL_CELSIUS; // convert from C to K
+			battery_info.full_charge_capacity_wh = battery.capacity;
+			battery_info.remaining_capacity_wh = battery.remaining * battery.capacity;
+			battery_info.state_of_charge_pct = battery.remaining * 100;
+			battery_info.state_of_charge_pct_stdev = battery.max_error;
+			battery_info.model_instance_id = 0; // TODO: what goes here?
+			battery_info.model_name = "ARK BMS Rev 0.2";
+			battery_info.battery_id = battery.serial_number;
+			battery_info.hours_to_full_charge = 0; // TODO: Read BQ40Z80_TIME_TO_FULL
+			battery_info.state_of_health_pct = battery.state_of_health;
+
+			if (battery.current_a > 0.0f) {
+				battery_info.status_flags = uavcan::equipment::power::BatteryInfo::STATUS_FLAG_CHARGING;
+
+			} else {
+				battery_info.status_flags = uavcan::equipment::power::BatteryInfo::STATUS_FLAG_IN_USE;
+			}
+
+			_power_battery_info_publisher.broadcast(battery_info);
+		}
+	}
+
+	// differential_pressure -> uavcan::equipment::air_data::RawAirData
+	if (_diff_pressure_sub.updated()) {
+		differential_pressure_s diff_press;
+
+		if (_diff_pressure_sub.copy(&diff_press)) {
+
+			uavcan::equipment::air_data::RawAirData raw_air_data{};
+
+			// raw_air_data.static_pressure =
+			raw_air_data.differential_pressure = diff_press.differential_pressure_raw_pa;
+			// raw_air_data.static_pressure_sensor_temperature =
+			raw_air_data.differential_pressure_sensor_temperature = diff_press.temperature - CONSTANTS_ABSOLUTE_NULL_CELSIUS;
+			raw_air_data.static_air_temperature = diff_press.temperature - CONSTANTS_ABSOLUTE_NULL_CELSIUS;
+			// raw_air_data.pitot_temperature
+			// raw_air_data.covariance
+			_raw_air_data_publisher.broadcast(raw_air_data);
+		}
+	}
+
+	// distance_sensor[] -> uavcan::equipment::range_sensor::Measurement
+	for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+		distance_sensor_s dist;
+
+		if (_distance_sensor_sub[i].update(&dist)) {
+			uavcan::equipment::range_sensor::Measurement range_sensor{};
+
+			range_sensor.sensor_id = i;
+			range_sensor.range = dist.current_distance;
+			range_sensor.field_of_view = dist.h_fov;
+
+			// sensor type
+			switch (dist.type) {
+			case distance_sensor_s::MAV_DISTANCE_SENSOR_LASER:
+				range_sensor.sensor_type = uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_LIDAR;
+				break;
+
+			case distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND:
+				range_sensor.sensor_type = uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_SONAR;
+				break;
+
+			case distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR:
+				range_sensor.sensor_type = uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_RADAR;
+				break;
+
+			case distance_sensor_s::MAV_DISTANCE_SENSOR_INFRARED:
+			default:
+				range_sensor.sensor_type = uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_UNDEFINED;
+				break;
+			}
+
+			// reading_type
+			if (dist.current_distance >= dist.max_distance) {
+				range_sensor.reading_type = uavcan::equipment::range_sensor::Measurement::READING_TYPE_TOO_FAR;
+
+			} else if (dist.current_distance <= dist.min_distance) {
+				range_sensor.reading_type = uavcan::equipment::range_sensor::Measurement::READING_TYPE_TOO_CLOSE;
+
+			} else if (dist.signal_quality != 0) {
+				range_sensor.reading_type = uavcan::equipment::range_sensor::Measurement::READING_TYPE_VALID_RANGE;
+
+			} else {
+				range_sensor.reading_type = uavcan::equipment::range_sensor::Measurement::READING_TYPE_UNDEFINED;
+			}
+
+			_range_sensor_measurement.broadcast(range_sensor);
+		}
 	}
 
 	// sensor_baro -> uavcan::equipment::air_data::StaticTemperature
@@ -361,15 +467,29 @@ void UavcanNode::Run()
 		if (_vehicle_gps_position_sub.copy(&gps)) {
 			uavcan::equipment::gnss::Fix2 fix2{};
 
-			//fix2.gnss_timestamp = gps.time_utc_usec;
-			fix2.latitude_deg_1e8 = gps.lat * 10;
-			fix2.longitude_deg_1e8 = gps.lon * 10;
+			fix2.gnss_time_standard = fix2.GNSS_TIME_STANDARD_UTC;
+			fix2.gnss_timestamp.usec = gps.time_utc_usec;
+			fix2.latitude_deg_1e8 = (int64_t)gps.lat * 10;
+			fix2.longitude_deg_1e8 = (int64_t)gps.lon * 10;
 			fix2.height_msl_mm = gps.alt;
 			fix2.height_ellipsoid_mm = gps.alt_ellipsoid;
 			fix2.status = gps.fix_type;
 			fix2.ned_velocity[0] = gps.vel_n_m_s;
 			fix2.ned_velocity[1] = gps.vel_e_m_s;
 			fix2.ned_velocity[2] = gps.vel_d_m_s;
+			fix2.pdop = gps.hdop > gps.vdop ? gps.hdop :
+				    gps.vdop; // Use pdop for both hdop and vdop since uavcan v0 spec does not support them
+			fix2.sats_used = gps.satellites_used;
+
+			// Diagonal matrix
+			// position variances -- Xx, Yy, Zz
+			fix2.covariance.push_back(gps.eph);
+			fix2.covariance.push_back(gps.eph);
+			fix2.covariance.push_back(gps.eph);
+			// velocity variance -- Vxx, Vyy, Vzz
+			fix2.covariance.push_back(gps.s_variance_m_s);
+			fix2.covariance.push_back(gps.s_variance_m_s);
+			fix2.covariance.push_back(gps.s_variance_m_s);
 
 			_gnss_fix2_publisher.broadcast(fix2);
 		}

@@ -108,6 +108,11 @@ int main(int argc, char *argv[])
 			return -1;
 		}
 
+		// Account for MultirotorMixer outputing [-1,1] and python script [0,1]
+		for (unsigned i = 0; i < rotor_count; i++) {
+			actuator_outputs[i] = (actuator_outputs[i] + 1.f) * .5f;
+		}
+
 		// read expected outputs
 		count = 0;
 		float expected_output[output_max];

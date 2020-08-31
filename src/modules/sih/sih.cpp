@@ -198,7 +198,7 @@ void Sih::parameters_updated()
 
 	_LAT0 = (double)_sih_lat0.get() * 1.0e-7;
 	_LON0 = (double)_sih_lon0.get() * 1.0e-7;
-	_COS_LAT0 = cosl(radians(_LAT0));
+	_COS_LAT0 = cosl((long double)radians(_LAT0));
 
 	_MASS = _sih_mass.get();
 
@@ -268,7 +268,7 @@ void Sih::generate_force_and_torques()
 // apply the equations of motion of a rigid body and integrate one step
 void Sih::equations_of_motion()
 {
-	_C_IB = _q.to_dcm(); // body to inertial transformation
+	_C_IB = matrix::Dcm<float>(_q); // body to inertial transformation
 
 	// Equations of motion of a rigid body
 	_p_I_dot = _v_I;                        // position differential

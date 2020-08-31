@@ -33,39 +33,13 @@
 #pragma once
 
 #include <px4_platform_common/px4_config.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
 #include <px4_platform_common/log.h>
-
-#include <perf/perf_counter.h>
+#include <lib/perf/perf_counter.h>
 #include <px4_platform_common/i2c_spi_buses.h>
 #include <systemlib/conversions.h>
-
-#include <nuttx/arch.h>
-#include <nuttx/clock.h>
-
-#include <board_config.h>
 #include <drivers/drv_hrt.h>
-
-#include <drivers/device/ringbuffer.h>
-#include <drivers/device/integrator.h>
 #include <drivers/device/i2c.h>
-#include <drivers/drv_mag.h>
-#include <mathlib/math/filter/LowPassFilter2p.hpp>
-#include <lib/conversion/rotation.h>
-
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 
 #define BMM150_SLAVE_ADDRESS                 0x10
 
@@ -141,13 +115,13 @@
 
 /* Preset modes - Repetitions-XY Rates */
 #define BMM150_LOWPOWER_REPXY                 1
-#define BMM150_REGULAR_REPXY                  4
+#define BMM150_REGULAR_REPXY                  10
 #define BMM150_HIGHACCURACY_REPXY             23
 #define BMM150_ENHANCED_REPXY                 7
 
 /* Preset modes - Repetitions-Z Rates */
 #define BMM150_LOWPOWER_REPZ                  2
-#define BMM150_REGULAR_REPZ                   14
+#define BMM150_REGULAR_REPZ                   30
 #define BMM150_HIGHACCURACY_REPZ              82
 #define BMM150_ENHANCED_REPZ                  26
 
@@ -170,7 +144,7 @@
 #define BMM150_DEFAULT_ODR                  BMM150_DATA_RATE_30HZ
 
 /* Maximum output data rate */
-#define BMM150_MAX_DATA_RATE                100
+#define BMM150_MAX_DATA_RATE                30
 
 /* Default BMM150_INT_SETT_CTRL_REG Value */
 #define BMM150_DEFAULT_INT_SETT             0x3F
@@ -206,16 +180,13 @@
 #define BMM150_SOFT_RESET_MASK              0x82
 
 /* This value is set based on Max output data rate value */
-#define BMM150_CONVERSION_INTERVAL          (1000000 / 100) /* microseconds */
-
-
+#define BMM150_CONVERSION_INTERVAL          (1000000 / BMM150_MAX_DATA_RATE) /* microseconds */
 
 struct bmm150_data {
 	int16_t x;
 	int16_t y;
 	int16_t z;
 };
-
 
 class BMM150 : public device::I2C, public I2CSPIDriver<BMM150>
 {
@@ -228,8 +199,6 @@ public:
 	static void print_usage();
 
 	int             init() override;
-	ssize_t       read(struct file *filp, char *buffer, size_t buflen) override;
-	int       ioctl(struct file *filp, int cmd, unsigned long arg) override;
 
 	void            print_status() override;
 
@@ -239,45 +208,39 @@ public:
 
 	void custom_method(const BusCLIArguments &cli) override;
 
-protected:
+private:
 	int       probe() override;
 
-private:
+	PX4Magnetometer _px4_mag;
 
 	/* altitude conversion calibration */
-	unsigned        _call_interval;
+	unsigned        _call_interval{0};
 
+	bool            _collect_phase{false};
 
-	sensor_mag_s _report {};
-	ringbuffer::RingBuffer  *_reports;
+	uint8_t     _power{BMM150_DEFAULT_POWER_MODE};
+	uint8_t     _output_data_rate{BMM150_DEFAULT_POWER_MODE};
 
-	bool            _collect_phase;
+	int8_t _dig_x1{0};/**< trim x1 data */
+	int8_t _dig_y1{0};/**< trim y1 data */
 
-	struct mag_calibration_s    _scale;
-	float           _range_scale;
+	int8_t _dig_x2{0};/**< trim x2 data */
+	int8_t _dig_y2{0};/**< trim y2 data */
 
-	orb_advert_t        _topic;
-	int         _orb_class_instance;
-	int         _class_instance;
-	uint8_t     _power;
-	uint8_t     _output_data_rate;
-	bool        _calibrated;        /**< the calibration is valid */
+	uint16_t _dig_z1{0};/**< trim z1 data */
+	int16_t _dig_z2{0};/**< trim z2 data */
+	int16_t _dig_z3{0};/**< trim z3 data */
+	int16_t _dig_z4{0};/**< trim z4 data */
 
-	int8_t dig_x1;/**< trim x1 data */
-	int8_t dig_y1;/**< trim y1 data */
+	uint8_t _dig_xy1{0};/**< trim xy1 data */
+	int8_t _dig_xy2{0};/**< trim xy2 data */
 
-	int8_t dig_x2;/**< trim x2 data */
-	int8_t dig_y2;/**< trim y2 data */
+	uint16_t _dig_xyz1{0};/**< trim xyz1 data */
 
-	uint16_t dig_z1;/**< trim z1 data */
-	int16_t dig_z2;/**< trim z2 data */
-	int16_t dig_z3;/**< trim z3 data */
-	int16_t dig_z4;/**< trim z4 data */
-
-	uint8_t dig_xy1;/**< trim xy1 data */
-	int8_t dig_xy2;/**< trim xy2 data */
-
-	uint16_t dig_xyz1;/**< trim xyz1 data */
+	int16_t _last_raw_x{0};
+	int16_t _last_raw_y{0};
+	int16_t _last_raw_z{0};
+	uint16_t _last_resistance{0};
 
 	perf_counter_t      _sample_perf;
 	perf_counter_t      _bad_transfers;
@@ -286,12 +249,7 @@ private:
 	perf_counter_t      _comms_errors;
 	perf_counter_t      _duplicates;
 
-	enum Rotation       _rotation;
-	bool            _got_duplicate;
-
-	sensor_mag_s   _last_report {};          /**< used for info() */
-
-	int             init_trim_registers(void);
+	int             init_trim_registers();
 
 	/**
 	 * Start automatic measurement.
@@ -377,11 +335,4 @@ private:
 	 */
 	int             set_presetmode(uint8_t presetmode);
 
-
-	/* do not allow to copy this class due to pointer data members */
-	BMM150(const BMM150 &);
-	BMM150 operator=(const BMM150 &);
-
 };
-
-

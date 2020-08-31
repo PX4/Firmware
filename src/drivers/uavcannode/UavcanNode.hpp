@@ -58,10 +58,12 @@
 #include <uavcan/protocol/param/ExecuteOpcode.hpp>
 #include <uavcan/protocol/RestartNode.hpp>
 #include <uavcan/equipment/ahrs/MagneticFieldStrength2.hpp>
+#include <uavcan/equipment/air_data/RawAirData.hpp>
 #include <uavcan/equipment/air_data/StaticPressure.hpp>
 #include <uavcan/equipment/air_data/StaticTemperature.hpp>
 #include <uavcan/equipment/gnss/Fix2.hpp>
 #include <uavcan/equipment/power/BatteryInfo.hpp>
+#include <uavcan/equipment/range_sensor/Measurement.hpp>
 
 
 #include <lib/parameters/param.h>
@@ -69,7 +71,10 @@
 
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
+#include <uORB/topics/battery_status.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/differential_pressure.h>
+#include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/sensor_baro.h>
 #include <uORB/topics/sensor_mag.h>
 #include <uORB/topics/vehicle_gps_position.h>
@@ -169,12 +174,21 @@ private:
 	uavcan::Publisher<uavcan::equipment::power::BatteryInfo> _power_battery_info_publisher;
 	uavcan::Publisher<uavcan::equipment::air_data::StaticPressure> _air_data_static_pressure_publisher;
 	uavcan::Publisher<uavcan::equipment::air_data::StaticTemperature> _air_data_static_temperature_publisher;
+	uavcan::Publisher<uavcan::equipment::air_data::RawAirData> _raw_air_data_publisher;
+	uavcan::Publisher<uavcan::equipment::range_sensor::Measurement> _range_sensor_measurement;
+
 	hrt_abstime _last_static_temperature_publish{0};
-
-
 
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 
+	uORB::SubscriptionCallbackWorkItem _battery_status_sub{this, ORB_ID(battery_status)};
+	uORB::SubscriptionCallbackWorkItem _diff_pressure_sub{this, ORB_ID(differential_pressure)};
+	uORB::SubscriptionCallbackWorkItem _distance_sensor_sub[ORB_MULTI_MAX_INSTANCES] {
+		{this, ORB_ID(distance_sensor), 0},
+		{this, ORB_ID(distance_sensor), 1},
+		{this, ORB_ID(distance_sensor), 2},
+		{this, ORB_ID(distance_sensor), 3},
+	};
 	uORB::SubscriptionCallbackWorkItem _sensor_baro_sub{this, ORB_ID(sensor_baro)};
 	uORB::SubscriptionCallbackWorkItem _sensor_mag_sub{this, ORB_ID(sensor_mag)};
 	uORB::SubscriptionCallbackWorkItem _vehicle_gps_position_sub{this, ORB_ID(vehicle_gps_position)};

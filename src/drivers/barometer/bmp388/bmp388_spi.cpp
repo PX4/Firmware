@@ -84,7 +84,7 @@ IBMP388 *bmp388_spi_interface(uint8_t busnum, uint32_t device, int bus_frequency
 }
 
 BMP388_SPI::BMP388_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
-	SPI("BMP388_SPI", nullptr, bus, device, spi_mode, bus_frequency)
+	SPI(DRV_BARO_DEVTYPE_BMP388, MODULE_NAME, bus, device, spi_mode, bus_frequency)
 {
 }
 

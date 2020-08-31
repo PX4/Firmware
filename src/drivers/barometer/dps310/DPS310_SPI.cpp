@@ -66,7 +66,7 @@ DPS310_SPI_interface(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e
 }
 
 DPS310_SPI::DPS310_SPI(uint8_t bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
-	SPI("DPS310_SPI", nullptr, bus, device, spi_mode, bus_frequency)
+	SPI(DRV_BARO_DEVTYPE_DPS310, MODULE_NAME, bus, device, spi_mode, bus_frequency)
 {
 }
 

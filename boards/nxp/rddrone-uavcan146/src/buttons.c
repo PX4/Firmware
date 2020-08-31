@@ -33,10 +33,9 @@
  *
  ****************************************************************************/
 
-/* The RDDRONE-UAVCAN146 supports two buttons:
+/* The RDDRONE-UAVCAN146 supports one button:
  *
- *   SW2  PTC12
- *   SW3  PTC13
+ *   SW3  PTC14
  */
 
 /****************************************************************************
@@ -77,7 +76,6 @@ void board_button_initialize(void)
 {
 	/* Configure the GPIO pins as interrupting inputs. */
 
-	s32k1xx_pinconfig(GPIO_SW2);
 	s32k1xx_pinconfig(GPIO_SW3);
 }
 
@@ -88,10 +86,6 @@ void board_button_initialize(void)
 uint32_t board_buttons(void)
 {
 	uint32_t ret = 0;
-
-	if (s32k1xx_gpioread(GPIO_SW2)) {
-		ret |= BUTTON_SW2_BIT;
-	}
 
 	if (s32k1xx_gpioread(GPIO_SW3)) {
 		ret |= BUTTON_SW3_BIT;
@@ -130,10 +124,7 @@ int board_button_irq(int id, xcpt_t irqhandler, FAR void *arg)
 
 	/* Map the button id to the GPIO bit set. */
 
-	if (id == BUTTON_SW2) {
-		pinset = GPIO_SW2;
-
-	} else if (id == BUTTON_SW3) {
+	if (id == BUTTON_SW3) {
 		pinset = GPIO_SW3;
 
 	} else {

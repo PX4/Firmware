@@ -9,7 +9,6 @@ set VEHICLE_TYPE vtol
 
 if [ $AUTOCNF = yes ]
 then
-
 	# to minimize cpu usage on older boards limit inner loop to 400 Hz
 	param set IMU_GYRO_RATEMAX 400
 
@@ -23,6 +22,7 @@ then
 	param set MPC_XY_CRUISE 3
 	param set MPC_XY_VEL_MAX 4
 	param set MPC_Z_VEL_MAX_DN 1.5
+	param set MPC_JERK_MAX 4.5
 
 	param set NAV_ACC_RAD 3
 

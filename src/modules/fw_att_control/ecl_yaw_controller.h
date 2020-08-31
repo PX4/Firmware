@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2013-2020 Estimation and Control Library (ECL). All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,7 @@
  *   which in turn is based on initial work of
  *   Jonathan Challinger, 2012.
  */
+
 #ifndef ECL_YAW_CONTROLLER_H
 #define ECL_YAW_CONTROLLER_H
 
@@ -57,35 +58,12 @@ public:
 	ECL_YawController() = default;
 	~ECL_YawController() = default;
 
-	float control_attitude(const struct ECL_ControlData &ctl_data) override;
-	float control_euler_rate(const struct ECL_ControlData &ctl_data) override;
-	float control_bodyrate(const struct ECL_ControlData &ctl_data) override;
-
-	/* Additional setters */
-	void set_coordinated_min_speed(float coordinated_min_speed)
-	{
-		_coordinated_min_speed = coordinated_min_speed;
-	}
-
-	void set_coordinated_method(int32_t coordinated_method)
-	{
-		_coordinated_method = coordinated_method;
-	}
-
-	enum {
-		COORD_METHOD_OPEN = 0,
-		COORD_METHOD_CLOSEACC = 1
-	};
+	float control_attitude(const float dt, const ECL_ControlData &ctl_data) override;
+	float control_euler_rate(const float dt, const ECL_ControlData &ctl_data) override;
+	float control_bodyrate(const float dt, const ECL_ControlData &ctl_data) override;
 
 protected:
-	float _coordinated_min_speed{1.0f};
 	float _max_rate{0.0f};
-
-	int32_t _coordinated_method{COORD_METHOD_OPEN};
-
-	float control_attitude_impl_openloop(const struct ECL_ControlData &ctl_data);
-
-	float control_attitude_impl_accclosedloop(const struct ECL_ControlData &ctl_data);
 
 };
 

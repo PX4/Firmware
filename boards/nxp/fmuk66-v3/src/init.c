@@ -64,6 +64,7 @@
 #include <kinetis.h>
 #include <kinetis_uart.h>
 #include <hardware/kinetis_uart.h>
+#include <hardware/kinetis_sim.h>
 #include "board_config.h"
 
 #include "up_arch.h"
@@ -164,7 +165,7 @@ __EXPORT void board_peripheral_reset(int ms)
 }
 
 /************************************************************************************
- * Name: stm32_boardinitialize
+ * Name: kinetis_boardinitialize
  *
  * Description:
  *   All Kinetis architectures must provide the following entry point.  This entry point
@@ -283,6 +284,22 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 		board_autoled_on(LED_RED);
 		return ret;
 	}
+
+#endif
+
+#ifdef CONFIG_NETDEV_LATEINIT
+
+# ifdef CONFIG_KINETIS_ENET
+	kinetis_netinitialize(0);
+# endif
+
+# ifdef CONFIG_KINETIS_FLEXCAN0
+	kinetis_caninitialize(0);
+# endif
+
+# ifdef CONFIG_KINETIS_FLEXCAN1
+	kinetis_caninitialize(1);
+# endif
 
 #endif
 

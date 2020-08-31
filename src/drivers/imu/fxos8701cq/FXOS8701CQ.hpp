@@ -34,16 +34,21 @@
 /**
  * @file FXOS8701CQ.hpp
  * Driver for the NXP FXOS8701CQ 6-axis sensor with integrated linear accelerometer and
- * magnetometer connected via SPI.
+ * magnetometer connected via SPI or I2C.
  */
 
 #pragma once
 
+#include <drivers/device/i2c.h>
 #include <drivers/device/spi.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
+
+#if defined(PX4_I2C_FXOS8701CQ_ADDR) && defined(PX4_I2C_BUS_EXPANSION)
+#  define FXOS8701CQ_USE_I2C
+#endif
 
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
@@ -55,6 +60,10 @@
 #define ADDR_7(a)                       ((a) & (1 << 7))
 #define swap16(w)                       __builtin_bswap16((w))
 #define swap16RightJustify14(w)         (((int16_t)swap16(w)) >> 2)
+
+// I2C address
+#define FXOS8701CQ_REG_MASK					0x00FF
+#define FXOS8701CQ_REG(r) 					((r) & FXOS8701CQ_REG_MASK)
 
 #define FXOS8701CQ_DR_STATUS       0x00
 #  define DR_STATUS_ZYXDR          (1 << 3)
@@ -103,35 +112,55 @@
 #define FXOS8701C_ACCEL_DEFAULT_RANGE_G              8
 #define FXOS8701C_ACCEL_DEFAULT_RATE                 400 /* ODR is 400 in Hybird mode (accel + mag) */
 
-/*
-  we set the timer interrupt to run a bit faster than the desired
-  sample rate and then throw away duplicates using the data ready bit.
-  This time reduction is enough to cope with worst case timing jitter
-  due to other timers
- */
-#define FXOS8701C_TIMER_REDUCTION				240
+#pragma pack(push, 1)
+struct RawAccelMagReport {
+#       ifdef FXOS8701CQ_USE_I2C
+	uint8_t  cmd;
+#       else
+	uint8_t	 cmd[2];
+#       endif
 
-class FXOS8701CQ : public device::SPI, public px4::ScheduledWorkItem
+	uint8_t		status;
+	int16_t		x;
+	int16_t		y;
+	int16_t		z;
+#if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
+	int16_t		mx;
+	int16_t		my;
+	int16_t		mz;
+#endif // !BOARD_HAS_NOISY_FXOS8700_MAG
+};
+#pragma pack(pop)
+
+extern device::Device *FXOS8701CQ_SPI_interface(int bus, uint32_t chip_select, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *FXOS8701CQ_I2C_interface(int bus, int bus_frequency, int i2c_address);
+
+class FXOS8701CQ : public I2CSPIDriver<FXOS8701CQ>
 {
 public:
-	FXOS8701CQ(int bus, uint32_t device, enum Rotation rotation);
+	FXOS8701CQ(device::Device *interface, I2CSPIBusOption bus_option, int bus, enum Rotation rotation, int i2c_address);
 	virtual ~FXOS8701CQ();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	void			print_info();
+	int		init();
+
+	void			print_status() override;
+
+	void			RunImpl();
+
 	void			print_registers();
 	void			test_error();
-
 protected:
-	virtual int		probe();
+	int		probe();
+	void custom_method(const BusCLIArguments &cli) override;
 
 private:
-
-	void Run() override;
+	device::Device *_interface;
 
 	void			start();
-	void			stop();
 	void			reset();
 
 	/**
@@ -145,15 +174,16 @@ private:
 	 * @param		The register to read.
 	 * @return		The value that was read.
 	 */
-	uint8_t			read_reg(unsigned reg);
+	inline uint8_t read_reg(unsigned reg) { return _interface->read_reg(reg); }
 
 	/**
 	 * Write a register in the FXOS8701C
 	 *
 	 * @param reg		The register to write.
 	 * @param value		The new value to write.
+	 * @return		OK on success, negative errno otherwise.
 	 */
-	void			write_reg(unsigned reg, uint8_t value);
+	inline int write_reg(unsigned reg, uint8_t value) { return _interface->write_reg(reg, value); }
 
 	/**
 	 * Modify a register in the FXOS8701C
@@ -211,11 +241,15 @@ private:
 	perf_counter_t		_mag_sample_perf;
 #endif
 
+	hrt_abstime		_last_temperature_update{0};
+
 	unsigned		_accel_samplerate{FXOS8701C_ACCEL_DEFAULT_RATE};
 
 	perf_counter_t		_accel_sample_perf;
 	perf_counter_t		_bad_registers;
 	perf_counter_t		_accel_duplicates;
+
+	int16_t _accel_prev[3] {};
 
 	uint8_t			_register_wait{0};
 

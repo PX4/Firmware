@@ -42,7 +42,7 @@ void list_builtins(apps_map_type &apps)
 
 int shutdown_main(int argc, char *argv[])
 {
-	printf("Shutting down\n");
+	printf("Exiting NOW.\n");
 	system_exit(0);
 }
 

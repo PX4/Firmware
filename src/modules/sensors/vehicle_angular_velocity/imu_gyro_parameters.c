@@ -70,7 +70,7 @@ PARAM_DEFINE_FLOAT(IMU_GYRO_NF_BW, 20.0f);
 *
 * The cutoff frequency for the 2nd order butterworth filter on the primary gyro.
 * This only affects the angular velocity sent to the controllers, not the estimators.
-* Doesn't apply to the angular acceleration (D-Term filter), see IMU_DGYRO_CUTOFF.
+* It applies also to the angular acceleration (D-Term filter), see IMU_DGYRO_CUTOFF.
 *
 * A value of 0 disables the filter.
 *
@@ -109,7 +109,7 @@ PARAM_DEFINE_INT32(IMU_GYRO_RATEMAX, 0);
 * the time derivative of the measured angular velocity, also known as
 * the D-term filter in the rate controller. The D-term uses the derivative of
 * the rate and thus is the most susceptible to noise. Therefore, using
-* a D-term filter allows to decrease the driver-level filtering, which
+* a D-term filter allows to increase IMU_GYRO_CUTOFF, which
 * leads to reduced control latency and permits to increase the P gains.
 *
 * A value of 0 disables the filter.
@@ -120,4 +120,4 @@ PARAM_DEFINE_INT32(IMU_GYRO_RATEMAX, 0);
 * @reboot_required true
 * @group Sensors
 */
-PARAM_DEFINE_FLOAT(IMU_DGYRO_CUTOFF, 30.0f);
+PARAM_DEFINE_FLOAT(IMU_DGYRO_CUTOFF, 0.0f);

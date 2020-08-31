@@ -106,8 +106,7 @@ public:
 	 * Any number of advertisers may publish to a topic; publications are atomic
 	 * but co-ordination between publishers is not provided by the ORB.
 	 *
-	 * Internally this will call orb_advertise_multi with an instance of 0 and
-	 * default priority.
+	 * Internally this will call orb_advertise_multi with an instance of 0.
 	 *
 	 * @param meta    The uORB metadata (usually from the ORB_ID() macro)
 	 *      for the topic.
@@ -124,7 +123,7 @@ public:
 	 */
 	orb_advert_t orb_advertise(const struct orb_metadata *meta, const void *data, unsigned int queue_size = 1)
 	{
-		return orb_advertise_multi(meta, data, nullptr, ORB_PRIO_DEFAULT, queue_size);
+		return orb_advertise_multi(meta, data, nullptr, queue_size);
 	}
 
 	/**
@@ -149,10 +148,6 @@ public:
 	 * @param instance  Pointer to an integer which will yield the instance ID (0-based)
 	 *      of the publication. This is an output parameter and will be set to the newly
 	 *      created instance, ie. 0 for the first advertiser, 1 for the next and so on.
-	 * @param priority  The priority of the instance. If a subscriber subscribes multiple
-	 *      instances, the priority allows the subscriber to prioritize the best
-	 *      data source as long as its available. The subscriber is responsible to check
-	 *      and handle different priorities (@see orb_priority()).
 	 * @param queue_size  Maximum number of buffered elements. If this is 1, no queuing is
 	 *      used.
 	 * @return    PX4_ERROR on error, otherwise returns a handle
@@ -162,7 +157,7 @@ public:
 	 *      this function will return -1 and set errno to ENOENT.
 	 */
 	orb_advert_t orb_advertise_multi(const struct orb_metadata *meta, const void *data, int *instance,
-					 int priority, unsigned int queue_size = 1);
+					 unsigned int queue_size = 1);
 
 	/**
 	 * Unadvertise a topic.
@@ -309,18 +304,6 @@ public:
 	int  orb_exists(const struct orb_metadata *meta, int instance);
 
 	/**
-	 * Return the priority of the topic
-	 *
-	 * @param handle  A handle returned from orb_subscribe.
-	 * @param priority  Returns the priority of this topic. This is only relevant for
-	 *      topics which are published by multiple publishers (e.g. mag0, mag1, etc.)
-	 *      and allows a subscriber to pick the topic with the highest priority,
-	 *      independent of the startup order of the associated publishers.
-	 * @return    OK on success, PX4_ERROR otherwise with errno set accordingly.
-	 */
-	int  orb_priority(int handle, int32_t *priority);
-
-	/**
 	 * Set the minimum interval between which updates are seen for a subscription.
 	 *
 	 * If this interval is set, the subscriber will not see more than one update
@@ -376,12 +359,6 @@ public:
 #endif /* ORB_COMMUNICATOR */
 
 private: // class methods
-	/**
-	 * Advertise a node; don't consider it an error if the node has
-	 * already been advertised.
-	 */
-	int node_advertise(const struct orb_metadata *meta, bool is_advertiser, int *instance = nullptr,
-			   int priority = ORB_PRIO_DEFAULT);
 
 	/**
 	 * Common implementation for orb_advertise and orb_subscribe.
@@ -389,8 +366,7 @@ private: // class methods
 	 * Handles creation of the object and the initial publication for
 	 * advertisers.
 	 */
-	int node_open(const struct orb_metadata *meta, bool advertiser, int *instance = nullptr,
-		      int priority = ORB_PRIO_DEFAULT);
+	int node_open(const struct orb_metadata *meta, bool advertiser, int *instance = nullptr);
 
 private: // data members
 	static Manager *_Instance;

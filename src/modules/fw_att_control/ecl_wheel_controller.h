@@ -58,11 +58,11 @@ public:
 	ECL_WheelController() = default;
 	~ECL_WheelController() = default;
 
-	float control_attitude(const struct ECL_ControlData &ctl_data) override;
+	float control_attitude(const float dt, const ECL_ControlData &ctl_data) override;
 
-	float control_bodyrate(const struct ECL_ControlData &ctl_data) override;
+	float control_bodyrate(const float dt, const ECL_ControlData &ctl_data) override;
 
-	float control_euler_rate(const struct ECL_ControlData &ctl_data) override { (void)ctl_data; return 0; }
+	float control_euler_rate(const float dt, const ECL_ControlData &ctl_data) override { (void)ctl_data; return 0; }
 };
 
 #endif // ECL_HEADING_CONTROLLER_H

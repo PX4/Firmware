@@ -50,7 +50,6 @@
 #include <px4_platform_common/module_params.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/collision_constraints.h>
 #include <uORB/topics/distance_sensor.h>

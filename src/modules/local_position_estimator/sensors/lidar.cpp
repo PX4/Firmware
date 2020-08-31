@@ -21,10 +21,10 @@ void BlockLocalPositionEstimator::lidarInit()
 
 	// if finished
 	if (_lidarStats.getCount() > REQ_LIDAR_INIT_COUNT) {
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] lidar init: "
-					     "mean %d cm stddev %d cm",
-					     int(100 * _lidarStats.getMean()(0)),
-					     int(100 * _lidarStats.getStdDev()(0)));
+		mavlink_log_info(&mavlink_log_pub, "[lpe] lidar init: "
+				 "mean %d cm stddev %d cm",
+				 int(100 * _lidarStats.getMean()(0)),
+				 int(100 * _lidarStats.getStdDev()(0)));
 		_sensorTimeout &= ~SENSOR_LIDAR;
 		_sensorFault &= ~SENSOR_LIDAR;
 	}
@@ -103,7 +103,7 @@ void BlockLocalPositionEstimator::lidarCorrect()
 
 	if (beta > BETA_TABLE[n_y_lidar]) {
 		if (!(_sensorFault & SENSOR_LIDAR)) {
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] lidar fault,  beta %5.2f", double(beta));
+			mavlink_log_info(&mavlink_log_pub, "[lpe] lidar fault,  beta %5.2f", double(beta));
 			_sensorFault |= SENSOR_LIDAR;
 		}
 
@@ -112,7 +112,7 @@ void BlockLocalPositionEstimator::lidarCorrect()
 
 	} else if (_sensorFault & SENSOR_LIDAR) {
 		_sensorFault &= ~SENSOR_LIDAR;
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] lidar OK");
+		mavlink_log_info(&mavlink_log_pub, "[lpe] lidar OK");
 	}
 
 	// kalman filter correction always
@@ -128,7 +128,7 @@ void BlockLocalPositionEstimator::lidarCheckTimeout()
 		if (!(_sensorTimeout & SENSOR_LIDAR)) {
 			_sensorTimeout |= SENSOR_LIDAR;
 			_lidarStats.reset();
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] lidar timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] lidar timeout ");
 		}
 	}
 }

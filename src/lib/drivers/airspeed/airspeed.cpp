@@ -57,7 +57,7 @@
 #include <drivers/airspeed/airspeed.h>
 
 Airspeed::Airspeed(int bus, int bus_frequency, int address, unsigned conversion_interval) :
-	I2C("Airspeed", nullptr, bus, address, bus_frequency),
+	I2C(0, "Airspeed", bus, address, bus_frequency),
 	_sensor_ok(false),
 	_measure_interval(conversion_interval),
 	_collect_phase(false),

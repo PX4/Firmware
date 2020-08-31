@@ -38,5 +38,7 @@ px4_add_module(
 	SRCS
 		FXOS8701CQ.cpp
 		FXOS8701CQ.hpp
+		fxos8701cq_i2c.cpp
+		fxos8701cq_spi.cpp
 		fxos8701cq_main.cpp
 	)

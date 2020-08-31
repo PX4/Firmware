@@ -37,13 +37,13 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/ecl/geo/geo.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <lib/systemlib/conversions.h>
 #include <lib/systemlib/px4_macros.h>
 
 #include "MPU9250_mag.h"
 
-#if defined(PX4_I2C_OBDEV_MPU9250) || defined(PX4_I2C_BUS_EXPANSION)
+#if defined(PX4_I2C_OBDEV_MPU9250)
 #  define USE_I2C
 #endif
 
@@ -214,7 +214,7 @@ struct MPUReport {
  */
 #define MPU9250_LOW_BUS_SPEED				0
 #define MPU9250_HIGH_BUS_SPEED				0x8000
-#define MPU9250_REG_MASK					0x00FF
+#define MPU9250_REG_MASK				0x00FF
 #  define MPU9250_IS_HIGH_SPEED(r) 			((r) & MPU9250_HIGH_BUS_SPEED)
 #  define MPU9250_REG(r) 					((r) & MPU9250_REG_MASK)
 #  define MPU9250_SET_SPEED(r, s) 			((r)|(s))
@@ -224,39 +224,41 @@ struct MPUReport {
 static constexpr int16_t combine(uint8_t msb, uint8_t lsb) { return (msb << 8u) | lsb; }
 
 /* interface factories */
-extern device::Device *MPU9250_SPI_interface(int bus, uint32_t cs);
-extern device::Device *MPU9250_I2C_interface(int bus, uint32_t address);
-extern int MPU9250_probe(device::Device *dev);
-
-typedef device::Device *(*MPU9250_constructor)(int, uint32_t);
+extern device::Device *MPU9250_SPI_interface(int bus, uint32_t cs, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *MPU9250_I2C_interface(int bus, uint32_t address, int bus_frequency);
 
 class MPU9250_mag;
 
-class MPU9250 : public px4::ScheduledWorkItem
+class MPU9250 : public I2CSPIDriver<MPU9250>
 {
 public:
-	MPU9250(device::Device *interface, device::Device *mag_interface, enum Rotation rotation);
+	MPU9250(device::Device *interface, device::Device *mag_interface, enum Rotation rotation, I2CSPIBusOption bus_option,
+		int bus);
 	virtual ~MPU9250();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	int		init();
 	uint8_t			get_whoami() { return _whoami; }
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
 	 */
-	void			print_info();
+	void			print_status() override;
+
+	void RunImpl();
 
 protected:
 	device::Device *_interface;
 	uint8_t			_whoami{0};	/** whoami result */
 
-	virtual int		probe();
+	int		probe();
 
 	friend class MPU9250_mag;
 
 private:
-
-	void Run() override;
 
 	PX4Accelerometer	_px4_accel;
 	PX4Gyroscope		_px4_gyro;
@@ -300,7 +302,6 @@ private:
 	bool			_got_duplicate{false};
 
 	void			start();
-	void			stop();
 	int			reset();
 
 	/**

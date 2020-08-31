@@ -59,25 +59,20 @@
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
+#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionCallback.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/position_controller_status.h>
-#include <uORB/topics/sensor_combined.h>
-#include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_control_mode.h>
-#include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/ekf2_timestamps.h>
 #include <uORB/uORB.h>
-
-
-
 
 using matrix::Eulerf;
 using matrix::Quatf;
@@ -87,7 +82,7 @@ using matrix::Dcmf;
 
 using uORB::SubscriptionData;
 
-class UUVAttitudeControl: public ModuleBase<UUVAttitudeControl>, public ModuleParams
+class UUVAttitudeControl: public ModuleBase<UUVAttitudeControl>, public ModuleParams, public px4::WorkItem
 {
 public:
 	UUVAttitudeControl();
@@ -108,49 +103,28 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	/** @see ModuleBase::run() */
-	void run() override;
-
-
-//	int start();
-//	bool task_running() { return _task_running; }
+	bool init();
 
 private:
-	uORB::Publication<position_controller_status_s>	_pos_ctrl_status_pub{ORB_ID(position_controller_status)};
-	uORB::Publication<actuator_controls_s>		    _actuator_controls_pub{ORB_ID(actuator_controls_0)};
+	uORB::Publication<actuator_controls_s> _actuator_controls_pub{ORB_ID(actuator_controls_0)};
 
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 
-	int	_vehicle_attitude_sp_sub{-1};	/**< vehicle attitude setpoint */
-	int	_battery_status_sub{-1};	/**< battery status subscription */
-	int	_vehicle_attitude_sub{-1};	/**< control state subscription */
-	int	_angular_velocity_sub{-1};	/**< vehicle angular velocity subscription */
-	int	_local_pos_sub{-1};		/**< local position subscription */
-	int	_manual_control_sub{-1};	/**< notification of manual control updates */
-	int	_vcontrol_mode_sub{-1};		/**< vehicle status subscription */
-	int	_sensor_combined_sub{-1};	/**< sensor combined subscription */
+	uORB::Subscription _vehicle_attitude_setpoint_sub{ORB_ID(vehicle_attitude_setpoint)};	/**< vehicle attitude setpoint */
+	uORB::Subscription _vehicle_rates_setpoint_sub{ORB_ID(vehicle_rates_setpoint)}; /**< vehicle bodyrates setpoint subscriber */
+	uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};	/**< vehicle angular velocity subscription */
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	/**< notification of manual control updates */
+	uORB::Subscription _vcontrol_mode_sub{ORB_ID(vehicle_control_mode)};		/**< vehicle status subscription */
 
-	actuator_controls_s		_actuators {};		/**< actuator control inputs */
-	manual_control_setpoint_s	_manual {};		/**< r/c channel data */
-	vehicle_attitude_s		_vehicle_attitude {};	/**< control state */
-	vehicle_angular_velocity_s	_angular_velocity{};	/**< angular velocity */
-	vehicle_attitude_setpoint_s	_vehicle_attitude_sp {};/**< vehicle attitude setpoint */
-	vehicle_control_mode_s		_vcontrol_mode {};	/**< vehicle control mode */
-	sensor_combined_s		_sensor_combined{};
-	vehicle_local_position_s	_local_pos{};		/**< vehicle local position */
+	uORB::SubscriptionCallbackWorkItem _vehicle_attitude_sub{this, ORB_ID(vehicle_attitude)};
 
+	actuator_controls_s _actuators {}; /**< actuator control inputs */
+	manual_control_setpoint_s _manual_control_setpoint {}; /**< r/c channel data */
+	vehicle_attitude_setpoint_s _attitude_setpoint {}; /**< vehicle attitude setpoint */
+	vehicle_rates_setpoint_s _rates_setpoint {}; /**< vehicle bodyrates setpoint */
+	vehicle_control_mode_s _vcontrol_mode {}; /**< vehicle control mode */
 
-	SubscriptionData<vehicle_acceleration_s>		_vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
-	hrt_abstime _control_position_last_called{0}; 	/**<last call of control_position  */
-	perf_counter_t	_loop_perf;			/**< loop performance counter */
-
-
-	// estimator reset counters
-	uint8_t _pos_reset_counter{0};		// captures the number of times the estimator has reset the horizontal position
-
-
-	bool _debug{false};	/**< if set to true, print debug output */
-	int loop_counter = 0;
+	perf_counter_t	_loop_perf; /**< loop performance counter */
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::UUV_ROLL_P>) _param_roll_p,
@@ -168,25 +142,16 @@ private:
 		(ParamFloat<px4::params::UUV_DIRCT_THRUST>) _param_direct_thrust
 	)
 
+	void Run() override;
 	/**
 	 * Update our local parameter cache.
 	 */
-	void	parameters_update(bool force = false);
-
-	void	manual_control_setpoint_poll();
-	void	position_setpoint_triplet_poll();
-	void	vehicle_control_mode_poll();
-	void 	vehicle_attitude_poll();
-	void	vehicle_attitude_setpoint_poll();
-	void	vehicle_local_position_poll();
+	void parameters_update(bool force = false);
 
 	/**
 	 * Control Attitude
 	 */
-	void control_attitude_geo(const vehicle_attitude_s &att, const vehicle_attitude_setpoint_s &att_sp);
-
-	void control_attitude_pid(const vehicle_attitude_s &att, const vehicle_attitude_setpoint_s &att_sp, float deltaT);
+	void control_attitude_geo(const vehicle_attitude_s &attitude, const vehicle_attitude_setpoint_s &attitude_setpoint,
+				  const vehicle_angular_velocity_s &angular_velocity, const vehicle_rates_setpoint_s &rates_setpoint);
 	void constrain_actuator_commands(float roll_u, float pitch_u, float yaw_u, float thrust_u);
-
-
 };

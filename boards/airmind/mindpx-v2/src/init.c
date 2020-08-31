@@ -93,9 +93,6 @@ extern void led_on(int led);
 extern void led_off(int led);
 __END_DECLS
 
-/****************************************************************************
- * Protected Functions
- ****************************************************************************/
 /************************************************************************************
  * Name: board_on_reset
  *
@@ -259,10 +256,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	SPI_SETFREQUENCY(spi4, 10000000);
 	SPI_SETBITS(spi4, 8);
 	SPI_SETMODE(spi4, SPIDEV_MODE3);
-	SPI_SELECT(spi4, PX4_SPIDEV_GYRO, false);
-	SPI_SELECT(spi4, PX4_SPIDEV_ACCEL_MAG, false);
-	SPI_SELECT(spi4, PX4_SPIDEV_BARO, false);
-	SPI_SELECT(spi4, PX4_SPIDEV_MPU, false);
 	up_udelay(20);
 
 	/* Get the SPI port for the FRAM */
@@ -281,8 +274,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	// XXX start with 10.4 MHz in FRAM usage and go up to 37.5 once validated
 	SPI_SETFREQUENCY(spi1, 24 * 1000 * 1000);
 	SPI_SETBITS(spi1, 8);
-	SPI_SETMODE(spi1, SPIDEV_MODE3);
-	SPI_SELECT(spi1, SPIDEV_FLASH(0), false);
 
 
 	spi2 = px4_spibus_initialize(2);
@@ -290,8 +281,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	/* Default SPI2 to 10MHz and de-assert the known chip selects. */
 	SPI_SETFREQUENCY(spi2, 10000000);
 	SPI_SETBITS(spi2, 8);
-	SPI_SETMODE(spi2, SPIDEV_MODE3);
-	SPI_SELECT(spi2, PX4_SPIDEV_EXT0, false);
 
 
 #ifdef CONFIG_MMCSD

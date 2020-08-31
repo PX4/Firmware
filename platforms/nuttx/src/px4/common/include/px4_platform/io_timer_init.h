@@ -99,4 +99,3 @@ static inline constexpr io_timers_channel_mapping_t initIOTimerChannelMapping(co
 
 	return ret;
 }
-

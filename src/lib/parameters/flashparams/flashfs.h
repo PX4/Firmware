@@ -98,7 +98,7 @@ __EXPORT extern const flash_file_token_t parameters_token;
  *
  */
 typedef struct sector_descriptor_t {
-	uint8_t       page;
+	uint16_t      page;
 	uint32_t      size;
 	uint32_t      address;
 } sector_descriptor_t;

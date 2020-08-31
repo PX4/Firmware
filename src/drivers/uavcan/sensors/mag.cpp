@@ -40,18 +40,17 @@
 #include <drivers/drv_hrt.h>
 #include <systemlib/err.h>
 
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
+
 const char *const UavcanMagnetometerBridge::NAME = "mag";
 
+#define UAVCAN_MAG_BASE_DEVICE_PATH "/dev/uavcan/mag"
+
 UavcanMagnetometerBridge::UavcanMagnetometerBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_mag", "/dev/uavcan/mag", MAG_BASE_DEVICE_PATH, ORB_ID(sensor_mag)),
+	UavcanCDevSensorBridgeBase("uavcan_mag", UAVCAN_MAG_BASE_DEVICE_PATH, UAVCAN_MAG_BASE_DEVICE_PATH, ORB_ID(sensor_mag)),
 	_sub_mag(node),
 	_sub_mag2(node)
 {
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_HMC5883;     // <-- Why?
-
-	_scale.x_scale = 1.0F;
-	_scale.y_scale = 1.0F;
-	_scale.z_scale = 1.0F;
 }
 
 int
@@ -85,26 +84,6 @@ UavcanMagnetometerBridge::ioctl(struct file *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
-	case MAGIOCSSCALE: {
-			std::memcpy(&_scale, reinterpret_cast<const void *>(arg), sizeof(_scale));
-			return 0;
-		}
-
-	case MAGIOCGSCALE: {
-			std::memcpy(reinterpret_cast<void *>(arg), &_scale, sizeof(_scale));
-			return 0;
-		}
-
-	case MAGIOCGEXTERNAL: {
-			return 1;           // declare it external rise it's priority and to allow for correct orientation compensation
-		}
-
-	case MAGIOCCALIBRATE:
-	case MAGIOCSRANGE:
-	case MAGIOCEXSTRAP: {
-			return -EINVAL;
-		}
-
 	default: {
 			return CDev::ioctl(filp, cmd, arg);
 		}
@@ -115,46 +94,78 @@ void
 UavcanMagnetometerBridge::mag_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::ahrs::MagneticFieldStrength>
 				     &msg)
 {
-	lock();
-	/*
-	 * FIXME HACK
-	 * This code used to rely on msg.getMonotonicTimestamp().toUSec() instead of HRT.
-	 * It stopped working when the time sync feature has been introduced, because it caused libuavcan
-	 * to use an independent time source (based on hardware TIM5) instead of HRT.
-	 * The proper solution is to be developed.
-	 */
-	_report.timestamp = hrt_absolute_time();
-	_report.device_id = _device_id.devid;
-	_report.is_external = true;
+	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
 
-	_report.x = (msg.magnetic_field_ga[0] - _scale.x_offset) * _scale.x_scale;
-	_report.y = (msg.magnetic_field_ga[1] - _scale.y_offset) * _scale.y_scale;
-	_report.z = (msg.magnetic_field_ga[2] - _scale.z_offset) * _scale.z_scale;
-	unlock();
+	if (channel == nullptr) {
+		// Something went wrong - no channel to publish on; return
+		return;
+	}
 
-	publish(msg.getSrcNodeID().get(), &_report);
+	// Cast our generic CDev pointer to the sensor-specific driver class
+	PX4Magnetometer *mag = (PX4Magnetometer *)channel->h_driver;
+
+	if (mag == nullptr) {
+		return;
+	}
+
+	const float x = msg.magnetic_field_ga[0];
+	const float y = msg.magnetic_field_ga[1];
+	const float z = msg.magnetic_field_ga[2];
+
+	mag->update(hrt_absolute_time(), x, y, z);
 }
 
 void
 UavcanMagnetometerBridge::mag2_sub_cb(const
 				      uavcan::ReceivedDataStructure<uavcan::equipment::ahrs::MagneticFieldStrength2> &msg)
 {
-	lock();
-	/*
-	 * FIXME HACK
-	 * This code used to rely on msg.getMonotonicTimestamp().toUSec() instead of HRT.
-	 * It stopped working when the time sync feature has been introduced, because it caused libuavcan
-	 * to use an independent time source (based on hardware TIM5) instead of HRT.
-	 * The proper solution is to be developed.
-	 */
-	_report.timestamp = hrt_absolute_time();
-	_report.device_id = _device_id.devid;
-	_report.is_external = true;
+	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
 
-	_report.x = (msg.magnetic_field_ga[0] - _scale.x_offset) * _scale.x_scale;
-	_report.y = (msg.magnetic_field_ga[1] - _scale.y_offset) * _scale.y_scale;
-	_report.z = (msg.magnetic_field_ga[2] - _scale.z_offset) * _scale.z_scale;
-	unlock();
+	if (channel == nullptr || channel->class_instance < 0) {
+		// Something went wrong - no channel to publish on; return
+		return;
+	}
 
-	publish(msg.getSrcNodeID().get(), &_report);
+	// Cast our generic CDev pointer to the sensor-specific driver class
+	PX4Magnetometer *mag = (PX4Magnetometer *)channel->h_driver;
+
+	if (mag == nullptr) {
+		return;
+	}
+
+	const float x = msg.magnetic_field_ga[0];
+	const float y = msg.magnetic_field_ga[1];
+	const float z = msg.magnetic_field_ga[2];
+
+	mag->update(hrt_absolute_time(), x, y, z);
+}
+
+int UavcanMagnetometerBridge::init_driver(uavcan_bridge::Channel *channel)
+{
+	// update device id as we now know our device node_id
+	DeviceId device_id{_device_id};
+
+	device_id.devid_s.devtype = DRV_MAG_DEVTYPE_UAVCAN;
+	device_id.devid_s.address = static_cast<uint8_t>(channel->node_id);
+
+	channel->h_driver = new PX4Magnetometer(device_id.devid, ROTATION_NONE);
+
+	if (channel->h_driver == nullptr) {
+		return PX4_ERROR;
+	}
+
+	PX4Magnetometer *mag = (PX4Magnetometer *)channel->h_driver;
+
+	channel->class_instance = mag->get_class_instance();
+
+	if (channel->class_instance < 0) {
+		PX4_ERR("UavcanMag: Unable to get a class instance");
+		delete mag;
+		channel->h_driver = nullptr;
+		return PX4_ERROR;
+	}
+
+	mag->set_external(true);
+
+	return PX4_OK;
 }

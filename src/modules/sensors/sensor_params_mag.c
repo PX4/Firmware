@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,14 +32,6 @@
  ****************************************************************************/
 
 /**
- * Primary mag ID
- *
- * @category system
- * @group Sensor Calibration
- */
-PARAM_DEFINE_INT32(CAL_MAG_PRIME, 0);
-
-/**
  * Bitfield selecting mag sides for calibration
  *
  * If set to two side calibration, only the offsets are estimated, the scale
@@ -47,12 +39,12 @@ PARAM_DEFINE_INT32(CAL_MAG_PRIME, 0);
  * recommended.
  *
  * Bits:
- * DETECT_ORIENTATION_TAIL_DOWN = 1
- * DETECT_ORIENTATION_NOSE_DOWN = 2
- * DETECT_ORIENTATION_LEFT = 4
- * DETECT_ORIENTATION_RIGHT = 8
- * DETECT_ORIENTATION_UPSIDE_DOWN = 16
- * DETECT_ORIENTATION_RIGHTSIDE_UP = 32
+ * ORIENTATION_TAIL_DOWN = 1
+ * ORIENTATION_NOSE_DOWN = 2
+ * ORIENTATION_LEFT = 4
+ * ORIENTATION_RIGHT = 8
+ * ORIENTATION_UPSIDE_DOWN = 16
+ * ORIENTATION_RIGHTSIDE_UP = 32
  *
  * @min 34
  * @max 63
@@ -62,3 +54,42 @@ PARAM_DEFINE_INT32(CAL_MAG_PRIME, 0);
  * @group Sensors
  */
 PARAM_DEFINE_INT32(CAL_MAG_SIDES, 63);
+
+/**
+ * Type of magnetometer compensation
+ *
+ * @value 0 Disabled
+ * @value 1 Throttle-based compensation
+ * @value 2 Current-based compensation (battery_status instance 0)
+ * @value 3 Current-based compensation (battery_status instance 1)
+ *
+ * @category system
+ * @group Sensor Calibration
+ */
+PARAM_DEFINE_INT32(CAL_MAG_COMP_TYP, 0);
+
+/**
+ * Automatically set external rotations.
+ *
+ * During calibration attempt to automatically determine the rotation of external magnetometers.
+ *
+ * @boolean
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(CAL_MAG_ROT_AUTO, 1);
+
+/**
+ * Magnetometer max rate.
+ *
+ * Magnetometer data maximum publication rate. This is an upper bound,
+ * actual magnetometer data rate is still dependant on the sensor.
+ *
+ * @min 1
+ * @max 200
+ * @group Sensors
+ * @unit Hz
+ *
+ * @reboot_required true
+ *
+ */
+PARAM_DEFINE_FLOAT(SENS_MAG_RATE, 50.0f);

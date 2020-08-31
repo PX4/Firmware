@@ -38,7 +38,7 @@
 #include <lib/parameters/param.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/sensor_preflight.h>
+#include <uORB/topics/sensor_preflight_imu.h>
 #include <uORB/topics/subsystem_info.h>
 
 bool PreFlightCheck::imuConsistencyCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status,
@@ -47,9 +47,9 @@ bool PreFlightCheck::imuConsistencyCheck(orb_advert_t *mavlink_log_pub, vehicle_
 	float test_limit = 1.0f; // pass limit re-used for each test
 
 	// Get sensor_preflight data if available and exit with a fail recorded if not
-	uORB::SubscriptionData<sensor_preflight_s> sensors_sub{ORB_ID(sensor_preflight)};
+	uORB::SubscriptionData<sensor_preflight_imu_s> sensors_sub{ORB_ID(sensor_preflight_imu)};
 	sensors_sub.update();
-	const sensor_preflight_s &sensors = sensors_sub.get();
+	const sensor_preflight_imu_s &sensors = sensors_sub.get();
 
 	// Use the difference between IMU's to detect a bad calibration.
 	// If a single IMU is fitted, the value being checked will be zero so this check will always pass.

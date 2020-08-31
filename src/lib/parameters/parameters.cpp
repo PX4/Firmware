@@ -515,16 +515,10 @@ size_t
 param_size(param_t param)
 {
 	if (handle_in_range(param)) {
-
 		switch (param_type(param)) {
-
 		case PARAM_TYPE_INT32:
 		case PARAM_TYPE_FLOAT:
 			return 4;
-
-		case PARAM_TYPE_STRUCT ... PARAM_TYPE_STRUCT_MAX:
-			/* decode structure size from type value */
-			return param_type(param) - PARAM_TYPE_STRUCT;
 
 		default:
 			return 0;
@@ -562,14 +556,7 @@ param_get_value_ptr(param_t param)
 			v = &param_info_base[param].val;
 		}
 
-		if (param_type(param) >= PARAM_TYPE_STRUCT &&
-		    param_type(param) <= PARAM_TYPE_STRUCT_MAX) {
-
-			result = v->p;
-
-		} else {
-			result = v;
-		}
+		result = v;
 	}
 
 	return result;
@@ -718,7 +705,6 @@ param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_
 
 		/* update the changed value */
 		switch (param_type(param)) {
-
 		case PARAM_TYPE_INT32:
 			params_changed = params_changed || s->val.i != *(int32_t *)val;
 			s->val.i = *(int32_t *)val;
@@ -727,27 +713,6 @@ param_set_internal(param_t param, const void *val, bool mark_saved, bool notify_
 		case PARAM_TYPE_FLOAT:
 			params_changed = params_changed || fabsf(s->val.f - * (float *)val) > FLT_EPSILON;
 			s->val.f = *(float *)val;
-			break;
-
-		case PARAM_TYPE_STRUCT ... PARAM_TYPE_STRUCT_MAX:
-			if (s->val.p == nullptr) {
-				size_t psize = param_size(param);
-
-				if (psize > 0) {
-					s->val.p = malloc(psize);
-
-				} else {
-					s->val.p = nullptr;
-				}
-
-				if (s->val.p == nullptr) {
-					PX4_ERR("failed to allocate parameter storage");
-					goto out;
-				}
-			}
-
-			memcpy(s->val.p, val, param_size(param));
-			params_changed = true;
 			break;
 
 		default:
@@ -949,8 +914,7 @@ param_get_default_file()
 	return (param_user_file != nullptr) ? param_user_file : param_default_file;
 }
 
-int
-param_save_default()
+int param_save_default()
 {
 	int res = PX4_ERROR;
 
@@ -965,11 +929,22 @@ param_save_default()
 		return res;
 	}
 
+	int shutdown_lock_ret = px4_shutdown_lock();
+
+	if (shutdown_lock_ret) {
+		PX4_ERR("px4_shutdown_lock() failed (%i)", shutdown_lock_ret);
+	}
+
 	/* write parameters to temp file */
 	int fd = PARAM_OPEN(filename, O_WRONLY | O_CREAT, PX4_O_MODE_666);
 
 	if (fd < 0) {
 		PX4_ERR("failed to open param file: %s", filename);
+
+		if (shutdown_lock_ret == 0) {
+			px4_shutdown_unlock();
+		}
+
 		return PX4_ERROR;
 	}
 
@@ -990,6 +965,10 @@ param_save_default()
 	}
 
 	PARAM_CLOSE(fd);
+
+	if (shutdown_lock_ret == 0) {
+		px4_shutdown_unlock();
+	}
 
 	return res;
 }
@@ -1087,8 +1066,7 @@ param_export(int fd, bool only_unsaved)
 
 		case PARAM_TYPE_INT32: {
 				const int32_t i = s->val.i;
-
-				PX4_DEBUG("exporting: %s (%d) size: %d val: %d", name, s->param, size, i);
+				PX4_DEBUG("exporting: %s (%d) size: %lu val: %d", name, s->param, (long unsigned int)size, i);
 
 				if (bson_encoder_append_int(&encoder, name, i)) {
 					PX4_ERR("BSON append failed for '%s'", name);
@@ -1099,26 +1077,9 @@ param_export(int fd, bool only_unsaved)
 
 		case PARAM_TYPE_FLOAT: {
 				const double f = (double)s->val.f;
-
-				PX4_DEBUG("exporting: %s (%d) size: %d val: %.3f", name, s->param, size, (double)f);
+				PX4_DEBUG("exporting: %s (%d) size: %lu val: %.3f", name, s->param, (long unsigned int)size, (double)f);
 
 				if (bson_encoder_append_double(&encoder, name, f)) {
-					PX4_ERR("BSON append failed for '%s'", name);
-					goto out;
-				}
-			}
-			break;
-
-		case PARAM_TYPE_STRUCT ... PARAM_TYPE_STRUCT_MAX: {
-				const void *value_ptr = param_get_value_ptr(s->param);
-
-				/* lock as short as possible */
-				if (bson_encoder_append_binary(&encoder,
-							       name,
-							       BSON_BIN_BINARY,
-							       size,
-							       value_ptr)) {
-
 					PX4_ERR("BSON append failed for '%s'", name);
 					goto out;
 				}
@@ -1176,6 +1137,8 @@ param_import_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
 		PX4_DEBUG("end of parameters");
 		return 0;
 	}
+
+	param_modify_on_import(node);
 
 	/*
 	 * Find the parameter this node represents.  If we don't know it,
@@ -1262,8 +1225,6 @@ param_import_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
 		PX4_DEBUG("unrecognised node type");
 		goto out;
 	}
-
-	param_modify_on_import(node->name, node->type, v);
 
 	if (param_set_internal(param, v, state->mark_saved, true)) {
 		PX4_DEBUG("error setting value for '%s'", node->name);

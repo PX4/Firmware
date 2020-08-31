@@ -11,6 +11,7 @@
 @#  - ids (List) list of all RTPS msg ids
 @###############################################
 @{
+from packaging import version
 import genmsg.msgs
 
 from px_generate_uorb_topic_helper import * # this is in Tools/
@@ -68,7 +69,7 @@ except AttributeError:
 #include <fastrtps/fastrtps_fwd.h>
 #include <fastrtps/publisher/PublisherListener.h>
 
-@[if fastrtps_version <= 1.7]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 #include "@(topic)_PubSubTypes.h"
 @[else]@
 #include "@(topic)PubSubTypes.h"
@@ -77,7 +78,7 @@ except AttributeError:
 using namespace eprosima::fastrtps;
 using namespace eprosima::fastrtps::rtps;
 
-@[if fastrtps_version <= 1.7]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 @[    if ros2_distro]@
 using @(topic)_msg_t = @(package)::msg::dds_::@(topic)_;
 using @(topic)_msg_datatype = @(package)::msg::dds_::@(topic)_PubSubType;

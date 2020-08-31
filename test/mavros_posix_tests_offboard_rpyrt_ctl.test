@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Posix SITL MAVROS integration tests -->
+    <!-- Test offboard attitude control -->
+    <arg name="est" default="ekf2"/>
+    <arg name="gui" default="false"/>
+    <arg name="interactive" default="false"/>
+    <arg name="vehicle" default="iris"/>
+    <!-- MAVROS, PX4 SITL, Gazebo -->
+    <include file="$(find px4)/launch/mavros_posix_sitl.launch">
+        <arg name="est" value="$(arg est)"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="interactive" value="$(arg interactive)"/>
+        <arg name="respawn_gazebo" value="true"/>
+        <arg name="respawn_mavros" value="true"/>
+        <arg name="vehicle" value="$(arg vehicle)"/>
+        <arg name="verbose" value="true"/>
+    </include>
+    <!-- ROStest -->
+    <test test-name="mavros_offboard_yawrate_test" pkg="px4" type="mavros_offboard_yawrate_test.py" time-limit="300.0"/>
+</launch>

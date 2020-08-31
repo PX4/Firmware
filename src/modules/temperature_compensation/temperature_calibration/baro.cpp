@@ -68,11 +68,6 @@ TemperatureCalibrationBaro::~TemperatureCalibrationBaro()
 	}
 }
 
-void TemperatureCalibrationBaro::reset_calibration()
-{
-	// nothing to do
-}
-
 int TemperatureCalibrationBaro::update_sensor_instance(PerSensorData &data, int sensor_sub)
 {
 	bool finished = data.hot_soaked;

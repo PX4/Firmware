@@ -60,7 +60,7 @@ using namespace time_literals;
 
 #define ADC_TOTAL_CHANNELS 		32
 
-class ADC : public ModuleBase<ADC>, public cdev::CDev, public px4::ScheduledWorkItem
+class ADC : public ModuleBase<ADC>, public px4::ScheduledWorkItem
 {
 public:
 	ADC(uint32_t base_address = SYSTEM_ADC_BASE, uint32_t channels = ADC_CHANNELS);
@@ -76,15 +76,13 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	int init() override;
+	int init();
 
 	int test();
 
 private:
 
 	void		Run() override;
-
-	ssize_t		read(cdev::file_t *filp, char *buffer, size_t len) override;
 
 	/**
 	 * Sample a single channel and return the measured value.

@@ -1,0 +1,129 @@
+name: MAVROS Avoidance Tests
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {test_file: "mavros_posix_test_avoidance.test",    vehicle: "iris_obs_avoid", mission: "avoidance",       build_type: "RelWithDebInfo"}
+          - {test_file: "mavros_posix_test_safe_landing.test", vehicle: "iris_obs_avoid", mission: "MC_safe_landing", build_type: "RelWithDebInfo"}
+
+    container:
+      image: px4io/px4-dev-ros-melodic:2020-04-01
+      options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: sitl_tests-${{matrix.config.build_type}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
+        restore-keys: sitl_tests-${{matrix.config.build_type}}-ccache-
+    - name: setup ccache
+      run: |
+          mkdir -p ~/.ccache
+          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 6" >> ~/.ccache/ccache.conf
+          echo "max_size = 400M" >> ~/.ccache/ccache.conf
+          ccache -s
+          ccache -z
+
+    - name: check environment
+      run: export
+    - name: Build PX4 and sitl_gazebo
+      env:
+        PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
+      run: |
+        ccache -z
+        make px4_sitl_default
+        make px4_sitl_default sitl_gazebo
+        ccache -s
+
+    - name: Core dump settings
+      run: |
+          ulimit -c unlimited
+          echo "`pwd`/%e.core" > /proc/sys/kernel/core_pattern
+
+    - name: Run SITL tests
+      env:
+        PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
+      run: |
+        export
+        ./test/rostest_avoidance_run.sh ${{matrix.config.test_file}} mission:=${{matrix.config.mission}} vehicle:=${{matrix.config.vehicle}} || true
+
+    - name: Look at core files
+      if: failure()
+      run: gdb build/px4_sitl_default/bin/px4 px4.core -ex "thread apply all bt" -ex "quit"
+    - name: Upload px4 coredump
+      if: failure()
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: coredump
+        path: px4.core
+
+    # - name: ecl EKF analysis
+    #   if: always()
+    #   run: ./Tools/ecl_ekf/process_logdata_ekf.py ~/.ros/log/*/*.ulg
+
+    - name: Upload logs to flight review
+      if: always()
+      run: ./Tools/upload_log.py -q --description "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID}" --feedback "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID} ${GITHUB_REPOSITORY} ${GITHUB_REF}" --source CI ~/.ros/log/*/*.ulg
+
+    - name: Upload px4 binary
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: binary
+        path: build/px4_sitl_default/bin/px4
+
+    - name: Store PX4 log
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: px4_log
+        path: ~/.ros/log/*/*.ulg
+
+    - name: Store ROS log
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: ros_log
+        path: ~/.ros/**/rostest-*.log
+
+    # Report test coverage
+    - name: Upload coverage
+      if: contains(matrix.config.build_type, 'Coverage')
+      run: |
+          git config --global credential.helper "" # disable the keychain credential helper
+          git config --global --add credential.helper store # enable the local store credential helper
+          echo "https://x-access-token:${{ secrets.ACCESS_TOKEN }}@github.com" >> ~/.git-credentials # add credential
+          git config --global url."https://github.com/".insteadof git@github.com: # credentials add credential
+          mkdir -p coverage
+          lcov --directory build/px4_sitl_default --base-directory build/px4_sitl_default --gcov-tool gcov --capture -o coverage/lcov.info
+    - name: Upload coverage information to Codecov
+      if: contains(matrix.config.build_type, 'Coverage')
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: mavros_avoidance
+        file: coverage/lcov.info

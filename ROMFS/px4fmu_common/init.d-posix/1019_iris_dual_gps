@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# @name 3DR Iris Quadrotor SITL (Dual GPS)
+#
+# @type Quadrotor Wide
+#
+
+sh /etc/init.d-posix/10016_iris
+
+if [ $AUTOCNF = yes ]
+then
+	# EKF2: Multi GPS blending
+	param set EKF2_GPS_MASK 7 # Uses speed, hpos and vpos accuracy
+fi

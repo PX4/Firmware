@@ -53,7 +53,7 @@ public:
 	virtual ~FlightTaskOrbit() = default;
 
 	bool applyCommandParameters(const vehicle_command_s &command) override;
-	bool activate(vehicle_local_position_setpoint_s last_setpoint) override;
+	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool update() override;
 
 	/**
@@ -88,8 +88,12 @@ protected:
 	bool setVelocity(const float v);
 
 private:
-	void generate_circle_approach_setpoints(); /**< generates setpoints to smoothly reach the closest point on the circle when starting from far away */
-	void generate_circle_setpoints(matrix::Vector2f center_to_position); /**< generates xy setpoints to orbit the vehicle */
+	/** generates setpoints to smoothly reach the closest point on the circle when starting from far away */
+	void generate_circle_approach_setpoints(const matrix::Vector2f &center_to_position);
+	/** generates xy setpoints to make the vehicle orbit */
+	void generate_circle_setpoints(const matrix::Vector2f &center_to_position);
+	/** generates yaw setpoints to control the vehicle's heading */
+	void generate_circle_yaw_setpoints(const matrix::Vector2f &center_to_position);
 
 	float _r = 0.f; /**< radius with which to orbit the target */
 	float _v = 0.f; /**< clockwise tangential velocity for orbiting in m/s */
@@ -103,6 +107,10 @@ private:
 	const float _radius_max = 100.f;
 	const float _velocity_max = 10.f;
 	const float _acceleration_max = 2.f;
+
+	/** yaw behaviour during the orbit flight according to MAVLink's ORBIT_YAW_BEHAVIOUR enum */
+	int _yaw_behaviour = orbit_status_s::ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TO_CIRCLE_CENTER;
+	float _initial_heading = 0.f; /**< the heading of the drone when the orbit command was issued */
 
 	uORB::Publication<orbit_status_s> _orbit_status_pub{ORB_ID(orbit_status)};
 

@@ -6,7 +6,7 @@
 # bash and alternatives understand
 # define _set first because sh (POSIX shell) does not like overwriting set directly
 _set() {
-	eval $1=$2
+	eval $1=\"$2\"
 }
 alias set=_set
 # alternative method with an alias:

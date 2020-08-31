@@ -111,6 +111,7 @@ void PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(bool i2c_support, bool spi_support
 	}
 
 	PRINT_MODULE_USAGE_PARAM_INT('f', -1, 0, 100000, "bus frequency in kHz", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('q', "quiet startup (no message if no device found)", true);
 }
 
 void PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(uint8_t default_address)

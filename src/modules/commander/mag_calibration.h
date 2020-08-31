@@ -43,5 +43,6 @@
 #include <uORB/uORB.h>
 
 int do_mag_calibration(orb_advert_t *mavlink_log_pub);
+int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radians = 0);
 
 #endif /* MAG_CALIBRATION_H_ */

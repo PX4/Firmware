@@ -3,6 +3,8 @@
 # Omnibus F4SD specific board defaults
 #------------------------------------------------------------------------------
 
+# system_power unavailable
+param set CBRK_SUPPLY_CHK 894281
 
 # transition from LPE+Q to Q estimator (2019-06-05)
 if param compare SYS_MC_EST_GROUP 1

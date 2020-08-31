@@ -180,7 +180,7 @@ private:
 };
 
 BST::BST(I2CSPIBusOption bus_option, const int bus, int address, int bus_frequency) :
-	I2C("bst", nullptr, bus, address, bus_frequency),
+	I2C(DRV_TEL_DEVTYPE_BST, MODULE_NAME, bus, address, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
 }

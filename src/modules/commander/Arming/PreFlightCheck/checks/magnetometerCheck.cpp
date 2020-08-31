@@ -36,15 +36,16 @@
 #include <drivers/drv_hrt.h>
 #include <HealthFlags.h>
 #include <px4_defines.h>
-#include <systemlib/mavlink_log.h>
+#include <lib/sensor_calibration/Utilities.hpp>
+#include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_mag.h>
 #include <uORB/topics/subsystem_info.h>
 
 using namespace time_literals;
 
-bool PreFlightCheck::magnometerCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,
-				     const bool optional, int32_t &device_id, const bool report_fail)
+bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,
+				       const bool optional, int32_t &device_id, const bool report_fail)
 {
 	const bool exists = (orb_exists(ORB_ID(sensor_mag), instance) == PX4_OK);
 	bool calibration_valid = false;
@@ -64,7 +65,7 @@ bool PreFlightCheck::magnometerCheck(orb_advert_t *mavlink_log_pub, vehicle_stat
 
 		device_id = magnetometer.get().device_id;
 
-		calibration_valid = check_calibration("CAL_MAG%u_ID", device_id);
+		calibration_valid = (calibration::FindCalibrationIndex("MAG", device_id) >= 0);
 
 		if (!calibration_valid) {
 			if (report_fail) {

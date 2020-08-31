@@ -40,7 +40,6 @@ px4_add_module(
 	MODULE_CONFIG
 		module.yaml
 	DEPENDS
-		arch_adc
 		battery
 		conversion
 		drivers__device

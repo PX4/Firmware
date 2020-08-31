@@ -43,8 +43,7 @@
  * Thermal compensation for rate gyro sensors.
  *
  * @group Thermal Compensation
- * @min 0
- * @max 1
+ * @reboot_required true
  * @boolean
  */
 PARAM_DEFINE_INT32(TC_G_ENABLE, 0);
@@ -154,30 +153,6 @@ PARAM_DEFINE_FLOAT(TC_G0_X0_1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_G0_X0_2, 0.0f);
-
-/**
- * Gyro scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G0_SCL_0, 1.0f);
-
-/**
- * Gyro scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G0_SCL_1, 1.0f);
-
-/**
- * Gyro scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G0_SCL_2, 1.0f);
 
 /**
  * Gyro calibration reference temperature.
@@ -310,30 +285,6 @@ PARAM_DEFINE_FLOAT(TC_G1_X0_1, 0.0f);
 PARAM_DEFINE_FLOAT(TC_G1_X0_2, 0.0f);
 
 /**
- * Gyro scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G1_SCL_0, 1.0f);
-
-/**
- * Gyro scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G1_SCL_1, 1.0f);
-
-/**
- * Gyro scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G1_SCL_2, 1.0f);
-
-/**
  * Gyro calibration reference temperature.
  *
  * @group Thermal Compensation
@@ -462,30 +413,6 @@ PARAM_DEFINE_FLOAT(TC_G2_X0_1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_G2_X0_2, 0.0f);
-
-/**
- * Gyro scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G2_SCL_0, 1.0f);
-
-/**
- * Gyro scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G2_SCL_1, 1.0f);
-
-/**
- * Gyro scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_G2_SCL_2, 1.0f);
 
 /**
  * Gyro calibration reference temperature.

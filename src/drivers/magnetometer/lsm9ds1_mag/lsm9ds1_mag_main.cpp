@@ -58,7 +58,7 @@ I2CSPIDriverBase *LSM9DS1_MAG::instantiate(const BusCLIArguments &cli, const Bus
 		return nullptr;
 	}
 
-	if (!instance->Init()) {
+	if (OK != instance->init()) {
 		delete instance;
 		return nullptr;
 	}

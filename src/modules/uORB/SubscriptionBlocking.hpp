@@ -64,12 +64,16 @@ public:
 			PX4_ERR("pthread_mutexattr_init failed, status=%d", ret_attr_init);
 		}
 
+#if defined(PTHREAD_PRIO_NONE)
 		// pthread_mutexattr_settype
+		//  PTHREAD_PRIO_NONE not available on cygwin
 		int ret_mutexattr_settype = pthread_mutexattr_settype(&attr, PTHREAD_PRIO_NONE);
 
 		if (ret_mutexattr_settype != 0) {
 			PX4_ERR("pthread_mutexattr_settype failed, status=%d", ret_mutexattr_settype);
 		}
+
+#endif // PTHREAD_PRIO_NONE
 
 		// pthread_mutex_init
 		int ret_mutex_init = pthread_mutex_init(&_mutex, &attr);
@@ -94,21 +98,20 @@ public:
 	}
 
 	/**
-	 * Copy the struct if updated.
-	 * @param data The data reference where the struct will be copied.
+	 * Block until updated.
 	 * @param timeout_us The requested timeout in microseconds, or 0 to wait indefinitely.
 	 *
-	 * @return true only if topic was updated and copied successfully.
+	 * @return true only if topic was updated
 	 */
-	bool updateBlocking(T &data, uint32_t timeout_us = 0)
+	bool updatedBlocking(uint32_t timeout_us = 0)
 	{
 		if (!_registered) {
 			registerCallback();
 		}
 
 		if (updated()) {
-			// copy immediately if updated
-			return copy(&data);
+			// return immediately if updated
+			return true;
 
 		} else {
 			// otherwise wait
@@ -118,7 +121,7 @@ public:
 			if (timeout_us == 0) {
 				// wait with no timeout
 				if (pthread_cond_wait(&_cv, &_mutex) == 0) {
-					return update(&data);
+					return updated();
 				}
 
 			} else {
@@ -134,9 +137,25 @@ public:
 				ts.tv_nsec = nsecs;
 
 				if (px4_pthread_cond_timedwait(&_cv, &_mutex, &ts) == 0) {
-					return update(&data);
+					return updated();
 				}
 			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Copy the struct if updated.
+	 * @param data The data reference where the struct will be copied.
+	 * @param timeout_us The requested timeout in microseconds, or 0 to wait indefinitely.
+	 *
+	 * @return true only if topic was updated and copied successfully.
+	 */
+	bool updateBlocking(T &data, uint32_t timeout_us = 0)
+	{
+		if (updatedBlocking(timeout_us)) {
+			return copy(&data);
 		}
 
 		return false;

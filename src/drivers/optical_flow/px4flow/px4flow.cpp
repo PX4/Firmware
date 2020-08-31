@@ -55,8 +55,6 @@
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/optical_flow.h>
 
-#define PX4FLOW0_DEVICE_PATH	"/dev/px4flow0"
-
 /* Configuration Constants */
 #define I2C_FLOW_ADDRESS_DEFAULT    0x42	///< 7-bit address. 8-bit address is 0x84, range 0x42 - 0x49
 #define I2C_FLOW_ADDRESS_MIN        0x42	///< 7-bit address.
@@ -147,11 +145,11 @@ extern "C" __EXPORT int px4flow_main(int argc, char *argv[]);
 
 PX4FLOW::PX4FLOW(I2CSPIBusOption bus_option, int bus, int address, uint8_t sonar_rotation, int bus_frequency,
 		 int conversion_interval, enum Rotation rotation) :
-	I2C("PX4FLOW", PX4FLOW0_DEVICE_PATH, bus, address, bus_frequency),
+	I2C(DRV_FLOW_DEVTYPE_PX4FLOW, MODULE_NAME, bus, address, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
 	_sonar_rotation(sonar_rotation),
-	_sample_perf(perf_alloc(PC_ELAPSED, "px4f_read")),
-	_comms_errors(perf_alloc(PC_COUNT, "px4f_com_err")),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
+	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": com_err")),
 	_sensor_rotation(rotation)
 {
 }

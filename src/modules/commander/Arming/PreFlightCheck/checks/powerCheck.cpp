@@ -35,10 +35,23 @@
 
 #include <drivers/drv_hrt.h>
 #include <systemlib/mavlink_log.h>
+#include <lib/parameters/param.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/system_power.h>
 
 using namespace time_literals;
+
+unsigned int countSetBits(unsigned int n)
+{
+	unsigned int count = 0;
+
+	while (n) {
+		count += n & 1;
+		n >>= 1;
+	}
+
+	return count;
+}
 
 bool PreFlightCheck::powerCheck(orb_advert_t *mavlink_log_pub, const vehicle_status_s &status, const bool report_fail,
 				const bool prearm)
@@ -54,31 +67,53 @@ bool PreFlightCheck::powerCheck(orb_advert_t *mavlink_log_pub, const vehicle_sta
 	system_power_sub.update();
 	const system_power_s &system_power = system_power_sub.get();
 
-	if (hrt_elapsed_time(&system_power.timestamp) < 200_ms) {
+	if (hrt_elapsed_time(&system_power.timestamp) < 1_s) {
+		// Check avionics rail voltages (if USB isn't connected)
+		if (!system_power.usb_connected) {
+			float avionics_power_rail_voltage = system_power.voltage5v_v;
 
-		/* copy avionics voltage */
-		float avionics_power_rail_voltage = system_power.voltage5v_v;
+			if (avionics_power_rail_voltage < 4.5f) {
+				success = false;
 
-		// avionics rail
-		// Check avionics rail voltages
-		if (avionics_power_rail_voltage < 4.5f) {
-			success = false;
+				if (report_fail) {
+					mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Avionics Power low: %6.2f Volt",
+							     (double)avionics_power_rail_voltage);
+				}
 
-			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Avionics Power low: %6.2f Volt",
-						     (double)avionics_power_rail_voltage);
+			} else if (avionics_power_rail_voltage < 4.8f) {
+				if (report_fail) {
+					mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power low: %6.2f Volt", (double)avionics_power_rail_voltage);
+				}
+
+			} else if (avionics_power_rail_voltage > 5.4f) {
+				if (report_fail) {
+					mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power high: %6.2f Volt", (double)avionics_power_rail_voltage);
+				}
 			}
 
-		} else if (avionics_power_rail_voltage < 4.9f) {
-			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power low: %6.2f Volt", (double)avionics_power_rail_voltage);
+
+			const int power_module_count = countSetBits(system_power.brick_valid);
+
+			int32_t required_power_module_count = 0;
+			param_get(param_find("COM_POWER_COUNT"), &required_power_module_count);
+
+			if (power_module_count < required_power_module_count) {
+				success = false;
+
+				if (report_fail) {
+					mavlink_log_critical(mavlink_log_pub, "Power redundancy not met: %d instead of %d",
+							     power_module_count, required_power_module_count);
+				}
 			}
 
-		} else if (avionics_power_rail_voltage > 5.4f) {
-			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "CAUTION: Avionics Power high: %6.2f Volt", (double)avionics_power_rail_voltage);
-			}
 		}
+
+	} else {
+		if (report_fail) {
+			mavlink_log_critical(mavlink_log_pub, "system power unavailable");
+		}
+
+		success = false;
 	}
 
 	return success;

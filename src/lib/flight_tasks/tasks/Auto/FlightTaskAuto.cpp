@@ -48,7 +48,7 @@ FlightTaskAuto::FlightTaskAuto() :
 
 }
 
-bool FlightTaskAuto::activate(vehicle_local_position_setpoint_s last_setpoint)
+bool FlightTaskAuto::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 	_position_setpoint = _position;
@@ -64,7 +64,6 @@ bool FlightTaskAuto::updateInitialize()
 	bool ret = FlightTask::updateInitialize();
 
 	_sub_home_position.update();
-	_sub_manual_control_setpoint.update();
 	_sub_vehicle_status.update();
 	_sub_triplet_setpoint.update();
 
@@ -102,21 +101,25 @@ void FlightTaskAuto::_limitYawRate()
 		const float dyaw_desired = matrix::wrap_pi(_yaw_setpoint - _yaw_sp_prev);
 		const float dyaw_max = yawrate_max * _deltatime;
 		const float dyaw = math::constrain(dyaw_desired, -dyaw_max, dyaw_max);
-		float yaw_setpoint_sat = _yaw_sp_prev + dyaw;
-		yaw_setpoint_sat = matrix::wrap_pi(yaw_setpoint_sat);
+		const float yaw_setpoint_sat = matrix::wrap_pi(_yaw_sp_prev + dyaw);
 
 		// The yaw setpoint is aligned when it is within tolerance
-		_yaw_sp_aligned = fabsf(_yaw_setpoint - yaw_setpoint_sat) < math::radians(_param_mis_yaw_err.get());
+		_yaw_sp_aligned = fabsf(matrix::wrap_pi(_yaw_setpoint - yaw_setpoint_sat)) < math::radians(_param_mis_yaw_err.get());
 
 		_yaw_setpoint = yaw_setpoint_sat;
 		_yaw_sp_prev = _yaw_setpoint;
+
+		if (!PX4_ISFINITE(_yawspeed_setpoint) && (_deltatime > FLT_EPSILON)) {
+			// Create a feedforward
+			_yawspeed_setpoint = dyaw / _deltatime;
+		}
 	}
 
 	if (PX4_ISFINITE(_yawspeed_setpoint)) {
-		_yawspeed_setpoint = math::constrain(_yawspeed_setpoint, -yawrate_max, yawrate_max);
-
 		// The yaw setpoint is aligned when its rate is not saturated
-		_yaw_sp_aligned = fabsf(_yawspeed_setpoint) < yawrate_max;
+		_yaw_sp_aligned = _yaw_sp_aligned && (fabsf(_yawspeed_setpoint) < yawrate_max);
+
+		_yawspeed_setpoint = math::constrain(_yawspeed_setpoint, -yawrate_max, yawrate_max);
 	}
 }
 
@@ -142,6 +145,7 @@ bool FlightTaskAuto::_evaluateTriplets()
 		_type = WaypointType::loiter;
 		_yaw_setpoint = _yaw;
 		_yawspeed_setpoint = NAN;
+		_target_acceptance_radius = _sub_triplet_setpoint.get().current.acceptance_radius;
 		_updateInternalWaypoints();
 		return true;
 	}
@@ -190,13 +194,16 @@ bool FlightTaskAuto::_evaluateTriplets()
 	// TODO This is a hack and it would be much better if the navigator only sends out a waypoints once they have changed.
 
 	bool triplet_update = true;
+	const bool prev_next_validity_changed = (_prev_was_valid != _sub_triplet_setpoint.get().previous.valid)
+						|| (_next_was_valid != _sub_triplet_setpoint.get().next.valid);
 
 	if (PX4_ISFINITE(_triplet_target(0))
 	    && PX4_ISFINITE(_triplet_target(1))
 	    && PX4_ISFINITE(_triplet_target(2))
 	    && fabsf(_triplet_target(0) - tmp_target(0)) < 0.001f
 	    && fabsf(_triplet_target(1) - tmp_target(1)) < 0.001f
-	    && fabsf(_triplet_target(2) - tmp_target(2)) < 0.001f) {
+	    && fabsf(_triplet_target(2) - tmp_target(2)) < 0.001f
+	    && !prev_next_validity_changed) {
 		// Nothing has changed: just keep old waypoints.
 		triplet_update = false;
 
@@ -226,6 +233,8 @@ bool FlightTaskAuto::_evaluateTriplets()
 			_triplet_prev_wp = _position;
 		}
 
+		_prev_was_valid = _sub_triplet_setpoint.get().previous.valid;
+
 		if (_type == WaypointType::loiter) {
 			_triplet_next_wp = _triplet_target;
 
@@ -237,6 +246,8 @@ bool FlightTaskAuto::_evaluateTriplets()
 		} else {
 			_triplet_next_wp = _triplet_target;
 		}
+
+		_next_was_valid = _sub_triplet_setpoint.get().next.valid;
 	}
 
 	if (_ext_yaw_handler != nullptr) {
@@ -266,7 +277,13 @@ bool FlightTaskAuto::_evaluateTriplets()
 		_yaw_setpoint = NAN;
 
 	} else {
-		if (_sub_triplet_setpoint.get().current.yaw_valid) {
+		if ((_type != WaypointType::takeoff || _sub_triplet_setpoint.get().current.disable_weather_vane)
+		    && _sub_triplet_setpoint.get().current.yaw_valid) {
+			// Use the yaw computed in Navigator except during takeoff because
+			// Navigator is not handling the yaw reset properly.
+			// But: use if from Navigator during takeoff if disable_weather_vane is true,
+			// because we're then aligning to the transition waypoint.
+			// TODO: fix in navigator
 			_yaw_setpoint = _sub_triplet_setpoint.get().current.yaw;
 
 		} else {

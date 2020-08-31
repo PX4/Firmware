@@ -4,7 +4,7 @@
 # Yaw Servo +Output ==> +Yaw Vehicle Rotation
 
 # Motors
-R: 3y 10000 10000 10000 0
+R: 3y
 
 # Yaw Servo
 M: 1

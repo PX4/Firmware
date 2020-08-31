@@ -38,18 +38,28 @@
 
 using namespace matrix;
 
-bool FlightTaskManualPositionSmoothVel::activate(vehicle_local_position_setpoint_s last_setpoint)
+bool FlightTaskManualPositionSmoothVel::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTaskManualPosition::activate(last_setpoint);
 
 	// Check if the previous FlightTask provided setpoints
-	checkSetpoints(last_setpoint);
-	const Vector2f accel_prev(last_setpoint.acceleration[0], last_setpoint.acceleration[1]);
-	const Vector2f vel_prev(last_setpoint.vx, last_setpoint.vy);
-	const Vector2f pos_prev(last_setpoint.x, last_setpoint.y);
+	Vector3f accel_prev{last_setpoint.acceleration};
+	Vector3f vel_prev{last_setpoint.vx, last_setpoint.vy, last_setpoint.vz};
+	Vector3f pos_prev{last_setpoint.x, last_setpoint.y, last_setpoint.z};
 
-	_smoothing_xy.reset(accel_prev, vel_prev, pos_prev);
-	_smoothing_z.reset(last_setpoint.acceleration[2], last_setpoint.vz, last_setpoint.z);
+	for (int i = 0; i < 3; i++) {
+		// If the position setpoint is unknown, set to the current postion
+		if (!PX4_ISFINITE(pos_prev(i))) { pos_prev(i) = _position(i); }
+
+		// If the velocity setpoint is unknown, set to the current velocity
+		if (!PX4_ISFINITE(vel_prev(i))) { vel_prev(i) = _velocity(i); }
+
+		// No acceleration estimate available, set to zero if the setpoint is NAN
+		if (!PX4_ISFINITE(accel_prev(i))) { accel_prev(i) = 0.f; }
+	}
+
+	_smoothing_xy.reset(Vector2f{accel_prev}, Vector2f{vel_prev}, Vector2f{pos_prev});
+	_smoothing_z.reset(accel_prev(2), vel_prev(2), pos_prev(2));
 
 	return ret;
 }
@@ -60,28 +70,6 @@ void FlightTaskManualPositionSmoothVel::reActivate()
 	// using the generated jerk, reset the z derivatives to zero
 	_smoothing_xy.reset(Vector2f(), Vector2f(_velocity), Vector2f(_position));
 	_smoothing_z.reset(0.f, 0.f, _position(2));
-}
-
-void FlightTaskManualPositionSmoothVel::checkSetpoints(vehicle_local_position_setpoint_s &setpoints)
-{
-	// If the position setpoint is unknown, set to the current postion
-	if (!PX4_ISFINITE(setpoints.x)) { setpoints.x = _position(0); }
-
-	if (!PX4_ISFINITE(setpoints.y)) { setpoints.y = _position(1); }
-
-	if (!PX4_ISFINITE(setpoints.z)) { setpoints.z = _position(2); }
-
-	// If the velocity setpoint is unknown, set to the current velocity
-	if (!PX4_ISFINITE(setpoints.vx)) { setpoints.vx = _velocity(0); }
-
-	if (!PX4_ISFINITE(setpoints.vy)) { setpoints.vy = _velocity(1); }
-
-	if (!PX4_ISFINITE(setpoints.vz)) { setpoints.vz = _velocity(2); }
-
-	// No acceleration estimate available, set to zero if the setpoint is NAN
-	for (int i = 0; i < 3; i++) {
-		if (!PX4_ISFINITE(setpoints.acceleration[i])) { setpoints.acceleration[i] = 0.f; }
-	}
 }
 
 void FlightTaskManualPositionSmoothVel::_ekfResetHandlerPositionXY()

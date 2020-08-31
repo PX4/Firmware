@@ -36,11 +36,16 @@ px4_add_module(
 	MAIN mpu9250
 	COMPILE_FLAGS
 	SRCS
+		AKM_AK8963_registers.hpp
+		InvenSense_MPU9250_registers.hpp
+		MPU9250_AK8963.cpp
+		MPU9250_AK8963.hpp
 		MPU9250.cpp
 		MPU9250.hpp
 		mpu9250_main.cpp
 	DEPENDS
 		drivers_accelerometer
 		drivers_gyroscope
+		drivers_magnetometer
 		px4_work_queue
 	)

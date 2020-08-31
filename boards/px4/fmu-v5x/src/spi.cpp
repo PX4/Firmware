@@ -44,7 +44,7 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 	}, {GPIO::PortD, GPIO::Pin15}),
 	initSPIBus(SPI::Bus::SPI3, {
 		initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::PortI, GPIO::Pin8}, SPI::DRDY{GPIO::PortI, GPIO::Pin7}),
-		initSPIDevice(DRV_ACC_DEVTYPE_BMI088, SPI::CS{GPIO::PortI, GPIO::Pin4}, SPI::DRDY{GPIO::PortI, GPIO::Pin6}),
+		initSPIDevice(DRV_ACC_DEVTYPE_BMI088, SPI::CS{GPIO::PortI, GPIO::Pin4}),
 	}, {GPIO::PortE, GPIO::Pin7}),
 //	initSPIBus(SPI::Bus::SPI4, {
 //		// no devices
@@ -60,4 +60,3 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 };
 
 static constexpr bool unused = validateSPIConfig(px4_spi_buses);
-

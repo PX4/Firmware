@@ -1,2 +1,4 @@
+#!/bin/sh
 # shellcheck disable=SC2154
-micrortps_client start -t UDP
+
+micrortps_client start -t UDP -r $((2019+2*px4_instance)) -s $((2020+2*px4_instance))

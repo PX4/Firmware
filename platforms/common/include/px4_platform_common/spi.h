@@ -41,9 +41,9 @@
  * They match with corresponding definitions in NuttX.
  * 'type' is typically PX4_SPI_DEVICE_ID for PX4 drivers, and 'index' is used for the driver (DRV_*) or chip-select index.
  */
-//#define PX4_SPIDEV_ID(type, index)  ((((type) & 0xffff) << 16) | ((index) & 0xffff))
-//#define PX4_SPI_DEVICE_ID         (1 << 12)
-//#define PX4_SPI_DEV_ID(devid)     ((devid) & 0xffff)
+#define PX4_SPIDEV_ID(type, index)  ((((type) & 0xffff) << 16) | ((index) & 0xffff))
+#define PX4_SPI_DEVICE_ID         (1 << 12)
+#define PX4_SPI_DEV_ID(devid)     ((devid) & 0xffff)
 #define PX4_SPIDEVID_TYPE(devid) (((uint32_t)(devid) >> 16) & 0xffff)
 
 typedef uint32_t spi_drdy_gpio_t;
@@ -154,6 +154,8 @@ public:
 
 	uint32_t devid() const { return px4_spi_buses[_index].devices[_bus_device_index].devid; }
 
+	int externalBusIndex() const { return _external_bus_counter; }
+
 	bool external() const { return px4_spi_bus_external(bus()); }
 
 private:
@@ -164,4 +166,3 @@ private:
 	int _external_bus_counter{0};
 	int _bus_device_index{0};
 };
-

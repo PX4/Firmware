@@ -138,17 +138,16 @@ bool RCTest::crsfTest()
 
 bool RCTest::dsmTest10Ch()
 {
-	return dsmTest(TEST_DATA_PATH "dsm_x_data.txt", 10, 6, 1500);
+	return dsmTest(TEST_DATA_PATH "dsm_x_data.txt", 10, 64, 1500);
 }
 
 bool RCTest::dsmTest12Ch()
 {
-	return dsmTest(TEST_DATA_PATH "dsm_x_dx9_data.txt", 12, 6, 1500);
+	return dsmTest(TEST_DATA_PATH "dsm_x_dx9_data.txt", 12, 454, 1500);
 }
 
 bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned expected_dropcount, unsigned chan0)
 {
-
 	FILE *fp;
 	fp = fopen(filepath, "rt");
 
@@ -205,7 +204,7 @@ bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned
 		}
 
 		if (last_drop != (dsm_frame_drops)) {
-			PX4_INFO("frame dropped, now #%d", (dsm_frame_drops));
+			//PX4_INFO("frame dropped, now #%d", (dsm_frame_drops));
 			last_drop = dsm_frame_drops;
 		}
 
@@ -216,7 +215,7 @@ bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned
 
 	ut_test(ret == EOF);
 	PX4_INFO("drop: %d", (int)last_drop);
-	ut_test(last_drop == expected_dropcount);
+	ut_compare("last_drop == expected_dropcount", last_drop, expected_dropcount);
 
 	return true;
 }

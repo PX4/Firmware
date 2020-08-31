@@ -1,0 +1,13 @@
+
+#
+# NXP fmuk66-e specific board defaults
+#------------------------------------------------------------------------------
+
+
+if [ $AUTOCNF = yes ]
+then
+
+fi
+
+rgbled_pwm start
+safety_button start

@@ -47,7 +47,7 @@ I2CSPIDriverBase *LSM9DS1::instantiate(const BusCLIArguments &cli, const BusInst
 		return nullptr;
 	}
 
-	if (!instance->Init()) {
+	if (OK != instance->init()) {
 		delete instance;
 		return nullptr;
 	}
@@ -88,8 +88,7 @@ extern "C" __EXPORT int lsm9ds1_main(int argc, char *argv[])
 		return -1;
 	}
 
-	BusInstanceIterator iterator(MODULE_NAME, cli,
-				     DRV_IMU_DEVTYPE_ST_LSM9DS1_AG);
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_IMU_DEVTYPE_ST_LSM9DS1_AG);
 
 	if (!strcmp(verb, "start")) {
 		return ThisDriver::module_start(cli, iterator);

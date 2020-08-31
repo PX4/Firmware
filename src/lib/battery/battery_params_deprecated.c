@@ -95,7 +95,7 @@ PARAM_DEFINE_FLOAT(BAT_V_LOAD_DROP, 0.3f);
  * BAT_V_LOAD_DROP for all calculations.
  *
  * @group Battery Calibration
- * @unit Ohms
+ * @unit Ohm
  * @min -1.0
  * @max 0.2
  * @reboot_required true

@@ -64,12 +64,10 @@ public:
 private:
 
 	struct {
-		float front_trans_dur_p2;
 		float fw_pitch_sp_offset;
 	} _params_tailsitter{};
 
 	struct {
-		param_t front_trans_dur_p2;
 		param_t fw_pitch_sp_offset;
 	} _params_handles_tailsitter{};
 

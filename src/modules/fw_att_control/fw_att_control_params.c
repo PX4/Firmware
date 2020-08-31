@@ -617,7 +617,7 @@ PARAM_DEFINE_INT32(FW_BAT_SCALE_EN, 0);
  *
  * @min 45
  * @max 720
- * @unit degrees
+ * @unit deg
  * @group FW Attitude Control
  */
 PARAM_DEFINE_FLOAT(FW_ACRO_X_MAX, 90);
@@ -630,7 +630,7 @@ PARAM_DEFINE_FLOAT(FW_ACRO_X_MAX, 90);
  *
  * @min 45
  * @max 720
- * @unit degrees
+ * @unit deg
  * @group FW Attitude Control
  */
 PARAM_DEFINE_FLOAT(FW_ACRO_Y_MAX, 90);
@@ -643,7 +643,7 @@ PARAM_DEFINE_FLOAT(FW_ACRO_Y_MAX, 90);
  *
  * @min 10
  * @max 180
- * @unit degrees
+ * @unit deg
  * @group FW Attitude Control
  */
 PARAM_DEFINE_FLOAT(FW_ACRO_Z_MAX, 45);

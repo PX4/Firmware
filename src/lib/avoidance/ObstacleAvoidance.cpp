@@ -153,9 +153,9 @@ void ObstacleAvoidance::_generateBezierSetpoints(matrix::Vector3f &position, mat
 	    bezier::calculateBezierPosVel(bezier_points, bezier_order, T, position, velocity) &&
 	    bezier::calculateBezierYaw(bezier_yaws, bezier_order, T, yaw, yaw_velocity)
 	   ) {
-		// translate velocities into real velocities
-		yaw_velocity *= duration_s;
-		velocity *= duration_s;
+		// translate bezier velocities T [0;1] into real velocities m/s
+		yaw_velocity /= duration_s;
+		velocity /= duration_s;
 
 	} else {
 		PX4_WARN("Obstacle Avoidance system failed, bad trajectory");

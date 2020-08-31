@@ -123,8 +123,14 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 			return;
 		}
 
-	case ROTATION_ROLL_180_YAW_90: {
-			tmp = x; x = y; y = tmp; z = -z;
+	case ROTATION_ROLL_180_YAW_90:
+
+	// FALLTHROUGH
+	case ROTATION_PITCH_180_YAW_270: {
+			tmp = x;
+			x = y;
+			y = tmp;
+			z = -z;
 			return;
 		}
 
@@ -147,8 +153,14 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 			return;
 		}
 
-	case ROTATION_ROLL_180_YAW_270: {
-			tmp = x; x = -y; y = -tmp; z = -z;
+	case ROTATION_ROLL_180_YAW_270:
+
+	// FALLTHROUGH
+	case ROTATION_PITCH_180_YAW_90: {
+			tmp = x;
+			x = -y;
+			y = -tmp;
+			z = -z;
 			return;
 		}
 
@@ -173,8 +185,10 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 		}
 
 	case ROTATION_ROLL_90_YAW_90: {
-			tmp = z; z = y; y = -tmp;
-			tmp = x; x = -y; y = tmp;
+			tmp = x;
+			x = z;
+			z = y;
+			y = tmp;
 			return;
 		}
 
@@ -200,8 +214,10 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 		}
 
 	case ROTATION_ROLL_270_YAW_90: {
-			tmp = z; z = -y; y = tmp;
-			tmp = x; x = -y; y = tmp;
+			tmp = x;
+			x = -z;
+			z = -y;
+			y = tmp;
 			return;
 		}
 
@@ -210,12 +226,6 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 			tmp = -M_SQRT1_2_F * (x + y);
 			y   =  M_SQRT1_2_F * (x - y);
 			x = tmp;
-			return;
-		}
-
-	case ROTATION_ROLL_270_YAW_270: {
-			tmp = z; z = -y; y = tmp;
-			tmp = x; x = y; y = -tmp;
 			return;
 		}
 
@@ -235,38 +245,10 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 			return;
 		}
 
-	case ROTATION_PITCH_90_YAW_180: {
-			tmp = x; x = z; z = tmp;
-			y = -y;
-			return;
-		}
-
-	case ROTATION_PITCH_90_ROLL_90: {
-			tmp = x; x = y;
-			y = -z; z = -tmp;
-			return;
-		}
-
-	case ROTATION_YAW_293_PITCH_68_ROLL_90: {
-			float tmpx = x;
-			float tmpy = y;
-			float tmpz = z;
-			x =  0.143039f * tmpx +  0.368776f * tmpy + -0.918446f * tmpz;
-			y = -0.332133f * tmpx + -0.856289f * tmpy + -0.395546f * tmpz;
-			z = -0.932324f * tmpx +  0.361625f * tmpy +  0.000000f * tmpz;
-			return;
-		}
-
-	case ROTATION_PITCH_90_ROLL_270: {
-			tmp = x; x = -y;
-			y = z; z = -tmp;
-			return;
-		}
-
 	case ROTATION_PITCH_9_YAW_180: {
-			float tmpx = x;
-			float tmpy = y;
-			float tmpz = z;
+			const float tmpx = x;
+			const float tmpy = y;
+			const float tmpz = z;
 			x = -0.987688f * tmpx +  0.000000f * tmpy + -0.156434f * tmpz;
 			y =  0.000000f * tmpx + -1.000000f * tmpy +  0.000000f * tmpz;
 			z = -0.156434f * tmpx +  0.000000f * tmpy +  0.987688f * tmpz;
@@ -294,5 +276,99 @@ rotate_3f(enum Rotation rot, float &x, float &y, float &z)
 			y = -tmp;
 			return;
 		}
+
+	case ROTATION_ROLL_90_PITCH_90: {
+			tmp = x;
+			x = y;
+			y = -z;
+			z = -tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_180_PITCH_90:
+
+	// FALLTHROUGH
+	case ROTATION_PITCH_90_YAW_180: {
+			tmp = x;
+			x = -z;
+			y = -y;
+			z = -tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_270_PITCH_90: {
+			tmp = x;
+			x = -y;
+			y = z;
+			z = -tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_90_PITCH_180:
+
+	// FALLTHROUGH
+	case ROTATION_ROLL_270_YAW_180: {
+			tmp = y;
+			x = -x;
+			y = -z;
+			z = -tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_270_PITCH_180: {
+			tmp = y;
+			x = -x;
+			y = z;
+			z = tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_90_PITCH_270: {
+			tmp = x;
+			x = -y;
+			y = -z;
+			z = tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_270_PITCH_270: {
+			tmp = x;
+			x = y;
+			y = z;
+			z = tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_90_PITCH_180_YAW_90:
+
+	// FALLTHROUGH
+	case ROTATION_ROLL_270_YAW_270: {
+			tmp = x;
+			x = z;
+			z = -y;
+			y = -tmp;
+			return;
+		}
+
+	case ROTATION_ROLL_90_PITCH_68_YAW_293: {
+			const float tmpx = x;
+			const float tmpy = y;
+			const float tmpz = z;
+			x = 0.146371f * tmpx + 0.362280f * tmpy - 0.920505f * tmpz;
+			y = -0.344827f * tmpx - 0.853477f * tmpy - 0.390731f * tmpz;
+			z = -0.927184f * tmpx + 0.374607f * tmpy;
+			return;
+		}
+
+	case ROTATION_ROLL_90_PITCH_315: {
+			const float tmpx = x;
+			const float tmpy = y;
+			const float tmpz = z;
+			x = 0.707107f * tmpx - 0.707107f * tmpy;
+			y = -tmpz;
+			z = 0.707107f * tmpx + 0.707107f * tmpy;
+			return;
+		}
+
 	}
 }

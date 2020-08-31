@@ -143,6 +143,10 @@ Mission::on_inactivation()
 	cmd.param1 = -1.0f;
 	cmd.param3 = 1.0f;
 	_navigator->publish_vehicle_cmd(&cmd);
+
+	if (_navigator->get_precland()->is_activated()) {
+		_navigator->get_precland()->on_inactivation();
+	}
 }
 
 void
@@ -174,17 +178,6 @@ Mission::on_activation()
 void
 Mission::on_active()
 {
-	if (_work_item_type == WORK_ITEM_TYPE_PRECISION_LAND) {
-		// switch out of precision land once landed
-		if (_navigator->get_land_detected()->landed) {
-			_navigator->get_precland()->on_inactivation();
-			_work_item_type = WORK_ITEM_TYPE_DEFAULT;
-
-		} else {
-			_navigator->get_precland()->on_active();
-		}
-	}
-
 	check_mission_valid(false);
 
 	/* check if anything has changed */
@@ -269,6 +262,13 @@ Mission::on_active()
 	    && (_navigator->abort_landing())) {
 
 		do_abort_landing();
+	}
+
+	if (_work_item_type == WORK_ITEM_TYPE_PRECISION_LAND) {
+		_navigator->get_precland()->on_active();
+
+	} else if (_navigator->get_precland()->is_activated()) {
+		_navigator->get_precland()->on_inactivation();
 	}
 }
 
@@ -711,7 +711,7 @@ Mission::set_mission_items()
 					_mission_item.lat = _navigator->get_global_position()->lat;
 					_mission_item.lon = _navigator->get_global_position()->lon;
 					/* hold heading for takeoff items */
-					_mission_item.yaw = _navigator->get_global_position()->yaw;
+					_mission_item.yaw = _navigator->get_local_position()->heading;
 					_mission_item.altitude = takeoff_alt;
 					_mission_item.altitude_is_relative = false;
 					_mission_item.autocontinue = true;
@@ -808,7 +808,7 @@ Mission::set_mission_items()
 						mission_item_to_position_setpoint(mission_item_next_position, &pos_sp_triplet->current);
 
 					} else {
-						_mission_item.yaw = _navigator->get_global_position()->yaw;
+						_mission_item.yaw = _navigator->get_local_position()->heading;
 
 						/* set position setpoint to target during the transition */
 						generate_waypoint_from_heading(&pos_sp_triplet->current, _mission_item.yaw);
@@ -1321,6 +1321,7 @@ Mission::heading_sp_update()
 		case vehicle_roi_s::ROI_TARGET:
 		case vehicle_roi_s::ROI_ENUM_END:
 		default: {
+				return;
 			}
 		}
 
@@ -1339,6 +1340,13 @@ Mission::heading_sp_update()
 			_mission_item.yaw = yaw;
 			pos_sp_triplet->current.yaw = _mission_item.yaw;
 			pos_sp_triplet->current.yaw_valid = true;
+
+		} else {
+			if (!pos_sp_triplet->current.yaw_valid) {
+				_mission_item.yaw = _navigator->get_local_position()->heading;
+				pos_sp_triplet->current.yaw = _mission_item.yaw;
+				pos_sp_triplet->current.yaw_valid = true;
+			}
 		}
 
 		// we set yaw directly so we can run this in parallel to the FOH update
@@ -1468,8 +1476,8 @@ Mission::do_abort_landing()
 	mission_item_to_position_setpoint(_mission_item, &_navigator->get_position_setpoint_triplet()->current);
 	_navigator->set_position_setpoint_triplet_updated();
 
-	mavlink_and_console_log_info(_navigator->get_mavlink_log_pub(), "Holding at %d m above landing.",
-				     (int)(alt_sp - alt_landing));
+	mavlink_log_info(_navigator->get_mavlink_log_pub(), "Holding at %d m above landing.",
+			 (int)(alt_sp - alt_landing));
 
 	// reset mission index to start of landing
 	if (_land_start_available) {

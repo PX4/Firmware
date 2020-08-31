@@ -34,7 +34,7 @@
 #include "PCF8583.hpp"
 
 PCF8583::PCF8583(I2CSPIBusOption bus_option, const int bus, int bus_frequency) :
-	I2C("PCF8583", nullptr, bus, PCF8583_BASEADDR_DEFAULT, bus_frequency),
+	I2C(DRV_SENS_DEVTYPE_PCF8583, MODULE_NAME, bus, PCF8583_BASEADDR_DEFAULT, bus_frequency),
 	ModuleParams(nullptr),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus)
 {
@@ -127,15 +127,13 @@ void PCF8583::RunImpl()
 		_count = 0;
 	}
 
-	float indicated_frequency = (float)diffCount / _param_pcf8583_magnet.get() / ((float)diffTime / 1000000);
-	float estimated_accurancy = 1 / (float)_param_pcf8583_magnet.get() / ((float)diffTime / 1000000);
+	float indicated_rpm = (float)diffCount / _param_pcf8583_magnet.get() / ((float)diffTime / 1000000) * 60.f;
+	float estimated_accurancy = 1 / (float)_param_pcf8583_magnet.get() / ((float)diffTime / 1000000) * 60.f;
 
 	// publish
 	rpm_s msg{};
-	msg.indicated_frequency_hz = indicated_frequency;
-	msg.indicated_frequency_rpm = indicated_frequency * 60.f;
-	msg.estimated_accurancy_hz = estimated_accurancy;
-	msg.estimated_accurancy_rpm = estimated_accurancy * 60.f;
+	msg.indicated_frequency_rpm = indicated_rpm;
+	msg.estimated_accurancy_rpm = estimated_accurancy;
 	msg.timestamp = hrt_absolute_time();
 	_rpm_pub.publish(msg);
 }

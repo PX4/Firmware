@@ -33,6 +33,7 @@
 
 /**
  * PCF8583 rotorfreq (i2c) pool interval
+ * How often the sensor is readout.
  *
  * @reboot_required true
  * @group Sensors
@@ -45,30 +46,31 @@ PARAM_DEFINE_INT32(PCF8583_POOL, 1000000);
  *
  * @reboot_required true
  * @group Sensors
- * @value 80 0x50
- * @value 81 0x51
+ * @value 80 Address 0x50 (80)
+ * @value 81 Address 0x51 (81)
  */
 PARAM_DEFINE_INT32(PCF8583_ADDR, 80);
 
 /**
- * PCF8583 rotorfreq (i2c) counter reset value
+ * PCF8583 rotorfreq (i2c) pulse reset value
  *
  * Internal device counter is reset to 0 when overun this value,
  * counter is able to store upto 6 digits
- * reset of counter takes some time - measurement with reset has worse accurancy
+ * reset of counter takes some time - measurement with reset has worse accurancy.
+ * 0 means reset counter after every measurement.
  *
  * @reboot_required true
  * @group Sensors
- * @value 0 - reset avter every measurement
  */
 PARAM_DEFINE_INT32(PCF8583_RESET, 500000);
 
 /**
- * PCF8583 rotorfreq (i2c) magnet count
+ * PCF8583 rotorfreq (i2c) pulse count
  *
- * Nmumber of signals per rotation of rotor
+ * Nmumber of signals per rotation of actuator
  *
  * @reboot_required true
+ * @group Sensors
  * @min 1
  */
 PARAM_DEFINE_INT32(PCF8583_MAGNET, 2);

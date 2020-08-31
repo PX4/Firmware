@@ -39,10 +39,16 @@
 #include "baro.hpp"
 #include <math.h>
 
+#include <lib/drivers/barometer/PX4Barometer.hpp>
+#include <lib/ecl/geo/geo.h> // For CONSTANTS_*
+
 const char *const UavcanBarometerBridge::NAME = "baro";
 
+#define UAVCAN_BARO_BASE_DEVICE_PATH "/dev/uavcan/baro"
+
 UavcanBarometerBridge::UavcanBarometerBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_baro", "/dev/uavcan/baro", BARO_BASE_DEVICE_PATH, ORB_ID(sensor_baro)),
+	UavcanCDevSensorBridgeBase("uavcan_baro", UAVCAN_BARO_BASE_DEVICE_PATH, UAVCAN_BARO_BASE_DEVICE_PATH,
+				   ORB_ID(sensor_baro)),
 	_sub_air_pressure_data(node),
 	_sub_air_temperature_data(node)
 { }
@@ -83,22 +89,50 @@ void
 UavcanBarometerBridge::air_pressure_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticPressure> &msg)
 {
-	sensor_baro_s report{};
+	lock();
+	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
+	unlock();
 
-	/*
-	 * FIXME HACK
-	 * This code used to rely on msg.getMonotonicTimestamp().toUSec() instead of HRT.
-	 * It stopped working when the time sync feature has been introduced, because it caused libuavcan
-	 * to use an independent time source (based on hardware TIM5) instead of HRT.
-	 * The proper solution is to be developed.
-	 */
-	report.timestamp   = hrt_absolute_time();
-	report.temperature = last_temperature_kelvin - 273.15F;
-	report.pressure    = msg.static_pressure / 100.0F;  // Convert to millibar
-	report.error_count = 0;
+	if (channel == nullptr) {
+		// Something went wrong - no channel to publish on; return
+		return;
+	}
 
-	/* TODO get device ID for sensor */
-	report.device_id = 0;
+	// Cast our generic CDev pointer to the sensor-specific driver class
+	PX4Barometer *baro = (PX4Barometer *)channel->h_driver;
 
-	publish(msg.getSrcNodeID().get(), &report);
+	if (baro == nullptr) {
+		return;
+	}
+
+	baro->set_temperature(last_temperature_kelvin + CONSTANTS_ABSOLUTE_NULL_CELSIUS);
+	baro->update(hrt_absolute_time(), msg.static_pressure / 100.0f); // Convert pressure to millibar
+}
+
+int UavcanBarometerBridge::init_driver(uavcan_bridge::Channel *channel)
+{
+	// update device id as we now know our device node_id
+	DeviceId device_id{_device_id};
+
+	device_id.devid_s.devtype = DRV_BARO_DEVTYPE_UAVCAN;
+	device_id.devid_s.address = static_cast<uint8_t>(channel->node_id);
+
+	channel->h_driver = new PX4Barometer(device_id.devid);
+
+	if (channel->h_driver == nullptr) {
+		return PX4_ERROR;
+	}
+
+	PX4Barometer *baro = (PX4Barometer *)channel->h_driver;
+
+	channel->class_instance = baro->get_class_instance();
+
+	if (channel->class_instance < 0) {
+		PX4_ERR("UavcanBaro: Unable to get a class instance");
+		delete baro;
+		channel->h_driver = nullptr;
+		return PX4_ERROR;
+	}
+
+	return PX4_OK;
 }

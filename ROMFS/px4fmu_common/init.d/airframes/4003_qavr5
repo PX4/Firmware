@@ -30,8 +30,6 @@ then
 	param set MC_YAWRATE_P 0.15
 	param set MC_YAWRATE_I 0.1
 	param set MC_YAWRATE_D 0
-	param set MC_TPA_BREAK_P 0.7
-	param set MC_TPA_RATE_P 0.3
 
 	param set MPC_THR_MIN 0.06
 	param set MPC_MANTHR_MIN 0.06

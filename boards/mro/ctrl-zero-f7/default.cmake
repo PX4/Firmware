@@ -29,9 +29,9 @@ px4_add_board(
 		gps
 		#heater
 		#imu # all available imu drivers
-		imu/bmi088
-		imu/mpu6000
-		imu/icm20948
+		imu/bosch/bmi088
+		imu/invensense/icm20602
+		imu/invensense/icm20948
 		irlock
 		lights/blinkm
 		lights/rgbled
@@ -45,7 +45,7 @@ px4_add_board(
 		#protocol_splitter
 		#pwm_input
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		rc_input
 		roboclaw
 		safety_button
@@ -86,7 +86,6 @@ px4_add_board(
 		vtol_att_control
 	SYSTEMCMDS
 		bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
@@ -104,7 +103,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		tests # tests and test runner
 		top
 		topic_listener
@@ -121,4 +119,5 @@ px4_add_board(
 		px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
 		rover_steering_control # Rover example app
 		uuv_example_app
+		work_item
 	)

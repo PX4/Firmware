@@ -51,20 +51,17 @@
 namespace device
 {
 
-SPI::SPI(const char *name, const char *devname, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency) :
-	CDev(name, devname),
+SPI::SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency) :
+	CDev(name, nullptr),
 	_device(device),
 	_mode(mode),
 	_frequency(frequency)
 {
-	DEVICE_DEBUG("SPI::SPI name = %s devname = %s", name, devname);
-
+	_device_id.devid_s.devtype = device_type;
 	// fill in _device_id fields for a SPI device
 	_device_id.devid_s.bus_type = DeviceBusType_SPI;
 	_device_id.devid_s.bus = bus;
 	_device_id.devid_s.address = (uint8_t)device;
-	// devtype needs to be filled in by the driver
-	_device_id.devid_s.devtype = 0;
 }
 
 SPI::~SPI()
@@ -105,8 +102,8 @@ SPI::init()
 		return ret;
 	}
 
-	/* tell the workd where we are */
-	DEVICE_LOG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
+	/* tell the world where we are */
+	DEVICE_DEBUG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
 
 	return PX4_OK;
 }

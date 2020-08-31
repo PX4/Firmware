@@ -40,10 +40,19 @@
 
 #include "SDP3X.hpp"
 
+using namespace time_literals;
+
 int
 SDP3X::probe()
 {
-	return !init_sdp3x();
+	bool require_initialization = !init_sdp3x();
+
+	if (require_initialization && _keep_retrying) {
+		PX4_INFO("no sensor found, but will keep retrying");
+		return 0;
+	}
+
+	return require_initialization ? -1 : 0;
 }
 
 int SDP3X::write_command(uint16_t command)
@@ -57,50 +66,43 @@ int SDP3X::write_command(uint16_t command)
 bool
 SDP3X::init_sdp3x()
 {
-	int ret;
+	return configure() == 0;
+}
 
-	if (get_device_address() == I2C_ADDRESS_1_SDP3X) { // since we are broadcasting, only do it for the first device address
-		// step 1 - reset on broadcast
-		uint16_t prev_addr = get_device_address();
-		set_device_address(SDP3X_RESET_ADDR);
-		uint8_t reset_cmd = SDP3X_RESET_CMD;
-		ret = transfer(&reset_cmd, 1, nullptr, 0);
-		set_device_address(prev_addr);
-
-		if (ret != PX4_OK) {
-			perf_count(_comms_errors);
-			return false;
-		}
-
-		// wait until sensor is ready
-		px4_usleep(20000);
-	}
-
-	// step 2 - configure
-	ret = write_command(SDP3X_CONT_MEAS_AVG_MODE);
+int
+SDP3X::configure()
+{
+	int ret = write_command(SDP3X_CONT_MEAS_AVG_MODE);
 
 	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
-		PX4_ERR("config failed");
-		return false;
+		DEVICE_DEBUG("config failed");
+		_state = State::RequireConfig;
+		return ret;
 	}
 
-	px4_usleep(10000);
+	_state = State::Configuring;
 
-	// step 3 - get scale
+	return ret;
+}
+
+int
+SDP3X::read_scale()
+{
+	// get scale
 	uint8_t val[9];
-	ret = transfer(nullptr, 0, &val[0], sizeof(val));
+	int ret = transfer(nullptr, 0, &val[0], sizeof(val));
 
 	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
 		PX4_ERR("get scale failed");
-		return false;
+		return ret;
 	}
 
 	// Check the CRC
 	if (!crc(&val[0], 2, val[2]) || !crc(&val[3], 2, val[5]) || !crc(&val[6], 2, val[8])) {
 		perf_count(_comms_errors);
-		return false;
+		return PX4_ERROR;
 	}
 
 	_scale = (((uint16_t)val[6]) << 8) | val[7];
@@ -119,7 +121,13 @@ SDP3X::init_sdp3x()
 		break;
 	}
 
-	return true;
+	return PX4_OK;
+}
+
+void SDP3X::start()
+{
+	// make sure to wait 10ms after configuring the measurement mode
+	ScheduleDelayed(10_ms);
 }
 
 int
@@ -127,7 +135,7 @@ SDP3X::collect()
 {
 	perf_begin(_sample_perf);
 
-	// read 9 bytes from the sensor
+	// read 6 bytes from the sensor
 	uint8_t val[6];
 	int ret = transfer(nullptr, 0, &val[0], sizeof(val));
 
@@ -139,10 +147,7 @@ SDP3X::collect()
 	// Check the CRC
 	if (!crc(&val[0], 2, val[2]) || !crc(&val[3], 2, val[5])) {
 		perf_count(_comms_errors);
-		return EAGAIN;
-
-	} else {
-		ret = 0;
+		return -EAGAIN;
 	}
 
 	int16_t P = (((int16_t)val[0]) << 8) | val[1];
@@ -162,8 +167,6 @@ SDP3X::collect()
 
 	_airspeed_pub.publish(report);
 
-	ret = OK;
-
 	perf_end(_sample_perf);
 
 	return ret;
@@ -172,18 +175,41 @@ SDP3X::collect()
 void
 SDP3X::RunImpl()
 {
-	int ret = PX4_ERROR;
+	switch (_state) {
+	case State::RequireConfig:
+		if (configure() == PX4_OK) {
+			ScheduleDelayed(10_ms);
 
-	// measurement phase
-	ret = collect();
+		} else {
+			// periodically retry to configure
+			ScheduleDelayed(300_ms);
+		}
 
-	if (PX4_OK != ret) {
-		_sensor_ok = false;
-		DEVICE_DEBUG("measure error");
+		break;
+
+	case State::Configuring:
+		if (read_scale() == 0) {
+			_state = State::Running;
+
+		} else {
+			_state = State::RequireConfig;
+		}
+
+		ScheduleDelayed(10_ms);
+		break;
+
+	case State::Running:
+		int ret = collect();
+
+		if (ret != 0 && ret != -EAGAIN) {
+			_sensor_ok = false;
+			DEVICE_DEBUG("measure error");
+			_state = State::RequireConfig;
+		}
+
+		ScheduleDelayed(CONVERSION_INTERVAL);
+		break;
 	}
-
-	// schedule a fresh cycle call when the measurement is done
-	ScheduleDelayed(CONVERSION_INTERVAL);
 }
 
 bool SDP3X::crc(const uint8_t data[], unsigned size, uint8_t checksum)

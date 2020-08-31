@@ -37,7 +37,8 @@
 #include <HealthFlags.h>
 #include <math.h>
 #include <px4_defines.h>
-#include <systemlib/mavlink_log.h>
+#include <lib/sensor_calibration/Utilities.hpp>
+#include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_accel.h>
 #include <uORB/topics/subsystem_info.h>
@@ -65,7 +66,7 @@ bool PreFlightCheck::accelerometerCheck(orb_advert_t *mavlink_log_pub, vehicle_s
 
 		device_id = accel.get().device_id;
 
-		calibration_valid = check_calibration("CAL_ACC%u_ID", device_id);
+		calibration_valid = (calibration::FindCalibrationIndex("ACC", device_id) >= 0);
 
 		if (!calibration_valid) {
 			if (report_fail) {

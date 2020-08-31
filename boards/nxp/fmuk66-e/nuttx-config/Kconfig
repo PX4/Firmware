@@ -1,0 +1,47 @@
+#
+# For a description of the syntax of this configuration file,
+# see misc/tools/kconfig-language.txt.
+#
+
+config FMUK66_SDHC_AUTOMOUNT
+	bool "SDHC automounter"
+	default n
+	depends on FS_AUTOMOUNTER && KINETIS_SDHC
+
+if FMUK66_SDHC_AUTOMOUNT
+
+config FMUK66_SDHC_AUTOMOUNT_FSTYPE
+	string "SDHC file system type"
+	default "vfat"
+
+config FMUK66_SDHC_AUTOMOUNT_BLKDEV
+	string "SDHC block device"
+	default "/dev/mmcsd0"
+
+config FMUK66_SDHC_AUTOMOUNT_MOUNTPOINT
+	string "SDHC mount point"
+	default "/fs/microsd"
+
+config FMUK66_SDHC_AUTOMOUNT_DDELAY
+	int "SDHC debounce delay (milliseconds)"
+	default 1000
+
+config FMUK66_SDHC_AUTOMOUNT_UDELAY
+	int "SDHC unmount retry delay (milliseconds)"
+	default 2000
+
+endif # FMUK66_SDHC_AUTOMOUNT
+
+config BOARD_HAS_PROBES
+	bool "Board provides GPIO or other Hardware for signaling to timing analyze."
+	default y
+	---help---
+		This board provides GPIO FMU-CH1-6 as PROBE_1-6 to provide timing signals from selected drivers.
+
+config BOARD_USE_PROBES
+	bool "Enable the use the board provided GPIO FMU-CH1-6 as PROBE_1-6 to provide timing signals from selected drivers"
+	default n
+	depends on BOARD_HAS_PROBES
+
+	---help---
+		Select to use GPIO FMU-CH1-6 to provide timing signals from selected drivers.

@@ -39,7 +39,7 @@
  * @author Beat Küng <beat-kueng@gmx.net>
  */
 
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/sensor_gyro.h>
 #include <mathlib/mathlib.h>
 #include <px4_platform_common/atomic.h>
@@ -162,16 +162,6 @@ void TemperatureCalibration::task_main()
 			PX4_ERR("alloc failed");
 		}
 	}
-
-	// reset params
-	for (int i = 0; i < num_calibrators; ++i) {
-		calibrators[i]->reset_calibration();
-	}
-
-	// make sure the system updates the changed parameters
-	param_notify_changes();
-
-	px4_usleep(300000); // wait a bit for the system to apply the parameters
 
 	hrt_abstime next_progress_output = hrt_absolute_time() + 1e6;
 

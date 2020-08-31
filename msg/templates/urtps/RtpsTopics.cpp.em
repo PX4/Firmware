@@ -60,7 +60,7 @@ bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_se
 {
 @[if recv_topics]@
     // Initialise subscribers
-    std::cout << "--- Subscribers ---" << std::endl;
+    std::cout << "\033[0;36m---   Subscribers   ---\033[0m" << std::endl;
 @[for topic in recv_topics]@
     if (_@(topic)_sub.init(@(rtps_message_id(ids, topic)), t_send_queue_cv, t_send_queue_mutex, t_send_queue)) {
         std::cout << "- @(topic) subscriber started" << std::endl;
@@ -69,11 +69,11 @@ bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_se
         return false;
     }
 @[end for]@
-    std::cout << "--------------------" << std::endl << std::endl;
+    std::cout << "\033[0;36m-----------------------\033[0m" << std::endl << std::endl;
 @[end if]@
 @[if send_topics]@
     // Initialise publishers
-    std::cout << "---- Publishers ----" << std::endl;
+    std::cout << "\033[0;36m----   Publishers  ----\033[0m" << std::endl;
 @[for topic in send_topics]@
     if (_@(topic)_pub.init()) {
         std::cout << "- @(topic) publisher started" << std::endl;
@@ -85,7 +85,7 @@ bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_se
         return false;
     }
 @[end for]@
-    std::cout << "--------------------" << std::endl;
+    std::cout << "\033[0;36m-----------------------\033[0m" << std::endl;
 @[end if]@
     return true;
 }
@@ -119,7 +119,7 @@ void RtpsTopics::publish(uint8_t topic_ID, char data_buffer[], size_t len)
         break;
 @[end for]@
         default:
-            printf("Unexpected topic ID to publish\n");
+            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID to publish\033[0m\n");
         break;
     }
 }
@@ -153,7 +153,7 @@ bool RtpsTopics::getMsg(const uint8_t topic_ID, eprosima::fastcdr::Cdr &scdr)
         break;
 @[end for]@
         default:
-            printf("Unexpected topic ID '%hhu' to getMsg\n", topic_ID);
+            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID '%hhu' to getMsg\033[0m\n", topic_ID);
         break;
     }
 

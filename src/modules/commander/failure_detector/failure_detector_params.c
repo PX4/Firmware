@@ -45,16 +45,17 @@
 /**
  * FailureDetector Max Roll
  *
- * Maximum roll angle before FailureDetector triggers the attitude_failure flag
- * If flight termination is enabled (@CBRK_FLIGHTTERM set to 0), the autopilot
- * will terminate the flight and set all the outputs to their failsafe value
- * as soon as the attitude_failure flag is set.
+ * Maximum roll angle before FailureDetector triggers the attitude_failure flag.
+ * The flag triggers flight termination (if @CBRK_FLIGHTTERM = 0),
+ * which sets outputs to their failsafe values.
+ * On takeoff the flag triggers lockdown (irrespective of @CBRK_FLIGHTTERM),
+ * which disarms motors but does not set outputs to failsafe values.
  *
  * Setting this parameter to 0 disables the check
  *
  * @min 60
  * @max 180
- * @unit degrees
+ * @unit deg
  * @group Failure Detector
  */
 PARAM_DEFINE_INT32(FD_FAIL_R, 60);
@@ -62,16 +63,17 @@ PARAM_DEFINE_INT32(FD_FAIL_R, 60);
 /**
  * FailureDetector Max Pitch
  *
- * Maximum pitch angle before FailureDetector triggers the attitude_failure flag
- * If flight termination is enabled (@CBRK_FLIGHTTERM set to 0), the autopilot
- * will terminate the flight and set all the outputs to their failsafe value
- * as soon as the attitude_failure flag is set.
+ * Maximum pitch angle before FailureDetector triggers the attitude_failure flag.
+ * The flag triggers flight termination (if @CBRK_FLIGHTTERM = 0),
+ * which sets outputs to their failsafe values.
+ * On takeoff the flag triggers lockdown (irrespective of @CBRK_FLIGHTTERM),
+ * which disarms motors but does not set outputs to failsafe values.
  *
  * Setting this parameter to 0 disables the check
  *
  * @min 60
  * @max 180
- * @unit degrees
+ * @unit deg
  * @group Failure Detector
  */
 PARAM_DEFINE_INT32(FD_FAIL_P, 60);
@@ -121,9 +123,21 @@ PARAM_DEFINE_INT32(FD_EXT_ATS_EN, 0);
  *
  * External ATS is required by ASTM F3322-18.
  *
- * @unit microseconds
+ * @unit us
  * @decimal 2
  *
  * @group Failure Detector
  */
 PARAM_DEFINE_INT32(FD_EXT_ATS_TRIG, 1900);
+
+/**
+ * Enable checks on ESCs that report their arming state.
+ * If enabled, failure detector will verify that all the ESCs have successfully armed when the vehicle has transitioned to the armed state.
+ * Timeout for receiving an acknowledgement from the ESCs is 0.3s, if no feedback is received the failure detector will auto disarm the vehicle.
+ *
+ * @boolean
+ * @reboot_required true
+ *
+ * @group Failure Detector
+ */
+PARAM_DEFINE_INT32(FD_ESCS_EN, 1);

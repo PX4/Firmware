@@ -79,6 +79,14 @@ static char hw_info[] = HW_INFO_INIT;
 
 static int dn_to_ordinal(uint16_t dn)
 {
+	/* Table is scaled for 12, so if ADC is in 16 bit mode
+	 * scale the result
+	 */
+
+	if (px4_arch_adc_dn_fullcount() > (1 << 12)) {
+
+		dn /= (px4_arch_adc_dn_fullcount() / (1 << 12));
+	}
 
 	const struct {
 		uint16_t low;  // High(n-1) + 1
@@ -204,6 +212,7 @@ static int read_id_dn(int *id, uint32_t gpio_drive, uint32_t gpio_sense, int adc
 		if (px4_arch_adc_init(HW_REV_VER_ADC_BASE) == OK) {
 
 			/* Read the value */
+
 			for (unsigned av = 0; av < samples; av++) {
 				dn = px4_arch_adc_sample(HW_REV_VER_ADC_BASE, adc_channel);
 
@@ -341,8 +350,13 @@ int board_determine_hw_info()
 	int rv = determine_hw_info(&hw_revision, &hw_version);
 
 	if (rv == OK) {
-		hw_info[HW_INFO_INIT_REV] = board_get_hw_revision() + '0';
-		hw_info[HW_INFO_INIT_VER] = board_get_hw_version() + '0';
+
+		hw_info[HW_INFO_INIT_REV] = board_get_hw_revision() < 10 ?
+					    board_get_hw_revision() + '0' :
+					    board_get_hw_revision() + 'a' - 10;
+		hw_info[HW_INFO_INIT_VER] = board_get_hw_version()  < 10 ?
+					    board_get_hw_version() + '0' :
+					    board_get_hw_version()  + 'a' - 10;
 	}
 
 	return rv;

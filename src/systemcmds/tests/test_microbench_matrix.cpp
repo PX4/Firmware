@@ -76,6 +76,7 @@ void unlock()
 		reset(); \
 		perf_counter_t p = perf_alloc(PC_ELAPSED, name); \
 		for (int i = 0; i < count; i++) { \
+			px4_usleep(1); \
 			lock(); \
 			perf_begin(p); \
 			op; \
@@ -145,17 +146,17 @@ ut_declare_test_c(test_microbench_matrix, MicroBenchMatrix)
 
 bool MicroBenchMatrix::time_px4_matrix()
 {
-	PERF("matrix Euler from Quaternion", e = q, 1000);
-	PERF("matrix Euler from Dcm", e = d, 1000);
+	PERF("matrix Euler from Quaternion", e = q, 100);
+	PERF("matrix Euler from Dcm", e = d, 100);
 
-	PERF("matrix Quaternion from Euler", q = e, 1000);
-	PERF("matrix Quaternion from Dcm", q = d, 1000);
+	PERF("matrix Quaternion from Euler", q = e, 100);
+	PERF("matrix Quaternion from Dcm", q = d, 100);
 
-	PERF("matrix Dcm from Euler", d = e, 1000);
-	PERF("matrix Dcm from Quaternion", d = q, 1000);
+	PERF("matrix Dcm from Euler", d = e, 100);
+	PERF("matrix Dcm from Quaternion", d = q, 100);
 
-	PERF("matrix 6x16 pseudo inverse (all non-zero columns)", A16 = matrix::geninv(B16), 1000);
-	PERF("matrix 6x16 pseudo inverse (4 non-zero columns)", A16 = matrix::geninv(B16_4), 1000);
+	PERF("matrix 6x16 pseudo inverse (all non-zero columns)", A16 = matrix::geninv(B16), 100);
+	PERF("matrix 6x16 pseudo inverse (4 non-zero columns)", A16 = matrix::geninv(B16_4), 100);
 
 	return true;
 }

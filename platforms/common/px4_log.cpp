@@ -136,6 +136,12 @@ __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *
 
 		orb_publish(ORB_ID(log_message), orb_log_message_pub, &log_message);
 	}
+
+#ifdef CONFIG_ARCH_BOARD_PX4_SITL
+	// Without flushing it's tricky to see stdout output when PX4 is started by
+	// a script like for the MAVSDK tests.
+	fflush(out);
+#endif
 }
 
 __EXPORT void px4_log_raw(int level, const char *fmt, ...)

@@ -14,7 +14,7 @@
 
 sh /etc/init.d/rc.mc_defaults
 
-set MIXER zmr250
+set MIXER quad_x
 set PWM_OUT 1234
 
 if [ $AUTOCNF = yes ]
@@ -41,11 +41,6 @@ then
 	param set MC_ACRO_R_MAX 1000
 	param set MC_ACRO_P_MAX 1000
 	param set MC_ACRO_Y_MAX 1000
-
-	param set MC_TPA_BREAK_P 0.5
-	param set MC_TPA_BREAK_D 0.7
-	param set MC_TPA_RATE_P 0.5
-	param set MC_TPA_RATE_D 0.5
 
 	# param set NAV_RCL_ACT 6 # Lockdown
 

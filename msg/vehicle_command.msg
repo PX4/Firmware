@@ -68,6 +68,7 @@ uint16 VEHICLE_CMD_MISSION_START = 300			# start running a mission |first_item: 
 uint16 VEHICLE_CMD_COMPONENT_ARM_DISARM = 400		# Arms / Disarms a component |1 to arm, 0 to disarm|
 uint16 VEHICLE_CMD_START_RX_PAIR = 500			# Starts receiver pairing |0:Spektrum| 0:Spektrum DSM2, 1:Spektrum DSMX|
 uint16 VEHICLE_CMD_SET_CAMERA_MODE = 530            # Set camera capture mode (photo, video, etc.)
+uint16 VEHICLE_CMD_SET_CAMERA_ZOOM = 531                # Set camera zoom
 uint16 VEHICLE_CMD_DO_TRIGGER_CONTROL = 2003            # Enable or disable on-board camera triggering system
 uint16 VEHICLE_CMD_DO_VTOL_TRANSITION = 3000    # Command VTOL transition
 uint16 VEHICLE_CMD_ARM_AUTHORIZATION_REQUEST = 3001    # Request arm authorization
@@ -99,6 +100,11 @@ uint8 VEHICLE_ROI_WPINDEX = 2                      # Point toward given MISSION 
 uint8 VEHICLE_ROI_LOCATION = 3                     # Point toward fixed location |
 uint8 VEHICLE_ROI_TARGET = 4                       # Point toward target
 uint8 VEHICLE_ROI_ENUM_END = 5
+
+uint8 VEHICLE_CAMERA_ZOOM_TYPE_STEP = 0            # Zoom one step increment
+uint8 VEHICLE_CAMERA_ZOOM_TYPE_CONTINUOUS = 1      # Continuous zoom up/down until stopped
+uint8 VEHICLE_CAMERA_ZOOM_TYPE_RANGE = 2           # Zoom value as proportion of full camera range
+uint8 VEHICLE_CAMERA_ZOOM_TYPE_FOCAL_LENGTH = 3    # Zoom to a focal length
 
 uint8 ORB_QUEUE_LENGTH = 3
 

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,196 +45,63 @@
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/posix.h>
 #include <px4_platform_common/time.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
-#include <fcntl.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_accel.h>
-#include <drivers/drv_gyro.h>
-#include <drivers/drv_mag.h>
 #include <drivers/drv_tone_alarm.h>
-#include <systemlib/mavlink_log.h>
-#include <parameters/param.h>
-#include <systemlib/err.h>
-#include <uORB/topics/sensor_combined.h>
+#include <matrix/math.hpp>
+#include <lib/sensor_calibration/Magnetometer.hpp>
+#include <lib/sensor_calibration/Utilities.hpp>
+#include <lib/conversion/rotation.h>
+#include <lib/ecl/geo_lookup/geo_mag_declination.h>
+#include <lib/systemlib/mavlink_log.h>
+#include <lib/parameters/param.h>
+#include <lib/systemlib/err.h>
+#include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionBlocking.hpp>
+#include <uORB/topics/sensor_mag.h>
+#include <uORB/topics/sensor_gyro.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_gps_position.h>
 
-static const char *sensor_name = "mag";
-static constexpr unsigned max_mags = 4;
-static constexpr float mag_sphere_radius = 0.2f;
-static unsigned int calibration_sides = 6;			///< The total number of sides
-static constexpr unsigned int calibration_total_points = 240;		///< The total points per magnetometer
-static constexpr unsigned int calibraton_duration_seconds = 42; 	///< The total duration the routine is allowed to take
+using namespace matrix;
+using namespace time_literals;
 
-static constexpr float MAG_MAX_OFFSET_LEN =
-	1.3f;	///< The maximum measurement range is ~1.9 Ga, the earth field is ~0.6 Ga, so an offset larger than ~1.3 Ga means the mag will saturate in some directions.
-
-int32_t	device_ids[max_mags];
-bool internal[max_mags];
-int device_prio_max = 0;
-int32_t device_id_primary = 0;
-static unsigned _last_mag_progress = 0;
+static constexpr char sensor_name[] {"mag"};
+static constexpr int MAX_MAGS = 4;
+static constexpr float MAG_SPHERE_RADIUS_DEFAULT = 0.2f;
+static constexpr unsigned int calibration_total_points = 240;	///< The total points per magnetometer
+static constexpr unsigned int calibraton_duration_s = 42; 	///< The total duration the routine is allowed to take
 
 calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_mask);
 
 /// Data passed to calibration worker routine
-typedef struct  {
+struct mag_worker_data_t {
 	orb_advert_t	*mavlink_log_pub;
+	bool		append_to_existing_calibration;
+	unsigned	last_mag_progress;
 	unsigned	done_count;
-	int		sub_mag[max_mags];
-	unsigned int	calibration_points_perside;
-	unsigned int	calibration_interval_perside_seconds;
-	uint64_t	calibration_interval_perside_useconds;
-	unsigned int	calibration_counter_total[max_mags];
+	unsigned	calibration_sides;					///< The total number of sides
 	bool		side_data_collected[detect_orientation_side_count];
-	float		*x[max_mags];
-	float		*y[max_mags];
-	float		*z[max_mags];
-} mag_worker_data_t;
+	unsigned int	calibration_points_perside;
+	uint64_t	calibration_interval_perside_us;
+	unsigned int	calibration_counter_total[MAX_MAGS];
 
+	float		*x[MAX_MAGS];
+	float		*y[MAX_MAGS];
+	float		*z[MAX_MAGS];
+
+	calibration::Magnetometer calibration[MAX_MAGS] {};
+};
 
 int do_mag_calibration(orb_advert_t *mavlink_log_pub)
 {
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
 
-	struct mag_calibration_s mscale_null;
-	mscale_null.x_offset = 0.0f;
-	mscale_null.x_scale = 1.0f;
-	mscale_null.y_offset = 0.0f;
-	mscale_null.y_scale = 1.0f;
-	mscale_null.z_offset = 0.0f;
-	mscale_null.z_scale = 1.0f;
-
 	int result = PX4_OK;
-
-	// Determine which mags are available and reset each
-
-	char str[30];
-
-	// reset the learned EKF mag in-flight bias offsets which have been learned for the previous
-	//  sensor calibration and will be invalidated by a new sensor calibration
-	(void)sprintf(str, "EKF2_MAGBIAS_X");
-	result = param_set_no_notification(param_find(str), &mscale_null.x_offset);
-
-	if (result != PX4_OK) {
-		PX4_ERR("unable to reset %s", str);
-	}
-
-	(void)sprintf(str, "EKF2_MAGBIAS_Y");
-	result = param_set_no_notification(param_find(str), &mscale_null.y_offset);
-
-	if (result != PX4_OK) {
-		PX4_ERR("unable to reset %s", str);
-	}
-
-	(void)sprintf(str, "EKF2_MAGBIAS_Z");
-	result = param_set_no_notification(param_find(str), &mscale_null.z_offset);
-
-	if (result != PX4_OK) {
-		PX4_ERR("unable to reset %s", str);
-	}
-
-	for (size_t i = 0; i < max_mags; i++) {
-		device_ids[i] = 0; // signals no mag
-	}
-
-	_last_mag_progress = 0;
 
 	// Collect: As defined by configuration
 	// start with a full mask, all six bits set
 	int32_t cal_mask = (1 << 6) - 1;
 	param_get(param_find("CAL_MAG_SIDES"), &cal_mask);
-
-	// keep and update the existing calibration when we are not doing a full 6-axis calibration
-	const bool append_to_existing_calibration = cal_mask < ((1 << 6) - 1);
-	(void)append_to_existing_calibration;
-
-	for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-#if 1 // TODO: replace all IOCTL usage
-		// Reset mag id to mag not available
-		(void)sprintf(str, "CAL_MAG%u_ID", cur_mag);
-		result = param_set_no_notification(param_find(str), &(device_ids[cur_mag]));
-
-		if (result != PX4_OK) {
-			calibration_log_info(mavlink_log_pub, "[cal] Unable to reset CAL_MAG%u_ID", cur_mag);
-			break;
-		}
-
-#else
-		(void)sprintf(str, "CAL_MAG%u_XOFF", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.x_offset);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-		(void)sprintf(str, "CAL_MAG%u_YOFF", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.y_offset);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-		(void)sprintf(str, "CAL_MAG%u_ZOFF", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.z_offset);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-		(void)sprintf(str, "CAL_MAG%u_XSCALE", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.x_scale);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-		(void)sprintf(str, "CAL_MAG%u_YSCALE", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.y_scale);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-		(void)sprintf(str, "CAL_MAG%u_ZSCALE", cur_mag);
-		result = param_set_no_notification(param_find(str), &mscale_null.z_scale);
-
-		if (result != PX4_OK) {
-			PX4_ERR("unable to reset %s", str);
-		}
-
-#endif
-
-		param_notify_changes();
-
-#if 1 // TODO: replace all IOCTL usage
-		// Attempt to open mag
-		(void)sprintf(str, "%s%u", MAG_BASE_DEVICE_PATH, cur_mag);
-		int fd = px4_open(str, O_RDONLY);
-
-		if (fd < 0) {
-			continue;
-		}
-
-		// Get device id for this mag
-		device_ids[cur_mag] = px4_ioctl(fd, DEVIOCGDEVICEID, 0);
-		internal[cur_mag] = (px4_ioctl(fd, MAGIOCGEXTERNAL, 0) <= 0);
-
-		if (!append_to_existing_calibration) {
-			// Reset mag scale & offset
-			result = px4_ioctl(fd, MAGIOCSSCALE, (long unsigned int)&mscale_null);
-
-			if (result != PX4_OK) {
-				calibration_log_critical(mavlink_log_pub, CAL_ERROR_RESET_CAL_MSG, cur_mag);
-			}
-		}
-
-
-		px4_close(fd);
-#endif
-	}
 
 	// Calibrate all mags at the same time
 	if (result == PX4_OK) {
@@ -270,7 +137,7 @@ int do_mag_calibration(orb_advert_t *mavlink_log_pub)
 static bool reject_sample(float sx, float sy, float sz, float x[], float y[], float z[], unsigned count,
 			  unsigned max_count)
 {
-	float min_sample_dist = fabsf(5.4f * mag_sphere_radius / sqrtf(max_count)) / 3.0f;
+	float min_sample_dist = fabsf(5.4f * MAG_SPHERE_RADIUS_DEFAULT / sqrtf(max_count)) / 3.0f;
 
 	for (size_t i = 0; i < count; i++) {
 		float dx = sx - x[i];
@@ -279,6 +146,9 @@ static bool reject_sample(float sx, float sy, float sz, float x[], float y[], fl
 		float dist = sqrtf(dx * dx + dy * dy + dz * dz);
 
 		if (dist < min_sample_dist) {
+			PX4_DEBUG("rejected X: %.3f Y: %.3f Z: %.3f (%.3f < %.3f) (%d/%d) ", (double)sx, (double)sy, (double)sz, (double)dist,
+				  (double)min_sample_dist, count, max_count);
+
 			return true;
 		}
 	}
@@ -288,7 +158,7 @@ static bool reject_sample(float sx, float sy, float sz, float x[], float y[], fl
 
 static unsigned progress_percentage(mag_worker_data_t *worker_data)
 {
-	return 100 * ((float)worker_data->done_count) / calibration_sides;
+	return 100 * ((float)worker_data->done_count) / worker_data->calibration_sides;
 }
 
 // Returns calibrate_return_error if any parameter is not finite
@@ -297,7 +167,7 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 		float sphere_radius,
 		float diag_x, float diag_y, float diag_z,
 		float offdiag_x, float offdiag_y, float offdiag_z,
-		orb_advert_t *mavlink_log_pub, size_t cur_mag)
+		orb_advert_t *mavlink_log_pub, uint8_t cur_mag)
 {
 	float must_be_finite[] = {offset_x, offset_y, offset_z,
 				  sphere_radius,
@@ -313,8 +183,24 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 
 	for (unsigned i = 0; i < num_finite; ++i) {
 		if (!PX4_ISFINITE(must_be_finite[i])) {
-			calibration_log_emergency(mavlink_log_pub,
-						  "ERROR: Retry calibration (sphere NaN, #%zu)", cur_mag);
+			calibration_log_emergency(mavlink_log_pub, "Retry calibration (sphere NaN, #%u)", cur_mag);
+			return calibrate_return_error;
+		}
+	}
+
+	// earth field between 0.25 and 0.65 Gauss
+	if (sphere_radius < 0.2f || sphere_radius >= 0.7f) {
+		calibration_log_emergency(mavlink_log_pub, "Retry calibration (mag #%u sphere radius invaid %.3f)", cur_mag,
+					  (double)sphere_radius);
+		return calibrate_return_error;
+	}
+
+	// Notify if a parameter which should be positive is non-positive
+	const int num_positive = sizeof(should_be_positive) / sizeof(*should_be_positive);
+
+	for (unsigned i = 0; i < num_positive; ++i) {
+		if (should_be_positive[i] <= 0.0f) {
+			calibration_log_emergency(mavlink_log_pub, "Retry calibration (mag #%u with non-positive scale)", cur_mag);
 			return calibrate_return_error;
 		}
 	}
@@ -323,20 +209,12 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 	const int num_not_huge = sizeof(should_be_not_huge) / sizeof(*should_be_not_huge);
 
 	for (unsigned i = 0; i < num_not_huge; ++i) {
+		// maximum measurement range is ~1.9 Ga, the earth field is ~0.6 Ga,
+		//  so an offset larger than ~1.3 Ga means the mag will saturate in some directions.
+		static constexpr float MAG_MAX_OFFSET_LEN = 1.3f;
+
 		if (fabsf(should_be_not_huge[i]) > MAG_MAX_OFFSET_LEN) {
-			calibration_log_critical(mavlink_log_pub, "Warning: %s mag with large offsets",
-						 (internal[cur_mag]) ? "autopilot, internal" : "GPS unit, external");
-			break;
-		}
-	}
-
-	// Notify if a parameter which should be positive is non-positive
-	const int num_positive = sizeof(should_be_positive) / sizeof(*should_be_positive);
-
-	for (unsigned i = 0; i < num_positive; ++i) {
-		if (should_be_positive[i] <= 0.0f) {
-			calibration_log_critical(mavlink_log_pub, "Warning: %s mag with non-positive scale",
-						 (internal[cur_mag]) ? "autopilot, internal" : "GPS unit, external");
+			calibration_log_critical(mavlink_log_pub, "Warning: mag (#%u) with large offsets", cur_mag);
 			break;
 		}
 	}
@@ -344,20 +222,17 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 	return calibrate_return_ok;
 }
 
-static calibrate_return mag_calibration_worker(detect_orientation_return orientation, int cancel_sub, void *data)
+static calibrate_return mag_calibration_worker(detect_orientation_return orientation, void *data)
 {
+	const hrt_abstime calibration_started = hrt_absolute_time();
 	calibrate_return result = calibrate_return_ok;
-
-	unsigned int calibration_counter_side;
 
 	mag_worker_data_t *worker_data = (mag_worker_data_t *)(data);
 
 	// notify user to start rotating
 	set_tune(TONE_SINGLE_BEEP_TUNE);
 
-	calibration_log_info(worker_data->mavlink_log_pub, "[cal] Rotate vehicle around the detected orientation");
-	calibration_log_info(worker_data->mavlink_log_pub, "[cal] Continue rotation for %s %u s",
-			     detect_orientation_str(orientation), worker_data->calibration_interval_perside_seconds);
+	calibration_log_info(worker_data->mavlink_log_pub, "[cal] Rotate vehicle");
 
 	/*
 	 * Detect if the system is rotating.
@@ -367,46 +242,38 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 	 * for a good result, so we're not constraining the user more than we have to.
 	 */
 
-	hrt_abstime detection_deadline = hrt_absolute_time() + worker_data->calibration_interval_perside_useconds * 5;
+	const hrt_abstime detection_deadline = hrt_absolute_time() + worker_data->calibration_interval_perside_us * 5;
 	hrt_abstime last_gyro = 0;
 	float gyro_x_integral = 0.0f;
 	float gyro_y_integral = 0.0f;
 	float gyro_z_integral = 0.0f;
 
-	const float gyro_int_thresh_rad = 0.5f;
+	static constexpr float gyro_int_thresh_rad = 0.5f;
 
-	int sub_gyro = orb_subscribe(ORB_ID(sensor_gyro));
+	uORB::SubscriptionBlocking<sensor_gyro_s> gyro_sub{ORB_ID(sensor_gyro)};
 
 	while (fabsf(gyro_x_integral) < gyro_int_thresh_rad &&
 	       fabsf(gyro_y_integral) < gyro_int_thresh_rad &&
 	       fabsf(gyro_z_integral) < gyro_int_thresh_rad) {
 
 		/* abort on request */
-		if (calibrate_cancel_check(worker_data->mavlink_log_pub, cancel_sub)) {
+		if (calibrate_cancel_check(worker_data->mavlink_log_pub, calibration_started)) {
 			result = calibrate_return_cancelled;
-			px4_close(sub_gyro);
 			return result;
 		}
 
 		/* abort with timeout */
 		if (hrt_absolute_time() > detection_deadline) {
 			result = calibrate_return_error;
-			warnx("int: %8.4f, %8.4f, %8.4f", (double)gyro_x_integral, (double)gyro_y_integral, (double)gyro_z_integral);
+			PX4_ERR("gyro int: %8.4f, %8.4f, %8.4f", (double)gyro_x_integral, (double)gyro_y_integral, (double)gyro_z_integral);
 			calibration_log_critical(worker_data->mavlink_log_pub, "Failed: This calibration requires rotation.");
 			break;
 		}
 
 		/* Wait clocking for new data on all gyro */
-		px4_pollfd_struct_t fds[1];
-		fds[0].fd = sub_gyro;
-		fds[0].events = POLLIN;
-		size_t fd_count = 1;
+		sensor_gyro_s gyro;
 
-		int poll_ret = px4_poll(fds, fd_count, 1000);
-
-		if (poll_ret > 0) {
-			sensor_gyro_s gyro{};
-			orb_copy(ORB_ID(sensor_gyro), sub_gyro, &gyro);
+		if (gyro_sub.updateBlocking(gyro, 1000_ms)) {
 
 			/* ensure we have a valid first timestamp */
 			if (last_gyro > 0) {
@@ -422,86 +289,96 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 		}
 	}
 
-	px4_close(sub_gyro);
+	uORB::SubscriptionBlocking<sensor_mag_s> mag_sub[MAX_MAGS] {
+		{ORB_ID(sensor_mag), 0, 0},
+		{ORB_ID(sensor_mag), 0, 1},
+		{ORB_ID(sensor_mag), 0, 2},
+		{ORB_ID(sensor_mag), 0, 3},
+	};
 
-	uint64_t calibration_deadline = hrt_absolute_time() + worker_data->calibration_interval_perside_useconds;
+	uint64_t calibration_deadline = hrt_absolute_time() + worker_data->calibration_interval_perside_us;
 	unsigned poll_errcount = 0;
-
-	calibration_counter_side = 0;
+	unsigned calibration_counter_side = 0;
 
 	while (hrt_absolute_time() < calibration_deadline &&
 	       calibration_counter_side < worker_data->calibration_points_perside) {
 
-		if (calibrate_cancel_check(worker_data->mavlink_log_pub, cancel_sub)) {
+		if (calibrate_cancel_check(worker_data->mavlink_log_pub, calibration_started)) {
 			result = calibrate_return_cancelled;
 			break;
 		}
 
-		// Wait clocking for new data on all mags
-		px4_pollfd_struct_t fds[max_mags];
-		size_t fd_count = 0;
-
-		for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-			if (worker_data->sub_mag[cur_mag] >= 0 && device_ids[cur_mag] != 0) {
-				fds[fd_count].fd = worker_data->sub_mag[cur_mag];
-				fds[fd_count].events = POLLIN;
-				fd_count++;
-			}
-		}
-
-		int poll_ret = px4_poll(fds, fd_count, 1000);
-
-		if (poll_ret > 0) {
-
-			int prev_count[max_mags];
+		if (mag_sub[0].updatedBlocking(1000_ms)) {
 			bool rejected = false;
+			Vector3f new_samples[MAX_MAGS] {};
 
-			for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
+			for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+				if (worker_data->calibration[cur_mag].device_id() != 0) {
+					bool updated = false;
+					sensor_mag_s mag;
 
-				prev_count[cur_mag] = worker_data->calibration_counter_total[cur_mag];
+					while (mag_sub[cur_mag].update(&mag)) {
+						if (worker_data->append_to_existing_calibration) {
+							// keep and update the existing calibration when we are not doing a full 6-axis calibration
+							const Matrix3f &scale = worker_data->calibration[cur_mag].scale();
+							const Vector3f &offset = worker_data->calibration[cur_mag].offset();
 
-				if (worker_data->sub_mag[cur_mag] >= 0) {
-					sensor_mag_s mag{};
+							const Vector3f m{scale *(Vector3f{mag.x, mag.y, mag.z} - offset)};
 
-					orb_copy(ORB_ID(sensor_mag), worker_data->sub_mag[cur_mag], &mag);
+							mag.x = m(0);
+							mag.y = m(1);
+							mag.z = m(2);
+						}
 
-					// Check if this measurement is good to go in
-					rejected = rejected || reject_sample(mag.x, mag.y, mag.z,
-									     worker_data->x[cur_mag], worker_data->y[cur_mag], worker_data->z[cur_mag],
-									     worker_data->calibration_counter_total[cur_mag],
-									     calibration_sides * worker_data->calibration_points_perside);
+						// Check if this measurement is good to go in
+						bool reject = reject_sample(mag.x, mag.y, mag.z,
+									    worker_data->x[cur_mag], worker_data->y[cur_mag], worker_data->z[cur_mag],
+									    worker_data->calibration_counter_total[cur_mag],
+									    worker_data->calibration_sides * worker_data->calibration_points_perside);
 
-					worker_data->x[cur_mag][worker_data->calibration_counter_total[cur_mag]] = mag.x;
-					worker_data->y[cur_mag][worker_data->calibration_counter_total[cur_mag]] = mag.y;
-					worker_data->z[cur_mag][worker_data->calibration_counter_total[cur_mag]] = mag.z;
-					worker_data->calibration_counter_total[cur_mag]++;
+						if (!reject) {
+							new_samples[cur_mag] = Vector3f{mag.x, mag.y, mag.z};
+							updated = true;
+							break;
+						}
+					}
+
+					// require an update for all valid mags
+					if (!updated) {
+						rejected = true;
+					}
 				}
 			}
 
 			// Keep calibration of all mags in lockstep
-			if (rejected) {
-				// Reset counts, since one of the mags rejected the measurement
-				for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-					worker_data->calibration_counter_total[cur_mag] = prev_count[cur_mag];
+			if (!rejected) {
+				for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+					if (worker_data->calibration[cur_mag].device_id() != 0) {
+						worker_data->x[cur_mag][worker_data->calibration_counter_total[cur_mag]] = new_samples[cur_mag](0);
+						worker_data->y[cur_mag][worker_data->calibration_counter_total[cur_mag]] = new_samples[cur_mag](1);
+						worker_data->z[cur_mag][worker_data->calibration_counter_total[cur_mag]] = new_samples[cur_mag](2);
+						worker_data->calibration_counter_total[cur_mag]++;
+					}
 				}
 
-			} else {
 				calibration_counter_side++;
 
 				unsigned new_progress = progress_percentage(worker_data) +
-							(unsigned)((100 / calibration_sides) * ((float)calibration_counter_side / (float)
+							(unsigned)((100 / worker_data->calibration_sides) * ((float)calibration_counter_side / (float)
 									worker_data->calibration_points_perside));
 
-				if (new_progress - _last_mag_progress > 3) {
+				if (new_progress - worker_data->last_mag_progress > 0) {
 					// Progress indicator for side
 					calibration_log_info(worker_data->mavlink_log_pub,
 							     "[cal] %s side calibration: progress <%u>",
 							     detect_orientation_str(orientation), new_progress);
-					px4_usleep(20000);
+					px4_usleep(10000);
 
-					_last_mag_progress = new_progress;
+					worker_data->last_mag_progress = new_progress;
 				}
 			}
+
+			PX4_DEBUG("side counter %d / %d", calibration_counter_side, worker_data->calibration_points_perside);
 
 		} else {
 			poll_errcount++;
@@ -530,22 +407,23 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 {
 	calibrate_return result = calibrate_return_ok;
 
-	mag_worker_data_t worker_data;
+	mag_worker_data_t worker_data{};
 
+	// keep and update the existing calibration when we are not doing a full 6-axis calibration
+	worker_data.append_to_existing_calibration = cal_mask < ((1 << 6) - 1);
 	worker_data.mavlink_log_pub = mavlink_log_pub;
+	worker_data.last_mag_progress = 0;
+	worker_data.calibration_sides = 0;
 	worker_data.done_count = 0;
 	worker_data.calibration_points_perside = calibration_total_points / detect_orientation_side_count;
-	worker_data.calibration_interval_perside_seconds = calibraton_duration_seconds / detect_orientation_side_count;
-	worker_data.calibration_interval_perside_useconds = worker_data.calibration_interval_perside_seconds * 1000 * 1000;
-
-	calibration_sides = 0;
+	worker_data.calibration_interval_perside_us = (calibraton_duration_s / detect_orientation_side_count) * 1000 * 1000;
 
 	for (unsigned i = 0; i < (sizeof(worker_data.side_data_collected) / sizeof(worker_data.side_data_collected[0])); i++) {
 
 		if ((cal_mask & (1 << i)) > 0) {
 			// mark as missing
 			worker_data.side_data_collected[i] = false;
-			calibration_sides++;
+			worker_data.calibration_sides++;
 
 		} else {
 			// mark as completed from the beginning
@@ -558,10 +436,7 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 		}
 	}
 
-	for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-		// Initialize to no subscription
-		worker_data.sub_mag[cur_mag] = -1;
-
+	for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
 		// Initialize to no memory allocated
 		worker_data.x[cur_mag] = nullptr;
 		worker_data.y[cur_mag] = nullptr;
@@ -569,173 +444,161 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 		worker_data.calibration_counter_total[cur_mag] = 0;
 	}
 
-	const unsigned int calibration_points_maxcount = calibration_sides * worker_data.calibration_points_perside;
+	const unsigned int calibration_points_maxcount = worker_data.calibration_sides * worker_data.calibration_points_perside;
 
-	char str[30];
+	for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
 
-	// Get actual mag count and alloate only as much memory as needed
-	const unsigned orb_mag_count = orb_group_count(ORB_ID(sensor_mag));
+		uORB::SubscriptionData<sensor_mag_s> mag_sub{ORB_ID(sensor_mag), cur_mag};
 
-	// Warn that we will not calibrate more than max_mags magnetometers
-	if (orb_mag_count > max_mags) {
-		calibration_log_critical(mavlink_log_pub, "Detected %u mags, but will calibrate only %u", orb_mag_count, max_mags);
-	}
-
-	for (size_t cur_mag = 0; cur_mag < orb_mag_count && cur_mag < max_mags; cur_mag++) {
-		worker_data.x[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
-		worker_data.y[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
-		worker_data.z[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
-
-		if (worker_data.x[cur_mag] == nullptr || worker_data.y[cur_mag] == nullptr || worker_data.z[cur_mag] == nullptr) {
-			calibration_log_critical(mavlink_log_pub, "ERROR: out of memory");
-			result = calibrate_return_error;
+		if (mag_sub.advertised() && (mag_sub.get().device_id != 0) && (mag_sub.get().timestamp > 0)) {
+			worker_data.calibration[cur_mag].set_device_id(mag_sub.get().device_id);
+			worker_data.calibration[cur_mag].set_external(mag_sub.get().is_external);
 		}
-	}
 
+		// reset calibration index to match uORB numbering
+		worker_data.calibration[cur_mag].set_calibration_index(cur_mag);
 
-	// Setup subscriptions to mag sensors
-	if (result == calibrate_return_ok) {
+		if (worker_data.calibration[cur_mag].device_id() != 0) {
+			worker_data.x[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
+			worker_data.y[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
+			worker_data.z[cur_mag] = static_cast<float *>(malloc(sizeof(float) * calibration_points_maxcount));
 
-		// We should not try to subscribe if the topic doesn't actually exist and can be counted.
-		for (unsigned cur_mag = 0; cur_mag < orb_mag_count && cur_mag < max_mags; cur_mag++) {
-
-			// Lock in to correct ORB instance
-			bool found_cur_mag = false;
-
-			for (unsigned i = 0; i < orb_mag_count && !found_cur_mag; i++) {
-				worker_data.sub_mag[cur_mag] = orb_subscribe_multi(ORB_ID(sensor_mag), i);
-
-				sensor_mag_s report{};
-				orb_copy(ORB_ID(sensor_mag), worker_data.sub_mag[cur_mag], &report);
-
-#if 1 // TODO: replace all IOCTL usage
-
-				// For NuttX, we get the UNIQUE device ID from the sensor driver via an IOCTL
-				// and match it up with the one from the uORB subscription, because the
-				// instance ordering of uORB and the order of the FDs may not be the same.
-
-				if (report.device_id == (uint32_t)device_ids[cur_mag]) {
-					// Device IDs match, correct ORB instance for this mag
-					found_cur_mag = true;
-
-				} else {
-					orb_unsubscribe(worker_data.sub_mag[cur_mag]);
-				}
-
-#else
-
-				// For the DriverFramework drivers, we fill device ID (this is the first time) by copying one report.
-				device_ids[cur_mag] = report.device_id;
-				found_cur_mag = true;
-
-#endif
-			}
-
-			if (!found_cur_mag) {
-				calibration_log_critical(mavlink_log_pub, "Mag #%u (ID %u) no matching uORB devid", cur_mag, device_ids[cur_mag]);
+			if (worker_data.x[cur_mag] == nullptr || worker_data.y[cur_mag] == nullptr || worker_data.z[cur_mag] == nullptr) {
+				calibration_log_critical(mavlink_log_pub, "ERROR: out of memory");
 				result = calibrate_return_error;
 				break;
 			}
 
-			if (device_ids[cur_mag] != 0) {
-				// Get priority
-				int32_t prio;
-				orb_priority(worker_data.sub_mag[cur_mag], &prio);
-
-				if (prio > device_prio_max) {
-					device_prio_max = prio;
-					device_id_primary = device_ids[cur_mag];
-				}
-
-			} else {
-				calibration_log_critical(mavlink_log_pub, "Mag #%u no device id, abort", cur_mag);
-				result = calibrate_return_error;
-				break;
-			}
+		} else {
+			break;
 		}
 	}
 
-	// Limit update rate to get equally spaced measurements over time (in ms)
 	if (result == calibrate_return_ok) {
-		for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-			if (device_ids[cur_mag] != 0) {
-				// Mag in this slot is available
-				unsigned int orb_interval_msecs = (worker_data.calibration_interval_perside_useconds / 1000) /
-								  worker_data.calibration_points_perside;
-
-				//calibration_log_info(mavlink_log_pub, "Orb interval %u msecs", orb_interval_msecs);
-				orb_set_interval(worker_data.sub_mag[cur_mag], orb_interval_msecs);
-			}
-		}
-
-	}
-
-	if (result == calibrate_return_ok) {
-		int cancel_sub  = calibrate_cancel_subscribe();
-
 		result = calibrate_from_orientation(mavlink_log_pub,                    // uORB handle to write output
-						    cancel_sub,                         // Subscription to vehicle_command for cancel support
 						    worker_data.side_data_collected,    // Sides to calibrate
 						    mag_calibration_worker,             // Calibration worker
 						    &worker_data,			// Opaque data for calibration worked
 						    true);				// true: lenient still detection
-		calibrate_cancel_unsubscribe(cancel_sub);
 	}
 
-	// Close subscriptions
-	for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-		if (worker_data.sub_mag[cur_mag] >= 0) {
-			px4_close(worker_data.sub_mag[cur_mag]);
-		}
+	// calibration values for each mag
+	Vector3f sphere[MAX_MAGS];
+	Vector3f diag[MAX_MAGS];
+	Vector3f offdiag[MAX_MAGS];
+	float sphere_radius[MAX_MAGS];
+
+	for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+		sphere_radius[cur_mag] = MAG_SPHERE_RADIUS_DEFAULT;
+		sphere[cur_mag].zero();
+		diag[cur_mag] = Vector3f{1.f, 1.f, 1.f};
+		offdiag[cur_mag].zero();
 	}
 
-	// Calculate calibration values for each mag
-
-	float sphere_x[max_mags];
-	float sphere_y[max_mags];
-	float sphere_z[max_mags];
-	float sphere_radius[max_mags];
-	float diag_x[max_mags];
-	float diag_y[max_mags];
-	float diag_z[max_mags];
-	float offdiag_x[max_mags];
-	float offdiag_y[max_mags];
-	float offdiag_z[max_mags];
-
-	for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-		sphere_x[cur_mag] = 0.0f;
-		sphere_y[cur_mag] = 0.0f;
-		sphere_z[cur_mag] = 0.0f;
-		sphere_radius[cur_mag] = 0.2f;
-		diag_x[cur_mag] = 1.0f;
-		diag_y[cur_mag] = 1.0f;
-		diag_z[cur_mag] = 1.0f;
-		offdiag_x[cur_mag] = 0.0f;
-		offdiag_y[cur_mag] = 0.0f;
-		offdiag_z[cur_mag] = 0.0f;
-	}
-
-	// Sphere fit the data to get calibration values
 	if (result == calibrate_return_ok) {
-		for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-			if (device_ids[cur_mag] != 0) {
+
+		// if GPS is available use real field intensity from world magnetic model
+		uORB::SubscriptionData<vehicle_gps_position_s> gps_sub{ORB_ID(vehicle_gps_position)};
+		const vehicle_gps_position_s &gps = gps_sub.get();
+
+		if (hrt_elapsed_time(&gps.timestamp) < 10_s && (gps.fix_type >= 2) && (gps.eph < 1000)) {
+			const double lat = gps.lat / 1.e7;
+			const double lon = gps.lon / 1.e7;
+
+			// magnetic field data returned by the geo library using the current GPS position
+			const float mag_strength_gps = get_mag_strength_gauss(lat, lon);
+
+			PX4_INFO("[cal] using current GPS for field strength: %.4f Gauss", (double)mag_strength_gps);
+
+			for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+				sphere_radius[cur_mag] = mag_strength_gps;
+			}
+		}
+
+		// Sphere fit the data to get calibration values
+		for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+			if (worker_data.calibration[cur_mag].device_id() != 0) {
 				// Mag in this slot is available and we should have values for it to calibrate
 
 				// Estimate only the offsets if two-sided calibration is selected, as the problem is not constrained
 				// enough to reliably estimate both scales and offsets with 2 sides only (even if the existing calibration
 				// is already close)
-				bool sphere_fit_only = calibration_sides <= 2;
-				ellipsoid_fit_least_squares(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
-							    worker_data.calibration_counter_total[cur_mag], 100,
-							    &sphere_x[cur_mag], &sphere_y[cur_mag], &sphere_z[cur_mag],
-							    &sphere_radius[cur_mag],
-							    &diag_x[cur_mag], &diag_y[cur_mag], &diag_z[cur_mag],
-							    &offdiag_x[cur_mag], &offdiag_y[cur_mag], &offdiag_z[cur_mag], sphere_fit_only);
+				bool sphere_fit_only = worker_data.calibration_sides <= 2;
+				bool sphere_fit_success = false;
+				{
+					float fitness = 1.0e30f;
+					float sphere_lambda = 1.0f;
+					static constexpr int max_iterations = 100;
 
-				result = check_calibration_result(sphere_x[cur_mag], sphere_y[cur_mag], sphere_z[cur_mag],
+					for (int i = 0; i < max_iterations; i++) {
+						int ret = run_lm_sphere_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
+									    fitness, sphere_lambda, worker_data.calibration_counter_total[cur_mag],
+									    &sphere[cur_mag](0), &sphere[cur_mag](1), &sphere[cur_mag](2),
+									    &sphere_radius[cur_mag],
+									    &diag[cur_mag](0), &diag[cur_mag](1), &diag[cur_mag](2),
+									    &offdiag[cur_mag](0), &offdiag[cur_mag](1), &offdiag[cur_mag](2));
+
+						if (ret == PX4_OK) {
+							sphere_fit_success = true;
+
+						} else {
+							// stop here if fit has previously succeeded
+							if (sphere_fit_success) {
+								break;
+							}
+						}
+
+						PX4_DEBUG("Mag: %d (%d/%d) sphere fit ret=%d, fitness: %.5f, lambda: %.5f, radius: %.3f, offset: [%.3f, %.3f %.3f]",
+							  cur_mag, i, max_iterations, ret, (double)fitness, (double)sphere_lambda, (double)sphere_radius[cur_mag],
+							  (double)sphere[cur_mag](0), (double)sphere[cur_mag](1), (double)sphere[cur_mag](2));
+					}
+
+					PX4_INFO("Mag: %d sphere fitness: %.5f radius: %.4f", cur_mag, (double)fitness, (double)sphere_radius[cur_mag]);
+				}
+
+				bool ellipsoid_fit_success = false;
+
+				if (!sphere_fit_only) {
+					float fitness = 1.0e30f;
+					float ellipsoid_lambda = 1.0f;
+					static constexpr int max_iterations = 100;
+
+					for (int i = 0; i < max_iterations; i++) {
+						int ret = run_lm_ellipsoid_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
+									       fitness, ellipsoid_lambda, worker_data.calibration_counter_total[cur_mag],
+									       &sphere[cur_mag](0), &sphere[cur_mag](1), &sphere[cur_mag](2),
+									       &sphere_radius[cur_mag],
+									       &diag[cur_mag](0), &diag[cur_mag](1), &diag[cur_mag](2),
+									       &offdiag[cur_mag](0), &offdiag[cur_mag](1), &offdiag[cur_mag](2));
+
+						if (ret == PX4_OK) {
+							ellipsoid_fit_success = true;
+
+						} else {
+							// stop here if fit has previously succeeded
+							if (ellipsoid_fit_success) {
+								break;
+							}
+						}
+
+						PX4_DEBUG("Mag: %d (%d/%d) ellipsoid fit ret=%d, fitness: %.5f, lambda: %.5f, radius: %.3f, offset: [%.3f, %.3f %.3f]",
+							  cur_mag, i, max_iterations, ret, (double)fitness, (double)ellipsoid_lambda, (double)sphere_radius[cur_mag],
+							  (double)sphere[cur_mag](0), (double)sphere[cur_mag](1), (double)sphere[cur_mag](2));
+					}
+
+					PX4_INFO("Mag: %d ellipsoid fitness: %.5f", cur_mag, (double)fitness);
+				}
+
+				if (!sphere_fit_success && !ellipsoid_fit_success) {
+					calibration_log_emergency(mavlink_log_pub, "Retry calibration (unable to fit mag #%u)", cur_mag);
+					result = calibrate_return_error;
+					break;
+				}
+
+				result = check_calibration_result(sphere[cur_mag](0), sphere[cur_mag](1), sphere[cur_mag](2),
 								  sphere_radius[cur_mag],
-								  diag_x[cur_mag], diag_y[cur_mag], diag_z[cur_mag],
-								  offdiag_x[cur_mag], offdiag_y[cur_mag], offdiag_z[cur_mag],
+								  diag[cur_mag](0), diag[cur_mag](1), diag[cur_mag](2),
+								  offdiag[cur_mag](0), offdiag[cur_mag](1), offdiag[cur_mag](2),
 								  mavlink_log_pub, cur_mag);
 
 				if (result == calibrate_return_error) {
@@ -745,163 +608,377 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 		}
 	}
 
-	// Print uncalibrated data points
+
+#if 0
+
+	// DO NOT REMOVE! Critical validation data!
 	if (result == calibrate_return_ok) {
+		// Print uncalibrated data points
+		for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+			if (worker_data.calibration_counter_total[cur_mag] == 0) {
+				continue;
+			}
 
-		// DO NOT REMOVE! Critical validation data!
+			printf("MAG %u with %u samples:\n", cur_mag, worker_data.calibration_counter_total[cur_mag]);
+			printf("RAW -> CALIBRATED\n");
 
-		// printf("RAW DATA:\n--------------------\n");
-		// for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
+			float scale_data[9] {
+				diag[cur_mag](0),    offdiag[cur_mag](0), offdiag[cur_mag](1),
+				offdiag[cur_mag](0),    diag[cur_mag](1), offdiag[cur_mag](2),
+				offdiag[cur_mag](1), offdiag[cur_mag](2),    diag[cur_mag](2)
+			};
 
-		// 	if (worker_data.calibration_counter_total[cur_mag] == 0) {
-		// 		continue;
-		// 	}
+			const Matrix3f scale{scale_data};
+			const Vector3f &offset = sphere[cur_mag];
 
-		// 	printf("RAW: MAG %u with %u samples:\n", (unsigned)cur_mag, (unsigned)worker_data.calibration_counter_total[cur_mag]);
+			for (size_t i = 0; i < worker_data.calibration_counter_total[cur_mag]; i++) {
+				float x = worker_data.x[cur_mag][i];
+				float y = worker_data.y[cur_mag][i];
+				float z = worker_data.z[cur_mag][i];
 
-		// 	for (size_t i = 0; i < worker_data.calibration_counter_total[cur_mag]; i++) {
-		// 		float x = worker_data.x[cur_mag][i];
-		// 		float y = worker_data.y[cur_mag][i];
-		// 		float z = worker_data.z[cur_mag][i];
-		// 		printf("%8.4f, %8.4f, %8.4f\n", (double)x, (double)y, (double)z);
-		// 	}
+				// apply calibration
+				const Vector3f cal{scale *(Vector3f{x, y, z} - offset)};
 
-		// 	printf(">>>>>>>\n");
-		// }
+				printf("[%.3f, %.3f, %.3f] -> [%.3f, %.3f, %.3f]\n",
+				       (double)x, (double)y, (double)z,
+				       (double)cal(0), (double)cal(1), (double)cal(2));
+			}
 
-		// printf("CALIBRATED DATA:\n--------------------\n");
-		// for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-
-		// 	if (worker_data.calibration_counter_total[cur_mag] == 0) {
-		// 		continue;
-		// 	}
-
-		// 	printf("Calibrated: MAG %u with %u samples:\n", (unsigned)cur_mag, (unsigned)worker_data.calibration_counter_total[cur_mag]);
-
-		// 	for (size_t i = 0; i < worker_data.calibration_counter_total[cur_mag]; i++) {
-		// 		float x = worker_data.x[cur_mag][i] - sphere_x[cur_mag];
-		// 		float y = worker_data.y[cur_mag][i] - sphere_y[cur_mag];
-		// 		float z = worker_data.z[cur_mag][i] - sphere_z[cur_mag];
-		// 		printf("%8.4f, %8.4f, %8.4f\n", (double)x, (double)y, (double)z);
-		// 	}
-
-		// 	printf("SPHERE RADIUS: %8.4f\n", (double)sphere_radius[cur_mag]);
-		// 	printf(">>>>>>>\n");
-		// }
+			printf("SPHERE RADIUS: %8.4f\n", (double)sphere_radius[cur_mag]);
+		}
 	}
 
+#endif // DO NOT REMOVE! Critical validation data!
+
+
+	// Attempt to automatically determine external mag rotations
+	if (result == calibrate_return_ok) {
+		int32_t param_cal_mag_rot_auto = 0;
+		param_get(param_find("CAL_MAG_ROT_AUTO"), &param_cal_mag_rot_auto);
+
+		if ((worker_data.calibration_sides >= 3) && (param_cal_mag_rot_auto == 1)) {
+
+			// find first internal mag to use as reference
+			int internal_index = -1;
+
+			for (unsigned cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+				if (!worker_data.calibration[cur_mag].external() && (worker_data.calibration[cur_mag].device_id() != 0)) {
+					internal_index = cur_mag;
+					break;
+				}
+			}
+
+			// only proceed if there's a valid internal
+			if (internal_index >= 0) {
+
+				const Dcmf board_rotation = calibration::GetBoardRotation();
+
+				// apply new calibrations to all raw sensor data before comparison
+				for (unsigned cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+					if (worker_data.calibration[cur_mag].device_id() != 0) {
+
+						float scale_data[9] {
+							diag[cur_mag](0),    offdiag[cur_mag](0), offdiag[cur_mag](1),
+							offdiag[cur_mag](0),    diag[cur_mag](1), offdiag[cur_mag](2),
+							offdiag[cur_mag](1), offdiag[cur_mag](2),    diag[cur_mag](2)
+						};
+						const Matrix3f scale{scale_data};
+
+						const Vector3f &offset{sphere[cur_mag]};
+
+						for (unsigned i = 0; i < worker_data.calibration_counter_total[cur_mag]; i++) {
+
+							const Vector3f sample{worker_data.x[cur_mag][i], worker_data.y[cur_mag][i], worker_data.z[cur_mag][i]};
+
+							// apply calibration
+							Vector3f m{scale *(sample - offset)};
+
+							if (!worker_data.calibration[cur_mag].external()) {
+								// rotate internal mag data to board
+								m = board_rotation * m;
+							}
+
+							// store back in worker_data
+							worker_data.x[cur_mag][i] = m(0);
+							worker_data.y[cur_mag][i] = m(1);
+							worker_data.z[cur_mag][i] = m(2);
+						}
+					}
+				}
+
+				// external mags try all rotations and compute mean square error (MSE) compared with first internal mag
+				for (int cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+					if ((worker_data.calibration[cur_mag].device_id() != 0) && (cur_mag != internal_index)) {
+
+						const int last_sample_index = math::min(worker_data.calibration_counter_total[internal_index],
+											worker_data.calibration_counter_total[cur_mag]);
+
+						float MSE[ROTATION_MAX] {}; // mean square error for each rotation
+
+						float min_mse = FLT_MAX;
+						Rotation best_rotation = ROTATION_NONE;
+
+						for (int r = ROTATION_NONE; r < ROTATION_MAX; r++) {
+
+							switch (r) {
+							case ROTATION_ROLL_90_PITCH_68_YAW_293: // skip
+
+							// FALLTHROUGH
+							case ROTATION_PITCH_180_YAW_90:  // skip 26, same as 14 ROTATION_ROLL_180_YAW_270
+
+							// FALLTHROUGH
+							case ROTATION_PITCH_180_YAW_270: // skip 27, same as 10 ROTATION_ROLL_180_YAW_90
+
+							// FALLTHROUGH
+							case ROTATION_ROLL_270_YAW_180:  // skip 41, same as 31 ROTATION_ROLL_90_PITCH_180
+
+							// FALLTHROUGH
+							case ROTATION_ROLL_270_YAW_270:  // skip 42, same as 36 ROTATION_ROLL_90_PITCH_180_YAW_90
+
+							// FALLTHROUGH
+							case ROTATION_PITCH_90_YAW_180:  // skip 43, same as 29 ROTATION_ROLL_180_PITCH_90
+
+							// FALLTHROUGH
+							case ROTATION_PITCH_9_YAW_180: // skip, too close to ROTATION_YAW_180
+								MSE[r] = FLT_MAX;
+								break;
+
+							default:
+								float diff_sum = 0.f;
+
+								for (int i = 0; i < last_sample_index; i++) {
+									float x = worker_data.x[cur_mag][i];
+									float y = worker_data.y[cur_mag][i];
+									float z = worker_data.z[cur_mag][i];
+									rotate_3f((enum Rotation)r, x, y, z);
+
+									Vector3f diff = Vector3f{x, y, z} - Vector3f{worker_data.x[internal_index][i], worker_data.y[internal_index][i], worker_data.z[internal_index][i]};
+
+									diff_sum += diff.norm_squared();
+								}
+
+								// compute mean squared error
+								MSE[r] = diff_sum / last_sample_index;
+
+								if (MSE[r] < min_mse) {
+									min_mse = MSE[r];
+									best_rotation = (Rotation)r;
+								}
+
+								break;
+							}
+						}
+
+
+						// Check that the best rotation is at least twice as good as the next best
+						bool smallest_check_passed = true;
+
+						for (int r = ROTATION_NONE; r < ROTATION_MAX; r++) {
+							if (r != best_rotation) {
+								if (MSE[r] < (min_mse * 2.f)) {
+									smallest_check_passed = false;
+								}
+							}
+						}
+
+
+						// Check that the average error across all samples (relative to internal mag) is less than the minimum earth field (~0.25 Gauss)
+						const float mag_error_gs = sqrt(min_mse / last_sample_index);
+						bool total_error_check_passed = (mag_error_gs < 0.25f);
+
+#if defined(DEBUG_BUILD)
+						bool print_all_mse = true;
+#else
+						bool print_all_mse = false;
+#endif // DEBUG_BUILD
+
+						if (worker_data.calibration[cur_mag].external()) {
+
+							switch (worker_data.calibration[cur_mag].rotation_enum()) {
+							case ROTATION_ROLL_90_PITCH_68_YAW_293:
+
+							// FALLTHROUGH
+							case ROTATION_PITCH_9_YAW_180:
+								PX4_INFO("[cal] External Mag: %d (%d), keeping manually configured rotation %d", cur_mag,
+									 worker_data.calibration[cur_mag].device_id(), worker_data.calibration[cur_mag].rotation_enum());
+								continue;
+
+							default:
+								break;
+							}
+
+							if (smallest_check_passed && total_error_check_passed) {
+								if (best_rotation != worker_data.calibration[cur_mag].rotation_enum()) {
+									calibration_log_info(mavlink_log_pub, "[cal] External Mag: %d (%d), determined rotation: %d", cur_mag,
+											     worker_data.calibration[cur_mag].device_id(), best_rotation);
+
+									worker_data.calibration[cur_mag].set_rotation(best_rotation);
+
+								} else {
+									PX4_INFO("[cal] External Mag: %d (%d), no rotation change: %d", cur_mag,
+										 worker_data.calibration[cur_mag].device_id(), best_rotation);
+								}
+
+							} else {
+								PX4_ERR("External Mag: %d (%d), determining rotation failed", cur_mag, worker_data.calibration[cur_mag].device_id());
+								print_all_mse = true;
+							}
+
+						} else {
+							// non-primary internal mags, warn if there seems to be a rotation relative to the first primary (internal_index)
+							if (best_rotation != ROTATION_NONE) {
+								calibration_log_critical(mavlink_log_pub, "[cal] Internal Mag: %d (%d) rotation %d relative to primary %d (%d)",
+											 cur_mag, worker_data.calibration[cur_mag].device_id(), best_rotation,
+											 internal_index, worker_data.calibration[internal_index].device_id());
+
+								print_all_mse = true;
+							}
+						}
+
+						if (print_all_mse) {
+							for (int r = ROTATION_NONE; r < ROTATION_MAX; r++) {
+								PX4_ERR("%s Mag: %d (%d), rotation: %d, MSE: %.3f",
+									worker_data.calibration[cur_mag].external() ? "External" : "Internal",
+									cur_mag, worker_data.calibration[cur_mag].device_id(), r, (double)MSE[r]);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+
 	// Data points are no longer needed
-	for (size_t cur_mag = 0; cur_mag < max_mags; cur_mag++) {
+	for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
 		free(worker_data.x[cur_mag]);
 		free(worker_data.y[cur_mag]);
 		free(worker_data.z[cur_mag]);
 	}
 
 	if (result == calibrate_return_ok) {
+		for (unsigned cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
 
-		for (unsigned cur_mag = 0; cur_mag < max_mags; cur_mag++) {
-			if (device_ids[cur_mag] != 0) {
-				mag_calibration_s mscale;
+			auto &current_cal = worker_data.calibration[cur_mag];
 
-#if 1 // TODO: replace all IOCTL usage
-				int fd_mag = -1;
-
-				(void)sprintf(str, "%s%u", MAG_BASE_DEVICE_PATH, cur_mag);
-				fd_mag = px4_open(str, 0);
-
-				if (fd_mag < 0) {
-					calibration_log_critical(mavlink_log_pub, "ERROR: unable to open mag device #%u", cur_mag);
-					result = calibrate_return_error;
-				}
-
-#endif
-
-				if (result == calibrate_return_ok) {
-
-#if 1 // TODO: replace all IOCTL usage
-
-					// Read existing calibration
-					if (px4_ioctl(fd_mag, MAGIOCGSCALE, (long unsigned int)&mscale) != PX4_OK) {
-						calibration_log_critical(mavlink_log_pub, CAL_ERROR_READ_CAL_MSG);
-						result = calibrate_return_error;
-					}
-
+			if (current_cal.device_id() != 0) {
+				if (worker_data.append_to_existing_calibration) {
 					// Update calibration
 					// The formula for applying the calibration is:
-					//   mag_value = (mag_readout - (offset_existing + offset_new/scale_existing)) * scale_existing * scale_new
-					mscale.x_offset = mscale.x_offset + sphere_x[cur_mag] / mscale.x_scale;
-					mscale.y_offset = mscale.y_offset + sphere_y[cur_mag] / mscale.y_scale;
-					mscale.z_offset = mscale.z_offset + sphere_z[cur_mag] / mscale.z_scale;
-					mscale.x_scale = mscale.x_scale * diag_x[cur_mag];
-					mscale.y_scale = mscale.y_scale * diag_y[cur_mag];
-					mscale.z_scale = mscale.z_scale * diag_z[cur_mag];
+					//   mag_value = (mag_readout - (offset_existing + offset_new/scale_existing)) * scale_existing
+					Vector3f offset = current_cal.offset() + sphere[cur_mag].edivide(current_cal.scale().diag());
+					current_cal.set_offset(offset);
 
-					if (px4_ioctl(fd_mag, MAGIOCSSCALE, (long unsigned int)&mscale) != PX4_OK) {
-						calibration_log_critical(mavlink_log_pub, CAL_ERROR_APPLY_CAL_MSG);
-						result = calibrate_return_error;
-					}
-
-#else
-					mscale.x_offset = sphere_x[cur_mag];
-					mscale.y_offset = sphere_y[cur_mag];
-					mscale.z_offset = sphere_z[cur_mag];
-					mscale.x_scale = diag_x[cur_mag];
-					mscale.y_scale = diag_y[cur_mag];
-					mscale.z_scale = diag_z[cur_mag];
-#endif
+				} else {
+					current_cal.set_offset(sphere[cur_mag]);
+					current_cal.set_scale(diag[cur_mag]);
+					current_cal.set_offdiagonal(offdiag[cur_mag]);
 				}
 
-#if 1 // TODO: replace all IOCTL usage
+				current_cal.PrintStatus();
 
-				// Mag device no longer needed
-				if (fd_mag >= 0) {
-					px4_close(fd_mag);
-				}
-
-#endif
-
-				if (result == calibrate_return_ok) {
-					bool failed = false;
-
-					/* set parameters */
-
-					(void)sprintf(str, "CAL_MAG%u_ID", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(device_ids[cur_mag])));
-					(void)sprintf(str, "CAL_MAG%u_XOFF", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.x_offset)));
-					(void)sprintf(str, "CAL_MAG%u_YOFF", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.y_offset)));
-					(void)sprintf(str, "CAL_MAG%u_ZOFF", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.z_offset)));
-
-					(void)sprintf(str, "CAL_MAG%u_XSCALE", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.x_scale)));
-					(void)sprintf(str, "CAL_MAG%u_YSCALE", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.y_scale)));
-					(void)sprintf(str, "CAL_MAG%u_ZSCALE", cur_mag);
-					failed |= (PX4_OK != param_set_no_notification(param_find(str), &(mscale.z_scale)));
-
-					if (failed) {
-						calibration_log_critical(mavlink_log_pub, CAL_ERROR_SET_PARAMS_MSG);
-						result = calibrate_return_error;
-
-					} else {
-						calibration_log_info(mavlink_log_pub, "[cal] mag #%u off: x:%.2f y:%.2f z:%.2f Ga",
-								     cur_mag, (double)mscale.x_offset, (double)mscale.y_offset, (double)mscale.z_offset);
-
-						calibration_log_info(mavlink_log_pub, "[cal] mag #%u scale: x:%.2f y:%.2f z:%.2f",
-								     cur_mag, (double)mscale.x_scale, (double)mscale.y_scale, (double)mscale.z_scale);
-
-						px4_usleep(200000);
-					}
-				}
+			} else {
+				current_cal.Reset();
 			}
+
+			current_cal.set_calibration_index(cur_mag);
+			current_cal.ParametersSave();
 		}
 
-		// Trigger a param set on the last step so the whole
-		// system updates
-		(void)param_set(param_find("CAL_MAG_PRIME"), &(device_id_primary));
+		// reset the learned EKF mag in-flight bias offsets which have been learned for the previous
+		//  sensor calibration and will be invalidated by a new sensor calibration
+		for (int axis = 0; axis < 3; axis++) {
+			char axis_char = 'X' + axis;
+			char str[20] {};
+			sprintf(str, "EKF2_MAGBIAS_%c", axis_char);
+			float offset = 0.f;
+			param_set_no_notification(param_find(str), &offset);
+		}
+
+		param_notify_changes();
 	}
 
 	return result;
+}
+
+int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radians)
+{
+	// magnetometer quick calibration
+	//  if GPS available use world magnetic model to zero mag offsets
+
+	Vector3f mag_earth_pred{};
+	bool mag_earth_available = false;
+
+	uORB::Subscription vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
+	vehicle_gps_position_s gps{};
+
+	if (vehicle_gps_position_sub.copy(&gps)) {
+		if (gps.eph < 1000) {
+			const double lat = gps.lat / 1.e7;
+			const double lon = gps.lon / 1.e7;
+
+			// magnetic field data returned by the geo library using the current GPS position
+			const float mag_declination_gps = get_mag_declination_radians(lat, lon);
+			const float mag_inclination_gps = get_mag_inclination_radians(lat, lon);
+			const float mag_strength_gps = get_mag_strength_gauss(lat, lon);
+
+			mag_earth_pred = Dcmf(Eulerf(0, -mag_inclination_gps, mag_declination_gps)) * Vector3f(mag_strength_gps, 0, 0);
+
+			mag_earth_available = true;
+		}
+	}
+
+	if (!mag_earth_available) {
+		calibration_log_critical(mavlink_log_pub, "GPS required for mag quick cal");
+		return calibrate_return_error;
+
+	} else {
+
+		uORB::Subscription vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+		vehicle_attitude_s attitude{};
+		vehicle_attitude_sub.copy(&attitude);
+
+		if (hrt_elapsed_time(&attitude.timestamp) > 1_s) {
+			calibration_log_critical(mavlink_log_pub, "attitude required for mag quick cal");
+			return calibrate_return_error;
+		}
+
+		calibration_log_critical(mavlink_log_pub, "Assuming vehicle is facing heading %.1f degrees",
+					 (double)math::radians(heading_radians));
+
+		matrix::Eulerf euler{matrix::Quatf{attitude.q}};
+		euler(2) = heading_radians;
+
+		const Vector3f expected_field = Dcmf(euler).transpose() * mag_earth_pred;
+
+		for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+			uORB::Subscription mag_sub{ORB_ID(sensor_mag), cur_mag};
+			sensor_mag_s mag{};
+			mag_sub.copy(&mag);
+
+			if (mag_sub.advertised() && (hrt_elapsed_time(&mag.timestamp) < 1_s)) {
+
+				calibration::Magnetometer cal{mag.device_id, mag.is_external};
+
+				// force calibration index to uORB index
+				cal.set_calibration_index(cur_mag);
+
+				// use any existing scale and store the offset to the expected earth field
+				const Vector3f offset = Vector3f{mag.x, mag.y, mag.z} - (cal.scale().I() * cal.rotation().transpose() * expected_field);
+				cal.set_offset(offset);
+
+				cal.PrintStatus();
+
+				// save new calibration
+				cal.ParametersSave();
+			}
+		}
+
+		param_notify_changes();
+
+		calibration_log_info(mavlink_log_pub, "Mag quick calibration finished");
+		return calibrate_return_ok;
+	}
+
+	return calibrate_return_error;
 }

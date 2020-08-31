@@ -33,7 +33,7 @@
 
 #pragma once
 
-#include "Mixer/Mixer.hpp"
+#include "MixerBase/Mixer.hpp"
 
 /**
  * Group of mixers, built up from single mixers and processed

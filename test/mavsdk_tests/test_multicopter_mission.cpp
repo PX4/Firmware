@@ -48,7 +48,8 @@ TEST_CASE("Takeoff and Land", "[multicopter][vtol]")
 	tester.takeoff();
 	tester.wait_until_hovering();
 	tester.land();
-	tester.wait_until_disarmed();
+	std::chrono::seconds until_disarmed_timeout = std::chrono::seconds(15);
+	tester.wait_until_disarmed(until_disarmed_timeout);
 }
 
 TEST_CASE("Fly square Multicopter Missions", "[multicopter][vtol]")
@@ -70,10 +71,30 @@ TEST_CASE("Fly square Multicopter Missions", "[multicopter][vtol]")
 		AutopilotTester::MissionOptions mission_options;
 		mission_options.rtl_at_end = false;
 		tester.prepare_square_mission(mission_options);
+		tester.check_tracks_mission();
 		tester.arm();
 		tester.execute_mission();
 		tester.wait_until_hovering();
 		tester.execute_rtl();
 		tester.wait_until_disarmed();
 	}
+}
+
+TEST_CASE("Fly straight Multicopter Mission", "[multicopter]")
+{
+	AutopilotTester tester;
+	tester.connect(connection_url);
+	tester.wait_until_ready();
+
+	AutopilotTester::MissionOptions mission_options;
+	mission_options.rtl_at_end = false;
+	mission_options.fly_through = true;
+	tester.prepare_straight_mission(mission_options);
+	tester.check_mission_item_speed_above(2, 4.5);
+	tester.check_tracks_mission();
+	tester.arm();
+	tester.execute_mission();
+	tester.wait_until_hovering();
+	tester.execute_rtl();
+	tester.wait_until_disarmed();
 }

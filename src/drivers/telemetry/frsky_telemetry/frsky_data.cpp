@@ -53,7 +53,7 @@
 
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
-#include <uORB/topics/sensor_combined.h>
+#include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
@@ -67,7 +67,7 @@
 struct frsky_subscription_data_s {
 
 	uORB::SubscriptionData<battery_status_s> battery_status_sub{ORB_ID(battery_status)};
-	uORB::SubscriptionData<sensor_combined_s> sensor_combined_sub{ORB_ID(sensor_combined)};
+	uORB::SubscriptionData<vehicle_acceleration_s> vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 	uORB::SubscriptionData<vehicle_air_data_s> vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
 	uORB::SubscriptionData<vehicle_local_position_s> vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionData<vehicle_global_position_s> vehicle_global_position_sub{ORB_ID(vehicle_global_position)};
@@ -149,7 +149,7 @@ static void frsky_send_data(int uart, uint8_t id, int16_t data)
 void frsky_update_topics()
 {
 	subscription_data->battery_status_sub.update();
-	subscription_data->sensor_combined_sub.update();
+	subscription_data->vehicle_acceleration_sub.update();
 	subscription_data->vehicle_air_data_sub.update();
 	subscription_data->vehicle_local_position_sub.update();
 	subscription_data->vehicle_global_position_sub.update();
@@ -164,10 +164,10 @@ void frsky_update_topics()
 void frsky_send_frame1(int uart)
 {
 	/* send formatted frame */
-	const sensor_combined_s &sensor_combined = subscription_data->sensor_combined_sub.get();
-	frsky_send_data(uart, FRSKY_ID_ACCEL_X, roundf(sensor_combined.accelerometer_m_s2[0] * 1000.0f));
-	frsky_send_data(uart, FRSKY_ID_ACCEL_Y, roundf(sensor_combined.accelerometer_m_s2[1] * 1000.0f));
-	frsky_send_data(uart, FRSKY_ID_ACCEL_Z, roundf(sensor_combined.accelerometer_m_s2[2] * 1000.0f));
+	const vehicle_acceleration_s &vehicle_acceleration = subscription_data->vehicle_acceleration_sub.get();
+	frsky_send_data(uart, FRSKY_ID_ACCEL_X, roundf(vehicle_acceleration.xyz[0] * 1000.0f));
+	frsky_send_data(uart, FRSKY_ID_ACCEL_Y, roundf(vehicle_acceleration.xyz[1] * 1000.0f));
+	frsky_send_data(uart, FRSKY_ID_ACCEL_Z, roundf(vehicle_acceleration.xyz[2] * 1000.0f));
 
 	const vehicle_air_data_s &air_data = subscription_data->vehicle_air_data_sub.get();
 	frsky_send_data(uart, FRSKY_ID_BARO_ALT_BP, air_data.baro_alt_meter);
@@ -212,7 +212,7 @@ void frsky_send_frame2(int uart)
 	int sec = 0;
 
 	if (gpos.timestamp != 0 && hrt_absolute_time() < gpos.timestamp + 20000) {
-		course = gpos.yaw / M_PI_F * 180.0f;
+		course = lpos.heading / M_PI_F * 180.0f;
 
 		if (course < 0.f) { // course is in range [0, 360], 0=north, CW
 			course += 360.f;

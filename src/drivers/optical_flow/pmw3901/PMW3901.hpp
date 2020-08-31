@@ -58,12 +58,9 @@
 #define DIR_WRITE(a) ((a) | (1 << 7))
 #define DIR_READ(a) ((a) & 0x7f)
 
-#define PMW3901_DEVICE_PATH "/dev/pmw3901"
-
 /* PMW3901 Registers addresses */
 #define PMW3901_US 1000 /*   1 ms */
 #define PMW3901_SAMPLE_INTERVAL 10000 /*  10 ms */
-
 
 class PMW3901 : public device::SPI, public I2CSPIDriver<PMW3901>
 {

@@ -21,7 +21,7 @@ void BlockLocalPositionEstimator::landInit()
 
 	// if finished
 	if (_landCount > REQ_LAND_INIT_COUNT) {
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] land init");
+		mavlink_log_info(&mavlink_log_pub, "[lpe] land init");
 		_sensorTimeout &= ~SENSOR_LAND;
 		_sensorFault &= ~SENSOR_LAND;
 	}
@@ -73,7 +73,7 @@ void BlockLocalPositionEstimator::landCorrect()
 	if (beta / BETA_TABLE[n_y_land] > beta_thresh) {
 		if (!(_sensorFault & SENSOR_LAND)) {
 			_sensorFault |= SENSOR_LAND;
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] land fault,  beta %5.2f", double(beta));
+			mavlink_log_info(&mavlink_log_pub, "[lpe] land fault,  beta %5.2f", double(beta));
 		}
 
 		// abort correction
@@ -81,7 +81,7 @@ void BlockLocalPositionEstimator::landCorrect()
 
 	} else if (_sensorFault & SENSOR_LAND) {
 		_sensorFault &= ~SENSOR_LAND;
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] land OK");
+		mavlink_log_info(&mavlink_log_pub, "[lpe] land OK");
 	}
 
 	// kalman filter correction always for land detector
@@ -97,7 +97,7 @@ void BlockLocalPositionEstimator::landCheckTimeout()
 		if (!(_sensorTimeout & SENSOR_LAND)) {
 			_sensorTimeout |= SENSOR_LAND;
 			_landCount = 0;
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] land timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] land timeout ");
 		}
 	}
 }

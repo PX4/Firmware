@@ -11,6 +11,7 @@
 @#  - ids (List) list of all RTPS msg ids
 @###############################################
 @{
+from packaging import version
 import genmsg.msgs
 
 from px_generate_uorb_topic_helper import * # this is in Tools/
@@ -86,7 +87,7 @@ static constexpr int64_t TRIGGER_RESET_THRESHOLD_NS = 100ll * 1000ll * 1000ll;
 static constexpr int REQUEST_RESET_COUNTER_THRESHOLD = 5;
 
 @# Sets the timesync DDS type according to the FastRTPS and ROS2 version
-@[if fastrtps_version <= 1.7]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 @[    if ros2_distro]@
 using timesync_msg_t = @(package)::msg::dds_::Timesync_;
 @[    else]@
@@ -108,7 +109,7 @@ using TimesyncPublisher = timesync_Publisher;
 
 class TimeSync {
 public:
-	TimeSync();
+	TimeSync(bool debug);
 	virtual ~TimeSync();
 
 	/**
@@ -195,6 +196,8 @@ private:
 	uint8_t _last_msg_seq;
 	uint8_t _last_remote_msg_seq;
 
+	bool _debug;
+
 @[if ros2_distro]@
 	Timesync_Publisher _timesync_pub;
 	Timesync_Subscriber _timesync_sub;
@@ -213,7 +216,7 @@ private:
 	inline void updateOffset(const uint64_t& offset) { _offset_ns.store(offset, std::memory_order_relaxed); }
 
 	/** Timesync msg Getters **/
-@[if fastrtps_version <= 1.7 or not ros2_distro]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
 	inline uint64_t getMsgTimestamp(const timesync_msg_t* msg) { return msg->timestamp_(); }
 	inline uint8_t getMsgSysID(const timesync_msg_t* msg) { return msg->sys_id_(); }
 	inline uint8_t getMsgSeq(const timesync_msg_t* msg) { return msg->seq_(); }
@@ -228,17 +231,17 @@ private:
 @[end if]@
 
 	/** Timesync msg Setters **/
-@[if fastrtps_version <= 1.7 or not ros2_distro]@
-	inline uint64_t setMsgTimestamp(timesync_msg_t* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
-	inline uint8_t setMsgSysID(timesync_msg_t* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
-	inline uint8_t setMsgSeq(timesync_msg_t* msg, const uint8_t& seq) { msg->seq_() = seq; }
-	inline int64_t setMsgTC1(timesync_msg_t* msg, const int64_t& tc1) { msg->tc1_() = tc1; }
-	inline int64_t setMsgTS1(timesync_msg_t* msg, const int64_t& ts1) { msg->ts1_() = ts1; }
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
+	inline void setMsgTimestamp(timesync_msg_t* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
+	inline void setMsgSysID(timesync_msg_t* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
+	inline void setMsgSeq(timesync_msg_t* msg, const uint8_t& seq) { msg->seq_() = seq; }
+	inline void setMsgTC1(timesync_msg_t* msg, const int64_t& tc1) { msg->tc1_() = tc1; }
+	inline void setMsgTS1(timesync_msg_t* msg, const int64_t& ts1) { msg->ts1_() = ts1; }
 @[elif ros2_distro]@
-	inline uint64_t setMsgTimestamp(timesync_msg_t* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
-	inline uint8_t setMsgSysID(timesync_msg_t* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
-	inline uint8_t setMsgSeq(timesync_msg_t* msg, const uint8_t& seq) { msg->seq() = seq; }
-	inline int64_t setMsgTC1(timesync_msg_t* msg, const int64_t& tc1) { msg->tc1() = tc1; }
-	inline int64_t setMsgTS1(timesync_msg_t* msg, const int64_t& ts1) { msg->ts1() = ts1; }
+	inline void setMsgTimestamp(timesync_msg_t* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
+	inline void setMsgSysID(timesync_msg_t* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
+	inline void setMsgSeq(timesync_msg_t* msg, const uint8_t& seq) { msg->seq() = seq; }
+	inline void setMsgTC1(timesync_msg_t* msg, const int64_t& tc1) { msg->tc1() = tc1; }
+	inline void setMsgTS1(timesync_msg_t* msg, const int64_t& ts1) { msg->ts1() = ts1; }
 @[end if]@
 };

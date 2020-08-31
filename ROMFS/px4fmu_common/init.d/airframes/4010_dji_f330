@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name DJI Flame Wheel F330
+# @name DJI F330 w/ DJI ESCs
 #
 # @type Quadrotor x
 # @class Copter

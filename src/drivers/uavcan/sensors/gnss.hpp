@@ -55,7 +55,7 @@
 
 #include "sensor_bridge.hpp"
 
-class UavcanGnssBridge : public IUavcanSensorBridge
+class UavcanGnssBridge : public UavcanCDevSensorBridgeBase
 {
 	static constexpr unsigned ORB_TO_UAVCAN_FREQUENCY_HZ = 10;
 
@@ -63,15 +63,11 @@ public:
 	static const char *const NAME;
 
 	UavcanGnssBridge(uavcan::INode &node);
-	~UavcanGnssBridge() = default;
+	~UavcanGnssBridge();
 
 	const char *get_name() const override { return NAME; }
 
 	int init() override;
-
-	unsigned get_num_redundant_channels() const override;
-
-	void print_status() const override;
 
 private:
 	/**
@@ -118,11 +114,15 @@ private:
 	float		_last_gnss_auxiliary_hdop{0.0f};
 	float		_last_gnss_auxiliary_vdop{0.0f};
 
-	uORB::PublicationMulti<vehicle_gps_position_s>	_gps_pub{ORB_ID(vehicle_gps_position), ORB_PRIO_DEFAULT};
+	uORB::PublicationMulti<vehicle_gps_position_s>	_gps_pub{ORB_ID(vehicle_gps_position)};
 	uORB::Subscription				_orb_sub_gnss{ORB_ID(vehicle_gps_position)};
 
 	int	_receiver_node_id{-1};
 	bool	_old_fix_subscriber_active{true};
-	bool	_system_clock_set{false};			///< Have we set the system clock at least once from GNSS data?
 
+	orb_advert_t _report_pub;                ///< uORB pub for gnss position
+
+	bool _system_clock_set{false};  ///< Have we set the system clock at least once from GNSS data?
+
+	bool *_channel_using_fix2; ///< Flag for whether each channel is using Fix2 or Fix msg
 };

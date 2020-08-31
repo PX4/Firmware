@@ -76,8 +76,8 @@ cycletime(void)
 int test_time(int argc, char *argv[])
 {
 	hrt_abstime h, c;
-	int64_t lowdelta, maxdelta = 0;
-	int64_t delta, deltadelta;
+	int lowdelta, maxdelta = 0;
+	int delta, deltadelta;
 
 	/* enable the cycle counter */
 	(*(unsigned long *)0xe000edfc) |= (1 << 24);    /* DEMCR |= DEMCR_TRCENA */
@@ -111,7 +111,7 @@ int test_time(int argc, char *argv[])
 
 		px4_leave_critical_section(flags);
 
-		delta = abs(h - c);
+		delta = h - c;
 		deltadelta = abs(delta - lowdelta);
 
 		if (deltadelta > maxdelta) {
@@ -119,7 +119,7 @@ int test_time(int argc, char *argv[])
 		}
 
 		if (deltadelta > 1000) {
-			fprintf(stderr, "h %" PRIu64 " c %" PRIu64 " d %" PRId64 "\n", h, c, delta - lowdelta);
+			fprintf(stderr, "h %" PRIu64 " c %" PRIu64 " d %d\n", h, c, delta - lowdelta);
 		}
 	}
 

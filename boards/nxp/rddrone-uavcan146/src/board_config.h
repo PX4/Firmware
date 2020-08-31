@@ -79,25 +79,24 @@ __BEGIN_DECLS
 #define GPIO_LED_G     (PIN_PTD16 | GPIO_LOWDRIVE | GPIO_OUTPUT_ZERO)
 #define GPIO_LED_B     (PIN_PTD0  | GPIO_LOWDRIVE | GPIO_OUTPUT_ZERO)
 
-/* Buttons.  The RDDRONE-UAVCAN146 supports two buttons:
+/* Buttons.  The RDDRONE-UAVCAN146 supports one button:
  *
- *   SW2  PTC12
- *   SW3  PTC13
+ *   SW3  PTC14
  */
 
-#define GPIO_SW2       (PIN_PTC12 | PIN_INT_BOTH)
-#define GPIO_SW3       (PIN_PTC13 | PIN_INT_BOTH)
+#define GPIO_SW3       (PIN_PTC14 | PIN_INT_BOTH)
 
 /* SPI chip selects */
 
 /* Count of peripheral clock user configurations */
 
-#define NUM_OF_PERIPHERAL_CLOCKS_0 15
+#define NUM_OF_PERIPHERAL_CLOCKS_0 14
 
-/* I2C busses */
 
-#define PX4_I2C_BUS_ONBOARD                 PX4_BUS_NUMBER_TO_PX4(1)
-#define PX4_I2C_BUS_EXPANSION               PX4_BUS_NUMBER_TO_PX4(0)
+/* High-resolution timer */
+#define HRT_TIMER              1  /* FTM timer for the HRT */
+#define HRT_TIMER_CHANNEL      0  /* Use capture/compare channel 0 */
+#define HRT_PPM_CHANNEL        1  /* Use TPM1 capture/compare channel 1 */
 
 /****************************************************************************
  * Public Types

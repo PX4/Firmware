@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2017 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2017 - 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -87,11 +87,14 @@ add_custom_command(OUTPUT ${generated_serial_params_file}
 )
 
 set(parameters_xml ${PX4_BINARY_DIR}/parameters.xml)
+set(parameters_json ${PX4_BINARY_DIR}/parameters.json)
 file(GLOB_RECURSE param_src_files ${PX4_SOURCE_DIR}/src/*params.c)
-add_custom_command(OUTPUT ${parameters_xml}
+add_custom_command(OUTPUT ${parameters_xml} ${parameters_json}
 	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/px_process_params.py
 		--src-path ${module_list} ${generated_params_dir}
 		--xml ${parameters_xml}
+		--json ${parameters_json}
+		--compress
 		--inject-xml ${CMAKE_CURRENT_SOURCE_DIR}/parameters_injected.xml
 		--overrides ${PARAM_DEFAULT_OVERRIDES}
 		--board ${PX4_BOARD}
@@ -102,6 +105,7 @@ add_custom_command(OUTPUT ${parameters_xml}
 		parameters_injected.xml
 		px4params/srcparser.py
 		px4params/srcscanner.py
+		px4params/jsonout.py
 		px4params/xmlout.py
 		px_process_params.py
 		parameters_injected.xml
@@ -128,7 +132,7 @@ if ("${CONFIG_SHMEM}" STREQUAL "1")
 	list(APPEND SRCS parameters_shmem.cpp)
 else()
 	list(APPEND SRCS parameters.cpp)
-	if(PX4_TESTING)
+	if(BUILD_TESTING)
 		list(APPEND SRCS param_translation_unit_tests.cpp)
 	else()
 		list(APPEND SRCS param_translation.cpp)

@@ -159,7 +159,7 @@ PARAM_DEFINE_FLOAT(NAV_TRAFF_A_RADU, 10);
  *
  * Latitude of airfield home waypoint
  *
- * @unit deg * 1e7
+ * @unit deg*1e7
  * @min -900000000
  * @max 900000000
  * @group Data Link Loss
@@ -171,7 +171,7 @@ PARAM_DEFINE_INT32(NAV_AH_LAT, -265847810);
  *
  * Longitude of airfield home waypoint
  *
- * @unit deg * 1e7
+ * @unit deg*1e7
  * @min -1800000000
  * @max 1800000000
  * @group Data Link Loss
@@ -198,5 +198,3 @@ PARAM_DEFINE_FLOAT(NAV_AH_ALT, 600.0f);
  * @group Mission
  */
 PARAM_DEFINE_INT32(NAV_FORCE_VT, 1);
-
-

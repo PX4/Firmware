@@ -41,9 +41,27 @@
 
 
 /**
- * Maximum allowed down-pitch the controller is able to demand. This prevents large, negative
- * lift values being created when facing strong winds. The vehicle will use the pusher motor
- * to accelerate forward if necessary.
+ * Enable/disable usage of fixed-wing actuators in hover to generate forward force (instead of pitching down).
+ * This technique can be used to avoid the plane having to pitch down in order to move forward.
+ * This prevents large, negative lift values being created when facing strong winds.
+ * Fixed-wing forward actuators refers to puller/pusher (standard VTOL), or forward-tilt (tiltrotor VTOL).
+ * Only active if demaded down pitch is above VT_DWN_PITCH_MAX, and uses VT_FWD_THRUST_SC to get from
+ * demanded down pitch to fixed-wing actuation.
+ *
+ * @value 0 Disable FW forward actuation in hover.
+ * @value 1 Enable FW forward actuation in hover in altitude, position and auto modes (except LANDING).
+ * @value 2 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT1.
+ * @value 3 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT2.
+ * @value 4 Enable FW forward actuation in hover in altitude, position and auto modes.
+ *
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_INT32(VT_FWD_THRUST_EN, 0);
+
+/**
+ * Maximum allowed angle the vehicle is allowed to pitch down to generate forward force
+ * when fixed-wing forward actuation is active (seeVT_FW_TRHUST_EN).
+ * If demanded down pitch exceeds this limmit, the fixed-wing forward actuators are used instead.
  *
  * @min 0.0
  * @max 45.0
@@ -52,16 +70,17 @@
 PARAM_DEFINE_FLOAT(VT_DWN_PITCH_MAX, 5.0f);
 
 /**
- * Fixed wing thrust scale for hover forward flight.
+ * Fixed-wing actuator thrust scale for hover forward flight.
  *
- * Scale applied to fixed wing thrust being used as source for forward acceleration in multirotor mode.
- * This technique can be used to avoid the plane having to pitch down a lot in order to move forward.
- * Setting this value to 0 (default) will disable this strategy.
+ * Scale applied to the demanded down-pitch to get the fixed-wing forward actuation in hover mode.
+ * Only active if demaded down pitch is above VT_DWN_PITCH_MAX.
+ * Enabled via VT_FWD_THRUST_EN.
+ *
  * @min 0.0
  * @max 2.0
  * @group VTOL Attitude Control
  */
-PARAM_DEFINE_FLOAT(VT_FWD_THRUST_SC, 0.0f);
+PARAM_DEFINE_FLOAT(VT_FWD_THRUST_SC, 0.7f);
 
 /**
  * Back transition MC motor ramp up time

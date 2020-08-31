@@ -1,4 +1,4 @@
-name: Python CI checks
+name: Python CI Checks
 
 on:
   push:

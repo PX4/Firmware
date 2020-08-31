@@ -159,7 +159,7 @@ public:
 	 *			it is being torn down.
 	 * @return		OK on success, or -errno otherwise.
 	 */
-	virtual int	poll(file_t *filep, px4_pollfd_struct_t *fds, bool setup);
+	int	poll(file_t *filep, px4_pollfd_struct_t *fds, bool setup);
 
 	/**
 	 * Get the device name.
@@ -197,7 +197,7 @@ protected:
 	 *
 	 * @param events	The new event(s) being announced.
 	 */
-	virtual void	poll_notify(px4_pollevent_t events);
+	void	poll_notify(px4_pollevent_t events);
 
 	/**
 	 * Internal implementation of poll_notify.
@@ -240,7 +240,7 @@ protected:
 	 * @param class_devname   Device class name
 	 * @return class_instamce Class instance created, or -errno on failure
 	 */
-	virtual int register_class_devname(const char *class_devname);
+	int register_class_devname(const char *class_devname);
 
 	/**
 	 * Register a class device name, automatically adding device
@@ -250,7 +250,7 @@ protected:
 	 * @param class_instance  Device class instance from register_class_devname()
 	 * @return		  OK on success, -errno otherwise
 	 */
-	virtual int unregister_class_devname(const char *class_devname, unsigned class_instance);
+	int unregister_class_devname(const char *class_devname, unsigned class_instance);
 
 	/**
 	 * Take the driver lock.

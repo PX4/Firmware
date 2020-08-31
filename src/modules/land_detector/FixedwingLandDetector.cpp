@@ -51,16 +51,10 @@ FixedwingLandDetector::FixedwingLandDetector()
 	_landed_hysteresis.set_hysteresis_time_from(true, FLYING_TRIGGER_TIME_US);
 }
 
-void FixedwingLandDetector::_update_topics()
-{
-	LandDetector::_update_topics();
-	_airspeed_validated_sub.update(&_airspeed_validated);
-}
-
 bool FixedwingLandDetector::_get_landed_state()
 {
 	// Only trigger flight conditions if we are armed.
-	if (!_actuator_armed.armed) {
+	if (!_armed) {
 		return true;
 	}
 
@@ -83,19 +77,20 @@ bool FixedwingLandDetector::_get_landed_state()
 			_velocity_z_filtered = val;
 		}
 
+		airspeed_validated_s airspeed_validated{};
+		_airspeed_validated_sub.copy(&airspeed_validated);
+
 		// set _airspeed_filtered to 0 if airspeed data is invalid
-		if (!PX4_ISFINITE(_airspeed_validated.true_airspeed_m_s) || hrt_elapsed_time(&_airspeed_validated.timestamp) > 1_s) {
+		if (!PX4_ISFINITE(airspeed_validated.true_airspeed_m_s) || hrt_elapsed_time(&airspeed_validated.timestamp) > 1_s) {
 			_airspeed_filtered = 0.0f;
 
 		} else {
-			_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * _airspeed_validated.true_airspeed_m_s;
+			_airspeed_filtered = 0.95f * _airspeed_filtered + 0.05f * airspeed_validated.true_airspeed_m_s;
 		}
 
 		// A leaking lowpass prevents biases from building up, but
 		// gives a mostly correct response for short impulses.
-		const matrix::Vector3f accel{_vehicle_acceleration.xyz};
-		const float acc_hor = sqrtf(accel(0) * accel(0) + accel(1) * accel(1));
-
+		const float acc_hor = matrix::Vector2f(_acceleration).norm();
 		_xy_accel_filtered = _xy_accel_filtered * 0.8f + acc_hor * 0.18f;
 
 		// Crude land detector for fixedwing.

@@ -43,3 +43,19 @@
  *
  */
 PARAM_DEFINE_FLOAT(SENS_BARO_QNH, 1013.25f);
+
+/**
+ * Baro max rate.
+ *
+ * Barometric air data maximum publication rate. This is an upper bound,
+ * actual barometric data rate is still dependant on the sensor.
+ *
+ * @min 1
+ * @max 200
+ * @group Sensors
+ * @unit Hz
+ *
+ * @reboot_required true
+ *
+ */
+PARAM_DEFINE_FLOAT(SENS_BARO_RATE, 20.0f);

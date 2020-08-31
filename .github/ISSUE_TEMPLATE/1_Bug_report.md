@@ -19,7 +19,7 @@ A clear and concise description of what you expected to happen.
 
 **Log Files and Screenshots**
 *Always* provide a link to the flight log file:
-- Download the flight log file from the vehicle ([tutorial](https://docs.px4.io/en/getting_started/flight_reporting.html)).
+- Download the flight log file from the vehicle ([tutorial](https://docs.px4.io/master/en/getting_started/flight_reporting.html)).
 - Share the link to a log showing the problem on [PX4 Flight Review](http://logs.px4.io/).
 
 Add screenshots to help explain your problem.

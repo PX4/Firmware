@@ -25,11 +25,11 @@ px4_add_board(
 		distance_sensor # all available distance sensor drivers
 #		dshot not ported
 		gps
-		imu/adis16448
-		imu/adis16477
-		imu/adis16497
+		#imu/adis16448
+		#imu/adis16477
+		#imu/adis16497
 		#imu # all available imu drivers
-		imu/bmi055
+		imu/bosch/bmi055
 		imu/mpu6000
 		irlock
 		lights/blinkm
@@ -40,7 +40,7 @@ px4_add_board(
 		optical_flow # all available optical flow drivers
 #		pwm_input - not ptorable
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		rc_input
 		roboclaw
 		safety_button
@@ -74,7 +74,6 @@ px4_add_board(
 		vmount
 	SYSTEMCMDS
 #		bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
@@ -92,7 +91,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		top
 		topic_listener
 		tune_control

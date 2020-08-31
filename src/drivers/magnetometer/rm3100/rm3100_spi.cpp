@@ -49,13 +49,10 @@
 #include <unistd.h>
 
 #include <drivers/device/spi.h>
-#include <drivers/drv_mag.h>
 #include <drivers/drv_device.h>
 
 #include "board_config.h"
 #include "rm3100.h"
-
-#if defined(PX4_SPIDEV_RM) || defined (PX4_SPIDEV_RM_EXT)
 
 /* SPI protocol address bits */
 #define DIR_READ        (1<<7)
@@ -64,36 +61,29 @@
 class RM3100_SPI : public device::SPI
 {
 public:
-	RM3100_SPI(int bus, uint32_t device);
+	RM3100_SPI(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
 	virtual ~RM3100_SPI() = default;
 
 	virtual int     init();
-	virtual int     ioctl(unsigned operation, unsigned &arg);
 	virtual int     read(unsigned address, void *data, unsigned count);
 	virtual int     write(unsigned address, void *data, unsigned count);
 };
 
 device::Device *
-RM3100_SPI_interface(int bus);
+RM3100_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
 
 device::Device *
-RM3100_SPI_interface(int bus)
+RM3100_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode)
 {
-#ifdef PX4_SPIDEV_RM_EXT
-	return new RM3100_SPI(bus, PX4_SPIDEV_RM_EXT);
-#else
-	return new RM3100_SPI(bus, PX4_SPIDEV_RM);
-#endif
+	return new RM3100_SPI(bus, devid, bus_frequency, spi_mode);
 }
 
-RM3100_SPI::RM3100_SPI(int bus, uint32_t device) :
-	SPI("RM3100_SPI", nullptr, bus, device, SPIDEV_MODE3, 1 * 1000 * 1000 /* */)
+RM3100_SPI::RM3100_SPI(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode) :
+	SPI(DRV_MAG_DEVTYPE_RM3100, MODULE_NAME, bus, devid, spi_mode, bus_frequency)
 {
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_RM3100;
 }
 
-int
-RM3100_SPI::init()
+int RM3100_SPI::init()
 {
 	int ret;
 
@@ -119,29 +109,7 @@ RM3100_SPI::init()
 	return OK;
 }
 
-int
-RM3100_SPI::ioctl(unsigned operation, unsigned &arg)
-{
-	int ret;
-
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default: {
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-int
-RM3100_SPI::read(unsigned address, void *data, unsigned count)
+int RM3100_SPI::read(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 
@@ -156,8 +124,7 @@ RM3100_SPI::read(unsigned address, void *data, unsigned count)
 	return ret;
 }
 
-int
-RM3100_SPI::write(unsigned address, void *data, unsigned count)
+int RM3100_SPI::write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 
@@ -170,5 +137,3 @@ RM3100_SPI::write(unsigned address, void *data, unsigned count)
 
 	return transfer(&buf[0], &buf[0], count + 1);
 }
-
-#endif /* PX4_SPIDEV_RM || PX4_SPIDEV_RM_EXT */

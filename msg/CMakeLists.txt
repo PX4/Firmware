@@ -102,6 +102,7 @@ set(msg_files
 	power_monitor.msg
 	uwb_report.msg
 	pwm_input.msg
+	px4io_status.msg
 	qshell_req.msg
 	qshell_retval.msg
 	radio_status.msg
@@ -113,23 +114,20 @@ set(msg_files
 	satellite_info.msg
 	sensor_accel.msg
 	sensor_accel_fifo.msg
-	sensor_accel_integrated.msg
-	sensor_accel_status.msg
 	sensor_baro.msg
 	sensor_combined.msg
 	sensor_correction.msg
 	sensor_gyro.msg
 	sensor_gyro_fifo.msg
-	sensor_gyro_integrated.msg
-	sensor_gyro_status.msg
 	sensor_mag.msg
-	sensor_preflight.msg
+	sensor_preflight_imu.msg
+	sensor_preflight_mag.msg
 	sensor_selection.msg
-	servorail_status.msg
 	subsystem_info.msg
 	system_power.msg
 	task_stack_info.msg
 	tecs_status.msg
+	telemetry_heartbeat.msg
 	telemetry_status.msg
 	test_motor.msg
 	timesync.msg
@@ -157,6 +155,7 @@ set(msg_files
 	vehicle_global_position.msg
 	vehicle_gps_position.msg
 	vehicle_imu.msg
+	vehicle_imu_status.msg
 	vehicle_land_detected.msg
 	vehicle_local_position.msg
 	vehicle_local_position_setpoint.msg
@@ -241,6 +240,7 @@ add_custom_command(OUTPUT ${uorb_headers}
 		templates/uorb/msg.h.em
 		templates/uorb/uORBTopics.hpp.em
 		tools/px_generate_uorb_topic_files.py
+		tools/px_generate_uorb_topic_helper.py
 	COMMENT "Generating uORB topic headers"
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	VERBATIM
@@ -263,6 +263,7 @@ add_custom_command(OUTPUT ${uorb_sources}
 		templates/uorb/msg.cpp.em
 		templates/uorb/uORBTopics.cpp.em
 		tools/px_generate_uorb_topic_files.py
+		tools/px_generate_uorb_topic_helper.py
 	COMMENT "Generating uORB topic sources"
 	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	VERBATIM

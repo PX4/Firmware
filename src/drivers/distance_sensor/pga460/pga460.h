@@ -382,7 +382,7 @@ private:
 	/** @orb_advert_t orb_advert_t uORB advertisement topic. */
 	orb_advert_t _distance_sensor_topic{nullptr};
 
-	/** @param _fd Returns the file descriptor from px4_open(). */
+	/** @param _fd Returns the file descriptor from open(). */
 	int _fd{-1};
 
 	/** @param _port Stores the port name. */

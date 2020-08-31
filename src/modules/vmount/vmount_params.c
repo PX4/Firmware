@@ -123,7 +123,7 @@ PARAM_DEFINE_FLOAT(MNT_OB_LOCK_MODE, 0.0f);
 * @value 5 AUX5
 * @value 6 AUX6
 * @min 0
-* @max 5
+* @max 6
 * @group Mount
 */
 PARAM_DEFINE_INT32(MNT_MAN_ROLL, 0);
@@ -139,7 +139,7 @@ PARAM_DEFINE_INT32(MNT_MAN_ROLL, 0);
 * @value 5 AUX5
 * @value 6 AUX6
 * @min 0
-* @max 5
+* @max 6
 * @group Mount
 */
 PARAM_DEFINE_INT32(MNT_MAN_PITCH, 0);
@@ -155,7 +155,7 @@ PARAM_DEFINE_INT32(MNT_MAN_PITCH, 0);
 * @value 5 AUX5
 * @value 6 AUX6
 * @min 0
-* @max 5
+* @max 6
 * @group Mount
 */
 PARAM_DEFINE_INT32(MNT_MAN_YAW, 0);

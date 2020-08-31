@@ -34,7 +34,7 @@ px4_add_module(
 	MODULE systemcmds__top
 	MAIN top
 	PRIORITY
-		"SCHED_PRIORITY_MAX - 7" # max priority below sensor WQ threads
+		"SCHED_PRIORITY_MAX - 16" # max priority below high priority WQ threads
 	SRCS
 		top.c
 	DEPENDS

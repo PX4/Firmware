@@ -39,12 +39,12 @@ then
 	param set MPC_THR_MIN 0.1
 	param set MPC_TKO_SPEED 1
 	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_D 0.005
-	param set MPC_XY_VEL_I 0.2
-	param set MPC_XY_VEL_P 0.15
-	param set MPC_Z_VEL_I 0.15
+	param set MPC_XY_VEL_D_ACC 0.1
+	param set MPC_XY_VEL_I_ACC 4
+	param set MPC_XY_VEL_P_ACC 3
+	param set MPC_Z_VEL_P_ACC 12
+	param set MPC_Z_VEL_I_ACC 3
 	param set MPC_Z_VEL_MAX_DN 1.5
-	param set MPC_Z_VEL_P 0.6
 
 	param set NAV_ACC_RAD 5
 	param set NAV_DLL_ACT 2

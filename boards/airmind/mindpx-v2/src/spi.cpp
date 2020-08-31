@@ -43,10 +43,11 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 		initSPIConfigExternal(SPI::CS{GPIO::PortD, GPIO::Pin7}),
 	}),
 	initSPIBus(SPI::Bus::SPI4, {
-		initSPIDevice(DRV_GYR_DEVTYPE_L3GD20, SPI::CS{GPIO::PortB, GPIO::Pin2}, SPI::DRDY{GPIO::PortE, GPIO::Pin14}),
-		initSPIDevice(DRV_ACC_DEVTYPE_LSM303D, SPI::CS{GPIO::PortD, GPIO::Pin11}),
+		initSPIDevice(DRV_GYR_DEVTYPE_L3GD20, SPI::CS{GPIO::PortB, GPIO::Pin2}, SPI::DRDY{GPIO::PortE, GPIO::Pin4}),
+		initSPIDevice(DRV_IMU_DEVTYPE_LSM303D, SPI::CS{GPIO::PortD, GPIO::Pin11}),
 		initSPIDevice(DRV_BARO_DEVTYPE_MS5611, SPI::CS{GPIO::PortC, GPIO::Pin15}),
 		initSPIDevice(DRV_IMU_DEVTYPE_MPU6000, SPI::CS{GPIO::PortE, GPIO::Pin3}, SPI::DRDY{GPIO::PortE, GPIO::Pin10}),
+		initSPIDevice(DRV_IMU_DEVTYPE_MPU6500, SPI::CS{GPIO::PortE, GPIO::Pin3}, SPI::DRDY{GPIO::PortE, GPIO::Pin10}),
 	}),
 };
 

@@ -45,20 +45,27 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
-class ADIS16477 : public device::SPI, public px4::ScheduledWorkItem
+class ADIS16477 : public device::SPI, public I2CSPIDriver<ADIS16477>
 {
 public:
-	ADIS16477(int bus, uint32_t device, enum Rotation rotation = ROTATION_NONE);
+	ADIS16477(I2CSPIBusOption bus_option, int bus, int32_t device, enum Rotation rotation, int bus_frequency,
+		  spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio);
 	virtual ~ADIS16477();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	void			print_info();
+	int		init();
 
+	void			print_status() override;
+
+	void			RunImpl();
 protected:
-	virtual int		probe();
+	int		probe() override;
+	void exit_and_cleanup() override;
 
 private:
 
@@ -67,6 +74,8 @@ private:
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_bad_transfers;
+
+	const spi_drdy_gpio_t _drdy_gpio;
 
 #pragma pack(push, 1)
 	// Report conversation with in the ADIS16477, including command byte and interrupt status.
@@ -92,18 +101,11 @@ private:
 	void			start();
 
 	/**
-	 * Stop automatic measurement.
-	 */
-	void			stop();
-
-	/**
 	 * Reset chip.
 	 *
 	 * Resets the chip and measurements ranges, but not scale and offset.
 	 */
 	int			reset();
-
-	void			Run() override;
 
 	static int		data_ready_interrupt(int irq, void *context, void *arg);
 
@@ -114,7 +116,7 @@ private:
 
 	uint16_t		read_reg16(uint8_t reg);
 
-	void			write_reg(uint8_t reg, uint8_t value);
+	int			write_reg(uint8_t reg, uint8_t value);
 	void			write_reg16(uint8_t reg, uint16_t value);
 
 	// ADIS16477 onboard self test

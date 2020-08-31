@@ -66,9 +66,9 @@ public:
 	static void print_usage();
 	void     print_status();
 
-	bool     Init();
+	int     init() override;
+
 	void     Start();
-	void     Stop();
 	bool     Reset();
 
 	void     RunImpl();

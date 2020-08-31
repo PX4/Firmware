@@ -18,8 +18,8 @@ set PWM_OUT 1234
 
 if [ $AUTOCNF = yes ]
 then
-	param set IMU_GYRO_CUTOFF 80
-	param set IMU_DGYRO_CUTOFF 40
+	param set IMU_GYRO_CUTOFF 60
+	param set IMU_DGYRO_CUTOFF 30
 	param set MC_ROLLRATE_P 0.14
 	param set MC_PITCHRATE_P 0.14
 	param set MC_ROLLRATE_I 0.3

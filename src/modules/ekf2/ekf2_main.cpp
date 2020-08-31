@@ -253,6 +253,7 @@ private:
 	};
 	int _imu_sub_index{-1};
 	bool _callback_registered{false};
+	int _lockstep_component{-1};
 
 	// because we can have several distance sensor instances with different orientations
 	static constexpr int MAX_RNG_SENSOR_COUNT = 4;
@@ -542,7 +543,7 @@ private:
 
 Ekf2::Ekf2(bool replay_mode):
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::att_pos_ctrl),
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	_replay_mode(replay_mode),
 	_ekf_update_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": update")),
 	_params(_ekf.getParamHandle()),
@@ -658,6 +659,7 @@ Ekf2::Ekf2(bool replay_mode):
 
 Ekf2::~Ekf2()
 {
+	px4_lockstep_unregister_component(_lockstep_component);
 	perf_free(_ekf_update_perf);
 }
 
@@ -772,12 +774,18 @@ void Ekf2::Run()
 		updated = _vehicle_imu_subs[_imu_sub_index].update(&imu);
 
 		imu_sample_new.time_us = imu.timestamp_sample;
-		imu_sample_new.delta_ang_dt = imu.dt * 1.e-6f;
+		imu_sample_new.delta_ang_dt = imu.delta_angle_dt * 1.e-6f;
 		imu_sample_new.delta_ang = Vector3f{imu.delta_angle};
-		imu_sample_new.delta_vel_dt = imu.dt * 1.e-6f;
+		imu_sample_new.delta_vel_dt = imu.delta_velocity_dt * 1.e-6f;
 		imu_sample_new.delta_vel = Vector3f{imu.delta_velocity};
 
-		imu_dt = imu.dt;
+		if (imu.delta_velocity_clipping > 0) {
+			imu_sample_new.delta_vel_clipping[0] = imu.delta_velocity_clipping & vehicle_imu_s::CLIPPING_X;
+			imu_sample_new.delta_vel_clipping[1] = imu.delta_velocity_clipping & vehicle_imu_s::CLIPPING_Y;
+			imu_sample_new.delta_vel_clipping[2] = imu.delta_velocity_clipping & vehicle_imu_s::CLIPPING_Z;
+		}
+
+		imu_dt = imu.delta_angle_dt;
 
 		bias.accel_device_id = imu.accel_device_id;
 		bias.gyro_device_id = imu.gyro_device_id;
@@ -791,6 +799,12 @@ void Ekf2::Run()
 		imu_sample_new.delta_ang = Vector3f{sensor_combined.gyro_rad} * imu_sample_new.delta_ang_dt;
 		imu_sample_new.delta_vel_dt = sensor_combined.accelerometer_integral_dt * 1.e-6f;
 		imu_sample_new.delta_vel = Vector3f{sensor_combined.accelerometer_m_s2} * imu_sample_new.delta_vel_dt;
+
+		if (sensor_combined.accelerometer_clipping > 0) {
+			imu_sample_new.delta_vel_clipping[0] = sensor_combined.accelerometer_clipping & sensor_combined_s::CLIPPING_X;
+			imu_sample_new.delta_vel_clipping[1] = sensor_combined.accelerometer_clipping & sensor_combined_s::CLIPPING_Y;
+			imu_sample_new.delta_vel_clipping[2] = sensor_combined.accelerometer_clipping & sensor_combined_s::CLIPPING_Z;
+		}
 
 		imu_dt = sensor_combined.gyro_integral_dt;
 	}
@@ -841,12 +855,10 @@ void Ekf2::Run()
 
 					if (_imu_sub_index < 0) {
 						if (_sensor_selection.accel_device_id != sensor_selection_prev.accel_device_id) {
-							PX4_WARN("accel id changed, resetting IMU bias");
 							_imu_bias_reset_request = true;
 						}
 
 						if (_sensor_selection.gyro_device_id != sensor_selection_prev.gyro_device_id) {
-							PX4_WARN("gyro id changed, resetting IMU bias");
 							_imu_bias_reset_request = true;
 						}
 					}
@@ -874,8 +886,8 @@ void Ekf2::Run()
 				// Do not reset parmameters when armed to prevent potential time slips casued by parameter set
 				// and notification events
 				// Check if there has been a persistant change in magnetometer ID
-				if (_sensor_selection.mag_device_id != 0
-				    && (_sensor_selection.mag_device_id != (uint32_t)_param_ekf2_magbias_id.get())) {
+				if (magnetometer.device_id != 0
+				    && (magnetometer.device_id != (uint32_t)_param_ekf2_magbias_id.get())) {
 
 					if (_invalid_mag_id_count < 200) {
 						_invalid_mag_id_count++;
@@ -896,7 +908,7 @@ void Ekf2::Run()
 					_param_ekf2_magbias_y.commit_no_notification();
 					_param_ekf2_magbias_z.set(0.f);
 					_param_ekf2_magbias_z.commit_no_notification();
-					_param_ekf2_magbias_id.set(_sensor_selection.mag_device_id);
+					_param_ekf2_magbias_id.set(magnetometer.device_id);
 					_param_ekf2_magbias_id.commit();
 
 					_invalid_mag_id_count = 0;
@@ -1049,7 +1061,8 @@ void Ekf2::Run()
 				flow.time_us = optical_flow.timestamp;
 
 				if (PX4_ISFINITE(optical_flow.pixel_flow_y_integral) &&
-				    PX4_ISFINITE(optical_flow.pixel_flow_x_integral)) {
+				    PX4_ISFINITE(optical_flow.pixel_flow_x_integral) &&
+				    flow.dt < 1) {
 
 					_ekf.setOpticalFlowData(flow);
 				}
@@ -1105,18 +1118,28 @@ void Ekf2::Run()
 				ev_data.vel(1) = _ev_odom.vy;
 				ev_data.vel(2) = _ev_odom.vz;
 
+				if (_ev_odom.velocity_frame == vehicle_odometry_s::BODY_FRAME_FRD) {
+					ev_data.vel_frame = estimator::BODY_FRAME_FRD;
+
+				} else {
+					ev_data.vel_frame = estimator::LOCAL_FRAME_FRD;
+				}
+
 				// velocity measurement error from ev_data or parameters
 				float param_evv_noise_var = sq(_param_ekf2_evv_noise.get());
 
-				if (!_param_ekf2_ev_noise_md.get() && PX4_ISFINITE(_ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VX_VARIANCE])
-				    && PX4_ISFINITE(_ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VY_VARIANCE])
-				    && PX4_ISFINITE(_ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VZ_VARIANCE])) {
-					ev_data.velVar(0) = fmaxf(param_evv_noise_var, _ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VX_VARIANCE]);
-					ev_data.velVar(1) = fmaxf(param_evv_noise_var, _ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VY_VARIANCE]);
-					ev_data.velVar(2) = fmaxf(param_evv_noise_var, _ev_odom.pose_covariance[_ev_odom.COVARIANCE_MATRIX_VZ_VARIANCE]);
+				if (!_param_ekf2_ev_noise_md.get() && PX4_ISFINITE(_ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VX_VARIANCE])
+				    && PX4_ISFINITE(_ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VY_VARIANCE])
+				    && PX4_ISFINITE(_ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VZ_VARIANCE])) {
+					ev_data.velCov(0, 0) = _ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VX_VARIANCE];
+					ev_data.velCov(0, 1) = ev_data.velCov(1, 0) = _ev_odom.velocity_covariance[1];
+					ev_data.velCov(0, 2) = ev_data.velCov(2, 0) = _ev_odom.velocity_covariance[2];
+					ev_data.velCov(1, 1) = _ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VY_VARIANCE];
+					ev_data.velCov(1, 2) = ev_data.velCov(2, 1) = _ev_odom.velocity_covariance[7];
+					ev_data.velCov(2, 2) = _ev_odom.velocity_covariance[_ev_odom.COVARIANCE_MATRIX_VZ_VARIANCE];
 
 				} else {
-					ev_data.velVar.setAll(param_evv_noise_var);
+					ev_data.velCov = matrix::eye<float, 3>() * param_evv_noise_var;
 				}
 			}
 
@@ -1157,7 +1180,7 @@ void Ekf2::Run()
 			}
 
 			// use timestamp from external computer, clocks are synchronized when using MAVROS
-			ev_data.time_us = _ev_odom.timestamp;
+			ev_data.time_us = _ev_odom.timestamp_sample;
 			_ekf.setExtVisionData(ev_data);
 
 			ekf2_timestamps.visual_odometry_timestamp_rel = (int16_t)((int64_t)_ev_odom.timestamp / 100 -
@@ -1218,18 +1241,19 @@ void Ekf2::Run()
 				vehicle_odometry_s odom{};
 
 				lpos.timestamp = now;
-				odom.timestamp = lpos.timestamp;
 
-				odom.local_frame = odom.LOCAL_FRAME_NED;
+				odom.timestamp = hrt_absolute_time();
+				odom.timestamp_sample = now;
+
+				odom.local_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
 
 				// Position of body origin in local NED frame
-				float position[3];
-				_ekf.get_position(position);
+				Vector3f position = _ekf.getPosition();
 				const float lpos_x_prev = lpos.x;
 				const float lpos_y_prev = lpos.y;
-				lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
-				lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
-				lpos.z = position[2];
+				lpos.x = (_ekf.local_position_is_valid()) ? position(0) : 0.0f;
+				lpos.y = (_ekf.local_position_is_valid()) ? position(1) : 0.0f;
+				lpos.z = position(2);
 
 				// Vehicle odometry position
 				odom.x = lpos.x;
@@ -1237,26 +1261,25 @@ void Ekf2::Run()
 				odom.z = lpos.z;
 
 				// Velocity of body origin in local NED frame (m/s)
-				float velocity[3];
-				_ekf.get_velocity(velocity);
-				lpos.vx = velocity[0];
-				lpos.vy = velocity[1];
-				lpos.vz = velocity[2];
+				const Vector3f velocity = _ekf.getVelocity();
+				lpos.vx = velocity(0);
+				lpos.vy = velocity(1);
+				lpos.vz = velocity(2);
 
 				// Vehicle odometry linear velocity
+				odom.velocity_frame = vehicle_odometry_s::LOCAL_FRAME_FRD;
 				odom.vx = lpos.vx;
 				odom.vy = lpos.vy;
 				odom.vz = lpos.vz;
 
 				// vertical position time derivative (m/s)
-				_ekf.get_pos_d_deriv(&lpos.z_deriv);
+				lpos.z_deriv = _ekf.getVerticalPositionDerivative();
 
-				// Acceleration of body origin in local NED frame
-				float vel_deriv[3];
-				_ekf.get_vel_deriv_ned(vel_deriv);
-				lpos.ax = vel_deriv[0];
-				lpos.ay = vel_deriv[1];
-				lpos.az = vel_deriv[2];
+				// Acceleration of body origin in local frame
+				Vector3f vel_deriv = _ekf.getVelocityDerivative();
+				lpos.ax = vel_deriv(0);
+				lpos.ay = vel_deriv(1);
+				lpos.az = vel_deriv(2);
 
 				// TODO: better status reporting
 				lpos.xy_valid = _ekf.local_position_is_valid() && !_preflt_checker.hasHorizFailed();
@@ -1280,25 +1303,27 @@ void Ekf2::Run()
 				}
 
 				// The rotation of the tangent plane vs. geographical north
-				matrix::Quatf q = _ekf.get_quaternion();
+				const matrix::Quatf q = _ekf.getQuaternion();
 
-				lpos.yaw = matrix::Eulerf(q).psi();
+				matrix::Quatf delta_q_reset;
+				_ekf.get_quat_reset(&delta_q_reset(0), &lpos.heading_reset_counter);
+
+				lpos.heading = matrix::Eulerf(q).psi();
+				lpos.delta_heading = matrix::Eulerf(delta_q_reset).psi();
 
 				// Vehicle odometry quaternion
 				q.copyTo(odom.q);
 
 				// Vehicle odometry angular rates
-				float gyro_bias[3];
-				_ekf.get_gyro_bias(gyro_bias);
-				const Vector3f rates{imu_sample_new.delta_ang * imu_sample_new.delta_ang_dt};
-				odom.rollspeed = rates(0) - gyro_bias[0];
-				odom.pitchspeed = rates(1) - gyro_bias[1];
-				odom.yawspeed = rates(2) - gyro_bias[2];
+				const Vector3f gyro_bias = _ekf.getGyroBias();
+				const Vector3f rates(imu_sample_new.delta_ang * imu_sample_new.delta_ang_dt);
+				odom.rollspeed = rates(0) - gyro_bias(0);
+				odom.pitchspeed = rates(1) - gyro_bias(1);
+				odom.yawspeed = rates(2) - gyro_bias(2);
 
 				lpos.dist_bottom_valid = _ekf.get_terrain_valid();
 
-				float terrain_vpos;
-				_ekf.get_terrain_vert_pos(&terrain_vpos);
+				float terrain_vpos = _ekf.getTerrainVertPos();
 				lpos.dist_bottom = terrain_vpos - lpos.z; // Distance to bottom surface (ground) in meters
 
 				// constrain the distance to ground to _rng_gnd_clearance
@@ -1397,23 +1422,38 @@ void Ekf2::Run()
 
 				// publish external visual odometry after fixed frame alignment if new odometry is received
 				if (new_ev_data_received) {
-					float q_ev2ekf[4];
-					_ekf.get_ev2ekf_quaternion(q_ev2ekf); // rotates from EV to EKF navigation frame
-					Quatf quat_ev2ekf(q_ev2ekf);
-					Dcmf ev_rot_mat(quat_ev2ekf);
+					const Quatf quat_ev2ekf = _ekf.getVisionAlignmentQuaternion(); // rotates from EV to EKF navigation frame
+					const Dcmf ev_rot_mat(quat_ev2ekf);
 
 					vehicle_odometry_s aligned_ev_odom = _ev_odom;
 
 					// Rotate external position and velocity into EKF navigation frame
-					Vector3f aligned_pos = ev_rot_mat * Vector3f(_ev_odom.x, _ev_odom.y, _ev_odom.z);
+					const Vector3f aligned_pos = ev_rot_mat * Vector3f(_ev_odom.x, _ev_odom.y, _ev_odom.z);
 					aligned_ev_odom.x = aligned_pos(0);
 					aligned_ev_odom.y = aligned_pos(1);
 					aligned_ev_odom.z = aligned_pos(2);
 
-					Vector3f aligned_vel = ev_rot_mat * Vector3f(_ev_odom.vx, _ev_odom.vy, _ev_odom.vz);
-					aligned_ev_odom.vx = aligned_vel(0);
-					aligned_ev_odom.vy = aligned_vel(1);
-					aligned_ev_odom.vz = aligned_vel(2);
+					switch (_ev_odom.velocity_frame) {
+					case vehicle_odometry_s::BODY_FRAME_FRD: {
+							const Vector3f aligned_vel = Dcmf(_ekf.getQuaternion()) *
+										     Vector3f(_ev_odom.vx, _ev_odom.vy, _ev_odom.vz);
+							aligned_ev_odom.vx = aligned_vel(0);
+							aligned_ev_odom.vy = aligned_vel(1);
+							aligned_ev_odom.vz = aligned_vel(2);
+							break;
+						}
+
+					case vehicle_odometry_s::LOCAL_FRAME_FRD: {
+							const Vector3f aligned_vel = ev_rot_mat *
+										     Vector3f(_ev_odom.vx, _ev_odom.vy, _ev_odom.vz);
+							aligned_ev_odom.vx = aligned_vel(0);
+							aligned_ev_odom.vy = aligned_vel(1);
+							aligned_ev_odom.vz = aligned_vel(2);
+							break;
+						}
+					}
+
+					aligned_ev_odom.velocity_frame = vehicle_odometry_s::LOCAL_FRAME_NED;
 
 					// Compute orientation in EKF navigation frame
 					Quatf ev_quat_aligned = quat_ev2ekf * matrix::Quatf(_ev_odom.q) ;
@@ -1443,8 +1483,6 @@ void Ekf2::Run()
 					// global altitude has opposite sign of local down position
 					global_pos.delta_alt = -lpos.delta_z;
 
-					global_pos.yaw = lpos.yaw; // Yaw in radians -PI..+PI.
-
 					_ekf.get_ekf_gpos_accuracy(&global_pos.eph, &global_pos.epv);
 
 					global_pos.terrain_alt_valid = lpos.dist_bottom_valid;
@@ -1472,11 +1510,11 @@ void Ekf2::Run()
 					bias.accel_device_id = _sensor_selection.accel_device_id;
 				}
 
-				bias.mag_device_id = _sensor_selection.mag_device_id;
+				bias.mag_device_id = _param_ekf2_magbias_id.get();
 
 				// In-run bias estimates
-				_ekf.get_gyro_bias(bias.gyro_bias);
-				_ekf.get_accel_bias(bias.accel_bias);
+				_ekf.getGyroBias().copyTo(bias.gyro_bias);
+				_ekf.getAccelBias().copyTo(bias.accel_bias);
 
 				bias.mag_bias[0] = _last_valid_mag_cal[0];
 				bias.mag_bias[1] = _last_valid_mag_cal[1];
@@ -1488,10 +1526,10 @@ void Ekf2::Run()
 			// publish estimator status
 			estimator_status_s status;
 			status.timestamp = now;
-			_ekf.get_state_delayed(status.states);
+			_ekf.getStateAtFusionHorizonAsVector().copyTo(status.states);
 			status.n_states = 24;
 			_ekf.covariances_diagonal().copyTo(status.covariances);
-			_ekf.get_output_tracking_error(&status.output_tracking_error[0]);
+			_ekf.getOutputTrackingError().copyTo(status.output_tracking_error);
 			_ekf.get_gps_check_status(&status.gps_check_fail_flags);
 			// only report enabled GPS check failures (the param indexes are shifted by 1 bit, because they don't include
 			// the GPS Fix bit, which is always checked)
@@ -1506,8 +1544,8 @@ void Ekf2::Run()
 			status.pos_horiz_accuracy = _vehicle_local_position_pub.get().eph;
 			status.pos_vert_accuracy = _vehicle_local_position_pub.get().epv;
 			_ekf.get_ekf_soln_status(&status.solution_status_flags);
-			_ekf.get_imu_vibe_metrics(status.vibe);
-			status.time_slip = _last_time_slip_us / 1e6f;
+			_ekf.getImuVibrationMetrics().copyTo(status.vibe);
+			status.time_slip = _last_time_slip_us * 1e-6f;
 			status.health_flags = 0.0f; // unused
 			status.timeout_flags = 0.0f; // unused
 			status.pre_flt_fail_innov_heading = _preflt_checker.hasHeadingFailed();
@@ -1594,8 +1632,7 @@ void Ekf2::Run()
 
 				// Check and save the last valid calibration when we are disarmed
 				if ((_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY)
-				    && (status.filter_fault_flags == 0)
-				    && (_sensor_selection.mag_device_id == (uint32_t)_param_ekf2_magbias_id.get())) {
+				    && (status.filter_fault_flags == 0)) {
 
 					update_mag_bias(_param_ekf2_magbias_x, 0);
 					update_mag_bias(_param_ekf2_magbias_y, 1);
@@ -1604,7 +1641,6 @@ void Ekf2::Run()
 					// reset to prevent data being saved too frequently
 					_total_cal_time_us = 0;
 				}
-
 			}
 
 			publish_wind_estimate(now);
@@ -1700,6 +1736,12 @@ void Ekf2::Run()
 
 		// publish ekf2_timestamps
 		_ekf2_timestamps_pub.publish(ekf2_timestamps);
+
+		if (_lockstep_component == -1) {
+			_lockstep_component = px4_lockstep_register_component();
+		}
+
+		px4_lockstep_progress(_lockstep_component);
 	}
 }
 
@@ -1807,19 +1849,17 @@ void Ekf2::publish_wind_estimate(const hrt_abstime &timestamp)
 	if (_ekf.get_wind_status()) {
 		// Publish wind estimate only if ekf declares them valid
 		wind_estimate_s wind_estimate{};
-		float velNE_wind[2];
-		float wind_var[2];
-		_ekf.get_wind_velocity(velNE_wind);
-		_ekf.get_wind_velocity_var(wind_var);
+		const Vector2f wind_vel = _ekf.getWindVelocity();
+		const Vector2f wind_vel_var = _ekf.getWindVelocityVariance();
 		_ekf.getAirspeedInnov(wind_estimate.tas_innov);
 		_ekf.getAirspeedInnovVar(wind_estimate.tas_innov_var);
 		_ekf.getBetaInnov(wind_estimate.beta_innov);
 		_ekf.getBetaInnovVar(wind_estimate.beta_innov_var);
 		wind_estimate.timestamp = timestamp;
-		wind_estimate.windspeed_north = velNE_wind[0];
-		wind_estimate.windspeed_east = velNE_wind[1];
-		wind_estimate.variance_north = wind_var[0];
-		wind_estimate.variance_east = wind_var[1];
+		wind_estimate.windspeed_north = wind_vel(0);
+		wind_estimate.windspeed_east = wind_vel(1);
+		wind_estimate.variance_north = wind_vel_var(0);
+		wind_estimate.variance_east = wind_vel_var(1);
 		wind_estimate.tas_scale = 0.0f; //leave at 0 as scale is not estimated in ekf
 
 		_wind_pub.publish(wind_estimate);
@@ -2445,7 +2485,7 @@ int Ekf2::print_usage(const char *reason)
 ### Description
 Attitude and position estimator using an Extended Kalman Filter. It is used for Multirotors and Fixed-Wing.
 
-The documentation can be found on the [ECL/EKF Overview & Tuning](https://docs.px4.io/en/advanced_config/tuning_the_ecl_ekf.html) page.
+The documentation can be found on the [ECL/EKF Overview & Tuning](https://docs.px4.io/master/en/advanced_config/tuning_the_ecl_ekf.html) page.
 
 ekf2 can be started in replay mode (`-r`): in this mode it does not access the system time, but only uses the
 timestamps from the sensor topics.

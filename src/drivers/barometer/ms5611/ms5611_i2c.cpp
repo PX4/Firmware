@@ -91,7 +91,7 @@ MS5611_i2c_interface(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum, i
 }
 
 MS5611_I2C::MS5611_I2C(uint8_t bus, ms5611::prom_u &prom, int bus_frequency) :
-	I2C("MS5611_I2C", nullptr, bus, 0, bus_frequency),
+	I2C(DRV_BARO_DEVTYPE_MS5611, MODULE_NAME, bus, 0, bus_frequency),
 	_prom(prom)
 {
 }

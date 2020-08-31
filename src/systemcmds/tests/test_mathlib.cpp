@@ -261,8 +261,7 @@ bool MathlibTest::testQuaternionfrom_dcm()
 	matrix::Matrix3f R_orig;
 	R_orig.identity();
 
-	matrix::Quatf q;
-	q.from_dcm(R_orig);
+	matrix::Quatf q(R_orig);
 
 	for (unsigned i = 0; i < 4; i++) {
 		ut_assert("matrix::Quatf method 'from_dcm()' outside tolerance!", fabsf(q(i) - q_true(i)) < tol);
@@ -279,8 +278,7 @@ bool MathlibTest::testQuaternionfrom_euler()
 	matrix::Matrix3f R_orig;
 	R_orig.identity();
 
-	matrix::Quatf q;
-	q.from_dcm(R_orig);
+	matrix::Quatf q(R_orig);
 
 	q_true = matrix::Eulerf(0.3f, 0.2f, 0.1f);
 	q = {0.9833f, 0.1436f, 0.1060f, 0.0343f};

@@ -93,7 +93,6 @@ void init_once();
 }
 
 static void sig_int_handler(int sig_num);
-static void sig_fpe_handler(int sig_num);
 
 static void register_sig_handler();
 static void set_cpu_scaling();
@@ -404,11 +403,6 @@ void register_sig_handler()
 	sig_int.sa_handler = sig_int_handler;
 	sig_int.sa_flags = 0;// not SA_RESTART!
 
-	// SIGFPE
-	struct sigaction sig_fpe {};
-	sig_fpe.sa_handler = sig_fpe_handler;
-	sig_fpe.sa_flags = 0;// not SA_RESTART!
-
 	// SIGPIPE
 	// We want to ignore if a PIPE has been closed.
 	struct sigaction sig_pipe {};
@@ -423,7 +417,6 @@ void register_sig_handler()
 #endif
 
 	sigaction(SIGTERM, &sig_int, nullptr);
-	sigaction(SIGFPE, &sig_fpe, nullptr);
 	sigaction(SIGPIPE, &sig_pipe, nullptr);
 }
 
@@ -431,15 +424,6 @@ void sig_int_handler(int sig_num)
 {
 	fflush(stdout);
 	printf("\nPX4 Exiting...\n");
-	fflush(stdout);
-	px4_daemon::Pxh::stop();
-	_exit_requested = true;
-}
-
-void sig_fpe_handler(int sig_num)
-{
-	fflush(stdout);
-	printf("\nfloating point exception\n");
 	fflush(stdout);
 	px4_daemon::Pxh::stop();
 	_exit_requested = true;

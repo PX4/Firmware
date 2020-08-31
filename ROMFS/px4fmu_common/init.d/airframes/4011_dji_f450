@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# @name DJI Flame Wheel F450
+# @name DJI F450 w/ DJI ESCs
 #
 # @type Quadrotor x
 # @class Copter

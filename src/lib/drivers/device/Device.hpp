@@ -115,6 +115,23 @@ public:
 	virtual int	write(unsigned address, void *data, unsigned count) { return -ENODEV; }
 
 	/**
+	 * Read a register from the device.
+	 *
+	 * @param		The register to read.
+	 * @return		The value that was read.
+	 */
+	virtual uint8_t read_reg(unsigned reg) { return -ENODEV; }
+
+	/**
+	 * Write a register in the device.
+	 *
+	 * @param reg		The register to write.
+	 * @param value		The new value to write.
+	 * @return		OK on success, negative errno otherwise.
+	 */
+	virtual int write_reg(unsigned reg, uint8_t value) { return -ENODEV; }
+
+	/**
 	 * Perform a device-specific operation.
 	 *
 	 * @param operation	The operation to perform.
@@ -166,7 +183,6 @@ public:
 	 * @return The bus type
 	 */
 	DeviceBusType	get_device_bus_type() const { return _device_id.devid_s.bus_type; }
-	void		set_device_bus_type(DeviceBusType bus_type) { _device_id.devid_s.bus_type = bus_type; }
 
 	static const char *get_device_bus_string(DeviceBusType bus)
 	{
@@ -195,7 +211,6 @@ public:
 	 * @return The bus ID
 	 */
 	uint8_t get_device_bus() const { return _device_id.devid_s.bus; }
-	void	set_device_bus(uint8_t bus) { _device_id.devid_s.bus = bus; }
 
 	/**
 	 * Return the bus address of the device.
@@ -242,26 +257,15 @@ protected:
 	const char	*_name{nullptr};		/**< driver name */
 	bool		_debug_enabled{false};		/**< if true, debug messages are printed */
 
-	explicit Device(const char *name) : _name(name)
-	{
-		set_device_bus_type(DeviceBusType_UNKNOWN);
-	}
+	Device() = delete;
+	explicit Device(const char *name) : _name(name) {}
 
-	Device(const char *name, DeviceBusType bus_type, uint8_t bus, uint8_t address, uint8_t devtype = 0)
-		: _name(name)
+	Device(uint8_t devtype, const char *name, DeviceBusType bus_type, uint8_t bus, uint8_t address) : _name(name)
 	{
-		set_device_bus_type(bus_type);
-		set_device_bus(bus);
-		set_device_address(address);
 		set_device_type(devtype);
-	}
-
-	Device(DeviceBusType bus_type, uint8_t bus, uint8_t address, uint8_t devtype = 0)
-	{
-		set_device_bus_type(bus_type);
-		set_device_bus(bus);
+		_device_id.devid_s.bus_type = bus_type;
+		_device_id.devid_s.bus = bus;
 		set_device_address(address);
-		set_device_type(devtype);
 	}
 
 };

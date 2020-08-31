@@ -49,6 +49,7 @@ public:
 	void SetUp() override
 
 	{
+		param_control_autosave(false);
 		param_reset_all();
 		pos_sp = Vector3f(1.f, 1.2f, 0.1f);
 		vel_sp = Vector3f(0.3f, 0.4f, 0.1f);
@@ -109,12 +110,17 @@ TEST_F(ObstacleAvoidanceTest, oa_enabled_healthy_bezier)
 
 	vehicle_trajectory_bezier_s message {};
 	message.timestamp = hrt_absolute_time();
-	message.bezier_order = 1;
+	message.bezier_order = 2;
 	message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[0] = 2.6f;
 	message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[1] = 2.4f;
 	message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[2] = 2.7f;
 	message.control_points[vehicle_trajectory_bezier_s::POINT_0].yaw = 0.23f;
-	message.control_points[vehicle_trajectory_bezier_s::POINT_0].delta = 0.5f;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_0].delta = NAN;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_1].position[0] = 2.6f;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_1].position[1] = 2.4f;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_1].position[2] = 3.7f;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_1].yaw = 0.23f;
+	message.control_points[vehicle_trajectory_bezier_s::POINT_1].delta = 0.5f;
 
 	// GIVEN: and we publish the vehicle_trajectory_waypoint message and vehicle status message
 	uORB::Publication<vehicle_trajectory_bezier_s> vehicle_trajectory_bezier_pub{ORB_ID(vehicle_trajectory_bezier)};
@@ -129,11 +135,13 @@ TEST_F(ObstacleAvoidanceTest, oa_enabled_healthy_bezier)
 	oa.injectAvoidanceSetpoints(pos_sp, vel_sp, yaw_sp, yaw_speed_sp);
 
 	// THEN: the setpoints should be injected
-	EXPECT_FLOAT_EQ(message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[0], pos_sp(0));
-	EXPECT_FLOAT_EQ(message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[1], pos_sp(1));
-	EXPECT_FLOAT_EQ(message.control_points[vehicle_trajectory_bezier_s::POINT_0].position[2], pos_sp(2));
-	EXPECT_FLOAT_EQ(vel_sp.norm(), 0);
-	EXPECT_FLOAT_EQ(message.control_points[vehicle_trajectory_bezier_s::POINT_0].yaw, yaw_sp);
+	EXPECT_FLOAT_EQ(2.6f, pos_sp(0));
+	EXPECT_FLOAT_EQ(2.4f, pos_sp(1));
+	EXPECT_LT(2.7f, pos_sp(2));
+	EXPECT_GT(2.8f, pos_sp(2)); // probably only a tiny bit above 2.7, but let's not have flakey tests
+	EXPECT_FLOAT_EQ(vel_sp.xy().norm(), 0);
+	EXPECT_FLOAT_EQ(vel_sp(2), (3.7f - 2.7f) / 0.5f);
+	EXPECT_FLOAT_EQ(0.23, yaw_sp);
 	EXPECT_FLOAT_EQ(yaw_speed_sp, 0);
 }
 

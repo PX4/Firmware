@@ -45,25 +45,11 @@
 #define BOARD_BATTERY1_V_DIV   (10.177939394f)
 #define BOARD_BATTERY1_A_PER_V (15.391030303f)
 
-#define BOARD_HAS_NO_RESET
-#define BOARD_HAS_NO_BOOTLOADER
-
 #define BOARD_MAX_LEDS 1 // Number of external LED's this board has
 
 
 // I2C
-#define PX4_I2C_BUS_EXPANSION   1
-
 #define PX4_NUMBER_I2C_BUSES    1
-
-
-// SPI
-#include <drivers/drv_sensor.h>
-#define PX4_SPI_BUS_SENSORS    0
-#define PX4_SPIDEV_UBLOX       PX4_MK_SPI_SEL(0, 0) // spidev0.0 - ublox m8n
-#define PX4_SPIDEV_MPU         PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250) // spidev0.1 - mpu9250
-#define PX4_SPIDEV_LSM9DS1_M   PX4_MK_SPI_SEL(0, DRV_MAG_DEVTYPE_ST_LSM9DS1_M) // spidev0.2 - lsm9ds1 mag
-#define PX4_SPIDEV_LSM9DS1_AG  PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ST_LSM9DS1_AG) // spidev0.3 - lsm9ds1 accel/gyro
 
 
 // ADC channels:

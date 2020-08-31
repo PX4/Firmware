@@ -84,6 +84,11 @@ public:
 	{
 		_state.x = pos;
 		_trajectory.setCurrentPosition(pos);
+		_position_estimate = pos;
+
+		if (_position_lock_active) {
+			_position_setpoint_locked = pos;
+		}
 	}
 	float getCurrentPosition() const { return _position_setpoint_locked; }
 	void setCurrentPositionEstimate(float pos) { _position_estimate = pos; }
@@ -99,17 +104,17 @@ private:
 
 	bool _position_lock_active{false};
 
-	float _position_setpoint_locked;
+	float _position_setpoint_locked{};
 
-	float _velocity_setpoint_feedback;
-	float _position_estimate;
+	float _velocity_setpoint_feedback{};
+	float _position_estimate{};
 
 	struct {
 		float j;
 		float a;
 		float v;
 		float x;
-	} _state;
+	} _state{};
 
 	float _max_accel_up{0.f};
 	float _max_accel_down{0.f};

@@ -40,191 +40,114 @@
 #include "FXOS8701CQ.hpp"
 
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-/**
- * Local functions in support of the shell command.
- */
-namespace fxos8701cq
+void
+FXOS8701CQ::print_usage()
 {
-
-FXOS8701CQ *g_dev{nullptr};
-
-int	start(bool external_bus, enum Rotation rotation);
-int	info();
-int	stop();
-int	regdump();
-int	usage();
-int	test_error();
-
-/**
- * Start the driver.
- *
- * This function call only returns once the driver is
- * up and running or failed to detect the sensor.
- */
-int
-start(bool external_bus, enum Rotation rotation)
-{
-	if (g_dev != nullptr) {
-		PX4_INFO("already started");
-		return 0;
-	}
-
-	/* create the driver */
-	if (external_bus) {
-#if defined(PX4_SPI_BUS_EXT) && defined(PX4_SPIDEV_EXT_ACCEL_MAG)
-		g_dev = new FXOS8701CQ(PX4_SPI_BUS_EXT, PX4_SPIDEV_EXT_ACCEL_MAG, rotation);
-#else
-		PX4_ERR("External SPI not available");
-		return 0;
-#endif
-
-	} else {
-		g_dev = new FXOS8701CQ(PX4_SPI_BUS_SENSORS,  PX4_SPIDEV_ACCEL_MAG, rotation);
-	}
-
-	if (g_dev == nullptr) {
-		PX4_ERR("failed instantiating FXOS8701C obj");
-		goto fail;
-	}
-
-	if (OK != g_dev->init()) {
-		goto fail;
-	}
-
-	return PX4_OK;
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	PX4_ERR("driver start failed");
-	return PX4_ERROR;
+	PRINT_MODULE_USAGE_NAME("fxos8701cq", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, true);
+	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x1E);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_COMMAND("regdump");
+	PRINT_MODULE_USAGE_COMMAND("testerror");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-/**
- * Print a little info about the driver.
- */
-int
-info()
+I2CSPIDriverBase *FXOS8701CQ::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+		int runtime_instance)
 {
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running\n");
-		return 1;
+	device::Device *interface = nullptr;
+
+	if (iterator.busType() == BOARD_I2C_BUS) {
+		interface = FXOS8701CQ_I2C_interface(iterator.bus(), cli.bus_frequency, cli.i2c_address);
+
+	} else if (iterator.busType() == BOARD_SPI_BUS) {
+		interface = FXOS8701CQ_SPI_interface(iterator.bus(), iterator.devid(), cli.bus_frequency, cli.spi_mode);
 	}
 
-	g_dev->print_info();
-
-	return 0;
-}
-
-int
-stop()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running\n");
-		return 1;
+	if (interface == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	delete g_dev;
-	g_dev = nullptr;
+	FXOS8701CQ *dev = new FXOS8701CQ(interface, iterator.configuredBusOption(), iterator.bus(), cli.rotation,
+					 cli.i2c_address);
 
-	return 0;
-}
-
-/**
- * dump registers from device
- */
-int
-regdump()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running\n");
-		return 1;
+	if (dev == nullptr) {
+		delete interface;
+		return nullptr;
 	}
 
-	printf("regdump @ %p\n", g_dev);
-	g_dev->print_registers();
-
-	return 0;
-}
-
-/**
- * trigger an error
- */
-int
-test_error()
-{
-	if (g_dev == nullptr) {
-		PX4_ERR("driver not running\n");
-		return 1;
+	if (OK != dev->init()) {
+		delete dev;
+		return nullptr;
 	}
 
-	g_dev->test_error();
-
-	return 0;
+	return dev;
 }
 
-int
-usage()
+void FXOS8701CQ::custom_method(const BusCLIArguments &cli)
 {
-	PX4_INFO("missing command: try 'start', 'info', 'stop', 'testerror' or 'regdump'");
-	PX4_INFO("options:");
-	PX4_INFO("    -X    (external bus)");
-	PX4_INFO("    -R rotation");
+	switch (cli.custom1) {
+	case 0: print_registers(); break;
 
-	return 0;
+	case 1: test_error(); break;
+	}
+
 }
 
-} // namespace
-
-extern "C" { __EXPORT int fxos8701cq_main(int argc, char *argv[]); }
-
-int fxos8701cq_main(int argc, char *argv[])
+extern "C" int fxos8701cq_main(int argc, char *argv[])
 {
-	bool external_bus = false;
 	int ch;
-	enum Rotation rotation = ROTATION_NONE;
+	using ThisDriver = FXOS8701CQ;
+	BusCLIArguments cli{true, true};
+	cli.default_i2c_frequency = 400 * 1000;
+	cli.default_spi_frequency = 1 * 1000 * 1000;
+	cli.spi_mode = SPIDEV_MODE0;
+	cli.i2c_address = 0x1E;
 
-	int myoptind = 1;
-	const char *myoptarg = NULL;
-
-	while ((ch = px4_getopt(argc, argv, "XR:a:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'X':
-			external_bus = true;
-			break;
-
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		default:
-			fxos8701cq::usage();
-			exit(0);
 		}
 	}
 
-	const char *verb = argv[myoptind];
+	const char *verb = cli.optarg();
 
-	if (!strcmp(verb, "start")) {
-		return fxos8701cq::start(external_bus, rotation);
-
-	} else if (!strcmp(verb, "stop")) {
-		return fxos8701cq::stop();
-
-	} else if (!strcmp(verb, "info")) {
-		return fxos8701cq::info();
-
-	} else if (!strcmp(verb, "regdump")) {
-		return fxos8701cq::regdump();
-
-	} else if (!strcmp(verb, "testerror")) {
-		return fxos8701cq::test_error();
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	PX4_ERR("unrecognized command, try 'start', 'stop', 'info', 'testerror' or 'regdump'");
-	return PX4_ERROR;
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_ACC_DEVTYPE_FXOS8701C);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
+	}
+
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	if (!strcmp(verb, "regdump")) {
+		cli.custom1 = 0;
+		return ThisDriver::module_custom_method(cli, iterator);
+	}
+
+	if (!strcmp(verb, "testerror")) {
+		cli.custom1 = 1;
+		return ThisDriver::module_custom_method(cli, iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

@@ -84,7 +84,7 @@ uint8_t PGA460::calc_checksum(uint8_t *data, const uint8_t size)
 
 int PGA460::close_serial()
 {
-	int ret = px4_close(_fd);
+	int ret = ::close(_fd);
 
 	if (ret != 0) {
 		PX4_WARN("Could not close serial port");
@@ -292,7 +292,7 @@ float PGA460::get_temperature()
 
 int PGA460::open_serial()
 {
-	_fd = px4_open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	_fd = ::open(_port, O_RDWR | O_NOCTTY | O_NONBLOCK);
 
 	if (_fd < 0) {
 		PX4_WARN("Failed to open serial port");

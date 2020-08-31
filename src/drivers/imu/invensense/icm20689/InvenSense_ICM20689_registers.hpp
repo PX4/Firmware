@@ -54,34 +54,37 @@ static constexpr uint8_t Bit7 = (1 << 7);
 
 namespace InvenSense_ICM20689
 {
-static constexpr uint32_t SPI_SPEED = 8 * 1000 * 1000; // 8MHz SPI serial interface for communicating with all registers
+static constexpr uint32_t SPI_SPEED = 8 * 1000 * 1000; // 8MHz SPI serial interface
 static constexpr uint8_t DIR_READ = 0x80;
 
 static constexpr uint8_t WHOAMI = 0x98;
 
 static constexpr float TEMPERATURE_SENSITIVITY = 326.8f; // LSB/C
-static constexpr float ROOM_TEMPERATURE_OFFSET = 25.f; // C
+static constexpr float TEMPERATURE_OFFSET = 25.f; // C
 
 enum class Register : uint8_t {
-	CONFIG        = 0x1A,
-	GYRO_CONFIG   = 0x1B,
-	ACCEL_CONFIG  = 0x1C,
-	ACCEL_CONFIG2 = 0x1D,
+	CONFIG            = 0x1A,
+	GYRO_CONFIG       = 0x1B,
+	ACCEL_CONFIG      = 0x1C,
+	ACCEL_CONFIG2     = 0x1D,
 
-	FIFO_EN       = 0x23,
+	FIFO_EN           = 0x23,
 
-	INT_ENABLE    = 0x38,
+	INT_PIN_CFG       = 0x37,
+	INT_ENABLE        = 0x38,
 
-	TEMP_OUT_H    = 0x41,
-	TEMP_OUT_L    = 0x42,
+	TEMP_OUT_H        = 0x41,
+	TEMP_OUT_L        = 0x42,
 
-	USER_CTRL     = 0x6A,
-	PWR_MGMT_1    = 0x6B,
+	SIGNAL_PATH_RESET = 0x68,
 
-	FIFO_COUNTH   = 0x72,
-	FIFO_COUNTL   = 0x73,
-	FIFO_R_W      = 0x74,
-	WHO_AM_I      = 0x75,
+	USER_CTRL         = 0x6A,
+	PWR_MGMT_1        = 0x6B,
+
+	FIFO_COUNTH       = 0x72,
+	FIFO_COUNTL       = 0x73,
+	FIFO_R_W          = 0x74,
+	WHO_AM_I          = 0x75,
 };
 
 // CONFIG
@@ -114,8 +117,8 @@ enum ACCEL_CONFIG_BIT : uint8_t {
 
 // ACCEL_CONFIG2
 enum ACCEL_CONFIG2_BIT : uint8_t {
-	FIFO_SIZE = Bit7 | Bit6, // 0=512bytes,
-	ACCEL_FCHOICE_B = Bit3,  // Used to bypass DLPF as shown in the table below. (DS-000114 Page 40 of 53)
+	FIFO_SIZE       = Bit7 | Bit6, // 0=512bytes,
+	ACCEL_FCHOICE_B = Bit3,        // Used to bypass DLPF (DS-000114 Page 40 of 53)
 };
 
 // FIFO_EN
@@ -127,10 +130,20 @@ enum FIFO_EN_BIT : uint8_t {
 	ACCEL_FIFO_EN = Bit3,
 };
 
+// INT_PIN_CFG
+enum INT_PIN_CFG_BIT : uint8_t {
+	INT_LEVEL = Bit7,
+};
+
 // INT_ENABLE
 enum INT_ENABLE_BIT : uint8_t {
-	FIFO_OFLOW_EN   = Bit4,
-	DATA_RDY_INT_EN = Bit0
+	DATA_RDY_INT_EN = Bit0,
+};
+
+// SIGNAL_PATH_RESET
+enum SIGNAL_PATH_RESET_BIT : uint8_t {
+	ACCEL_RST = Bit1,
+	TEMP_RST  = Bit0,
 };
 
 // USER_CTRL
@@ -146,9 +159,8 @@ enum PWR_MGMT_1_BIT : uint8_t {
 	DEVICE_RESET = Bit7,
 	SLEEP        = Bit6,
 
-	CLKSEL_2     = Bit2,
-	CLKSEL_1     = Bit1,
-	CLKSEL_0     = Bit0,
+	// CLKSEL[2:0]
+	CLKSEL_0     = Bit0, // It is required that CLKSEL[2:0] be set to 001 to achieve full gyroscope performance.
 };
 
 namespace FIFO

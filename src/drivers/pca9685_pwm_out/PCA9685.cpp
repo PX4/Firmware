@@ -38,7 +38,7 @@
 using namespace drv_pca9685_pwm;
 
 PCA9685::PCA9685(int bus, int addr):
-	I2C("PCA9685", PWM_OUTPUT0_DEVICE_PATH, bus, addr, 400000)
+	I2C(DRV_PWM_DEVTYPE_PCA9685, MODULE_NAME, bus, addr, 400000)
 {
 
 }

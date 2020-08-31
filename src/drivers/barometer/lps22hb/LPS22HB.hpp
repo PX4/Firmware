@@ -36,17 +36,10 @@
 #include <cstring>
 
 #include <drivers/device/Device.hpp>
-#include <drivers/device/i2c.h>
-#include <drivers/device/spi.h>
-#include <drivers/drv_baro.h>
-#include <lib/cdev/CDev.hpp>
-#include <perf/perf_counter.h>
-#include <px4_platform_common/getopt.h>
+#include <lib/perf/perf_counter.h>
 #include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <systemlib/err.h>
-#include <uORB/uORB.h>
-
+#include <lib/drivers/barometer/PX4Barometer.hpp>
 
 static constexpr uint8_t WHO_AM_I = 0x0F;
 static constexpr uint8_t LPS22HB_ID_WHO_AM_I = 0xB1;
@@ -81,7 +74,7 @@ static constexpr uint8_t TEMP_OUT_H = 0x2C;
 extern device::Device *LPS22HB_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
 extern device::Device *LPS22HB_I2C_interface(int bus, int bus_frequency);
 
-class LPS22HB : public cdev::CDev, public I2CSPIDriver<LPS22HB>
+class LPS22HB : public I2CSPIDriver<LPS22HB>
 {
 public:
 	LPS22HB(I2CSPIBusOption bus_option, int bus, device::Device *interface);
@@ -91,31 +84,20 @@ public:
 					     int runtime_instance);
 	static void print_usage();
 
-	virtual int		init();
-
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	int			init();
 
 	void			print_status();
 
 	void			RunImpl();
 
-protected:
-	device::Device			*_interface;
-
 private:
-	unsigned		_measure_interval{0};
+	PX4Barometer		_px4_baro;
+	device::Device		*_interface;
 
 	bool			_collect_phase{false};
 
-	orb_advert_t		_baro_topic{nullptr};
-
-	int			_orb_class_instance{-1};
-	int			_class_instance{-1};
-
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_comms_errors;
-
-	sensor_baro_s	_last_report{};           /**< used for info() */
 
 	/**
 	 * Initialise the automatic measurement state machine and start it.
@@ -129,7 +111,6 @@ private:
 	 * Reset the device
 	 */
 	int			reset();
-
 
 	/**
 	 * Write a register.
@@ -160,8 +141,4 @@ private:
 	 * Collect the result of the most recent measurement.
 	 */
 	int			collect();
-
-	/* this class has pointer data members, do not allow copying it */
-	LPS22HB(const LPS22HB &);
-	LPS22HB operator=(const LPS22HB &);
 };

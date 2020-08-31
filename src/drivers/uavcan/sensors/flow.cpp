@@ -67,6 +67,9 @@ UavcanFlowBridge::flow_sub_cb(const uavcan::ReceivedDataStructure<com::hex::equi
 {
 	optical_flow_s flow{};
 
+	// We're only given an 8 bit field for sensor ID; just use the UAVCAN node ID
+	flow.sensor_id = msg.getSrcNodeID().get();
+
 	flow.timestamp = hrt_absolute_time();
 	flow.integration_timespan = 1.e6f * msg.integration_interval; // s -> micros
 	flow.pixel_flow_x_integral = msg.flow_integral[0];

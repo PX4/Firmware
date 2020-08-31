@@ -1,23 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 
 set -e
 
-if [ "$#" -lt 6 ]; then
-	echo usage: sitl_run.sh sitl_bin debugger program model src_path build_path
+if [ "$#" -lt 7 ]; then
+	echo usage: sitl_run.sh sitl_bin debugger program model world src_path build_path
 	exit 1
 fi
 
 if [[ -n "$DONT_RUN" ]]; then
 	echo "Not running simulation (DONT_RUN is set)."
-    exit 0
+	exit 0
 fi
 
 sitl_bin="$1"
 debugger="$2"
 program="$3"
 model="$4"
-src_path="$5"
-build_path="$6"
+world="$5"
+src_path="$6"
+build_path="$7"
 # The rest of the arguments are files to copy into the working dir.
 
 echo SITL ARGS
@@ -26,6 +28,7 @@ echo sitl_bin: $sitl_bin
 echo debugger: $debugger
 echo program: $program
 echo model: $model
+echo world: $world
 echo src_path: $src_path
 echo build_path: $build_path
 
@@ -64,7 +67,7 @@ fi
 cp "$src_path/Tools/posix_lldbinit" "$rootfs/.lldbinit"
 cp "$src_path/Tools/posix.gdbinit" "$rootfs/.gdbinit"
 
-shift 6
+shift 7
 for file in "$@"; do
 	cp "$file" $rootfs/
 done
@@ -77,25 +80,64 @@ if [ "$program" == "jmavsim" ] && [ ! -n "$no_sim" ]; then
 	SIM_PID=`echo $!`
 elif [ "$program" == "gazebo" ] && [ ! -n "$no_sim" ]; then
 	if [ -x "$(command -v gazebo)" ]; then
-	# Set the plugin path so Gazebo finds our model and sim
-	source "$src_path/Tools/setup_gazebo.bash" "${src_path}" "${build_path}"
+		# Get the model name
+		model_name="${model}"
+		# Check if a 'modelname-gen.sdf' file exist for the models using jinja and generating the SDF files
+		if [ -f "${src_path}/Tools/sitl_gazebo/models/${model}/${model}-gen.sdf" ]; then
+			model_name="${model}-gen"
+		fi
 
-			gzserver "${src_path}/Tools/sitl_gazebo/worlds/${model}.world" &
-			SIM_PID=`echo $!`
+		# Set the plugin path so Gazebo finds our model and sim
+		source "$src_path/Tools/setup_gazebo.bash" "${src_path}" "${build_path}"
+		if [ -z $PX4_SITL_WORLD ]; then
+			#Spawn predefined world
+			if [ "$world" == "none" ]; then
+				if [ -f ${src_path}/Tools/sitl_gazebo/worlds/${model}.world ]; then
+					echo "empty world, default world ${model}.world for model found"
+					gzserver "${src_path}/Tools/sitl_gazebo/worlds/${model}.world" &
+				else
+					echo "empty world, setting empty.world as default"
+					gzserver "${src_path}/Tools/sitl_gazebo/worlds/empty.world" &
+				fi
+			else
+				#Spawn empty world if world with model name doesn't exist
+				gzserver "${src_path}/Tools/sitl_gazebo/worlds/${world}.world" &
+			fi
+		else
+			if [ -f ${src_path}/Tools/sitl_gazebo/worlds/${PX4_SITL_WORLD}.world ]; then
+				# Spawn world by name if exists in the worlds directory from environment variable
+				gzserver "${src_path}/Tools/sitl_gazebo/worlds/${PX4_SITL_WORLD}.world" &
+			else
+				# Spawn world from environment variable with absolute path
+				gzserver "$PX4_SITL_WORLD" &
+			fi
+		fi
+		SIM_PID=$!
 
-	if [[ -n "$HEADLESS" ]]; then
-		echo "not running gazebo gui"
-	else
-		# gzserver needs to be running to avoid a race. Since the launch
-		# is putting it into the background we need to avoid it by backing off
-		sleep 3
-		nice -n 20 gzclient --verbose &
-		GUI_PID=`echo $!`
+		while gz model --verbose --spawn-file="${src_path}/Tools/sitl_gazebo/models/${model}/${model_name}.sdf" --model-name=${model} -x 1.01 -y 0.98 -z 0.83 2>&1 | grep -q "An instance of Gazebo is not running."; do
+			echo "gzserver not ready yet, trying again!"
+			sleep 1
+		done
+
+		if [[ -n "$HEADLESS" ]]; then
+			echo "not running gazebo gui"
+		else
+			# gzserver needs to be running to avoid a race. Since the launch
+			# is putting it into the background we need to avoid it by backing off
+			sleep 3
+			nice -n 20 gzclient --verbose &
+			GUI_PID=`echo $!`
 		fi
 	else
 		echo "You need to have gazebo simulator installed!"
 		exit 1
 	fi
+elif [ "$program" == "flightgear" ] && [ -z "$no_sim" ]; then
+	echo "FG setup"
+	cd "${src_path}/Tools/flightgear_bridge/"
+	"${src_path}/Tools/flightgear_bridge/FG_run.py" "models/"${model}".json" 0
+	"${build_path}/build_flightgear_bridge/flightgear_bridge" 0 `./get_FGbridge_params.py "models/"${model}".json"` &
+	FG_BRIDGE_PID=`echo $!`
 fi
 
 pushd "$rootfs" >/dev/null
@@ -146,4 +188,7 @@ elif [ "$program" == "gazebo" ]; then
 	if [[ ! -n "$HEADLESS" ]]; then
 		kill -9 $GUI_PID
 	fi
+elif [ "$program" == "flightgear" ]; then
+	kill $FG_BRIDGE_PID
+	kill -9 `cat /tmp/px4fgfspid_0`
 fi

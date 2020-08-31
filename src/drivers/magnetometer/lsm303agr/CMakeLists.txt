@@ -36,4 +36,7 @@ px4_add_module(
 	SRCS
 		lsm303agr_main.cpp
 		LSM303AGR.cpp
+	DEPENDS
+		drivers_magnetometer
+		px4_work_queue
 	)

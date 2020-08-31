@@ -43,7 +43,7 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/module.h>
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/test_motor.h>
 
 extern "C" __EXPORT int motor_test_main(int argc, char *argv[]);

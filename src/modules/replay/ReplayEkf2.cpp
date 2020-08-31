@@ -66,32 +66,8 @@ ReplayEkf2::handleTopicUpdate(Subscription &sub, void *data, std::ifstream &repl
 			return false;
 		}
 
-		px4_pollfd_struct_t fds[1];
-		fds[0].fd = _vehicle_attitude_sub;
-		fds[0].events = POLLIN;
-
-		// wait for a response from the estimator
-		int pret = px4_poll(fds, 1, 1000);
-
-		// introduce some breaks to make sure the logger can keep up
-		if (++_topic_counter == 50) {
-			px4_usleep(1000);
-			_topic_counter = 0;
-		}
-
-		if (pret == 0) {
-			PX4_WARN("poll timeout");
-
-		} else if (pret < 0) {
-			PX4_ERR("poll failed (%i)", pret);
-
-		} else {
-			if (fds[0].revents & POLLIN) {
-				vehicle_attitude_s att;
-				// need to to an orb_copy so that poll will not return immediately
-				orb_copy(ORB_ID(vehicle_attitude), _vehicle_attitude_sub, &att);
-			}
-		}
+		// Wait for modules to process the data
+		px4_lockstep_wait_for_components();
 
 		return true;
 
@@ -206,7 +182,7 @@ ReplayEkf2::findTimestampAndPublish(uint64_t timestamp, uint16_t msg_id, std::if
 void
 ReplayEkf2::onEnterMainLoop()
 {
-	_vehicle_attitude_sub = orb_subscribe(ORB_ID(vehicle_attitude));
+	_speed_factor = 0.f; // iterate as fast as possible
 }
 
 void
@@ -233,16 +209,6 @@ ReplayEkf2::onExitMainLoop()
 	print_sensor_statistics(_vehicle_air_data_msg_id, "vehicle_air_data");
 	print_sensor_statistics(_vehicle_magnetometer_msg_id, "vehicle_magnetometer");
 	print_sensor_statistics(_vehicle_visual_odometry_msg_id, "vehicle_visual_odometry");
-
-	orb_unsubscribe(_vehicle_attitude_sub);
-	_vehicle_attitude_sub = -1;
-}
-
-uint64_t
-ReplayEkf2::handleTopicDelay(uint64_t next_file_time, uint64_t timestamp_offset)
-{
-	// no need for usleep
-	return next_file_time;
 }
 
 } // namespace px4

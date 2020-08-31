@@ -37,7 +37,7 @@
 
 constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 	initSPIBus(SPI::Bus::SPI1, {
-		initSPIDevice(DRV_GYR_DEVTYPE_ADIS16477, SPI::CS{GPIO::PortG, GPIO::Pin10}, SPI::DRDY{GPIO::PortJ, GPIO::Pin0}),
+		initSPIDevice(DRV_IMU_DEVTYPE_ADIS16477, SPI::CS{GPIO::PortG, GPIO::Pin10}, SPI::DRDY{GPIO::PortJ, GPIO::Pin0}),
 	}),
 	initSPIBusExternal(SPI::Bus::SPI2, {
 		initSPIConfigExternal(SPI::CS{GPIO::PortI, GPIO::Pin0}),
@@ -52,4 +52,3 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 };
 
 static constexpr bool unused = validateSPIConfig(px4_spi_buses);
-

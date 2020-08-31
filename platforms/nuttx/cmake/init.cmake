@@ -153,15 +153,17 @@ foreach(NameAndValue ${ConfigContents})
 	# Find variable name
 	string(REGEX MATCH "^CONFIG[^=]+" Name ${NameAndValue})
 
-	if (Name)
+	if(Name)
 		# Find the value
 		string(REPLACE "${Name}=" "" Value ${NameAndValue})
 
-		# remove extra quotes
-		string(REPLACE "\"" "" Value ${Value})
+		if(Value)
+			# remove extra quotes
+			string(REPLACE "\"" "" Value ${Value})
 
-		# Set the variable
-		#message(STATUS "${Name} ${Value}")
-		set(${Name} ${Value} CACHE INTERNAL "NUTTX DEFCONFIG: ${Name}" FORCE)
+			# Set the variable
+			#message(STATUS "${Name} ${Value}")
+			set(${Name} ${Value} CACHE INTERNAL "NUTTX DEFCONFIG: ${Name}" FORCE)
+		endif()
 	endif()
 endforeach()

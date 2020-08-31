@@ -12,7 +12,8 @@ EOF
 uorb start
 param set SDLOG_DIRS_MAX 7
 
+# apply all params before ekf starts, as some params cannot be changed after startup
+replay tryapplyparams
 ekf2 start -r
 logger start -f -t -b 1000 -p vehicle_attitude
-sleep 0.2
 replay start

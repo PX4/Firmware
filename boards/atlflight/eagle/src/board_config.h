@@ -42,21 +42,10 @@
 #define BOARD_OVERRIDE_UUID "EAGLEID000000000" // must be of length 16
 #define PX4_SOC_ARCH_ID     PX4_SOC_ARCH_ID_EAGLE
 
-#define BOARD_HAS_NO_RESET
-#define BOARD_HAS_NO_BOOTLOADER
-
 /*
  * I2C busses
  */
-#define PX4_I2C_BUS_EXPANSION1  2  // I2C2: J9 / GPS
-#define PX4_I2C_BUS_EXPANSION   3  // I2C3: J14 / Power
-#define PX4_I2C_BUS_EXPANSION2  9  // I2C9: J15 / Radio Receiver / Sensors
-
 #define PX4_NUMBER_I2C_BUSES    3
-
-// SPI
-#define PX4_SPI_BUS_SENSORS    1
-#define PX4_SPIDEV_MPU         PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250) // spi-1 - mpu9250
 
 // Battery ADC channels
 

@@ -76,7 +76,7 @@ public:
 	PositionControlBasicTest()
 	{
 		_position_control.setPositionGains(Vector3f(1.f, 1.f, 1.f));
-		_position_control.setVelocityGains(Vector3f(1.f, 1.f, 1.f), Vector3f(1.f, 1.f, 1.f), Vector3f(1.f, 1.f, 1.f));
+		_position_control.setVelocityGains(Vector3f(20.f, 20.f, 20.f), Vector3f(20.f, 20.f, 20.f), Vector3f(20.f, 20.f, 20.f));
 		_position_control.setVelocityLimits(1.f, 1.f, 1.f);
 		_position_control.setThrustLimits(0.1f, 0.9f);
 		_position_control.setTiltLimit(1.f);
@@ -188,17 +188,40 @@ TEST_F(PositionControlBasicTest, VelocityLimit)
 	EXPECT_LE(abs(_output_setpoint.vz), 1.f);
 }
 
-TEST_F(PositionControlBasicTest, ThrustLimit)
+TEST_F(PositionControlBasicTest, PositionControlMaxThrustLimit)
 {
 	_input_setpoint.x = 10.f;
 	_input_setpoint.y = 10.f;
 	_input_setpoint.z = -10.f;
 
-	EXPECT_TRUE(runController());
-	EXPECT_FLOAT_EQ(_attitude.thrust_body[0], 0.f);
-	EXPECT_FLOAT_EQ(_attitude.thrust_body[1], 0.f);
-	EXPECT_LT(_attitude.thrust_body[2], -.1f);
-	EXPECT_GE(_attitude.thrust_body[2], -0.9f);
+	runController();
+	Vector3f thrust(_output_setpoint.thrust);
+	EXPECT_FLOAT_EQ(thrust(0), 0.f);
+	EXPECT_FLOAT_EQ(thrust(1), 0.f);
+	EXPECT_FLOAT_EQ(thrust(2), -0.9f);
+
+	EXPECT_EQ(_attitude.thrust_body[0], 0.f);
+	EXPECT_EQ(_attitude.thrust_body[1], 0.f);
+	EXPECT_FLOAT_EQ(_attitude.thrust_body[2], -0.9f);
+
+	EXPECT_FLOAT_EQ(_attitude.roll_body, 0.f);
+	EXPECT_FLOAT_EQ(_attitude.pitch_body, 0.f);
+}
+
+TEST_F(PositionControlBasicTest, PositionControlMinThrustLimit)
+{
+	_input_setpoint.x = 10.f;
+	_input_setpoint.y = 0.f;
+	_input_setpoint.z = 10.f;
+
+	runController();
+	Vector3f thrust(_output_setpoint.thrust);
+	EXPECT_FLOAT_EQ(thrust.length(), 0.1f);
+
+	EXPECT_FLOAT_EQ(_attitude.thrust_body[2], -0.1f);
+
+	EXPECT_FLOAT_EQ(_attitude.roll_body, 0.f);
+	EXPECT_FLOAT_EQ(_attitude.pitch_body, -1.f);
 }
 
 TEST_F(PositionControlBasicTest, FailsafeInput)
@@ -214,6 +237,17 @@ TEST_F(PositionControlBasicTest, FailsafeInput)
 	EXPECT_GT(_output_setpoint.thrust[2], -.5f);
 	EXPECT_GT(_attitude.thrust_body[2], -.5f);
 	EXPECT_LE(_attitude.thrust_body[2], -.1f);
+}
+
+TEST_F(PositionControlBasicTest, IdleThrustInput)
+{
+	// High downwards acceleration to make sure there's no thrust
+	Vector3f(0.f, 0.f, 100.f).copyTo(_input_setpoint.acceleration);
+
+	EXPECT_TRUE(runController());
+	EXPECT_FLOAT_EQ(_output_setpoint.thrust[0], 0.f);
+	EXPECT_FLOAT_EQ(_output_setpoint.thrust[1], 0.f);
+	EXPECT_FLOAT_EQ(_output_setpoint.thrust[2], -.1f);
 }
 
 TEST_F(PositionControlBasicTest, InputCombinationsPosition)
@@ -259,16 +293,16 @@ TEST_F(PositionControlBasicTest, SetpointValiditySimple)
 	EXPECT_FALSE(runController());
 	_input_setpoint.y = .2f;
 	EXPECT_FALSE(runController());
-	_input_setpoint.thrust[2] = .3f;
+	_input_setpoint.acceleration[2] = .3f;
 	EXPECT_TRUE(runController());
 }
 
 TEST_F(PositionControlBasicTest, SetpointValidityAllCombinations)
 {
-	// This test runs any position, velocity, thrust setpoint combination and checks if it gets accepted or rejected correctly
-	float *const setpoint_loop_access_map[] = {&_input_setpoint.x, &_input_setpoint.vx, &_input_setpoint.thrust[0],
-						   &_input_setpoint.y, &_input_setpoint.vy, &_input_setpoint.thrust[1],
-						   &_input_setpoint.z, &_input_setpoint.vz, &_input_setpoint.thrust[2]
+	// This test runs any combination of set and unset (NAN) setpoints and checks if it gets accepted or rejected correctly
+	float *const setpoint_loop_access_map[] = {&_input_setpoint.x, &_input_setpoint.vx, &_input_setpoint.acceleration[0],
+						   &_input_setpoint.y, &_input_setpoint.vy, &_input_setpoint.acceleration[1],
+						   &_input_setpoint.z, &_input_setpoint.vz, &_input_setpoint.acceleration[2]
 						  };
 
 	for (int combination = 0; combination < 512; combination++) {
@@ -289,16 +323,17 @@ TEST_F(PositionControlBasicTest, SetpointValidityAllCombinations)
 		const bool has_xy_pairs = (combination & 7) == ((combination >> 3) & 7);
 		const bool expected_result = has_x_setpoint && has_y_setpoint && has_z_setpoint && has_xy_pairs;
 
-		EXPECT_EQ(runController(), expected_result) << "combination " << combination
-				<< std::endl << "input" << std::endl
-				<< "position " << _input_setpoint.x << ", " << _input_setpoint.y << ", " << _input_setpoint.z << std::endl
-				<< "velocity " << _input_setpoint.vx << ", " << _input_setpoint.vy << ", " << _input_setpoint.vz << std::endl
-				<< "thrust   " << _input_setpoint.thrust[0] << ", " << _input_setpoint.thrust[1] << ", " << _input_setpoint.thrust[2]
-				<< std::endl << "output" << std::endl
-				<< "position " << _output_setpoint.x << ", " << _output_setpoint.y << ", " << _output_setpoint.z << std::endl
-				<< "velocity " << _output_setpoint.vx << ", " << _output_setpoint.vy << ", " << _output_setpoint.vz << std::endl
-				<< "thrust   " << _output_setpoint.thrust[0] << ", " << _output_setpoint.thrust[1] << ", " << _output_setpoint.thrust[2]
-				<< std::endl;
+		EXPECT_EQ(runController(), expected_result) << "combination " << combination << std::endl
+				<< "input" << std::endl
+				<< "position     " << _input_setpoint.x << ", " << _input_setpoint.y << ", " << _input_setpoint.z << std::endl
+				<< "velocity     " << _input_setpoint.vx << ", " << _input_setpoint.vy << ", " << _input_setpoint.vz << std::endl
+				<< "acceleration " << _input_setpoint.acceleration[0] << ", "
+				<< _input_setpoint.acceleration[1] << ", " << _input_setpoint.acceleration[2] << std::endl
+				<< "output" << std::endl
+				<< "position     " << _output_setpoint.x << ", " << _output_setpoint.y << ", " << _output_setpoint.z << std::endl
+				<< "velocity     " << _output_setpoint.vx << ", " << _output_setpoint.vy << ", " << _output_setpoint.vz << std::endl
+				<< "acceleration " << _output_setpoint.acceleration[0] << ", "
+				<< _output_setpoint.acceleration[1] << ", " << _output_setpoint.acceleration[2] << std::endl;
 	}
 }
 
@@ -352,6 +387,4 @@ TEST_F(PositionControlBasicTest, UpdateHoverThrust)
 	// THEN: the integral is updated to avoid discontinuities and
 	// the output is still the same
 	EXPECT_EQ(_output_setpoint.thrust[2], -hover_thrust);
-	const Vector3f integrator_new(_position_control.getIntegral());
-	EXPECT_EQ(integrator_new(2) - hover_thrust_new, -hover_thrust);
 }

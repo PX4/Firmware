@@ -33,7 +33,6 @@
 px4_add_module(
 	MODULE systemcmds__shutdown
 	MAIN shutdown
-	COMPILE_FLAGS
 	SRCS
-		shutdown.c
+		shutdown.cpp
 	)

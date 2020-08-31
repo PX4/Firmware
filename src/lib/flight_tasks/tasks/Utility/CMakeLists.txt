@@ -38,6 +38,7 @@ px4_add_library(FlightTaskUtility
 	VelocitySmoothing.cpp
 	ManualVelocitySmoothingXY.cpp
 	ManualVelocitySmoothingZ.cpp
+	Sticks.cpp
 )
 
 target_link_libraries(FlightTaskUtility PUBLIC FlightTask hysteresis bezier)

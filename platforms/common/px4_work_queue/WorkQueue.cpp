@@ -72,8 +72,7 @@ WorkQueue::~WorkQueue()
 #endif /* __PX4_NUTTX */
 }
 
-bool
-WorkQueue::Attach(WorkItem *item)
+bool WorkQueue::Attach(WorkItem *item)
 {
 	work_lock();
 
@@ -87,8 +86,7 @@ WorkQueue::Attach(WorkItem *item)
 	return false;
 }
 
-void
-WorkQueue::Detach(WorkItem *item)
+void WorkQueue::Detach(WorkItem *item)
 {
 	work_lock();
 
@@ -99,24 +97,22 @@ WorkQueue::Detach(WorkItem *item)
 		PX4_DEBUG("stopping: %s, last active WorkItem closing", _config.name);
 
 		request_stop();
-		signal_worker_thread();
+		SignalWorkerThread();
 	}
 
 	work_unlock();
 }
 
-void
-WorkQueue::Add(WorkItem *item)
+void WorkQueue::Add(WorkItem *item)
 {
 	work_lock();
 	_q.push(item);
 	work_unlock();
 
-	signal_worker_thread();
+	SignalWorkerThread();
 }
 
-void
-WorkQueue::signal_worker_thread()
+void WorkQueue::SignalWorkerThread()
 {
 	int sem_val;
 
@@ -125,16 +121,14 @@ WorkQueue::signal_worker_thread()
 	}
 }
 
-void
-WorkQueue::Remove(WorkItem *item)
+void WorkQueue::Remove(WorkItem *item)
 {
 	work_lock();
 	_q.remove(item);
 	work_unlock();
 }
 
-void
-WorkQueue::Clear()
+void WorkQueue::Clear()
 {
 	work_lock();
 
@@ -145,11 +139,11 @@ WorkQueue::Clear()
 	work_unlock();
 }
 
-void
-WorkQueue::Run()
+void WorkQueue::Run()
 {
 	while (!should_exit()) {
-		px4_sem_wait(&_process_lock);
+		// loop as the wait may be interrupted by a signal
+		do {} while (px4_sem_wait(&_process_lock) != 0);
 
 		work_lock();
 
@@ -170,12 +164,11 @@ WorkQueue::Run()
 	PX4_DEBUG("%s: exiting", _config.name);
 }
 
-void
-WorkQueue::print_status(bool last)
+void WorkQueue::print_status(bool last)
 {
 	const size_t num_items = _work_items.size();
 	PX4_INFO_RAW("%-16s\n", get_name());
-	size_t i = 0;
+	unsigned i = 0;
 
 	for (WorkItem *item : _work_items) {
 		i++;
@@ -188,10 +181,10 @@ WorkQueue::print_status(bool last)
 		}
 
 		if (i < num_items) {
-			PX4_INFO_RAW("|__ %zu) ", i);
+			PX4_INFO_RAW("|__%2d) ", i);
 
 		} else {
-			PX4_INFO_RAW("\\__ %zu) ", i);
+			PX4_INFO_RAW("\\__%2d) ", i);
 		}
 
 		item->print_run_status();

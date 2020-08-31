@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2013-2020 Estimation and Control Library (ECL). All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,23 +43,25 @@
 #include <lib/ecl/geo/geo.h>
 #include <mathlib/mathlib.h>
 
-float ECL_RollController::control_attitude(const struct ECL_ControlData &ctl_data)
+float ECL_RollController::control_attitude(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Do not calculate control signal with bad inputs */
-	if (!(PX4_ISFINITE(ctl_data.roll_setpoint) && PX4_ISFINITE(ctl_data.roll))) {
+	if (!(PX4_ISFINITE(ctl_data.roll_setpoint) &&
+	      PX4_ISFINITE(ctl_data.roll))) {
+
 		return _rate_setpoint;
 	}
 
-	/* Calculate error */
+	/* Calculate the error */
 	float roll_error = ctl_data.roll_setpoint - ctl_data.roll;
 
-	/* Apply P controller */
+	/*  Apply P controller: rate setpoint from current error and time constant */
 	_rate_setpoint = roll_error / _tc;
 
 	return _rate_setpoint;
 }
 
-float ECL_RollController::control_bodyrate(const struct ECL_ControlData &ctl_data)
+float ECL_RollController::control_bodyrate(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Do not calculate control signal with bad inputs */
 	if (!(PX4_ISFINITE(ctl_data.pitch) &&
@@ -73,28 +75,17 @@ float ECL_RollController::control_bodyrate(const struct ECL_ControlData &ctl_dat
 		return math::constrain(_last_output, -1.0f, 1.0f);
 	}
 
-	/* get the usual dt estimate */
-	uint64_t dt_micros = hrt_elapsed_time(&_last_run);
-	_last_run = hrt_absolute_time();
-	float dt = (float)dt_micros * 1e-6f;
-
-	/* lock integral for long intervals */
-	bool lock_integrator = ctl_data.lock_integrator;
-
-	if (dt_micros > 500000) {
-		lock_integrator = true;
-	}
-
 	/* Calculate body angular rate error */
-	_rate_error = _bodyrate_setpoint - ctl_data.body_x_rate; //body angular rate error
+	_rate_error = _bodyrate_setpoint - ctl_data.body_x_rate;
 
-	if (!lock_integrator && _k_i > 0.0f) {
+	if (!ctl_data.lock_integrator && _k_i > 0.0f) {
 
-		float id = _rate_error * dt * ctl_data.scaler;
+		/* Integral term scales with 1/IAS^2 */
+		float id = _rate_error * dt * ctl_data.scaler * ctl_data.scaler;
 
 		/*
-		* anti-windup: do not allow integrator to increase if actuator is at limit
-		*/
+		 * anti-windup: do not allow integrator to increase if actuator is at limit
+		 */
 		if (_last_output < -1.0f) {
 			/* only allow motion to center: increase value */
 			id = math::max(id, 0.0f);
@@ -109,20 +100,20 @@ float ECL_RollController::control_bodyrate(const struct ECL_ControlData &ctl_dat
 	}
 
 	/* Apply PI rate controller and store non-limited output */
+	/* FF terms scales with 1/TAS and P,I with 1/IAS^2 */
 	_last_output = _bodyrate_setpoint * _k_ff * ctl_data.scaler +
 		       _rate_error * _k_p * ctl_data.scaler * ctl_data.scaler
-		       + _integrator;  //scaler is proportional to 1/airspeed
+		       + _integrator;
 
 	return math::constrain(_last_output, -1.0f, 1.0f);
 }
 
-float ECL_RollController::control_euler_rate(const struct ECL_ControlData &ctl_data)
+float ECL_RollController::control_euler_rate(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Transform setpoint to body angular rates (jacobian) */
 	_bodyrate_setpoint = ctl_data.roll_rate_setpoint - sinf(ctl_data.pitch) * ctl_data.yaw_rate_setpoint;
 
 	set_bodyrate_setpoint(_bodyrate_setpoint);
 
-	return control_bodyrate(ctl_data);
-
+	return control_bodyrate(dt, ctl_data);
 }

@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# board specific sensors init
+#------------------------------------------------------------------------------
+adc start
+
+# SPI1 (internal)
+rm3100 -s start
+icm20689 -s -R 2 start
+
+# SPI4 (internal)
+bmi088 -A -s -R 10 start
+bmi088 -G -s -R 10 start
+ms5611 -s -b 4 start
+
+# SPI6 (internal)
+icm20649 -s -b 6 -R 2 start
+ms5611 -s -b 6 start

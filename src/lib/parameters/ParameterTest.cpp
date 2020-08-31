@@ -43,6 +43,7 @@ class ParameterTest : public ::testing::Test
 public:
 	void SetUp() override
 	{
+		param_control_autosave(false);
 		param_reset_all();
 	}
 };

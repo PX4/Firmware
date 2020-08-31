@@ -12,6 +12,7 @@ px4_add_board(
 		GPS1:/dev/ttyS3
 		TEL1:/dev/ttyS1
 		TEL2:/dev/ttyS2
+		TEL3:/dev/ttyS6
 	DRIVERS
 		adc
 		barometer/ms5611
@@ -21,8 +22,9 @@ px4_add_board(
 		distance_sensor # all available distance sensor drivers
 		dshot
 		gps
-		imu/mpu6000
-		imu/mpu9250
+		imu/invensense/icm20602
+		imu/invensense/icm20608g
+		imu/invensense/mpu9250
 		irlock
 		lights/rgbled_ncp5623c
 		magnetometer/bmm150
@@ -32,7 +34,7 @@ px4_add_board(
 		pca9685
 		pwm_input
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		rc_input
 		tone_alarm
 		uavcan
@@ -62,7 +64,6 @@ px4_add_board(
 		vmount
 	SYSTEMCMDS
 		bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
@@ -80,7 +81,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		top
 		topic_listener
 		tune_control

@@ -206,8 +206,17 @@ protected:
 	 */
 	bool nextDataMessage(std::ifstream &file, Subscription &subscription, int msg_id);
 
+	virtual uint64_t getTimestampOffset()
+	{
+		//we update the timestamps from the file by a constant offset to match
+		//the current replay time
+		return _replay_start_time - _file_start_time;
+	}
+
 	std::vector<Subscription *> _subscriptions;
 	std::vector<uint8_t> _read_buffer;
+
+	float _speed_factor{1.f}; ///< from PX4_SIM_SPEED_FACTOR env variable (set to 0 to avoid usleep = unlimited rate)
 
 private:
 	std::set<std::string> _overridden_params;
@@ -221,6 +230,8 @@ private:
 	std::streampos _subscription_file_pos = 0;
 
 	int64_t _read_until_file_position = 1ULL << 60; ///< read limit if log contains appended data
+
+	float _accumulated_delay{0.f};
 
 	bool readFileHeader(std::ifstream &file);
 

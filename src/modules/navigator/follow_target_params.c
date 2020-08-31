@@ -48,7 +48,7 @@
  *
  * The minimum height in meters relative to home for following a target
  *
- * @unit meters
+ * @unit m
  * @min 8.0
  * @group Follow target
  */
@@ -59,7 +59,7 @@ PARAM_DEFINE_FLOAT(NAV_MIN_FT_HT, 8.0f);
  *
  * The distance in meters to follow the target at
  *
- * @unit meters
+ * @unit m
  * @min 1.0
  * @group Follow target
  */
@@ -70,7 +70,6 @@ PARAM_DEFINE_FLOAT(NAV_FT_DST, 8.0f);
  *
  * The side to follow the target from (front right = 0, behind = 1, front = 2, front left = 3)
  *
- * @unit n/a
  * @min 0
  * @max 3
  * @group Follow target
@@ -82,7 +81,6 @@ PARAM_DEFINE_INT32(NAV_FT_FS, 1);
  * lower numbers increase the responsiveness to changing long lat
  * but also ignore less noise
  *
- * @unit n/a
  * @min 0.0
  * @max 1.0
  * @decimal 2

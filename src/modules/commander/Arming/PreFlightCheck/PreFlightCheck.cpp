@@ -65,9 +65,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 			  && !status_flags.condition_calibration_enabled);
 
 	const bool checkSensors = !hil_enabled;
-	const bool checkRC = (status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT);
 	const bool checkDynamic = !hil_enabled;
-	const bool checkPower = (status_flags.condition_power_input_valid && !status_flags.circuit_breaker_engaged_power_check);
 
 	bool checkAirspeed = false;
 
@@ -80,17 +78,14 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 	bool failed = false;
 
+	failed = failed || !airframeCheck(mavlink_log_pub, status);
+
 	/* ---- MAG ---- */
 	if (checkSensors) {
 		int32_t sys_has_mag = 1;
 		param_get(param_find("SYS_HAS_MAG"), &sys_has_mag);
 
 		if (sys_has_mag == 1) {
-
-			bool prime_found = false;
-
-			int32_t prime_id = -1;
-			param_get(param_find("CAL_MAG_PRIME"), &prime_id);
 
 			/* check all sensors individually, but fail only for mandatory ones */
 			for (unsigned i = 0; i < max_optional_mag_count; i++) {
@@ -99,29 +94,14 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 				int32_t device_id = -1;
 
-				if (magnometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
-
-					if ((prime_id > 0) && (device_id == prime_id)) {
-						prime_found = true;
-					}
-
-				} else {
+				if (!magnetometerCheck(mavlink_log_pub, status, i, !required, device_id, report_fail)) {
 					if (required) {
 						failed = true;
 					}
 				}
 			}
 
-
-			/* check if the primary device is present */
-			if (!prime_found && prime_id != 0) {
-				if (reportFailures) {
-					mavlink_log_critical(mavlink_log_pub, "Primary compass not found");
-				}
-
-				set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_MAG, false, true, false, status);
-				failed = true;
-			}
+			// TODO: highest priority mag
 
 			/* mag consistency checks (need to be performed after the individual checks) */
 			if (!magConsistencyCheck(mavlink_log_pub, status, (reportFailures))) {
@@ -132,10 +112,6 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 	/* ---- ACCEL ---- */
 	if (checkSensors) {
-		bool prime_found = false;
-		int32_t prime_id = -1;
-		param_get(param_find("CAL_ACC_PRIME"), &prime_id);
-
 		/* check all sensors individually, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_accel_count; i++) {
 			const bool required = (i < max_mandatory_accel_count);
@@ -143,63 +119,31 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 
 			int32_t device_id = -1;
 
-			if (accelerometerCheck(mavlink_log_pub, status, i, !required, checkDynamic, device_id, report_fail)) {
-
-				if ((prime_id > 0) && (device_id == prime_id)) {
-					prime_found = true;
-				}
-
-			} else {
+			if (!accelerometerCheck(mavlink_log_pub, status, i, !required, checkDynamic, device_id, report_fail)) {
 				if (required) {
 					failed = true;
 				}
 			}
 		}
 
-		/* check if the primary device is present */
-		if (!prime_found && prime_id != 0) {
-			if (reportFailures) {
-				mavlink_log_critical(mavlink_log_pub, "Primary accelerometer not found");
-			}
-
-			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_ACC, false, true, false, status);
-			failed = true;
-		}
+		// TODO: highest priority (from params)
 	}
 
 	/* ---- GYRO ---- */
 	if (checkSensors) {
-		bool prime_found = false;
-		int32_t prime_id = -1;
-		param_get(param_find("CAL_GYRO_PRIME"), &prime_id);
-
 		/* check all sensors individually, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_gyro_count; i++) {
 			const bool required = (i < max_mandatory_gyro_count);
 			int32_t device_id = -1;
 
-			if (gyroCheck(mavlink_log_pub, status, i, !required, device_id, reportFailures)) {
-
-				if ((prime_id > 0) && (device_id == prime_id)) {
-					prime_found = true;
-				}
-
-			} else {
+			if (!gyroCheck(mavlink_log_pub, status, i, !required, device_id, reportFailures)) {
 				if (required) {
 					failed = true;
 				}
 			}
 		}
 
-		/* check if the primary device is present */
-		if (!prime_found && prime_id != 0) {
-			if (reportFailures) {
-				mavlink_log_critical(mavlink_log_pub, "Primary gyro not found");
-			}
-
-			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_GYRO, false, true, false, status);
-			failed = true;
-		}
+		// TODO: highest priority (from params)
 	}
 
 	/* ---- BARO ---- */
@@ -243,7 +187,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	}
 
 	/* ---- RC CALIBRATION ---- */
-	if (checkRC) {
+	if (status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT) {
 		if (rcCalibrationCheck(mavlink_log_pub, reportFailures, status.is_vtol) != OK) {
 			if (reportFailures) {
 				mavlink_log_critical(mavlink_log_pub, "RC calibration check failed");
@@ -263,7 +207,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	}
 
 	/* ---- SYSTEM POWER ---- */
-	if (checkPower) {
+	if (status_flags.condition_power_input_valid && !status_flags.circuit_breaker_engaged_power_check) {
 		if (!powerCheck(mavlink_log_pub, status, reportFailures, prearm)) {
 			failed = true;
 		}
@@ -295,41 +239,9 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		failed = true;
 	}
 
+	failed = failed || !manualControlCheck(mavlink_log_pub, reportFailures);
+	failed = failed || !cpuResourceCheck(mavlink_log_pub, reportFailures);
+
 	/* Report status */
 	return !failed;
-}
-
-bool PreFlightCheck::check_calibration(const char *param_template, const int32_t device_id)
-{
-	bool calibration_found = false;
-
-	char s[20];
-	int instance = 0;
-
-	/* old style transition: check param values */
-	while (!calibration_found) {
-		sprintf(s, param_template, instance);
-		const param_t parm = param_find_no_notification(s);
-
-		/* if the calibration param is not present, abort */
-		if (parm == PARAM_INVALID) {
-			break;
-		}
-
-		/* if param get succeeds */
-		int32_t calibration_devid = -1;
-
-		if (param_get(parm, &calibration_devid) == PX4_OK) {
-
-			/* if the devid matches, exit early */
-			if (device_id == calibration_devid) {
-				calibration_found = true;
-				break;
-			}
-		}
-
-		instance++;
-	}
-
-	return calibration_found;
 }

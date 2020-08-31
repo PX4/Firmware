@@ -39,6 +39,8 @@
 
 #include "LPS22HB.hpp"
 
+#include <drivers/device/i2c.h>
+
 #define LPS22HB_ADDRESS		0x5D
 
 device::Device *LPS22HB_I2C_interface(int bus, int bus_frequency);
@@ -47,13 +49,13 @@ class LPS22HB_I2C : public device::I2C
 {
 public:
 	LPS22HB_I2C(int bus, int bus_frequency);
-	virtual ~LPS22HB_I2C() = default;
+	~LPS22HB_I2C() override = default;
 
-	virtual int	read(unsigned address, void *data, unsigned count);
-	virtual int	write(unsigned address, void *data, unsigned count);
+	int	read(unsigned address, void *data, unsigned count) override;
+	int	write(unsigned address, void *data, unsigned count) override;
 
 protected:
-	virtual int	probe();
+	int	probe() override;
 
 };
 
@@ -64,14 +66,13 @@ LPS22HB_I2C_interface(int bus, int bus_frequency)
 }
 
 LPS22HB_I2C::LPS22HB_I2C(int bus, int bus_frequency) :
-	I2C("LPS22HB_I2C", nullptr, bus, LPS22HB_ADDRESS, bus_frequency)
+	I2C(DRV_BARO_DEVTYPE_LPS22HB, MODULE_NAME, bus, LPS22HB_ADDRESS, bus_frequency)
 {
 }
 
-int
-LPS22HB_I2C::probe()
+int LPS22HB_I2C::probe()
 {
-	uint8_t id;
+	uint8_t id = 0;
 
 	_retries = 10;
 
@@ -87,11 +88,10 @@ LPS22HB_I2C::probe()
 		return -EIO;
 	}
 
-	return OK;
+	return PX4_OK;
 }
 
-int
-LPS22HB_I2C::write(unsigned address, void *data, unsigned count)
+int LPS22HB_I2C::write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 

@@ -1,0 +1,111 @@
+name: Metadata
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+
+  airframe:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-focal:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: airframe metadata
+      run: |
+        make airframe_metadata
+        cd build/px4_sitl_default/docs
+        ls -ls *
+      # TODO: deploy to devguide gitbook and s3
+
+  module:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-focal:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: module documentation
+      run: |
+        make module_documentation
+        cd build/px4_sitl_default/docs
+        ls -ls *
+      # TODO: deploy to devguide gitbook and s3
+
+  parameter:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-focal:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: parameter metadata
+      run: |
+        make parameters_metadata
+        cd build/px4_sitl_default/docs
+        ls -ls *
+      # TODO: deploy 'parameters.md, parameters.xml to S3 px4-travis:Firmware/master/
+
+  uorb_graph:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-nuttx-focal:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: uORB graph
+      run: |
+        make uorb_graphs
+        cd Tools/uorb_graph
+        ls -ls *
+      # TODO: deploy graph_px4_sitl.json to S3 px4-travis:Firmware/master/
+
+  micrortps_agent:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-bionic:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: microRTPS agent
+      run: |
+        make px4_sitl_rtps
+        git clone https://github.com/PX4/micrortps_agent.git
+        cp -R build/px4_sitl_rtps/src/modules/micrortps_bridge/micrortps_agent/* micrortps_agent
+
+  ROS_msgs:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-bionic:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: PX4 ROS msgs
+      run: |
+        git clone https://github.com/PX4/px4_msgs.git
+        python3 msg/tools/uorb_to_ros_msgs.py msg/ px4_msgs/msg/
+
+  ROS2_bridge:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-bionic:2020-04-01
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+
+    - name: PX4 ROS2 bridge
+      run: |
+        git clone https://github.com/PX4/px4_ros_com.git
+        ./msg/tools/uorb_to_ros_rtps_ids.py -i msg/tools/uorb_rtps_message_ids.yaml -o px4_ros_com/templates/uorb_rtps_message_ids.yaml

@@ -191,7 +191,7 @@ PARAM_DEFINE_FLOAT(GND_SPEED_P, 2.0f);
  * @increment 0.005
  * @group Rover Position Control
  */
-PARAM_DEFINE_FLOAT(GND_SPEED_I, 0.1f);
+PARAM_DEFINE_FLOAT(GND_SPEED_I, 3.0f);
 
 /**
  * Speed proportional gain
@@ -205,7 +205,7 @@ PARAM_DEFINE_FLOAT(GND_SPEED_I, 0.1f);
  * @increment 0.005
  * @group Rover Position Control
  */
-PARAM_DEFINE_FLOAT(GND_SPEED_D, 0.0f);
+PARAM_DEFINE_FLOAT(GND_SPEED_D, 0.001f);
 
 /**
  * Speed integral maximum value

@@ -47,10 +47,8 @@ then
 	param set BAT_V_OFFS_CURR -0.0045
 
 	# sensor calibration
-	param set CAL_MAG0_ROT 0
 	param set CAL_MAG_SIDES 63
 	param set SENS_BOARD_ROT 0
-	param set COM_ARM_MAG_ANG -1
 	param set COM_ARM_EKF_AB 0.0032
 
 	# circuit breakers
@@ -154,15 +152,15 @@ then
 	param set MPC_ACC_HOR_MAX 15
 
 	param set MPC_XY_P 1.15
-	param set MPC_XY_VEL_P 0.14
-	param set MPC_XY_VEL_I 0.014
-	param set MPC_XY_VEL_D 0.014
+	param set MPC_XY_VEL_P_ACC 2.8
+	param set MPC_XY_VEL_I_ACC 0.28
+	param set MPC_XY_VEL_D_ACC 0.28
 	param set MPC_XY_VEL_MAX 26.5
 
 	param set MPC_Z_P 0.85
-	param set MPC_Z_VEL_P 0.25
-	param set MPC_Z_VEL_I 0.085
-	param set MPC_Z_VEL_D 0.02
+	param set MPC_Z_VEL_P_ACC 5
+	param set MPC_Z_VEL_I_ACC 1.7
+	param set MPC_Z_VEL_D_ACC 0.4
 	# Documentation says limit is 8.0, but does not seem to be enforced in code.
 	param set MPC_Z_VEL_MAX_UP 20
 	param set MPC_Z_VEL_MAX_DN 2.5
@@ -187,20 +185,11 @@ then
 	param set RTL_RETURN_ALT 25
 
 	# calibration
-	param set CAL_ACC0_EN 1
-	param set CAL_ACC1_EN 0
-	#mpu6500
-	param set CAL_ACC_PRIME 1442826
+	param set CAL_ACC0_PRIO 255
+	param set CAL_ACC1_PRIO 0
 
-	param set CAL_GYRO0_EN 1
-	param set CAL_GYRO1_EN 0
-	#mpu6500
-	param set CAL_GYRO_PRIME 2360330
-
-	param set CAL_MAG0_EN 1
-	param set CAL_MAG1_EN 0
-	param set CAL_MAG_PRIME 265738
-
+	param set CAL_GYRO0_PRIO 255
+	param set CAL_GYRO1_PRIO 0
 fi
 
 # Logger mode. Default(1) + estimator replay(2) + thermal calibration(4)

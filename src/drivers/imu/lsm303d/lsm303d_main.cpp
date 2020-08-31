@@ -39,144 +39,74 @@
 #include "LSM303D.hpp"
 
 #include <px4_platform_common/getopt.h>
-
-/**
- * Local functions in support of the shell command.
- */
-namespace lsm303d
-{
-
-LSM303D	*g_dev;
-
-void	start(bool external_bus, enum Rotation rotation, unsigned range);
-void	info();
-void	usage();
-
-/**
- * Start the driver.
- *
- * This function call only returns once the driver is
- * up and running or failed to detect the sensor.
- */
-void
-start(bool external_bus, enum Rotation rotation, unsigned range)
-{
-	if (g_dev != nullptr) {
-		errx(0, "already started");
-	}
-
-	/* create the driver */
-	if (external_bus) {
-#if defined(PX4_SPI_BUS_EXT) && defined(PX4_SPIDEV_EXT_ACCEL_MAG)
-		g_dev = new LSM303D(PX4_SPI_BUS_EXT, PX4_SPIDEV_EXT_ACCEL_MAG, rotation);
-#else
-		errx(0, "External SPI not available");
-#endif
-
-	} else {
-		g_dev = new LSM303D(PX4_SPI_BUS_SENSORS, PX4_SPIDEV_ACCEL_MAG, rotation);
-	}
-
-	if (g_dev == nullptr) {
-		PX4_ERR("failed instantiating LSM303D obj");
-		goto fail;
-	}
-
-	if (OK != g_dev->init()) {
-		goto fail;
-	}
-
-	exit(0);
-fail:
-
-	if (g_dev != nullptr) {
-		delete g_dev;
-		g_dev = nullptr;
-	}
-
-	errx(1, "driver start failed");
-}
-
-/**
- * Print a little info about the driver.
- */
-void
-info()
-{
-	if (g_dev == nullptr) {
-		errx(1, "driver not running\n");
-	}
-
-	printf("state @ %p\n", g_dev);
-	g_dev->print_info();
-
-	exit(0);
-}
+#include <px4_platform_common/module.h>
 
 void
-usage()
+LSM303D::print_usage()
 {
-	PX4_INFO("missing command: try 'start', 'info'");
-	PX4_INFO("options:");
-	PX4_INFO("    -X    (external bus)");
-	PX4_INFO("    -R rotation");
+	PRINT_MODULE_USAGE_NAME("lsm303d", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-} // namespace
-
-int
-lsm303d_main(int argc, char *argv[])
+I2CSPIDriverBase *LSM303D::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	bool external_bus = false;
-	enum Rotation rotation = ROTATION_NONE;
-	int accel_range = 8;
+	LSM303D *instance = new LSM303D(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
+					cli.bus_frequency, cli.spi_mode);
 
-	int myoptind = 1;
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
+
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
+	}
+
+	return instance;
+}
+
+extern "C" int lsm303d_main(int argc, char *argv[])
+{
 	int ch;
-	const char *myoptarg = nullptr;
+	using ThisDriver = LSM303D;
+	BusCLIArguments cli{false, true};
+	cli.default_spi_frequency = 11 * 1000 * 1000;
 
-	/* jump over start/off/etc and look at options first */
-	while ((ch = px4_getopt(argc, argv, "XR:a:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
-		case 'X':
-			external_bus = true;
-			break;
-
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		case 'a':
-			accel_range = atoi(myoptarg);
-			break;
-
-		default:
-			lsm303d::usage();
-			exit(0);
 		}
 	}
 
-	if (myoptind >= argc) {
-		lsm303d::usage();
-		exit(0);
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_IMU_DEVTYPE_LSM303D);
 
-	/*
-	 * Start/load the driver.
-
-	 */
 	if (!strcmp(verb, "start")) {
-		lsm303d::start(external_bus, rotation, accel_range);
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	/*
-	 * Print driver information.
-	 */
-	if (!strcmp(verb, "info")) {
-		lsm303d::info();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
 	}
 
-	errx(1, "unrecognized command, try 'start', info'");
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

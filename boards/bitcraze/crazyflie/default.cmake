@@ -6,13 +6,14 @@ px4_add_board(
 	TOOLCHAIN arm-none-eabi
 	ARCHITECTURE cortex-m4
 	ROMFSROOT px4fmu_common
+	CONSTRAINED_FLASH
 	DRIVERS
 		barometer/lps25h
-		distance_sensor/vl53lxx
+		distance_sensor/vl53l0x
 		gps
 		imu/mpu9250
 		optical_flow/pmw3901
-		px4fmu
+		pwm_out
 	MODULES
 		attitude_estimator_q
 		#camera_feedback
@@ -36,7 +37,6 @@ px4_add_board(
 		#temperature_compensation
 	SYSTEMCMDS
 		bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
@@ -54,7 +54,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		top
 		topic_listener
 		tune_control

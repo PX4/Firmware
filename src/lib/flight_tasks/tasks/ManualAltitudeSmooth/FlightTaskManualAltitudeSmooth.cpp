@@ -40,7 +40,7 @@
 using namespace matrix;
 
 FlightTaskManualAltitudeSmooth::FlightTaskManualAltitudeSmooth() :
-	_smoothing(this, _velocity(2), _sticks(2))
+	_smoothing(this, _velocity(2), _sticks.getPosition()(2))
 {}
 
 void FlightTaskManualAltitudeSmooth::_updateSetpoints()

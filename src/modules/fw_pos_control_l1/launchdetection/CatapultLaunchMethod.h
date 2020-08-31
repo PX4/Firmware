@@ -55,13 +55,12 @@ public:
 	CatapultLaunchMethod(ModuleParams *parent);
 	~CatapultLaunchMethod() override = default;
 
-	void update(float accel_x) override;
+	void update(const float dt, float accel_x) override;
 	LaunchDetectionResult getLaunchDetected() const override;
 	void reset() override;
 	float getPitchMax(float pitchMaxDefault) override;
 
 private:
-	hrt_abstime _last_timestamp{0};
 	float _integrator{0.0f};
 	float _motorDelayCounter{0.0f};
 

@@ -1,6 +1,8 @@
 # Vehicle odometry data. Fits ROS REP 147 for aerial vehicles
 uint64 timestamp		# time since system start (microseconds)
 
+uint64 timestamp_sample
+
 # Covariance matrix index constants
 uint8 COVARIANCE_MATRIX_X_VARIANCE=0
 uint8 COVARIANCE_MATRIX_Y_VARIANCE=6
@@ -19,6 +21,7 @@ uint8 COVARIANCE_MATRIX_YAWRATE_VARIANCE=20
 uint8 LOCAL_FRAME_NED=0         # NED earth-fixed frame
 uint8 LOCAL_FRAME_FRD=1         # FRD earth-fixed frame, arbitrary heading reference
 uint8 LOCAL_FRAME_OTHER=2       # Not aligned with the std frames of reference
+uint8 BODY_FRAME_FRD=3          # FRD body-fixed frame
 
 # Position and linear velocity local frame of reference
 uint8 local_frame
@@ -39,7 +42,10 @@ float32[4] q_offset		# Quaternion rotation from odometry reference frame to navi
 # If orientation covariance invalid/unknown, 16th cell is NaN
 float32[21] pose_covariance
 
-# Velocity in meters/sec. Frame of reference defined by local_frame. NaN if invalid/unknown
+# Reference frame of the velocity data
+uint8 velocity_frame
+
+# Velocity in meters/sec. Frame of reference defined by velocity_frame variable. NaN if invalid/unknown
 float32 vx 			# North velocity
 float32 vy			# East velocity
 float32 vz			# Down velocity

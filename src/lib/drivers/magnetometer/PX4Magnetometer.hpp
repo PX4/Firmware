@@ -37,42 +37,40 @@
 #include <drivers/drv_hrt.h>
 #include <lib/cdev/CDev.hpp>
 #include <lib/conversion/rotation.h>
-#include <uORB/uORB.h>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/sensor_mag.h>
 
 class PX4Magnetometer : public cdev::CDev
 {
-
 public:
-	PX4Magnetometer(uint32_t device_id, uint8_t priority = ORB_PRIO_DEFAULT, enum Rotation rotation = ROTATION_NONE);
+	PX4Magnetometer(uint32_t device_id, enum Rotation rotation = ROTATION_NONE);
 	~PX4Magnetometer() override;
 
-	int	ioctl(cdev::file_t *filp, int cmd, unsigned long arg) override;
+	bool external() { return _external; }
 
+	void set_device_id(uint32_t device_id) { _device_id = device_id; }
 	void set_device_type(uint8_t devtype);
-	void set_error_count(uint64_t error_count) { _sensor_mag_pub.get().error_count = error_count; }
-	void increase_error_count() { _sensor_mag_pub.get().error_count++; }
-	void set_scale(float scale) { _sensor_mag_pub.get().scaling = scale; }
-	void set_temperature(float temperature) { _sensor_mag_pub.get().temperature = temperature; }
-	void set_external(bool external) { _sensor_mag_pub.get().is_external = external; }
-	void set_sensitivity(float x, float y, float z) { _sensitivity = matrix::Vector3f{x, y, z}; }
+	void set_error_count(uint32_t error_count) { _error_count = error_count; }
+	void increase_error_count() { _error_count++; }
+	void set_scale(float scale) { _scale = scale; }
+	void set_temperature(float temperature) { _temperature = temperature; }
+	void set_external(bool external) { _external = external; }
 
-	void update(hrt_abstime timestamp_sample, float x, float y, float z);
+	void update(const hrt_abstime &timestamp_sample, float x, float y, float z);
 
-	void print_status();
+	int get_class_instance() { return _class_device_instance; };
 
 private:
+	uORB::PublicationQueuedMulti<sensor_mag_s> _sensor_pub;
 
-	uORB::PublicationMultiData<sensor_mag_s>	_sensor_mag_pub;
-
+	uint32_t		_device_id{0};
 	const enum Rotation	_rotation;
 
-	matrix::Vector3f	_calibration_scale{1.0f, 1.0f, 1.0f};
-	matrix::Vector3f	_calibration_offset{0.0f, 0.0f, 0.0f};
+	float			_scale{1.f};
+	float			_temperature{NAN};
+	uint32_t		_error_count{0};
 
-	matrix::Vector3f	_sensitivity{1.0f, 1.0f, 1.0f};
+	bool _external{false};
 
-	int			_class_device_instance{-1};
-
+	int _class_device_instance{-1};
 };

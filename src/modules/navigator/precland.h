@@ -72,10 +72,13 @@ public:
 
 	void on_activation() override;
 	void on_active() override;
+	void on_inactivation() override;
 
 	void set_mode(PrecLandMode mode) { _mode = mode; };
 
 	PrecLandMode get_mode() { return _mode; };
+
+	bool is_activated() { return _is_activated; };
 
 private:
 
@@ -124,6 +127,8 @@ private:
 	PrecLandState _state{PrecLandState::Start};
 
 	PrecLandMode _mode{PrecLandMode::Opportunistic};
+
+	bool _is_activated {false}; /**< indicates if precland is activated */
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::PLD_BTOUT>) _param_pld_btout,

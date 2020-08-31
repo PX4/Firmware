@@ -1,0 +1,14 @@
+#!/bin/sh
+#
+# Airship default parameters.
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+set VEHICLE_TYPE airship
+
+#
+# This is the gimbal pass mixer.
+#
+set MIXER_AUX pass
+set PWM_AUX_OUT 1234

@@ -84,7 +84,7 @@ class MavrosOffboardAttctlTest(MavrosTestCommon):
         self.att.body_rate = Vector3()
         self.att.header = Header()
         self.att.header.frame_id = "base_footprint"
-        self.att.orientation = Quaternion(*quaternion_from_euler(-0.25, 0.5,
+        self.att.orientation = Quaternion(*quaternion_from_euler(-0.25, 0.15,
                                                                  0))
         self.att.thrust = 0.7
         self.att.type_mask = 7  # ignore body rate

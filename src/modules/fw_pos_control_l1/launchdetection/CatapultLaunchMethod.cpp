@@ -49,14 +49,10 @@ namespace launchdetection
 CatapultLaunchMethod::CatapultLaunchMethod(ModuleParams *parent) :
 	ModuleParams(parent)
 {
-	_last_timestamp = hrt_absolute_time();
 }
 
-void CatapultLaunchMethod::update(float accel_x)
+void CatapultLaunchMethod::update(const float dt, float accel_x)
 {
-	float dt = hrt_elapsed_time(&_last_timestamp) * 1e-6f;
-	_last_timestamp = hrt_absolute_time();
-
 	switch (state) {
 	case LAUNCHDETECTION_RES_NONE:
 

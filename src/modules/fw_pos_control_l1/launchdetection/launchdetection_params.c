@@ -57,7 +57,7 @@ PARAM_DEFINE_INT32(LAUN_ALL_ON, 0);
  *
  * LAUN_CAT_A for LAUN_CAT_T serves as threshold to trigger launch detection.
  *
- * @unit m/s/s
+ * @unit m/s^2
  * @min 0
  * @decimal 1
  * @increment 0.5

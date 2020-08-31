@@ -59,6 +59,8 @@ private:
 	void air_pressure_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticPressure> &msg);
 	void air_temperature_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticTemperature> &msg);
 
+	int init_driver(uavcan_bridge::Channel *channel) override;
+
 	typedef uavcan::MethodBinder < UavcanBarometerBridge *,
 		void (UavcanBarometerBridge::*)
 		(const uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticPressure> &) >

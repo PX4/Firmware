@@ -50,7 +50,7 @@
 | Channel 8  | I2C3_TX          | I2C4_RX          | -                | -                | I2C2_TX          | -                | I2C4_TX          | -                |
 | Channel 9  | -                | SPI2_RX          | -                | -                | -                | -                | SPI2_TX          | -                |
 |            |                  |                  |                  |                  |                  |                  |                  |                  |
-| Usage      | UART5_RX         | SPI2_RX          | SPI3_RX_2        | UART7_RX         | SPI2_TX          | SPI3_TX_1        | TIM4_UP          |                  |
+| Usage      | UART5_RX         | SPI2_RX          | SPI3_RX_2        | UART7_RX         | SPI2_TX          | SPI3_TX_1        | TIM4_UP          | UART5_TX         |
 
 
 |    DMA2    | Stream 0         | Stream 1         | Stream 2         | Stream 3         | Stream 4         | Stream 5         | Stream 6         | Stream 7         |
@@ -86,6 +86,7 @@
 #define DMAMAP_SPI2_TX    DMAMAP_SPI2_TX_2    // DMA1, Stream 4, Channel 0    (SPI2 TX)
 #define DMAMAP_SPI3_TX    DMAMAP_SPI3_TX_1    // DMA1, Stream 5, Channel 0    (SPI3 TX)
 //      DMAMAP_TIM4_UP                        // DMA1, Stream 6, Channel 2    (DSHOT)
+//      DMAMAP_UART5_TX                       // DMA1, Stream 7, Channel 4    (TELEM2 TX)
 
 //  DMA2 Channel/Stream Selections
 //--------------------------------------------//---------------------------//----------------

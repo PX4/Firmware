@@ -32,30 +32,6 @@
  ****************************************************************************/
 
 /**
- * Scaling from ADC counts to volt on the ADC input (battery voltage)
- *
- * This is not the battery voltage, but the intermediate ADC voltage.
- * A value of -1 signifies that the board defaults are used, which is
- * highly recommended.
- *
- * @group Battery Calibration
- * @decimal 8
- */
-PARAM_DEFINE_FLOAT(BAT_CNT_V_VOLT, -1.0f);
-
-/**
- * Scaling from ADC counts to volt on the ADC input (battery current)
- *
- * This is not the battery current, but the intermediate ADC voltage.
- * A value of -1 signifies that the board defaults are used, which is
- * highly recommended.
- *
- * @group Battery Calibration
- * @decimal 8
- */
-PARAM_DEFINE_FLOAT(BAT_CNT_V_CURR, -1.0);
-
-/**
  * Offset in volt as seen by the ADC input of the current sensor.
  *
  * This offset will be subtracted before calculating the battery

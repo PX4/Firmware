@@ -11,6 +11,7 @@
 @###############################################
 @{
 import os
+from packaging import version
 
 import genmsg.msgs
 
@@ -74,7 +75,7 @@ except AttributeError:
 
 
 @[for topic in (recv_topics + send_topics)]@
-@[    if fastrtps_version <= 1.7]@
+@[    if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 @[        if ros2_distro]@
 using @(topic)_msg_t = @(package)::msg::dds_::@(topic)_;
 @[        else]@
@@ -116,7 +117,7 @@ private:
 @[end if]@
 
     /** Msg metada Getters **/
-@[if fastrtps_version <= 1.7 or not ros2_distro]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
     template <class T>
     inline uint64_t getMsgTimestamp(const T* msg) { return msg->timestamp_(); }
 
@@ -137,24 +138,24 @@ private:
 @[end if]@
 
     /** Msg metadata Setters **/
-@[if fastrtps_version <= 1.7 or not ros2_distro]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
     template <class T>
-    inline uint64_t setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
+    inline void setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
 
     template <class T>
-    inline uint8_t setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
+    inline void setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
 
     template <class T>
-    inline uint8_t setMsgSeq(T* msg, const uint8_t& seq) { msg->seq_() = seq; }
+    inline void setMsgSeq(T* msg, const uint8_t& seq) { msg->seq_() = seq; }
 @[elif ros2_distro]@
     template <class T>
-    inline uint64_t setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
+    inline void setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
 
     template <class T>
-    inline uint8_t setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
+    inline void setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
 
     template <class T>
-    inline uint8_t setMsgSeq(T* msg, const uint8_t& seq) { msg->seq() = seq; }
+    inline void setMsgSeq(T* msg, const uint8_t& seq) { msg->seq() = seq; }
 @[end if]@
 
     /**

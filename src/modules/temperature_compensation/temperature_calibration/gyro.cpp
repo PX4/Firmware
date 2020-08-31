@@ -55,18 +55,6 @@ TemperatureCalibrationGyro::TemperatureCalibrationGyro(float min_temperature_ris
 	_num_sensor_instances = num_gyros;
 }
 
-void TemperatureCalibrationGyro::reset_calibration()
-{
-	/* reset all driver level calibrations */
-	float offset = 0.0f;
-
-	for (unsigned s = 0; s < 3; s++) {
-		set_parameter("CAL_GYRO%u_XOFF", s, &offset);
-		set_parameter("CAL_GYRO%u_YOFF", s, &offset);
-		set_parameter("CAL_GYRO%u_ZOFF", s, &offset);
-	}
-}
-
 int TemperatureCalibrationGyro::update_sensor_instance(PerSensorData &data, int sensor_sub)
 {
 	bool finished = data.hot_soaked;

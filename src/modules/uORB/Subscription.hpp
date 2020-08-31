@@ -42,6 +42,7 @@
 #include <uORB/topics/uORBTopics.hpp>
 
 #include <px4_platform_common/defines.h>
+#include <lib/mathlib/mathlib.h>
 
 #include "uORBDeviceNode.hpp"
 #include "uORBManager.hpp"
@@ -67,6 +68,7 @@ public:
 		_orb_id(id),
 		_instance(instance)
 	{
+		subscribe();
 	}
 
 	/**
@@ -79,6 +81,7 @@ public:
 		_orb_id((meta == nullptr) ? ORB_ID::INVALID : static_cast<ORB_ID>(meta->o_id)),
 		_instance(instance)
 	{
+		subscribe();
 	}
 
 	~Subscription()
@@ -110,31 +113,32 @@ public:
 	/**
 	 * Check if there is a new update.
 	 * */
-	bool updated() { return advertised() ? (_node->published_message_count() != _last_generation) : false; }
+	bool updated() { return advertised() && (_node->published_message_count() != _last_generation); }
 
 	/**
 	 * Update the struct
-	 * @param data The uORB message struct we are updating.
+	 * @param dst The uORB message struct we are updating.
 	 */
-	bool update(void *dst) { return updated() ? copy(dst) : false; }
+	bool update(void *dst) { return updated() && _node->copy(dst, _last_generation); }
 
 	/**
 	 * Copy the struct
-	 * @param data The uORB message struct we are updating.
+	 * @param dst The uORB message struct we are updating.
 	 */
-	bool copy(void *dst) { return advertised() ? _node->copy(dst, _last_generation) : false; }
+	bool copy(void *dst) { return advertised() && _node->copy(dst, _last_generation); }
 
-	uint8_t		get_instance() const { return _instance; }
-	orb_id_t	get_topic() const { return get_orb_meta(_orb_id); }
-	ORB_PRIO	get_priority() { return advertised() ? _node->get_priority() : ORB_PRIO_UNINITIALIZED; }
+	uint8_t  get_instance() const { return _instance; }
+	unsigned get_last_generation() const { return _last_generation; }
+	orb_id_t get_topic() const { return get_orb_meta(_orb_id); }
 
 protected:
 
 	friend class SubscriptionCallback;
+	friend class SubscriptionCallbackWorkItem;
 
-	DeviceNode		*get_node() { return _node; }
+	DeviceNode *get_node() { return _node; }
 
-	DeviceNode		*_node{nullptr};
+	DeviceNode *_node{nullptr};
 
 	unsigned _last_generation{0}; /**< last generation the subscriber has seen */
 

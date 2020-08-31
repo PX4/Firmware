@@ -32,17 +32,18 @@
  ****************************************************************************/
 /**
  * @author Jacob Dahl <dahl.jakejacob@gmail.com>
+ * @author Alex Klimaj <alex@arkelectron.com>
  */
 
 #pragma once
 
 #include "sensor_bridge.hpp"
-
 #include <uORB/topics/battery_status.h>
-
 #include <uavcan/equipment/power/BatteryInfo.hpp>
+#include <drivers/drv_hrt.h>
+#include <px4_platform_common/module_params.h>
 
-class UavcanBatteryBridge : public UavcanCDevSensorBridgeBase
+class UavcanBatteryBridge : public UavcanCDevSensorBridgeBase, public ModuleParams
 {
 public:
 	static const char *const NAME;
@@ -56,6 +57,8 @@ public:
 private:
 
 	void battery_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::power::BatteryInfo> &msg);
+	void sumDischarged(hrt_abstime timestamp, float current_a);
+	void determineWarning(float remaining);
 
 	typedef uavcan::MethodBinder < UavcanBatteryBridge *,
 		void (UavcanBatteryBridge::*)
@@ -63,4 +66,15 @@ private:
 		BatteryInfoCbBinder;
 
 	uavcan::Subscriber<uavcan::equipment::power::BatteryInfo, BatteryInfoCbBinder> _sub_battery;
+
+	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::BAT_LOW_THR>) _param_bat_low_thr,
+		(ParamFloat<px4::params::BAT_CRIT_THR>) _param_bat_crit_thr,
+		(ParamFloat<px4::params::BAT_EMERGEN_THR>) _param_bat_emergen_thr
+	)
+
+	float _discharged_mah = 0.f;
+	float _discharged_mah_loop = 0.f;
+	uint8_t _warning;
+	hrt_abstime _last_timestamp;
 };

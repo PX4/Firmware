@@ -40,7 +40,11 @@
 
 using namespace matrix;
 
-bool FlightTaskAutoMapper::activate(vehicle_local_position_setpoint_s last_setpoint)
+FlightTaskAutoMapper::FlightTaskAutoMapper() :
+	_sticks(this)
+{};
+
+bool FlightTaskAutoMapper::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTaskAuto::activate(last_setpoint);
 	_reset();
@@ -49,6 +53,7 @@ bool FlightTaskAutoMapper::activate(vehicle_local_position_setpoint_s last_setpo
 
 bool FlightTaskAutoMapper::update()
 {
+	bool ret = FlightTaskAuto::update();
 	// always reset constraints because they might change depending on the type
 	_setDefaultConstraints();
 
@@ -57,7 +62,7 @@ bool FlightTaskAutoMapper::update()
 	// vehicle exits idle.
 
 	if (_type_previous == WaypointType::idle) {
-		_thrust_setpoint.setNaN();
+		_acceleration_setpoint.setNaN();
 	}
 
 	// during mission and reposition, raise the landing gears but only
@@ -107,7 +112,7 @@ bool FlightTaskAutoMapper::update()
 	// update previous type
 	_type_previous = _type;
 
-	return true;
+	return ret;
 }
 
 void FlightTaskAutoMapper::_reset()
@@ -122,19 +127,15 @@ void FlightTaskAutoMapper::_prepareIdleSetpoints()
 	// Send zero thrust setpoint
 	_position_setpoint.setNaN(); // Don't require any position/velocity setpoints
 	_velocity_setpoint.setNaN();
-	_thrust_setpoint.zero();
+	_acceleration_setpoint = Vector3f(0.f, 0.f, 100.f); // High downwards acceleration to make sure there's no thrust
 }
 
 void FlightTaskAutoMapper::_prepareLandSetpoints()
 {
-	float land_speed = _getLandSpeed();
-
 	// Keep xy-position and go down with landspeed
+	float land_speed = _getLandSpeed();
 	_position_setpoint = Vector3f(_target(0), _target(1), NAN);
 	_velocity_setpoint = Vector3f(Vector3f(NAN, NAN, land_speed));
-
-	// set constraints
-	_constraints.tilt = math::radians(_param_mpc_tiltmax_lnd.get());
 	_gear.landing_gear = landing_gear_s::GEAR_DOWN;
 }
 
@@ -179,33 +180,17 @@ bool FlightTaskAutoMapper::_highEnoughForLandingGear()
 
 float FlightTaskAutoMapper::_getLandSpeed()
 {
-	bool rc_assist_enabled = _param_mpc_land_rc_help.get();
-	bool rc_is_valid = !_sub_vehicle_status.get().rc_signal_lost;
+	float land_speed = math::gradual(_dist_to_ground,
+					 _param_mpc_land_alt2.get(), _param_mpc_land_alt1.get(),
+					 _param_mpc_land_speed.get(), _constraints.speed_down);
 
-	float throttle = 0.5f;
-
-	if (rc_is_valid && rc_assist_enabled) {
-		throttle = _sub_manual_control_setpoint.get().z;
+	// user input assisted land speed
+	if (_param_mpc_land_rc_help.get()
+	    && (_dist_to_ground < _param_mpc_land_alt1.get())
+	    && _sticks.checkAndSetStickInputs(_time_stamp_current)) {
+		// stick full up -1 -> stop, stick full down 1 -> double the speed
+		land_speed *= (1 + _sticks.getPositionExpo()(2));
 	}
 
-	float speed = 0;
-
-	if (_dist_to_ground > _param_mpc_land_alt1.get()) {
-		speed = _constraints.speed_down;
-
-	} else {
-		const float land_speed = math::gradual(_dist_to_ground,
-						       _param_mpc_land_alt2.get(), _param_mpc_land_alt1.get(),
-						       _param_mpc_land_speed.get(), _constraints.speed_down);
-		const float head_room = _constraints.speed_down - land_speed;
-
-		speed = land_speed + 2 * (0.5f - throttle) * head_room;
-
-		// Allow minimum assisted land speed to be half of parameter
-		if (speed < land_speed * 0.5f) {
-			speed = land_speed * 0.5f;
-		}
-	}
-
-	return speed;
+	return land_speed;
 }

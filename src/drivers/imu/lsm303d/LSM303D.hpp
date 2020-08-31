@@ -41,7 +41,7 @@
 #include <drivers/device/spi.h>
 #include <ecl/geo/geo.h>
 #include <perf/perf_counter.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 
@@ -138,30 +138,28 @@
  */
 #define LSM303D_TIMER_REDUCTION				200
 
-extern "C" { __EXPORT int lsm303d_main(int argc, char *argv[]); }
-
-class LSM303D : public device::SPI, public px4::ScheduledWorkItem
+class LSM303D : public device::SPI, public I2CSPIDriver<LSM303D>
 {
 public:
-	LSM303D(int bus, uint32_t device, enum Rotation rotation);
-	virtual ~LSM303D();
+	LSM303D(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
+		spi_mode_e spi_mode);
+	~LSM303D() override;
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void RunImpl();
 
 	int		init() override;
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	void print_status() override;
 
 protected:
-	virtual int		probe();
-
+	int		probe() override;
 private:
 
-	void			Run() override;
-
 	void			start();
-	void			stop();
 	void			reset();
 
 	/**
@@ -190,15 +188,16 @@ private:
 	 * @param		The register to read.
 	 * @return		The value that was read.
 	 */
-	uint8_t			read_reg(unsigned reg);
+	uint8_t			read_reg(unsigned reg) override;
 
 	/**
 	 * Write a register in the LSM303D
 	 *
 	 * @param reg		The register to write.
 	 * @param value		The new value to write.
+	 * @return		OK on success, negative errno otherwise.
 	 */
-	void			write_reg(unsigned reg, uint8_t value);
+	int			write_reg(unsigned reg, uint8_t value) override;
 
 	/**
 	 * Modify a register in the LSM303D

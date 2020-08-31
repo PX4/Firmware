@@ -42,7 +42,7 @@
 
 #include <drivers/drv_hrt.h>
 
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/cpuload.h>

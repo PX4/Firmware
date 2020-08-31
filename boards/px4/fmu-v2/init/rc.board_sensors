@@ -7,22 +7,13 @@ rgbled start -I
 
 adc start
 
-# External I2C bus
-hmc5883 -T -X start
-lis3mdl -X start
-ist8310 -X start
-
 # Internal I2C bus
 hmc5883 -T -I -R 4 start
 
-# Internal SPI bus ICM-20608-G
-mpu6000 -s -T 20608 start
-
-
 # Internal SPI (auto detect ms5611 or ms5607)
-if ! ms5611 -T 5607 -s start
+if ! ms5611 -T 5607 -s -b 1 start
 then
-	ms5611 -s start
+	ms5611 -s -b 1 start
 fi
 
 set BOARD_FMUV3 0
@@ -30,15 +21,15 @@ set BOARD_FMUV3 0
 # V3 build hwtypecmp supports V2|V2M|V30
 if ver hwtypecmp V30
 then
-	# Check for Pixhawk 2.0 cube
-	# MPU6K is rotated 180 degrees yaw
-	if mpu6000 -s -R 4 start
+	# Check for Pixhawk 2.0 cube (isolated IMU on SPI4)
+	#  mpu6000 on v2.0, mpu9250 on v2.1
+	if mpu6000 -s -b 4 -R 10 start
 	then
 		set BOARD_FMUV3 20
 	else
 		# Check for Pixhawk 2.1 cube
-		# external MPU9250 is rotated 180 degrees yaw
-		if mpu9250 -S -R 4 start
+		# isolated/external mpu9250 (SPI4)
+		if mpu9250 -s -b 4 -R 10 start
 		then
 			set BOARD_FMUV3 21
 		fi
@@ -48,17 +39,20 @@ fi
 # Check if a Pixhack (which reports as V2M) is present
 if ver hwtypecmp V2M
 then
+	# Internal SPI bus ICM-20608-G
+	icm20608g -s -b 1 -R 14 start
+
 	# Pixhawk Mini doesn't have these sensors,
 	# so if they are found we know its a Pixhack
 
-	# MPU6K is rotated 180 degrees yaw
-	if mpu6000 -s -R 4 start
+	# mppu6000 internal (SPI1)
+	if mpu6000 -s -b 1 -R 10 start
 	then
 		set BOARD_FMUV3 20
 	else
 		# Check for Pixhack 3.1
-		# external MPU9250 is rotated 180 degrees yaw
-		if mpu9250 -S -R 4 start
+		#  mpu9250 external (SPI4)
+		if mpu9250 -s -b 1 -R 10 start
 		then
 			set BOARD_FMUV3 21
 		fi
@@ -70,43 +64,46 @@ then
 	# sensor heating is available, but we disable it for now
 	param set SENS_EN_THERMAL 0
 
-	# external L3GD20H is rotated 180 degrees yaw
-	l3gd20 -X -R 4 start
+	# l3gd20 (external/isolated SPI4)
+	l3gd20 -s -b 4 -R 4 start
 
-	# external LSM303D is rotated 270 degrees yaw
-	lsm303d -X -R 6 start
+	# lsm303d (external/isolated SPI4)
+	lsm303d -s -b 4 -R 6 start
+
+	# ms5611 (external/isolated SPI4)
+	ms5611 -s -b 4 start
 
 	if [ $BOARD_FMUV3 = 20 ]
 	then
-		# v2.0 internal MPU6000 is rotated 180 deg roll, 270 deg yaw
-		mpu6000 -s -R 14 start
+		# v2.0 internal mpu6000
+		mpu6000 -s -b 1 start
 
 		# v2.0 Has internal hmc5883 on SPI1
-		hmc5883 -C -T -S -R 8 start
+		hmc5883 -T -s -b 1 -R 8 start
 	fi
 
 	if [ $BOARD_FMUV3 = 21 ]
 	then
-		# v2.1 internal MPU9250 is rotated 180 deg roll, 270 deg yaw
-		mpu9250 -s -R 14 start
+		# v2.1 mpu9250 on SPI1
+		mpu9250 -s -b 1 start
 	fi
 
 else
 	# $BOARD_FMUV3 = 0 -> FMUv2
 
-	mpu6000 -s start
+	mpu6000 -s -b 1 -R 14 start
 
 	# As we will use the external mag and the ICM-20608-G
 	# V2 build hwtypecmp is always false
 	# V3 build hwtypecmp supports V2|V2M|V30
 	if ! ver hwtypecmp V2M
 	then
-		mpu9250 start
+		mpu9250 -s -b 1 -R 14 start
 	# else: On the PixhawkMini the mpu9250 has been disabled due to HW errata
 	fi
 
-	l3gd20 start
-	lsm303d start
+	l3gd20 -s -b 1 start
+	lsm303d -s -b 1 start
 fi
 
 unset BOARD_FMUV3

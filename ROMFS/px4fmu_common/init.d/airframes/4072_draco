@@ -31,8 +31,8 @@ then
 	# use the Q attitude estimator, it works w/o mag or GPS.
 	param set SYS_MC_EST_GROUP 3
 	param set ATT_ACC_COMP 0
-	param set ATT_W_ACC 0.4000
-	param set ATT_W_GYRO_BIAS 0.0000
+	param set ATT_W_ACC 0.4
+	param set ATT_W_GYRO_BIAS 0
 	param set SYS_HAS_MAG 0
 
 	# Attitude & rate gains
@@ -40,31 +40,28 @@ then
 	param set MC_ROLLRATE_P 0.11
 	param set MC_ROLLRATE_I 0.3
 	param set MC_ROLLRATE_D 0.0015
-	param set MC_ROLLRATE_MAX 1600.0
+	param set MC_ROLLRATE_MAX 1600
 
-	param set MC_PITCH_P 8.0
+	param set MC_PITCH_P 8
 	param set MC_PITCHRATE_P 0.13
 	param set MC_PITCHRATE_I 0.35
 	param set MC_PITCHRATE_D 0.0015
-	param set MC_PITCHRATE_MAX 1600.0
+	param set MC_PITCHRATE_MAX 1600
 
-	param set MC_YAW_P 4.0
+	param set MC_YAW_P 4
 	param set MC_YAWRATE_P 0.21
 	param set MC_YAWRATE_I 0.3
 	param set MC_YAWRATE_D 0.0
 	param set MC_YAW_FF 0.5
-	param set MC_YAWRATE_MAX 600.0
+	param set MC_YAWRATE_MAX 600
 
 	param set MC_ROLL_TC 0.19
 	param set MC_PITCH_TC 0.16
 	param set MC_AIRMODE 1
 
-	param set MPC_MAN_TILT_MAX 60.0
+	param set MPC_MAN_TILT_MAX 60
 	param set MPC_THR_CURVE 1
 	param set MPC_THR_HOVER 0.25
-
-	# Disable RC filtering
-	param set RC_FLT_CUTOFF 0.00000
 
 	# Thrust curve (avoids the need for TPA)
 	param set THR_MDL_FAC 0.3
@@ -80,12 +77,12 @@ then
 
 	param set BAT_SOURCE 0
 	param set CBRK_IO_SAFETY 22027
-	#param set COM_ARM_EKF_AB 0.00500
+	#param set COM_ARM_EKF_AB 0.005
 	#param set COM_DISARM_LAND 3
 
 	# Filter settings
-	param set IMU_GYRO_CUTOFF 90.00000
-	param set IMU_DGYRO_CUTOFF 100.00000
+	param set IMU_GYRO_CUTOFF 90
+	param set IMU_DGYRO_CUTOFF 100
 
 	# Don't try to be intelligent on RC loss: just cut the motors
 	#param set NAV_RCL_ACT 6

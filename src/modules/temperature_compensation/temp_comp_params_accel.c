@@ -43,8 +43,7 @@
  * Thermal compensation for accelerometer sensors.
  *
  * @group Thermal Compensation
- * @min 0
- * @max 1
+ * @reboot_required true
  * @boolean
  */
 PARAM_DEFINE_INT32(TC_A_ENABLE, 0);
@@ -154,30 +153,6 @@ PARAM_DEFINE_FLOAT(TC_A0_X0_1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_A0_X0_2, 0.0f);
-
-/**
- * Accelerometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A0_SCL_0, 1.0f);
-
-/**
- * Accelerometer scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A0_SCL_1, 1.0f);
-
-/**
- * Accelerometer scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A0_SCL_2, 1.0f);
 
 /**
  * Accelerometer calibration reference temperature.
@@ -310,30 +285,6 @@ PARAM_DEFINE_FLOAT(TC_A1_X0_1, 0.0f);
 PARAM_DEFINE_FLOAT(TC_A1_X0_2, 0.0f);
 
 /**
- * Accelerometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A1_SCL_0, 1.0f);
-
-/**
- * Accelerometer scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A1_SCL_1, 1.0f);
-
-/**
- * Accelerometer scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A1_SCL_2, 1.0f);
-
-/**
  * Accelerometer calibration reference temperature.
  *
  * @group Thermal Compensation
@@ -462,30 +413,6 @@ PARAM_DEFINE_FLOAT(TC_A2_X0_1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_A2_X0_2, 0.0f);
-
-/**
- * Accelerometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A2_SCL_0, 1.0f);
-
-/**
- * Accelerometer scale factor - Y axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A2_SCL_1, 1.0f);
-
-/**
- * Accelerometer scale factor - Z axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_A2_SCL_2, 1.0f);
 
 /**
  * Accelerometer calibration reference temperature.

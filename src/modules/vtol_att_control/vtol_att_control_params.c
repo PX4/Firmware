@@ -149,11 +149,12 @@ PARAM_DEFINE_FLOAT(VT_B_TRANS_THR, 0.0f);
  *
  * The approximate deceleration during a back transition in m/s/s
  * Used to calculate back transition distance in mission mode. A lower value will make the VTOL transition further from the destination waypoint.
+ * For standard vtol and tiltrotors a controller is used to track this value during the transition.
  *
- * @unit m/s/s
- * @min 0.00
- * @max 20.00
- * @increment 1
+ * @unit m/s^2
+ * @min 0.5
+ * @max 10
+ * @increment 0.1
  * @decimal 2
  * @group VTOL Attitude Control
  */
@@ -262,7 +263,7 @@ PARAM_DEFINE_INT32(VT_FW_QC_R, 0);
  *
  * The duration of the front transition when there is no airspeed feedback available.
  *
- * @unit seconds
+ * @unit s
  * @min 1.0
  * @max 30.0
  * @group VTOL Attitude Control
@@ -315,3 +316,41 @@ PARAM_DEFINE_INT32(VT_FW_DIFTHR_EN, 0);
  * @group VTOL Attitude Control
  */
 PARAM_DEFINE_FLOAT(VT_FW_DIFTHR_SC, 0.1f);
+
+/**
+ * Backtransition deceleration setpoint to pitch feedforward gain.
+ *
+ *
+ * @unit rad s^2/m
+ * @min 0
+ * @max 0.2
+ * @decimal 1
+ * @increment 0.05
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VT_B_DEC_FF, 0.12f);
+
+/**
+ * Backtransition deceleration setpoint to pitch I gain.
+ *
+ *
+ * @unit rad s/m
+ * @min 0
+ * @max 0.3
+ * @decimal 1
+ * @increment 0.05
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VT_B_DEC_I, 0.1f);
+
+/**
+ * Enable the usage of AUX outputs for hover motors.
+ *
+ * Set this parameter to true if the vehicle's hover motors are connected to the FMU (AUX) port.
+ * Not required for boards that only have a FMU, and no IO.
+ * Only applies for standard VTOL and tiltrotor.
+ *
+ * @boolean
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_INT32(VT_MC_ON_FMU, 0);

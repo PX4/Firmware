@@ -89,6 +89,8 @@ public:
 
 	const px4_i2c_bus_t &bus() const { return px4_i2c_buses[_index]; }
 
+	int externalBusIndex() const { return _external_bus_counter; }
+
 	bool external() const { return px4_i2c_bus_external(bus()); }
 
 private:
@@ -97,4 +99,3 @@ private:
 	int _index{-1};
 	int _external_bus_counter{0};
 };
-

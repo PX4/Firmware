@@ -305,21 +305,21 @@ bool MatrixTest::attitudeTests()
 
 	// get rotation axis from quaternion (nonzero rotation)
 	q = Quatf(cosf(1.0f / 2), 0.0f, sinf(1.0f / 2), 0.0f);
-	rot = q.to_axis_angle();
+	rot = matrix::AxisAngle<float>(q);
 	ut_test(fabs(rot(0)) < eps);
 	ut_test(fabs(rot(1) - 1.0f) < eps);
 	ut_test(fabs(rot(2)) < eps);
 
 	// get rotation axis from quaternion (zero rotation)
 	q = Quatf(1.0f, 0.0f, 0.0f, 0.0f);
-	rot = q.to_axis_angle();
+	rot = matrix::AxisAngle<float>(q);
 	ut_test(fabs(rot(0)) < eps);
 	ut_test(fabs(rot(1)) < eps);
 	ut_test(fabs(rot(2)) < eps);
 
 	// from axis angle (zero rotation)
 	rot(0) = rot(1) = rot(2) = 0.0f;
-	q.from_axis_angle(rot, 0.0f);
+	q = Quaternion<float>(matrix::AxisAngle<float>(rot));
 	q_true = Quatf(1.0f, 0.0f, 0.0f, 0.0f);
 	ut_test(fabs(q(0) - q_true(0)) < eps);
 	ut_test(fabs(q(1) - q_true(1)) < eps);

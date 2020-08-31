@@ -34,125 +34,84 @@
 #include "ISM330DLC.hpp"
 
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-namespace ism330dlc
+void
+ISM330DLC::print_usage()
 {
-
-ISM330DLC *g_dev{nullptr};
-
-int	start(enum Rotation rotation);
-int	stop();
-int	status();
-void	usage();
-
-int start(enum Rotation rotation)
-{
-	if (g_dev != nullptr) {
-		PX4_WARN("already started");
-		return 0;
-	}
-
-	// create the driver
-	g_dev = new ISM330DLC(PX4_SPI_BUS_SENSORS2, PX4_SPIDEV_ISM330, rotation);	// v5x TODO: board manifest
-
-	if (g_dev == nullptr) {
-		PX4_ERR("driver start failed");
-		return -1;
-	}
-
-	if (!g_dev->Init()) {
-		PX4_ERR("driver init failed");
-		delete g_dev;
-		g_dev = nullptr;
-		return -1;
-	}
-
-	return 0;
+	PRINT_MODULE_USAGE_NAME("ism330dlc", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_COMMAND("reset");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-int stop()
+I2CSPIDriverBase *ISM330DLC::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+		int runtime_instance)
 {
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
+	ISM330DLC *instance = new ISM330DLC(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
+					    cli.bus_frequency, cli.spi_mode, iterator.DRDYGPIO());
+
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	g_dev->Stop();
-	delete g_dev;
-
-	return 0;
-}
-
-int reset()
-{
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
 	}
 
-	return g_dev->Reset();
+	return instance;
 }
 
-int status()
+void ISM330DLC::custom_method(const BusCLIArguments &cli)
 {
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
-		return -1;
-	}
-
-	g_dev->PrintInfo();
-
-	return 0;
+	Reset();
 }
 
-void usage()
+extern "C" int ism330dlc_main(int argc, char *argv[])
 {
-	PX4_INFO("missing command: try 'start', 'stop', 'reset', 'status'");
-	PX4_INFO("options:");
-	PX4_INFO("    -R rotation");
-}
+	int ch;
+	using ThisDriver = ISM330DLC;
+	BusCLIArguments cli{false, true};
+	cli.default_spi_frequency = ST_ISM330DLC::SPI_SPEED;
 
-} // namespace ism330dlc
-
-extern "C" __EXPORT int ism330dlc_main(int argc, char *argv[])
-{
-	enum Rotation rotation = ROTATION_NONE;
-	int myoptind = 1;
-	int ch = 0;
-	const char *myoptarg = nullptr;
-
-	/* start options */
-	while ((ch = px4_getopt(argc, argv, "R:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		default:
-			ism330dlc::usage();
-			return 0;
 		}
 	}
 
-	if (myoptind >= argc) {
-		ism330dlc::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
 		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_IMU_DEVTYPE_ST_ISM330DLC);
 
 	if (!strcmp(verb, "start")) {
-		return ism330dlc::start(rotation);
-
-	} else if (!strcmp(verb, "stop")) {
-		return ism330dlc::stop();
-
-	} else if (!strcmp(verb, "status")) {
-		return ism330dlc::status();
-
-	} else if (!strcmp(verb, "reset")) {
-		return ism330dlc::reset();
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	ism330dlc::usage();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
 
-	return 0;
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	if (!strcmp(verb, "reset")) {
+		return ThisDriver::module_custom_method(cli, iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

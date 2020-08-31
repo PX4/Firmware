@@ -166,9 +166,9 @@ public:
 	 * contents of _value are written into *expected.
 	 * @return If desired is written into _value then true is returned
 	 */
-	inline bool compare_exchange(T *expected, T num)
+	inline bool compare_exchange(T *expected, T desired)
 	{
-		return __atomic_compare_exchange(&_value, expected, num, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+		return __atomic_compare_exchange(&_value, expected, &desired, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 	}
 
 private:

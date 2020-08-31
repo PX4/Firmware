@@ -38,7 +38,6 @@
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/posix.h>
 #include <dspal_platform.h>
-#include "uORB/topics/sensor_combined.h"
 #include "uORB.h"
 #include <parameters/param.h>
 #include <px4_platform_common/shmem.h>

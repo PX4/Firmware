@@ -42,7 +42,7 @@ using math::radians;
 
 FixedwingAttitudeControl::FixedwingAttitudeControl(bool vtol) :
 	ModuleParams(nullptr),
-	WorkItem(MODULE_NAME, px4::wq_configurations::att_pos_ctrl),
+	WorkItem(MODULE_NAME, px4::wq_configurations::attitude_ctrl),
 	_actuators_0_pub(vtol ? ORB_ID(actuator_controls_virtual_fw) : ORB_ID(actuator_controls_0)),
 	_attitude_sp_pub(vtol ? ORB_ID(fw_virtual_attitude_setpoint) : ORB_ID(vehicle_attitude_setpoint)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
@@ -141,11 +141,12 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 	if (_vcontrol_mode.flag_control_manual_enabled && (!is_tailsitter_transition || is_fixed_wing)) {
 
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the _actuators with valid values
-		if (_manual_sub.copy(&_manual)) {
+		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
 			// Check if we are in rattitude mode and the pilot is above the threshold on pitch
 			if (_vcontrol_mode.flag_control_rattitude_enabled) {
-				if (fabsf(_manual.y) > _param_fw_ratt_th.get() || fabsf(_manual.x) > _param_fw_ratt_th.get()) {
+				if (fabsf(_manual_control_setpoint.y) > _param_fw_ratt_th.get()
+				    || fabsf(_manual_control_setpoint.x) > _param_fw_ratt_th.get()) {
 					_vcontrol_mode.flag_control_attitude_enabled = false;
 				}
 			}
@@ -156,16 +157,17 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 				if (_vcontrol_mode.flag_control_attitude_enabled) {
 					// STABILIZED mode generate the attitude setpoint from manual user inputs
 
-					_att_sp.roll_body = _manual.y * radians(_param_fw_man_r_max.get()) + radians(_param_fw_rsp_off.get());
+					_att_sp.roll_body = _manual_control_setpoint.y * radians(_param_fw_man_r_max.get()) + radians(_param_fw_rsp_off.get());
 					_att_sp.roll_body = constrain(_att_sp.roll_body,
 								      -radians(_param_fw_man_r_max.get()), radians(_param_fw_man_r_max.get()));
 
-					_att_sp.pitch_body = -_manual.x * radians(_param_fw_man_p_max.get()) + radians(_param_fw_psp_off.get());
+					_att_sp.pitch_body = -_manual_control_setpoint.x * radians(_param_fw_man_p_max.get())
+							     + radians(_param_fw_psp_off.get());
 					_att_sp.pitch_body = constrain(_att_sp.pitch_body,
 								       -radians(_param_fw_man_p_max.get()), radians(_param_fw_man_p_max.get()));
 
 					_att_sp.yaw_body = 0.0f;
-					_att_sp.thrust_body[0] = _manual.z;
+					_att_sp.thrust_body[0] = _manual_control_setpoint.z;
 
 					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 					q.copyTo(_att_sp.q_d);
@@ -179,19 +181,22 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 
 					// RATE mode we need to generate the rate setpoint from manual user inputs
 					_rates_sp.timestamp = hrt_absolute_time();
-					_rates_sp.roll = _manual.y * radians(_param_fw_acro_x_max.get());
-					_rates_sp.pitch = -_manual.x * radians(_param_fw_acro_y_max.get());
-					_rates_sp.yaw = _manual.r * radians(_param_fw_acro_z_max.get());
-					_rates_sp.thrust_body[0] = _manual.z;
+					_rates_sp.roll = _manual_control_setpoint.y * radians(_param_fw_acro_x_max.get());
+					_rates_sp.pitch = -_manual_control_setpoint.x * radians(_param_fw_acro_y_max.get());
+					_rates_sp.yaw = _manual_control_setpoint.r * radians(_param_fw_acro_z_max.get());
+					_rates_sp.thrust_body[0] = _manual_control_setpoint.z;
 
 					_rate_sp_pub.publish(_rates_sp);
 
 				} else {
 					/* manual/direct control */
-					_actuators.control[actuator_controls_s::INDEX_ROLL] = _manual.y * _param_fw_man_r_sc.get() + _param_trim_roll.get();
-					_actuators.control[actuator_controls_s::INDEX_PITCH] = -_manual.x * _param_fw_man_p_sc.get() + _param_trim_pitch.get();
-					_actuators.control[actuator_controls_s::INDEX_YAW] = _manual.r * _param_fw_man_y_sc.get() + _param_trim_yaw.get();
-					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual.z;
+					_actuators.control[actuator_controls_s::INDEX_ROLL] =
+						_manual_control_setpoint.y * _param_fw_man_r_sc.get() + _param_trim_roll.get();
+					_actuators.control[actuator_controls_s::INDEX_PITCH] =
+						-_manual_control_setpoint.x * _param_fw_man_p_sc.get() + _param_trim_pitch.get();
+					_actuators.control[actuator_controls_s::INDEX_YAW] =
+						_manual_control_setpoint.r * _param_fw_man_y_sc.get() + _param_trim_yaw.get();
+					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
 				}
 			}
 		}
@@ -235,7 +240,7 @@ FixedwingAttitudeControl::vehicle_land_detected_poll()
 float FixedwingAttitudeControl::get_airspeed_and_update_scaling()
 {
 	_airspeed_validated_sub.update();
-	const bool airspeed_valid = PX4_ISFINITE(_airspeed_validated_sub.get().indicated_airspeed_m_s)
+	const bool airspeed_valid = PX4_ISFINITE(_airspeed_validated_sub.get().equivalent_airspeed_m_s)
 				    && (hrt_elapsed_time(&_airspeed_validated_sub.get().timestamp) < 1_s);
 
 	// if no airspeed measurement is available out best guess is to use the trim airspeed
@@ -243,7 +248,7 @@ float FixedwingAttitudeControl::get_airspeed_and_update_scaling()
 
 	if ((_param_fw_arsp_mode.get() == 0) && airspeed_valid) {
 		/* prevent numerical drama by requiring 0.5 m/s minimal speed */
-		airspeed = math::max(0.5f, _airspeed_validated_sub.get().indicated_airspeed_m_s);
+		airspeed = math::max(0.5f, _airspeed_validated_sub.get().equivalent_airspeed_m_s);
 
 	} else {
 		// VTOL: if we have no airspeed available and we are in hover mode then assume the lowest airspeed possible
@@ -279,7 +284,10 @@ void FixedwingAttitudeControl::Run()
 
 	perf_begin(_loop_perf);
 
-	if (_att_sub.update(&_att)) {
+	// only run controller if attitude changed
+	vehicle_attitude_s att;
+
+	if (_att_sub.update(&att)) {
 
 		// only update parameters if they changed
 		bool params_updated = _parameter_update_sub.updated();
@@ -295,13 +303,11 @@ void FixedwingAttitudeControl::Run()
 			parameters_update();
 		}
 
-		/* only run controller if attitude changed */
-		static uint64_t last_run = 0;
-		float deltaT = constrain((hrt_elapsed_time(&last_run) / 1e6f), 0.01f, 0.1f);
-		last_run = hrt_absolute_time();
+		const float dt = math::constrain((att.timestamp - _last_run) * 1e-6f, 0.002f, 0.04f);
+		_last_run = att.timestamp;
 
 		/* get current rotation matrix and euler angles from control state quaternions */
-		matrix::Dcmf R = matrix::Quatf(_att.q);
+		matrix::Dcmf R = matrix::Quatf(att.q);
 
 		vehicle_angular_velocity_s angular_velocity{};
 		_vehicle_rates_sub.copy(&angular_velocity);
@@ -374,17 +380,10 @@ void FixedwingAttitudeControl::Run()
 			wheel_control = true;
 		}
 
-		/* lock integrator until control is started */
+		/* lock integrator until control is started or for long intervals (> 20 ms) */
 		bool lock_integrator = !_vcontrol_mode.flag_control_rates_enabled
-				       || (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING && ! _vehicle_status.in_transition_mode);
-
-		/* Simple handling of failsafe: deploy parachute if failsafe is on */
-		if (_vcontrol_mode.flag_control_termination_enabled) {
-			_actuators_airframe.control[7] = 1.0f;
-
-		} else {
-			_actuators_airframe.control[7] = 0.0f;
-		}
+				       || (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING && ! _vehicle_status.in_transition_mode)
+				       || (dt > 0.02f);
 
 		/* if we are in rotary wing mode, do nothing */
 		if (_vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING && !_vehicle_status.is_vtol) {
@@ -392,7 +391,7 @@ void FixedwingAttitudeControl::Run()
 			return;
 		}
 
-		control_flaps(deltaT);
+		control_flaps(dt);
 
 		/* decide if in stabilized or full manual control */
 		if (_vcontrol_mode.flag_control_rates_enabled) {
@@ -427,7 +426,7 @@ void FixedwingAttitudeControl::Run()
 			}
 
 			/* Prepare data for attitude controllers */
-			struct ECL_ControlData control_input = {};
+			ECL_ControlData control_input{};
 			control_input.roll = euler_angles.phi();
 			control_input.pitch = euler_angles.theta();
 			control_input.yaw = euler_angles.psi();
@@ -505,16 +504,16 @@ void FixedwingAttitudeControl::Run()
 			/* Run attitude controllers */
 			if (_vcontrol_mode.flag_control_attitude_enabled) {
 				if (PX4_ISFINITE(_att_sp.roll_body) && PX4_ISFINITE(_att_sp.pitch_body)) {
-					_roll_ctrl.control_attitude(control_input);
-					_pitch_ctrl.control_attitude(control_input);
+					_roll_ctrl.control_attitude(dt, control_input);
+					_pitch_ctrl.control_attitude(dt, control_input);
 
 					if (wheel_control) {
-						_wheel_ctrl.control_attitude(control_input);
+						_wheel_ctrl.control_attitude(dt, control_input);
 						_yaw_ctrl.reset_integrator();
 
 					} else {
 						// runs last, because is depending on output of roll and pitch attitude
-						_yaw_ctrl.control_attitude(control_input);
+						_yaw_ctrl.control_attitude(dt, control_input);
 						_wheel_ctrl.reset_integrator();
 					}
 
@@ -524,14 +523,14 @@ void FixedwingAttitudeControl::Run()
 					control_input.yaw_rate_setpoint = _yaw_ctrl.get_desired_rate();
 
 					/* Run attitude RATE controllers which need the desired attitudes from above, add trim */
-					float roll_u = _roll_ctrl.control_euler_rate(control_input);
+					float roll_u = _roll_ctrl.control_euler_rate(dt, control_input);
 					_actuators.control[actuator_controls_s::INDEX_ROLL] = (PX4_ISFINITE(roll_u)) ? roll_u + trim_roll : trim_roll;
 
 					if (!PX4_ISFINITE(roll_u)) {
 						_roll_ctrl.reset_integrator();
 					}
 
-					float pitch_u = _pitch_ctrl.control_euler_rate(control_input);
+					float pitch_u = _pitch_ctrl.control_euler_rate(dt, control_input);
 					_actuators.control[actuator_controls_s::INDEX_PITCH] = (PX4_ISFINITE(pitch_u)) ? pitch_u + trim_pitch : trim_pitch;
 
 					if (!PX4_ISFINITE(pitch_u)) {
@@ -541,17 +540,17 @@ void FixedwingAttitudeControl::Run()
 					float yaw_u = 0.0f;
 
 					if (wheel_control) {
-						yaw_u = _wheel_ctrl.control_bodyrate(control_input);
+						yaw_u = _wheel_ctrl.control_bodyrate(dt, control_input);
 
 					} else {
-						yaw_u = _yaw_ctrl.control_euler_rate(control_input);
+						yaw_u = _yaw_ctrl.control_euler_rate(dt, control_input);
 					}
 
 					_actuators.control[actuator_controls_s::INDEX_YAW] = (PX4_ISFINITE(yaw_u)) ? yaw_u + trim_yaw : trim_yaw;
 
 					/* add in manual rudder control in manual modes */
 					if (_vcontrol_mode.flag_control_manual_enabled) {
-						_actuators.control[actuator_controls_s::INDEX_YAW] += _manual.r;
+						_actuators.control[actuator_controls_s::INDEX_YAW] += _manual_control_setpoint.r;
 					}
 
 					if (!PX4_ISFINITE(yaw_u)) {
@@ -600,13 +599,13 @@ void FixedwingAttitudeControl::Run()
 				_yaw_ctrl.set_bodyrate_setpoint(_rates_sp.yaw);
 				_pitch_ctrl.set_bodyrate_setpoint(_rates_sp.pitch);
 
-				float roll_u = _roll_ctrl.control_bodyrate(control_input);
+				float roll_u = _roll_ctrl.control_bodyrate(dt, control_input);
 				_actuators.control[actuator_controls_s::INDEX_ROLL] = (PX4_ISFINITE(roll_u)) ? roll_u + trim_roll : trim_roll;
 
-				float pitch_u = _pitch_ctrl.control_bodyrate(control_input);
+				float pitch_u = _pitch_ctrl.control_bodyrate(dt, control_input);
 				_actuators.control[actuator_controls_s::INDEX_PITCH] = (PX4_ISFINITE(pitch_u)) ? pitch_u + trim_pitch : trim_pitch;
 
-				float yaw_u = _yaw_ctrl.control_bodyrate(control_input);
+				float yaw_u = _yaw_ctrl.control_bodyrate(dt, control_input);
 				_actuators.control[actuator_controls_s::INDEX_YAW] = (PX4_ISFINITE(yaw_u)) ? yaw_u + trim_yaw : trim_yaw;
 
 				_actuators.control[actuator_controls_s::INDEX_THROTTLE] = PX4_ISFINITE(_rates_sp.thrust_body[0]) ?
@@ -634,24 +633,20 @@ void FixedwingAttitudeControl::Run()
 				* constrain(_actuators.control[actuator_controls_s::INDEX_ROLL], -1.0f, 1.0f);
 
 		_actuators.control[actuator_controls_s::INDEX_FLAPS] = _flaps_applied;
-		_actuators.control[5] = _manual.aux1;
+		_actuators.control[5] = _manual_control_setpoint.aux1;
 		_actuators.control[actuator_controls_s::INDEX_AIRBRAKES] = _flaperons_applied;
 		// FIXME: this should use _vcontrol_mode.landing_gear_pos in the future
-		_actuators.control[7] = _manual.aux3;
+		_actuators.control[7] = _manual_control_setpoint.aux3;
 
 		/* lazily publish the setpoint only once available */
 		_actuators.timestamp = hrt_absolute_time();
-		_actuators.timestamp_sample = _att.timestamp;
-		_actuators_airframe.timestamp = hrt_absolute_time();
-		_actuators_airframe.timestamp_sample = _att.timestamp;
+		_actuators.timestamp_sample = att.timestamp;
 
 		/* Only publish if any of the proper modes are enabled */
 		if (_vcontrol_mode.flag_control_rates_enabled ||
 		    _vcontrol_mode.flag_control_attitude_enabled ||
 		    _vcontrol_mode.flag_control_manual_enabled) {
-
 			_actuators_0_pub.publish(_actuators);
-			_actuators_2_pub.publish(_actuators_airframe);
 		}
 	}
 
@@ -664,9 +659,9 @@ void FixedwingAttitudeControl::control_flaps(const float dt)
 	float flap_control = 0.0f;
 
 	/* map flaps by default to manual if valid */
-	if (PX4_ISFINITE(_manual.flaps) && _vcontrol_mode.flag_control_manual_enabled
+	if (PX4_ISFINITE(_manual_control_setpoint.flaps) && _vcontrol_mode.flag_control_manual_enabled
 	    && fabsf(_param_fw_flaps_scl.get()) > 0.01f) {
-		flap_control = 0.5f * (_manual.flaps + 1.0f) * _param_fw_flaps_scl.get();
+		flap_control = 0.5f * (_manual_control_setpoint.flaps + 1.0f) * _param_fw_flaps_scl.get();
 
 	} else if (_vcontrol_mode.flag_control_auto_enabled
 		   && fabsf(_param_fw_flaps_scl.get()) > 0.01f) {
@@ -698,10 +693,10 @@ void FixedwingAttitudeControl::control_flaps(const float dt)
 	float flaperon_control = 0.0f;
 
 	/* map flaperons by default to manual if valid */
-	if (PX4_ISFINITE(_manual.aux2) && _vcontrol_mode.flag_control_manual_enabled
+	if (PX4_ISFINITE(_manual_control_setpoint.aux2) && _vcontrol_mode.flag_control_manual_enabled
 	    && fabsf(_param_fw_flaperon_scl.get()) > 0.01f) {
 
-		flaperon_control = 0.5f * (_manual.aux2 + 1.0f) * _param_fw_flaperon_scl.get();
+		flaperon_control = 0.5f * (_manual_control_setpoint.aux2 + 1.0f) * _param_fw_flaperon_scl.get();
 
 	} else if (_vcontrol_mode.flag_control_auto_enabled
 		   && fabsf(_param_fw_flaperon_scl.get()) > 0.01f) {

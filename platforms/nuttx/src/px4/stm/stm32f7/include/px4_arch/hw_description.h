@@ -98,4 +98,3 @@ static inline constexpr uint32_t getTimerUpdateDMAMap(Timer::Timer timer, const 
 	constexpr_assert(dma_map != 0, "Invalid DMA config for given timer");
 	return dma_map;
 }
-

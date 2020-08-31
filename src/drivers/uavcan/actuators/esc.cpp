@@ -163,6 +163,7 @@ UavcanEscController::orb_pub_timer_cb(const uavcan::TimerEvent &)
 	_esc_status.counter += 1;
 	_esc_status.esc_connectiontype = esc_status_s::ESC_CONNECTION_TYPE_CAN;
 	_esc_status.esc_online_flags = check_escs_status();
+	_esc_status.esc_armed_flags = (1 << _rotor_count) - 1;
 
 	_esc_status_pub.publish(_esc_status);
 }

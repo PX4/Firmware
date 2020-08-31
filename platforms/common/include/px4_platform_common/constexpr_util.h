@@ -55,5 +55,3 @@ static inline int _constexpr_assert_failure(const char *msg)
  * If executed at runtime, it has no effect other than slight runtime overhead.
  */
 #define constexpr_assert(expr, msg) if (!(expr)) { _constexpr_assert_failure(msg); }
-
-

@@ -7,7 +7,7 @@ import atexit
 import subprocess
 import threading
 import errno
-from typing import Dict, List, TextIO, Optional
+from typing import Any, Dict, List, TextIO, Optional
 
 
 class Runner:
@@ -30,6 +30,7 @@ class Runner:
         self.start_time = time.time()
         self.log_dir = log_dir
         self.log_filename = ""
+        self.stop_thread: Any[threading.Event] = None
 
     def set_log_filename(self, log_filename: str) -> None:
         self.log_filename = log_filename
@@ -62,9 +63,12 @@ class Runner:
 
     def process_output(self) -> None:
         assert self.process.stdout is not None
-        while not self.stop_thread.is_set():
+        while True:
             line = self.process.stdout.readline()
-            if line == "\n":
+            if not line and \
+                    (self.stop_thread.is_set() or self.poll is not None):
+                break
+            if not line or line == "\n":
                 continue
             self.output_queue.put(line)
             self.log_fd.write(line)
@@ -83,16 +87,18 @@ class Runner:
             print("stopped.")
             return errno.ETIMEDOUT
 
-    def get_output(self) -> Optional[str]:
-        try:
-            return self.output_queue.get(block=True, timeout=0.1)
-        except queue.Empty:
-            return None
+    def get_output_line(self) -> Optional[str]:
+        while True:
+            try:
+                return self.output_queue.get(block=True, timeout=0.1)
+            except queue.Empty:
+                return None
 
     def stop(self) -> int:
         atexit.unregister(self.stop)
 
-        self.stop_thread.set()
+        if not self.stop_thread:
+            return 0
 
         returncode = self.process.poll()
         if returncode is None:
@@ -116,14 +122,18 @@ class Runner:
             print("{} exited with {}".format(
                 self.cmd, self.process.returncode))
 
+        self.stop_thread.set()
         self.thread.join()
-
         self.log_fd.close()
 
         return self.process.returncode
 
     def time_elapsed_s(self) -> float:
         return time.time() - self.start_time
+
+    def add_to_env_if_set(self, var: str) -> None:
+        if var in os.environ:
+            self.env[var] = os.environ[var]
 
 
 class Px4Runner(Runner):
@@ -182,19 +192,40 @@ class GzserverRunner(Runner):
                     workspace_dir + "/build/px4_sitl_default/build_gazebo",
                     "GAZEBO_MODEL_PATH":
                     workspace_dir + "/Tools/sitl_gazebo/models",
-                    "PX4_SIM_SPEED_FACTOR": str(speed_factor),
-                    "DISPLAY": os.environ['DISPLAY']}
+                    "PX4_SIM_SPEED_FACTOR": str(speed_factor)}
+        self.add_to_env_if_set("DISPLAY")
         self.add_to_env_if_set("PX4_HOME_LAT")
         self.add_to_env_if_set("PX4_HOME_LON")
         self.add_to_env_if_set("PX4_HOME_ALT")
         self.cmd = "gzserver"
         self.args = ["--verbose",
                      workspace_dir + "/Tools/sitl_gazebo/worlds/" +
-                     self.model + ".world"]
+                     "empty.world"]
 
-    def add_to_env_if_set(self, var: str) -> None:
-        if var in os.environ:
-            self.env[var] = os.environ[var]
+
+class GzmodelspawnRunner(Runner):
+    def __init__(self,
+                 workspace_dir: str,
+                 log_dir: str,
+                 model: str,
+                 case: str,
+                 verbose: bool):
+        super().__init__(log_dir, model, case, verbose)
+        self.name = "gzmodelspawn"
+        self.cwd = workspace_dir
+        self.env = {"PATH": os.environ['PATH'],
+                    "HOME": os.environ['HOME'],
+                    "GAZEBO_PLUGIN_PATH":
+                    workspace_dir + "/build/px4_sitl_default/build_gazebo",
+                    "GAZEBO_MODEL_PATH":
+                    workspace_dir + "/Tools/sitl_gazebo/models"}
+        self.add_to_env_if_set("DISPLAY")
+        self.cmd = "gz"
+        self.args = ["model", "--spawn-file", workspace_dir +
+                     "/Tools/sitl_gazebo/models/" +
+                     self.model + "/" + self.model + ".sdf",
+                     "--model-name", self.model,
+                     "-x", "1.01", "-y", "0.98", "-z", "0.83"]
 
 
 class GzclientRunner(Runner):
@@ -207,11 +238,9 @@ class GzclientRunner(Runner):
         super().__init__(log_dir, model, case, verbose)
         self.name = "gzclient"
         self.cwd = workspace_dir
-        self.env = {"PATH": os.environ['PATH'],
-                    "HOME": os.environ['HOME'],
-                    "GAZEBO_MODEL_PATH":
-                    workspace_dir + "/Tools/sitl_gazebo/models",
-                    "DISPLAY": os.environ['DISPLAY']}
+        self.env = dict(os.environ, **{
+            "GAZEBO_MODEL_PATH": workspace_dir + "/Tools/sitl_gazebo/models"})
+        self.add_to_env_if_set("DISPLAY")
         self.cmd = "gzclient"
         self.args = ["--verbose"]
 

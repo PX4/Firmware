@@ -22,10 +22,10 @@ void BlockLocalPositionEstimator::baroInit()
 	// if finished
 	if (_baroStats.getCount() > REQ_BARO_INIT_COUNT) {
 		_baroAltOrigin = _baroStats.getMean()(0);
-		mavlink_and_console_log_info(&mavlink_log_pub,
-					     "[lpe] baro init %d m std %d cm",
-					     (int)_baroStats.getMean()(0),
-					     (int)(100 * _baroStats.getStdDev()(0)));
+		mavlink_log_info(&mavlink_log_pub,
+				 "[lpe] baro init %d m std %d cm",
+				 (int)_baroStats.getMean()(0),
+				 (int)(100 * _baroStats.getStdDev()(0)));
 		_sensorTimeout &= ~SENSOR_BARO;
 		_sensorFault &= ~SENSOR_BARO;
 
@@ -83,7 +83,7 @@ void BlockLocalPositionEstimator::baroCorrect()
 
 	} else if (_sensorFault & SENSOR_BARO) {
 		_sensorFault &= ~SENSOR_BARO;
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] baro OK");
+		mavlink_log_info(&mavlink_log_pub, "[lpe] baro OK");
 	}
 
 	// kalman filter correction always
@@ -99,7 +99,7 @@ void BlockLocalPositionEstimator::baroCheckTimeout()
 		if (!(_sensorTimeout & SENSOR_BARO)) {
 			_sensorTimeout |= SENSOR_BARO;
 			_baroStats.reset();
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] baro timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] baro timeout ");
 		}
 	}
 }

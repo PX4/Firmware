@@ -24,44 +24,44 @@ sh /etc/init.d/rc.mc_defaults
 if [ $AUTOCNF = yes ]
 then
 	# Set all params here, then disable autoconfig
-	param set EKF2_GPS_POS_X -0.0600
-	param set EKF2_GPS_POS_Z -0.1000
+	param set EKF2_GPS_POS_X -0.06
+	param set EKF2_GPS_POS_Z -0.1
 	param set EKF2_MIN_OBS_DT 50
 
 	param set EKF2_BARO_GATE 10
 	param set EKF2_BARO_NOISE 5
 	param set EKF2_ACC_NOISE 0.7
 
-	param set LNDMC_Z_VEL_MAX 2.0000
+	param set LNDMC_Z_VEL_MAX 2
 
-	param set MC_ROLL_P 8.0000
-	param set MC_ROLLRATE_P 0.1300
+	param set MC_ROLL_P 8
+	param set MC_ROLLRATE_P 0.13
 	param set MC_ROLLRATE_I 0.07
 	param set MC_ROLLRATE_D 0.0012
 	param set MC_ROLLRATE_MAX 360
-	param set MC_PITCH_P 8.0000
-	param set MC_PITCHRATE_P 0.1300
+	param set MC_PITCH_P 8
+	param set MC_PITCHRATE_P 0.13
 	param set MC_PITCHRATE_I 0.07
 	param set MC_PITCHRATE_D 0.0012
 	param set MC_PITCHRATE_MAX 360
 	param set MC_YAW_P 4
-	param set MC_YAWRATE_P 0.119999997317790985
-	param set MC_YAWRATE_I 0.050000000745058060
+	param set MC_YAWRATE_P 0.12
+	param set MC_YAWRATE_I 0.05
 	param set MC_YAWRATE_D 0
 
-	param set MPC_LAND_SPEED 0.7000
-	param set MPC_MANTHR_MIN 0.0400
-	param set MPC_THR_HOVER 0.5000
-	param set MPC_THR_MAX 0.9400
-	param set MPC_THR_MIN 0.1000
-	param set MPC_XY_CRUISE 8.0000
-	param set MPC_XY_P 1.5000
-	param set MPC_XY_VEL_P 0.1500
-	param set MPC_Z_P 1.5000
-	param set MPC_Z_VEL_I 0.1500
-	param set MPC_Z_VEL_MAX_DN 4.0000
-	param set MPC_Z_VEL_MAX_UP 5.0000
-	param set MPC_Z_VEL_P 0.8000
+	param set MPC_LAND_SPEED 0.7
+	param set MPC_MANTHR_MIN 0.04
+	param set MPC_THR_HOVER 0.5
+	param set MPC_THR_MAX 0.94
+	param set MPC_THR_MIN 0.1
+	param set MPC_XY_CRUISE 8
+	param set MPC_XY_P 1.5
+	param set MPC_XY_VEL_P_ACC 3
+	param set MPC_Z_P 1.5
+	param set MPC_Z_VEL_P_ACC 16
+	param set MPC_Z_VEL_I_ACC 3
+	param set MPC_Z_VEL_MAX_DN 4
+	param set MPC_Z_VEL_MAX_UP 5
 
 	# TELEM2 config
 	param set MAV_1_CONFIG 102
@@ -70,7 +70,7 @@ then
 	param set SER_TEL2_BAUD 921600
 fi
 
-if param compare SYS_HITL 0
+if ! param greater SYS_HITL 0
 then
   tap_esc start -d /dev/ttyS0 -n 4
   usleep 300000

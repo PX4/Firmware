@@ -40,7 +40,6 @@
 #include <drivers/drv_hrt.h>
 
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/topics/iridiumsbd_status.h>
 #include <uORB/topics/subsystem_info.h>
 
@@ -139,7 +138,7 @@ private:
 	/*
 	 * Entry point of the task, has to be a static function
 	 */
-	static void main_loop_helper(int argc, char *argv[]);
+	static int main_loop_helper(int argc, char *argv[]);
 
 	/*
 	 * Main driver loop

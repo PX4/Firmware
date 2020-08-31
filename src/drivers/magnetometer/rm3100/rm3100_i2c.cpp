@@ -48,75 +48,42 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
-
 #include <drivers/device/i2c.h>
-#include <drivers/drv_mag.h>
 #include <drivers/drv_device.h>
 
 #include "board_config.h"
 #include "rm3100.h"
-
-#if defined(PX4_I2C_BUS_ONBOARD) || defined(PX4_I2C_BUS_EXPANSION)
 
 #define RM3100_ADDRESS		0x20
 
 class RM3100_I2C : public device::I2C
 {
 public:
-	RM3100_I2C(int bus);
-	virtual ~RM3100_I2C() = default;
+	RM3100_I2C(int bus, int bus_frequency);
+	~RM3100_I2C() override = default;
 
-	virtual int     init();
-	virtual int     ioctl(unsigned operation, unsigned &arg);
-	virtual int     read(unsigned address, void *data, unsigned count);
-	virtual int     write(unsigned address, void *data, unsigned count);
+	int     read(unsigned address, void *data, unsigned count) override;
+	int     write(unsigned address, void *data, unsigned count) override;
 
 protected:
-	virtual int     probe();
-
+	int     probe() override;
 };
 
 device::Device *
-RM3100_I2C_interface(int bus);
+RM3100_I2C_interface(int bus, int bus_frequency);
 
 device::Device *
-RM3100_I2C_interface(int bus)
+RM3100_I2C_interface(int bus, int bus_frequency)
 {
-	return new RM3100_I2C(bus);
+	return new RM3100_I2C(bus, bus_frequency);
 }
 
-RM3100_I2C::RM3100_I2C(int bus) :
-	I2C("RM300_I2C", nullptr, bus, RM3100_ADDRESS, 400000)
+RM3100_I2C::RM3100_I2C(int bus, int bus_frequency) :
+	I2C(DRV_MAG_DEVTYPE_RM3100, MODULE_NAME, bus, RM3100_ADDRESS, bus_frequency)
 {
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_RM3100;
 }
 
-int
-RM3100_I2C::init()
-{
-	/* this will call probe() */
-	return I2C::init();
-}
-
-int
-RM3100_I2C::ioctl(unsigned operation, unsigned &arg)
-{
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		return external();
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default:
-		return  -EINVAL;
-	}
-}
-
-int
-RM3100_I2C::probe()
+int RM3100_I2C::probe()
 {
 	uint8_t data = 0;
 
@@ -137,8 +104,7 @@ RM3100_I2C::probe()
 	return OK;
 }
 
-int
-RM3100_I2C::read(unsigned address, void *data, unsigned count)
+int RM3100_I2C::read(unsigned address, void *data, unsigned count)
 {
 	uint8_t cmd = address;
 	int ret;
@@ -156,8 +122,7 @@ RM3100_I2C::read(unsigned address, void *data, unsigned count)
 	return ret;
 }
 
-int
-RM3100_I2C::write(unsigned address, void *data, unsigned count)
+int RM3100_I2C::write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 
@@ -170,5 +135,3 @@ RM3100_I2C::write(unsigned address, void *data, unsigned count)
 
 	return transfer(&buf[0], count + 1, nullptr, 0);
 }
-
-#endif /* PX4_I2C_OBDEV_RM3100 */

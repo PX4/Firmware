@@ -41,7 +41,7 @@ then
 	param set MC_YAWRATE_MAX 50
 
 	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_P 0.1
+	param set MPC_XY_VEL_P_ACC 2
 	param set MPC_ACC_HOR_MAX 2
 	param set MPC_YAWRAUTO_MAX 20
 

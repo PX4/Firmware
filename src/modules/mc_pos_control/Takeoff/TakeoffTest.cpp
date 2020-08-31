@@ -34,6 +34,7 @@
 #include <gtest/gtest.h>
 #include <Takeoff.hpp>
 #include <drivers/drv_hrt.h>
+#include <lib/ecl/geo/geo.h>
 
 TEST(TakeoffTest, Initialization)
 {
@@ -46,7 +47,7 @@ TEST(TakeoffTest, RegularTakeoffRamp)
 	Takeoff takeoff;
 	takeoff.setSpoolupTime(1.f);
 	takeoff.setTakeoffRampTime(2.0);
-	takeoff.generateInitialRampValue(.5f, 1.f);
+	takeoff.generateInitialRampValue(CONSTANTS_ONE_G / 0.5f);
 
 	// disarmed, landed, don't want takeoff
 	takeoff.updateTakeoffState(false, true, false, 1.f, false, 0);

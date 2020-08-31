@@ -36,7 +36,6 @@
  * INA226 Power Monitor Config
  *
  * @group Sensors
- * @unit u
  * @min 0
  * @max 65535
  * @decimal 1

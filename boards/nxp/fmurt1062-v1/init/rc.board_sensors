@@ -18,40 +18,17 @@
 adc start
 
 # Internal SPI bus ICM-20602
-mpu6000 -R 8 -s -T 20602 start
+icm20602 -R 2 -s start
 
 # Internal SPI bus ICM-20689
-mpu6000 -R 8 -s -T 20689 start
+icm20689 -R 2 -s start
 
-# Internal SPI bus BMI055 accel
-bmi055 -A -R 10 -s start
+# Internal SPI bus BMI055 accel/gyro
+bmi055 -A -R 2 -s start
+bmi055 -G -R 2 -s start
 
-# Internal SPI bus BMI055 gyro
-bmi055 -G -R 10 -s start
-
-# Possible external compasses
-ist8310 -X start
-hmc5883 -T -X start
-qmc5883 -X start
-lis3mdl -X start
-
-# ICM20948 as external magnetometer on I2C (e.g. Here GPS)
-if ! icm20948 -X -M -R 6 start
-then
-	# external emulated AK09916 (Here2) is rotated 270 degrees yaw
-	ak09916 -X -R 6 start
-fi
-
-# Possible internal compass
+# internal compass
 ist8310 -I start
 
 # Baro on internal SPI
 ms5611 -s start
-
-# External RM3100 (I2C or SPI)
-rm3100 start
-
-# Possible pmw3901 optical flow sensor
-pmw3901 -S start
-
-px4flow start -X

@@ -71,7 +71,7 @@ bmp280::IBMP280 *bmp280_i2c_interface(uint8_t busnum, uint32_t device, int bus_f
 }
 
 BMP280_I2C::BMP280_I2C(uint8_t bus, uint32_t device, int bus_frequency) :
-	I2C("BMP280_I2C", nullptr, bus, device, bus_frequency)
+	I2C(DRV_BARO_DEVTYPE_BMP280, MODULE_NAME, bus, device, bus_frequency)
 {
 }
 
@@ -116,4 +116,3 @@ BMP280_I2C::get_calibration(uint8_t addr)
 		return nullptr;
 	}
 }
-

@@ -41,6 +41,8 @@
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/tasks.h>
 
+#include <nuttx/board.h>
+
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -52,23 +54,10 @@
 #include <errno.h>
 #include <stdbool.h>
 
-void
-px4_systemreset(bool to_bootloader)
-{
-	board_set_bootload_mode(to_bootloader ? board_reset_enter_bootloader : board_reset_normal);
-	board_system_reset(to_bootloader ? 1 : 0);
-#if defined BOARD_HAS_NO_RESET
-	/* In case there is no HW support Just exit*/
-	PX4_WARN("System Reset Called");
-	exit(1);
-#endif
-}
-
 int px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_size, main_t entry, char *const argv[])
 {
-	int pid;
-
 	sched_lock();
+
 #if !defined(CONFIG_DISABLE_ENVIRON)
 	/* None of the modules access the environment variables (via getenv() for instance), so delete them
 	 * all. They are only used within the startup script, and NuttX automatically exports them to the children
@@ -77,18 +66,14 @@ int px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_
 	 */
 	clearenv();
 #endif
+
 	/* create the task */
-	pid = task_create(name, priority, stack_size, entry, argv);
+	int pid = task_create(name, priority, stack_size, entry, argv);
 
 	if (pid > 0) {
-
 		/* configure the scheduler */
-		struct sched_param param;
-
-		param.sched_priority = priority;
+		struct sched_param param = { .sched_priority = priority };
 		sched_setscheduler(pid, scheduler, &param);
-
-		/* XXX do any other private task accounting here before the task starts */
 	}
 
 	sched_unlock();

@@ -70,29 +70,24 @@ static constexpr uint32_t ADIS16497_DEFAULT_RATE = 1000;
 
 using namespace time_literals;
 
-ADIS16497::ADIS16497(int bus, uint32_t device, enum Rotation rotation) :
-	SPI("ADIS16497", nullptr, bus, device, SPIDEV_MODE3, 5000000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(get_device_id())),
-	_px4_accel(get_device_id(), ORB_PRIO_MAX, rotation),
-	_px4_gyro(get_device_id(), ORB_PRIO_MAX, rotation),
-	_sample_perf(perf_alloc(PC_ELAPSED, "adis16497: read")),
-	_bad_transfers(perf_alloc(PC_COUNT, "adis16497: bad transfers"))
+ADIS16497::ADIS16497(I2CSPIBusOption bus_option, int bus, int32_t device, enum Rotation rotation, int bus_frequency,
+		     spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio) :
+	SPI(DRV_IMU_DEVTYPE_ADIS16497, MODULE_NAME, bus, device, spi_mode, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_px4_accel(get_device_id(), rotation),
+	_px4_gyro(get_device_id(), rotation),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
+	_bad_transfers(perf_alloc(PC_COUNT, MODULE_NAME": bad transfers")),
+	_drdy_gpio(drdy_gpio)
 {
 #ifdef GPIO_SPI1_RESET_ADIS16497
 	// Configure hardware reset line
 	px4_arch_configgpio(GPIO_SPI1_RESET_ADIS16497);
 #endif // GPIO_SPI1_RESET_ADIS16497
-
-	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_ADIS16497);
-
-	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_ADIS16497);
 }
 
 ADIS16497::~ADIS16497()
 {
-	// make sure we are truly inactive
-	stop();
-
 	// delete the perf counters
 	perf_free(_sample_perf);
 	perf_free(_bad_transfers);
@@ -101,11 +96,12 @@ ADIS16497::~ADIS16497()
 int
 ADIS16497::init()
 {
-	// do SPI init (and probe) first
-	if (SPI::init() != OK) {
+	int ret = SPI::init();
+
+	if (ret != OK) {
 		// if probe/setup failed, bail now
-		PX4_DEBUG("SPI setup failed");
-		return PX4_ERROR;
+		DEVICE_DEBUG("SPI init failed (%i)", ret);
+		return ret;
 	}
 
 	start();
@@ -257,17 +253,17 @@ ADIS16497::probe()
 					return PX4_OK;
 
 				} else {
-					PX4_ERR("probe attempt %d: reading model id failed, resetting", i);
+					DEVICE_DEBUG("probe attempt %d: reading model id failed, resetting", i);
 					reset();
 				}
 
 			} else {
-				PX4_ERR("probe attempt %d: self test failed, resetting", i);
+				DEVICE_DEBUG("probe attempt %d: self test failed, resetting", i);
 				reset();
 			}
 
 		} else {
-			PX4_ERR("probe attempt %d: read product id failed, resetting", i);
+			DEVICE_DEBUG("probe attempt %d: read product id failed, resetting", i);
 			reset();
 		}
 	}
@@ -380,27 +376,25 @@ ADIS16497::write_reg16(uint8_t reg, uint16_t value)
 void
 ADIS16497::start()
 {
-#ifdef GPIO_SPI1_DRDY1_ADIS16497
-	// Setup data ready on rising edge
-	px4_arch_gpiosetevent(GPIO_SPI1_DRDY1_ADIS16497, true, false, true, &ADIS16497::data_ready_interrupt, this);
-#else
-	// Make sure we are stopped first
-	stop();
+	if (_drdy_gpio != 0) {
+		// Setup data ready on rising edge
+		px4_arch_gpiosetevent(_drdy_gpio, true, false, true, &ADIS16497::data_ready_interrupt, this);
 
-	// start polling at the specified rate
-	ScheduleOnInterval((1_s / ADIS16497_DEFAULT_RATE), 10000);
-#endif
+	} else {
+		// start polling at the specified rate
+		ScheduleOnInterval((1_s / ADIS16497_DEFAULT_RATE), 10000);
+	}
 }
 
 void
-ADIS16497::stop()
+ADIS16497::exit_and_cleanup()
 {
-#ifdef GPIO_SPI1_DRDY1_ADIS16497
-	// Disable data ready callback
-	px4_arch_gpiosetevent(GPIO_SPI1_DRDY1_ADIS16497, false, false, false, nullptr, nullptr);
-#else
-	ScheduleClear();
-#endif
+	if (_drdy_gpio != 0) {
+		// Disable data ready callback
+		px4_arch_gpiosetevent(_drdy_gpio, false, false, false, nullptr, nullptr);
+	}
+
+	I2CSPIDriverBase::exit_and_cleanup();
 }
 
 int
@@ -415,7 +409,7 @@ ADIS16497::data_ready_interrupt(int irq, void *context, void *arg)
 }
 
 void
-ADIS16497::Run()
+ADIS16497::RunImpl()
 {
 	// make another measurement
 	measure();
@@ -505,11 +499,10 @@ ADIS16497::measure()
 }
 
 void
-ADIS16497::print_info()
+ADIS16497::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_bad_transfers);
 
-	_px4_accel.print_status();
-	_px4_gyro.print_status();
 }

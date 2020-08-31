@@ -39,6 +39,8 @@
 
 #pragma once
 
+#include <drivers/device/Device.hpp>
+
 #define ADDR_ID_A			0x0C
 #define ADDR_ID_B			0x0D
 
@@ -47,6 +49,4 @@
 
 
 /* interface factories */
-extern device::Device *QMC5883_SPI_interface(int bus);
-extern device::Device *QMC5883_I2C_interface(int bus);
-typedef device::Device *(*QMC5883_constructor)(int);
+extern device::Device *QMC5883_I2C_interface(int bus, int bus_frequency, int i2c_address);

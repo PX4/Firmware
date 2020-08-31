@@ -154,10 +154,10 @@ bool PreFlightCheck::ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 		float test_uncertainty = 3.0f * sqrtf(fmaxf(status.covariances[index], 0.0f));
 
 		if (fabsf(status.states[index]) > test_limit + test_uncertainty) {
-			PX4_ERR("state %d: |%.8f| > %.8f + %.8f", index, (double)status.states[index], (double)test_limit,
-				(double)test_uncertainty);
 
 			if (report_fail) {
+				PX4_ERR("state %d: |%.8f| > %.8f + %.8f", index, (double)status.states[index], (double)test_limit,
+					(double)test_uncertainty);
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: High Accelerometer Bias");
 			}
 

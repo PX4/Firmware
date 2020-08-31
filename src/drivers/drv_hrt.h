@@ -194,6 +194,19 @@ __EXPORT extern void	hrt_init(void);
 __EXPORT extern hrt_abstime hrt_absolute_time_offset(void);
 
 #endif
+#if defined(ENABLE_LOCKSTEP_SCHEDULER)
+
+__EXPORT extern int px4_lockstep_register_component(void);
+__EXPORT extern void px4_lockstep_unregister_component(int component);
+__EXPORT extern void px4_lockstep_progress(int component);
+__EXPORT extern void px4_lockstep_wait_for_components(void);
+
+#else
+static inline int px4_lockstep_register_component(void) { return 0; }
+static inline void px4_lockstep_unregister_component(int component) { }
+static inline void px4_lockstep_progress(int component) { }
+static inline void px4_lockstep_wait_for_components(void) { }
+#endif /* defined(ENABLE_LOCKSTEP_SCHEDULER) */
 
 __END_DECLS
 

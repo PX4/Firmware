@@ -42,7 +42,6 @@
 
 #pragma once
 
-#include <battery/battery.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_range_finder.h>
@@ -59,7 +58,6 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/actuator_outputs.h>
-#include <uORB/topics/battery_status.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/ekf2_timestamps.h>
@@ -79,7 +77,8 @@
 
 #include <v2.0/common/mavlink.h>
 #include <v2.0/mavlink_types.h>
-#include <lib/battery/battery.h>
+
+using namespace time_literals;
 
 //! Enumeration to use on the bitmask in HIL_SENSOR
 enum class SensorSource {
@@ -128,8 +127,6 @@ public:
 	bool has_initialized() { return _has_initialized.load(); }
 #endif
 
-	void print_status();
-
 private:
 	Simulator() : ModuleParams(nullptr)
 	{
@@ -157,20 +154,20 @@ private:
 	static Simulator *_instance;
 
 	// simulated sensor instances
-	PX4Accelerometer	_px4_accel{1311244, ORB_PRIO_DEFAULT, ROTATION_NONE}; // 1311244: DRV_ACC_DEVTYPE_ACCELSIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
-	PX4Gyroscope		_px4_gyro{2294028, ORB_PRIO_DEFAULT, ROTATION_NONE}; // 2294028: DRV_GYR_DEVTYPE_GYROSIM, BUS: 1, ADDR: 2, TYPE: SIMULATION
-	PX4Magnetometer		_px4_mag{197388, ORB_PRIO_DEFAULT, ROTATION_NONE}; // 197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
-	PX4Barometer		_px4_baro{6620172, ORB_PRIO_DEFAULT}; // 6620172: DRV_BARO_DEVTYPE_BAROSIM, BUS: 1, ADDR: 4, TYPE: SIMULATION
+	PX4Accelerometer	_px4_accel{1311244}; // 1311244: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+	PX4Gyroscope		_px4_gyro{1311244};  // 2294028: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+	PX4Magnetometer		_px4_mag{197388};    //  197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
+	PX4Barometer		_px4_baro{6620172};  // 6620172: DRV_BARO_DEVTYPE_BAROSIM, BUS: 1, ADDR: 4, TYPE: SIMULATION
 
 	perf_counter_t _perf_sim_delay{perf_alloc(PC_ELAPSED, MODULE_NAME": network delay")};
 	perf_counter_t _perf_sim_interval{perf_alloc(PC_INTERVAL, MODULE_NAME": network interval")};
 
 	// uORB publisher handlers
-	uORB::Publication<battery_status_s>		_battery_pub{ORB_ID(battery_status)};
 	uORB::Publication<differential_pressure_s>	_differential_pressure_pub{ORB_ID(differential_pressure)};
 	uORB::PublicationMulti<optical_flow_s>		_flow_pub{ORB_ID(optical_flow)};
 	uORB::Publication<irlock_report_s>		_irlock_report_pub{ORB_ID(irlock_report)};
 	uORB::Publication<vehicle_odometry_s>		_visual_odometry_pub{ORB_ID(vehicle_visual_odometry)};
+	uORB::Publication<vehicle_odometry_s>		_mocap_odometry_pub{ORB_ID(vehicle_mocap_odometry)};
 
 	uORB::PublicationMulti<distance_sensor_s>	*_dist_pubs[RANGE_FINDER_MAX_SENSORS] {};
 	uint8_t _dist_sensor_ids[RANGE_FINDER_MAX_SENSORS] {};
@@ -185,28 +182,7 @@ private:
 
 	hrt_abstime _last_sim_timestamp{0};
 	hrt_abstime _last_sitl_timestamp{0};
-	hrt_abstime _last_battery_timestamp{0};
 
-	class SimulatorBattery : public Battery
-	{
-	public:
-		SimulatorBattery() : Battery(1, nullptr) {}
-
-		virtual void updateParams() override
-		{
-			Battery::updateParams();
-			_params.v_empty = 3.5f;
-			_params.v_charged = 4.05f;
-			_params.n_cells = 4;
-			_params.capacity = 10.0f;
-			_params.v_load_drop = 0.0f;
-			_params.r_internal = 0.0f;
-			_params.low_thr = 0.15f;
-			_params.crit_thr = 0.07f;
-			_params.emergen_thr = 0.05f;
-			_params.source = 0;
-		}
-	} _battery;
 
 	void run();
 	void handle_message(const mavlink_message_t *msg);
@@ -242,7 +218,8 @@ private:
 	uORB::Publication<input_rc_s>			_input_rc_pub{ORB_ID(input_rc)};
 
 	// HIL GPS
-	uORB::Publication<vehicle_gps_position_s>	_vehicle_gps_position_pub{ORB_ID(vehicle_gps_position)};
+	uORB::PublicationMulti<vehicle_gps_position_s>	*_vehicle_gps_position_pubs[ORB_MULTI_MAX_INSTANCES] {};
+	uint8_t _gps_ids[ORB_MULTI_MAX_INSTANCES] {};
 	std::default_random_engine _gen{};
 
 	// uORB subscription handlers
@@ -266,20 +243,9 @@ private:
 
 #if defined(ENABLE_LOCKSTEP_SCHEDULER)
 	px4::atomic<bool> _has_initialized {false};
-
-	int _ekf2_timestamps_sub{-1};
-
-	enum class State {
-		WaitingForFirstEkf2Timestamp = 0,
-		WaitingForActuatorControls = 1,
-		WaitingForEkf2Timestamp = 2,
-	};
 #endif
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::SIM_BAT_DRAIN>) _param_sim_bat_drain, ///< battery drain interval
-		(ParamFloat<px4::params::SIM_BAT_MIN_PCT>) _battery_min_percentage, //< minimum battery percentage
-		(ParamFloat<px4::params::SIM_GPS_NOISE_X>) _param_sim_gps_noise_x,
 		(ParamBool<px4::params::SIM_GPS_BLOCK>) _param_sim_gps_block,
 		(ParamBool<px4::params::SIM_ACCEL_BLOCK>) _param_sim_accel_block,
 		(ParamBool<px4::params::SIM_GYRO_BLOCK>) _param_sim_gyro_block,

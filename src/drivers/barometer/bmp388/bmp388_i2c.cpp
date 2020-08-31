@@ -68,7 +68,7 @@ IBMP388 *bmp388_i2c_interface(uint8_t busnum, uint32_t device, int bus_frequency
 }
 
 BMP388_I2C::BMP388_I2C(uint8_t bus, uint32_t device, int bus_frequency) :
-	I2C("BMP388_I2C", nullptr, bus, device, bus_frequency)
+	I2C(DRV_BARO_DEVTYPE_BMP388, MODULE_NAME, bus, device, bus_frequency)
 {
 }
 

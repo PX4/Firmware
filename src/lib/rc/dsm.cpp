@@ -79,10 +79,6 @@ static unsigned dsm_channel_shift = 0;			/**< Channel resolution, 0=unknown, 1=1
 static unsigned dsm_frame_drops = 0;			/**< Count of incomplete DSM frames */
 static uint16_t dsm_chan_count = 0;         /**< DSM channel count */
 
-static bool
-dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, unsigned max_values,
-	   int8_t *rssi_percent);
-
 /**
  * Attempt to decode a single channel raw channel datum
  *
@@ -108,22 +104,59 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
  * @param[out] value pointer to returned channel value
  * @return true=raw value successfully decoded
  */
-static bool
-dsm_decode_channel(uint16_t raw, unsigned shift, unsigned *channel, unsigned *value)
+static bool dsm_decode_channel(uint16_t raw, unsigned shift, uint8_t &channel, uint16_t &value)
 {
-
 	if (raw == 0xffff) {
 		return false;
 	}
 
-	*channel = (raw >> shift) & 0xf;
+	if (shift == 10) {
+		// 1024 Mode: This format is used only by DSM2/22ms mode. All other modes use 2048 data.
+		//  Bits 15-10 Channel ID
+		//  Bits 9-0   Servo Position
+		static constexpr uint16_t MASK_1024_CHANID = 0xFC00;
+		static constexpr uint16_t MASK_1024_SXPOS = 0x03FF;
 
-	uint16_t data_mask = (1 << shift) - 1;
-	*value = raw & data_mask;
+		channel = (raw & MASK_1024_CHANID) >> 10; // 6 bits
+		uint16_t servo_position = (raw & MASK_1024_SXPOS); // 10 bits
+		value = servo_position * 2; // scale to be equivalent to 2048 mode
+		return true;
 
-	//debug("DSM: %d 0x%04x -> %d %d", shift, raw, *channel, *value);
+	} else if (shift == 11) {
+		// 2048 Mode
+		//  Bits 15    Servo Phase
+		//  Bits 14-11 Channel ID
+		//  Bits 10-0  Servo Position
+		static constexpr uint16_t MASK_2048_CHANID = 0x7800;
+		static constexpr uint16_t MASK_2048_SXPOS = 0x07FF;
 
-	return true;
+		// from Spektrum Remote Receiver Interfacing Rev G Page 6
+		uint8_t chan = (raw & MASK_2048_CHANID) >> 11;
+		uint16_t servo_position = 0;
+
+		if (chan < 12) {
+			// Normal channels
+			servo_position = (raw & MASK_2048_SXPOS);
+
+		} else if (chan == 12) {
+			// XPlus channels
+			chan += ((raw >> 9) & 0x03);
+
+			const bool phase = raw & (2 >> 15); // the phase is part of the X-Plus address (bit 15)
+
+			if (phase) {
+				chan += 4;
+			}
+
+			servo_position = (raw & 0x01FF) << 2;
+		}
+
+		channel = chan;
+		value = servo_position;
+		return true;
+	}
+
+	return false;
 }
 
 /**
@@ -152,14 +185,16 @@ dsm_guess_format(bool reset)
 
 		uint8_t *dp = &dsm_frame[2 + (2 * i)];
 		uint16_t raw = (dp[0] << 8) | dp[1];
-		unsigned channel, value;
+
+		uint8_t channel = 0;
+		uint16_t value = 0;
 
 		/* if the channel decodes, remember the assigned number */
-		if (dsm_decode_channel(raw, 10, &channel, &value) && (channel < 31)) {
+		if (dsm_decode_channel(raw, 10, channel, value) && (channel < 31)) {
 			cs10 |= (1 << channel);
 		}
 
-		if (dsm_decode_channel(raw, 11, &channel, &value) && (channel < 31)) {
+		if (dsm_decode_channel(raw, 11, channel, value) && (channel < 31)) {
 			cs11 |= (1 << channel);
 		}
 
@@ -186,8 +221,6 @@ dsm_guess_format(bool reset)
 	 *     stream, we may want to sniff for longer in some cases when we think we
 	 *     are talking to a DSM2 receiver in high-resolution mode (so that we can
 	 *     reject it, ideally).
-	 *     See e.g. http://git.openpilot.org/cru/OPReview-116 for a discussion
-	 *     of this issue.
 	 */
 	static uint32_t masks[] = {
 		0x3f,	/* 6 channels (DX6) */
@@ -415,6 +448,7 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 	 * but rssi dBm is a useful value.
 	 */
 
+	// The SPM4649T with firmware version 1.1RC9 or later will have RSSI in place of fades
 	if (rssi_percent) {
 		if (((int8_t *)dsm_frame)[0] < 0) {
 			/*
@@ -446,6 +480,80 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 	 * 0xa2 22MS 2048 DSMX
 	 * 0xb2 11MS 2048 DSMX
 	 */
+	const uint8_t system = dsm_frame[1];
+
+	switch (system) {
+	case 0x00: // SURFACE DSM1
+		// unsupported
+		PX4_DEBUG("ERROR system: SURFACE DSM1 (%X) unsupported\n", system);
+		return false;
+
+	case 0x01: // DSM2 1024 22ms
+		if (dsm_channel_shift != 10) {
+			dsm_guess_format(true);
+			return false;
+		}
+
+		break;
+
+	case 0x02: // DSM2 1024 (MC24)
+		// unsupported
+		PX4_DEBUG("ERROR system: DSM2 1024 (MC24) (%X) unsupported\n", system);
+		return false;
+
+	case 0x12: // DSM2 2048 11ms
+		if (dsm_channel_shift != 11) {
+			dsm_guess_format(true);
+			return false;
+		}
+
+		break;
+
+	case 0x23: // SURFACE DSM2 16.5ms
+		// unsupported
+		PX4_DEBUG("ERROR system: DSM2 16.5ms (%X) unsupported\n", system);
+		return false;
+
+	case 0x50: // DSM MARINE
+		// unsupported
+		PX4_DEBUG("ERROR system: DSM MARINE (%X) unsupported\n", system);
+		return false;
+
+	case 0x92: // DSMJ
+		// unsupported
+		PX4_DEBUG("ERROR system: DSMJ (%X) unsupported\n", system);
+		return false;
+
+	case 0xA2: // DSMX 22ms OR DSMR 11ms or DSMR 22ms
+		if (dsm_channel_shift != 11) {
+			dsm_guess_format(true);
+			return false;
+		}
+
+		break;
+
+	case 0xA4: // DSMR 5.5ms
+		// unsupported
+		PX4_DEBUG("ERROR system: DSMR 5.5ms (%X) unsupported\n", system);
+		return false;
+
+	case 0xAE: // NOT_BOUND
+		PX4_DEBUG("ERROR system: NOT_BOUND (%X) unsupported\n", system);
+		return false;
+
+	case 0xB2: // DSMX 11ms
+		if (dsm_channel_shift != 11) {
+			dsm_guess_format(true);
+			return false;
+		}
+
+		break;
+
+	default:
+		// ERROR
+		PX4_DEBUG("ERROR system: %X unsupported\n", system);
+		return false;
+	}
 
 	/*
 	 * Each channel is a 16-bit unsigned value containing either a 10-
@@ -459,9 +567,11 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 
 		uint8_t *dp = &dsm_frame[2 + (2 * i)];
 		uint16_t raw = (dp[0] << 8) | dp[1];
-		unsigned channel, value;
 
-		if (!dsm_decode_channel(raw, dsm_channel_shift, &channel, &value)) {
+		uint8_t channel = 0;
+		uint16_t value = 0;
+
+		if (!dsm_decode_channel(raw, dsm_channel_shift, channel, value)) {
 			continue;
 		}
 
@@ -481,27 +591,6 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 			*num_values = channel + 1;
 		}
 
-		/* convert 0-1024 / 0-2048 values to 1000-2000 ppm encoding. */
-		if (dsm_channel_shift == 10) {
-			value *= 2;
-		}
-
-		/*
-		 * Spektrum scaling is special. There are these basic considerations
-		 *
-		 *   * Midpoint is 1520 us
-		 *   * 100% travel channels are +- 400 us
-		 *
-		 * We obey the original Spektrum scaling (so a default setup will scale from
-		 * 1100 - 1900 us), but we do not obey the weird 1520 us center point
-		 * and instead (correctly) center the center around 1500 us. This is in order
-		 * to get something useful without requiring the user to calibrate on a digital
-		 * link for no reason.
-		 */
-
-		/* scaled integer for decent accuracy while staying efficient */
-		value = ((((int)value - 1024) * 1000) / 1700) + 1500;
-
 		/*
 		 * Store the decoded channel into the R/C input buffer, taking into
 		 * account the different ideas about channel assignement that we have.
@@ -511,21 +600,25 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 		 */
 		switch (channel) {
 		case 0:
-			channel = 2;
+			channel = 2; // Spektrum Throttle (0) -> 2
 			break;
 
 		case 1:
-			channel = 0;
+			channel = 0; // Spektrum Aileron (1) -> 0
 			break;
 
 		case 2:
-			channel = 1;
+			channel = 1; // Spektrum Elevator (2) -> 1
 
 		default:
 			break;
 		}
 
-		values[channel] = value;
+		// Scaling
+		//  See Specification for Spektrum Remote Receiver Interfacing Rev G 2019 January 22
+		//  2048 Mode Scaling: PWM_OUT = (ServoPosition x 0.583μs) + Offset (903μs)
+		//  scaled integer for decent accuracy while staying efficient (0.583us ~= 1194/2048)
+		values[channel] = (value * 1194) / 2048 + 903;
 	}
 
 	/*
@@ -554,8 +647,9 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
 
 	/* check all values */
 	for (unsigned i = 0; i < *num_values; i++) {
-		/* if the value is unrealistic, fail the parsing entirely */
-		if (values[i] < 600 || values[i] > 2400) {
+		// Spektrum range is 903μs to 2097μs (Specification for Spektrum Remote Receiver Interfacing Rev G 9.1)
+		if (values[i] < 903 || values[i] > 2097) {
+			// if the value is unrealistic, fail the parsing entirely
 #ifdef DSM_DEBUG
 			printf("DSM: VALUE RANGE FAIL: %d: %d\n", (int)i, (int)values[i]);
 #endif
@@ -591,12 +685,8 @@ dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool 
  */
 bool
 dsm_input(int fd, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, uint8_t *n_bytes, uint8_t **bytes,
-	  int8_t *rssi,
-	  unsigned max_values)
+	  int8_t *rssi, unsigned max_values)
 {
-	int		ret = 1;
-	hrt_abstime	now;
-
 	/*
 	 * The S.BUS protocol doesn't provide reliable framing,
 	 * so we detect frame boundaries by the inter-frame delay.
@@ -612,14 +702,14 @@ dsm_input(int fd, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, uint
 	 * provides a degree of protection. Of course, it would be better
 	 * if we didn't drop bytes...
 	 */
-	now = hrt_absolute_time();
+	const hrt_abstime now = hrt_absolute_time();
 
 	/*
 	 * Fetch bytes, but no more than we would need to complete
 	 * a complete frame.
 	 */
 
-	ret = read(fd, &dsm_buf[0], sizeof(dsm_buf) / sizeof(dsm_buf[0]));
+	int ret = read(fd, &dsm_buf[0], sizeof(dsm_buf) / sizeof(dsm_buf[0]));
 
 	/* if the read failed for any reason, just give up here */
 	if (ret < 1) {

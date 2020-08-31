@@ -50,6 +50,6 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANG OR
     endif()
 endif()
 
-file(GLOB MICRORTPS_AGENT_SOURCES *.cpp *.h)
+file(GLOB MICRORTPS_AGENT_SOURCES src/*.cpp src/*.h)
 add_executable(micrortps_agent ${MICRORTPS_AGENT_SOURCES})
 target_link_libraries(micrortps_agent fastrtps fastcdr)

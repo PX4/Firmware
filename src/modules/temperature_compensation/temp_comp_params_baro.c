@@ -43,8 +43,7 @@
  * Thermal compensation for barometric pressure sensors.
  *
  * @group Thermal Compensation
- * @min 0
- * @max 1
+ * @reboot_required true
  * @boolean
  */
 PARAM_DEFINE_INT32(TC_B_ENABLE, 0);
@@ -106,14 +105,6 @@ PARAM_DEFINE_FLOAT(TC_B0_X1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_B0_X0, 0.0f);
-
-/**
- * Barometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_B0_SCL, 1.0f);
 
 /**
  * Barometer calibration reference temperature.
@@ -198,14 +189,6 @@ PARAM_DEFINE_FLOAT(TC_B1_X1, 0.0f);
 PARAM_DEFINE_FLOAT(TC_B1_X0, 0.0f);
 
 /**
- * Barometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_B1_SCL, 1.0f);
-
-/**
  * Barometer calibration reference temperature.
  *
  * @group Thermal Compensation
@@ -286,14 +269,6 @@ PARAM_DEFINE_FLOAT(TC_B2_X1, 0.0f);
  * @category system
  */
 PARAM_DEFINE_FLOAT(TC_B2_X0, 0.0f);
-
-/**
- * Barometer scale factor - X axis.
- *
- * @group Thermal Compensation
- * @category system
- */
-PARAM_DEFINE_FLOAT(TC_B2_SCL, 1.0f);
 
 /**
  * Barometer calibration reference temperature.

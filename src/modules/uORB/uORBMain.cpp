@@ -77,7 +77,7 @@ $ uorb top
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status", "Print topic statistics");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("top", "Monitor topic publication rates");
-	PRINT_MODULE_USAGE_PARAM_FLAG('a', "print all instead of only currently publishing topics", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('a', "print all instead of only currently publishing topics with subscribers", true);
 	PRINT_MODULE_USAGE_PARAM_FLAG('1', "run only once, then exit", true);
 	PRINT_MODULE_USAGE_ARG("<filter1> [<filter2>]", "topic(s) to match (implies -a)", true);
 }
@@ -128,7 +128,7 @@ uorb_main(int argc, char *argv[])
 	 */
 	if (!strcmp(argv[1], "status")) {
 		if (g_dev != nullptr) {
-			g_dev->printStatistics(true);
+			g_dev->printStatistics();
 
 		} else {
 			PX4_INFO("uorb is not running");

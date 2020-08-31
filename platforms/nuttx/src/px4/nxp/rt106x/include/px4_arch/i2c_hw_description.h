@@ -33,4 +33,3 @@
 #pragma once
 
 #include "../../../imxrt/include/px4_arch/i2c_hw_description.h"
-

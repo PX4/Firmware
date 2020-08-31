@@ -50,7 +50,7 @@
 
 LidarLitePWM::LidarLitePWM(const uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
-	_px4_rangefinder(0 /* device id not yet used */, ORB_PRIO_DEFAULT, rotation)
+	_px4_rangefinder(0 /* device id not yet used */, rotation)
 {
 	_px4_rangefinder.set_min_distance(LL40LS_MIN_DISTANCE);
 	_px4_rangefinder.set_max_distance(LL40LS_MAX_DISTANCE);

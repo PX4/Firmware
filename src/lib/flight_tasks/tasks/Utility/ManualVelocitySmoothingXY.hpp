@@ -92,7 +92,11 @@ public:
 		_state.x = pos;
 		_trajectory[0].setCurrentPosition(pos(0));
 		_trajectory[1].setCurrentPosition(pos(1));
-		// TODO: check lock/unlock in case of EKF reset
+		_position_estimate = pos;
+
+		if (_position_lock_active) {
+			_position_setpoint_locked = pos;
+		}
 	}
 	Vector2f getCurrentPosition() const { return _position_setpoint_locked; }
 
@@ -108,15 +112,15 @@ private:
 
 	bool _position_lock_active{false};
 
-	Vector2f _position_setpoint_locked;
+	Vector2f _position_setpoint_locked{};
 
-	Vector2f _velocity_setpoint_feedback;
-	Vector2f _position_estimate;
+	Vector2f _velocity_setpoint_feedback{};
+	Vector2f _position_estimate{};
 
 	struct {
 		Vector2f j;
 		Vector2f a;
 		Vector2f v;
 		Vector2f x;
-	} _state;
+	} _state{};
 };

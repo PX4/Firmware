@@ -42,6 +42,7 @@
 #pragma once
 
 #include <drivers/drv_hrt.h>
+#include <lib/hysteresis/hysteresis.h>
 #include <lib/perf/perf_counter.h>
 #include <px4_platform_common/defines.h>
 #include <px4_platform_common/module.h>
@@ -86,7 +87,9 @@ private:
 	void updateParams() override;
 
 	void reset();
-	void publishStatus(ZeroOrderHoverThrustEkf::status &status);
+
+	void publishStatus(const hrt_abstime &timestamp_sample, const ZeroOrderHoverThrustEkf::status &status);
+	void publishInvalidStatus();
 
 	ZeroOrderHoverThrustEkf _hover_thrust_ekf{};
 
@@ -104,6 +107,10 @@ private:
 	bool _armed{false};
 	bool _landed{false};
 	bool _in_air{false};
+
+	bool _valid{false};
+
+	systemlib::Hysteresis _valid_hysteresis{false};
 
 	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle time")};
 

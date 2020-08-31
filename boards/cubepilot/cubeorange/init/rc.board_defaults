@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# Board specific defaults
+#------------------------------------------------------------------------------
+
+#
+# Bootloader upgrade
+#
+set BL_FILE /etc/extras/cubepilot_cubeorange_bootloader.bin
+if [ -f $BL_FILE ]
+then
+	if param compare SYS_BL_UPDATE 1
+	then
+		param set SYS_BL_UPDATE 0
+		param save
+		echo "BL update..." >> $LOG_FILE
+		bl_update $BL_FILE
+		echo "BL update done" >> $LOG_FILE
+		reboot
+	fi
+fi
+unset BL_FILE
+
+if [ $AUTOCNF = yes ]
+then
+	param set BAT_V_DIV 10.1
+	param set BAT1_V_DIV 10.1
+	param set BAT2_V_DI 10.1
+
+	param set BAT_A_PER_V 17
+	param set BAT1_A_PER_V 17
+	param set BAT2_A_PER_V 17
+
+	# Disable IMU thermal control
+	param set SENS_EN_THERMAL 0
+fi
+
+set LOGGER_BUF 64
+set IOFW "/etc/extras/cubepilot_io-v2_default.bin"

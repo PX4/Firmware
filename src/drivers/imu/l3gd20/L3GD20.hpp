@@ -44,7 +44,7 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 /* Orientation on board */
 #define SENSOR_BOARD_ROTATION_000_DEG	0
@@ -158,18 +158,22 @@
  */
 #define L3GD20_TIMER_REDUCTION				600
 
-class L3GD20 : public device::SPI, public px4::ScheduledWorkItem
+class L3GD20 : public device::SPI, public I2CSPIDriver<L3GD20>
 {
 public:
-	L3GD20(int bus, uint32_t device, enum Rotation rotation);
-	virtual ~L3GD20();
+	L3GD20(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
+	       spi_mode_e spi_mode);
+	~L3GD20() override;
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	void RunImpl();
+
+	int		init() override;
+
+	void print_status() override;
 
 	// print register dump
 	void			print_registers();
@@ -178,7 +182,8 @@ public:
 	void			test_error();
 
 protected:
-	virtual int		probe();
+	void custom_method(const BusCLIArguments &cli) override;
+	int		probe() override;
 
 private:
 
@@ -217,10 +222,8 @@ private:
 	uint8_t			_checked_next{0};
 
 	void			start();
-	void			stop();
 	void			reset();
 	void			disable_i2c();
-	void		Run() override;
 
 	/**
 	 * check key registers for correct values
@@ -228,25 +231,21 @@ private:
 	void			check_registers();
 
 	/**
-	 * Fetch measurements from the sensor and update the report ring.
-	 */
-	void			measure();
-
-	/**
 	 * Read a register from the L3GD20
 	 *
 	 * @param		The register to read.
 	 * @return		The value that was read.
 	 */
-	uint8_t			read_reg(unsigned reg);
+	uint8_t			read_reg(unsigned reg) override;
 
 	/**
 	 * Write a register in the L3GD20
 	 *
 	 * @param reg		The register to write.
 	 * @param value		The new value to write.
+	 * @return		OK on success, negative errno otherwise.
 	 */
-	void			write_reg(unsigned reg, uint8_t value);
+	int			write_reg(unsigned reg, uint8_t value) override;
 
 	/**
 	 * Modify a register in the L3GD20

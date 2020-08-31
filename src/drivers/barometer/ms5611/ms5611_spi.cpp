@@ -103,7 +103,7 @@ MS5611_spi_interface(ms5611::prom_u &prom_buf, uint32_t devid, uint8_t busnum, i
 }
 
 MS5611_SPI::MS5611_SPI(uint8_t bus, uint32_t device, ms5611::prom_u &prom_buf, int bus_frequency, spi_mode_e spi_mode) :
-	SPI("MS5611_SPI", nullptr, bus, device, spi_mode, bus_frequency),
+	SPI(DRV_BARO_DEVTYPE_MS5611, MODULE_NAME, bus, device, spi_mode, bus_frequency),
 	_prom(prom_buf)
 {
 }
@@ -259,4 +259,3 @@ MS5611_SPI::_transfer(uint8_t *send, uint8_t *recv, unsigned len)
 {
 	return transfer(send, recv, len);
 }
-

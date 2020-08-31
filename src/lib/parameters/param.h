@@ -57,16 +57,12 @@ __BEGIN_DECLS
 /**
  * Parameter types.
  */
-#define PARAM_TYPE_INT32		0
-#define PARAM_TYPE_FLOAT		1
-#define PARAM_TYPE_STRUCT		100
-#define PARAM_TYPE_STRUCT_MAX	(16384 + PARAM_TYPE_STRUCT)
-#define PARAM_TYPE_UNKNOWN		(0xffff)
+#define PARAM_TYPE_UNKNOWN		0
+#define PARAM_TYPE_INT32		1
+#define PARAM_TYPE_FLOAT		2
 
-typedef uint16_t param_type_t;
+typedef uint8_t param_type_t;
 
-
-#ifdef __PX4_NUTTX // on NuttX use 16 bits to save RAM
 /**
  * Parameter handle.
  *
@@ -85,29 +81,6 @@ typedef uint16_t	param_t;
  * Magic handle for hash check param
  */
 #define PARAM_HASH      ((uint16_t)INT16_MAX)
-
-#else // on other platforms use 32 bits for better performance
-
-/**
- * Parameter handle.
- *
- * Parameters are represented by parameter handles, which can
- * be obtained by looking up parameters. They are an offset into a global
- * constant parameter array.
- */
-typedef uint32_t	param_t;
-
-/**
- * Handle returned when a parameter cannot be found.
- */
-#define PARAM_INVALID	((uint32_t)0xffffffff)
-
-/**
- * Magic handle for hash check param
- */
-#define PARAM_HASH      ((uint32_t)INT32_MAX)
-
-#endif /* __PX4_NUTTX */
 
 
 /**

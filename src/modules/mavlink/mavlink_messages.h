@@ -68,6 +68,7 @@ static StreamListItem create_stream_list_item()
 
 const char *get_stream_name(const uint16_t msg_id);
 MavlinkStream *create_mavlink_stream(const char *stream_name, Mavlink *mavlink);
+MavlinkStream *create_mavlink_stream(const uint16_t msg_id, Mavlink *mavlink);
 
 void get_mavlink_navigation_mode(const struct vehicle_status_s *const status, uint8_t *mavlink_base_mode,
 				 union px4_custom_mode *custom_mode);

@@ -1,18 +1,16 @@
 Mixer for the gazebo tailsitter model
 =====================================
 
-R: 4x 10000 10000 10000 0
+R: 4x
 
 Z:
 
 # left elevon
-M: 1
+M: 2
 S: 1 0  -10000  -10000      0 -10000  10000
+S: 1 1   -10000   -10000    0 -10000  10000
 
 # right elevon
-M: 1
+M: 2
 S: 1 0   10000   10000    0 -10000  10000
-
-# mixer for the virtual elevator
-M: 1
 S: 1 1   -10000   -10000    0 -10000  10000

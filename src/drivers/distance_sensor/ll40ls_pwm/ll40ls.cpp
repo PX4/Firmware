@@ -147,13 +147,13 @@ PWM driver for LidarLite rangefinders.
 
 The sensor/driver must be enabled using the parameter SENS_EN_LL40LS.
 
-Setup/usage information: https://docs.px4.io/en/sensor/lidar_lite.html
+Setup/usage information: https://docs.px4.io/master/en/sensor/lidar_lite.html
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("ll40ls", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start","Start driver");
-	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 1, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status","Print driver status information");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop","Stop driver");
 	return PX4_OK;

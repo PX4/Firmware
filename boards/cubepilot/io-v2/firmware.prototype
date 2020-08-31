@@ -1,0 +1,13 @@
+{
+    "board_id": 10, 
+    "magic": "PX4FWv2", 
+    "description": "Firmware for the PX4IOv2 board", 
+    "image": "", 
+    "build_time": 0, 
+    "summary": "PX4IOv2",
+    "version": "2.0",
+    "image_size": 0,
+    "image_maxsize": 61440,
+    "git_identity": "",
+    "board_revision": 0
+}

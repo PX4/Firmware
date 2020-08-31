@@ -44,7 +44,7 @@
  *
  * Roll proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit 1/s
+ * @unit Hz
  * @min 0.0
  * @max 12
  * @decimal 2
@@ -58,7 +58,7 @@ PARAM_DEFINE_FLOAT(MC_ROLL_P, 6.5f);
  *
  * Pitch proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit 1/s
+ * @unit Hz
  * @min 0.0
  * @max 12
  * @decimal 2
@@ -72,7 +72,7 @@ PARAM_DEFINE_FLOAT(MC_PITCH_P, 6.5f);
  *
  * Yaw proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit 1/s
+ * @unit Hz
  * @min 0.0
  * @max 5
  * @decimal 2
@@ -80,6 +80,25 @@ PARAM_DEFINE_FLOAT(MC_PITCH_P, 6.5f);
  * @group Multicopter Attitude Control
  */
 PARAM_DEFINE_FLOAT(MC_YAW_P, 2.8f);
+
+/**
+ * Yaw weight
+ *
+ * A fraction [0,1] deprioritizing yaw compared to roll and pitch in non-linear attitude control.
+ * Deprioritizing yaw is necessary because multicopters have much less control authority
+ * in yaw compared to the other axes and it makes sense because yaw is not critical for
+ * stable hovering or 3D navigation.
+ *
+ * For yaw control tuning use MC_YAW_P. This ratio has no inpact on the yaw gain.
+ *
+ * @unit Hz
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @increment 0.1
+ * @group Multicopter Attitude Control
+ */
+PARAM_DEFINE_FLOAT(MC_YAW_WEIGHT, 0.4f);
 
 /**
  * Max roll rate
@@ -144,3 +163,15 @@ PARAM_DEFINE_FLOAT(MC_YAWRATE_MAX, 200.0f);
  * @group Multicopter Attitude Control
  */
 PARAM_DEFINE_FLOAT(MC_RATT_TH, 0.8f);
+
+/**
+ * Manual tilt input filter time constant
+ * Setting this parameter to 0 disables the filter
+ *
+ * @unit s
+ * @min 0.0
+ * @max 2.0
+ * @decimal 2
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MC_MAN_TILT_TAU, 0.0f);

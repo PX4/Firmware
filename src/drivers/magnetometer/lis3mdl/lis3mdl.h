@@ -39,19 +39,12 @@
 
 #pragma once
 
-#include <float.h>
-
 #include <drivers/device/i2c.h>
-#include <drivers/device/ringbuffer.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_mag.h>
-
-#include <lib/conversion/rotation.h>
-#include <systemlib/err.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-
-#include <perf/perf_counter.h>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <lib/perf/perf_counter.h>
 #include <px4_platform_common/defines.h>
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 
 /**
  * LIS3MDL internal constants and data structures.
@@ -91,63 +84,41 @@
 #define CNTL_REG5_DEFAULT 0x00
 
 /* interface factories */
-extern device::Device *LIS3MDL_SPI_interface(int bus);
-extern device::Device *LIS3MDL_I2C_interface(int bus);
-typedef device::Device *(*LIS3MDL_constructor)(int);
-
-enum LIS3MDL_BUS {
-	LIS3MDL_BUS_ALL = 0,
-	LIS3MDL_BUS_I2C_INTERNAL,
-	LIS3MDL_BUS_I2C_EXTERNAL,
-	LIS3MDL_BUS_SPI
-};
+extern device::Device *LIS3MDL_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi_mode);
+extern device::Device *LIS3MDL_I2C_interface(int bus, int bus_frequency);
 
 enum OPERATING_MODE {
 	CONTINUOUS = 0,
 	SINGLE
 };
 
-
-class LIS3MDL : public device::CDev, public px4::ScheduledWorkItem
+class LIS3MDL : public I2CSPIDriver<LIS3MDL>
 {
 public:
-	LIS3MDL(device::Device *interface, const char *path, enum Rotation rotation);
-
+	LIS3MDL(device::Device *interface, enum Rotation rotation, I2CSPIBusOption bus_option, int bus);
 	virtual ~LIS3MDL();
+
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
+
+	void custom_method(const BusCLIArguments &cli) override;
 
 	virtual int init();
 
-	virtual int ioctl(struct file *file_pointer, int cmd, unsigned long arg);
-
-	virtual int read(struct file *file_pointer, char *buffer, size_t buffer_len);
-
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void print_info();
+	void print_status() override;
 
 	/**
 	 * Configures the device with default register values.
 	 */
 	int set_default_register_values();
 
-	/**
-	 * Stop the automatic measurement state machine.
-	 */
-	void stop();
-
-protected:
-	Device *_interface;
+	void RunImpl();
 
 private:
+	PX4Magnetometer _px4_mag;
 
-	ringbuffer::RingBuffer *_reports;
-
-	struct mag_calibration_s _scale;
-
-	sensor_mag_s _last_report {};      /**< used for info() */
-
-	orb_advert_t _mag_topic;
+	device::Device *_interface;
 
 	perf_counter_t _comms_errors;
 	perf_counter_t _conf_errors;
@@ -155,19 +126,13 @@ private:
 	perf_counter_t _sample_perf;
 
 	/* status reporting */
-	bool _calibrated;                       /**< the calibration is valid */
 	bool _continuous_mode_set;
 
 	enum OPERATING_MODE _mode;
-	enum Rotation _rotation;
 
 	unsigned int _measure_interval;
 
-	int _class_instance;
-	int _orb_class_instance;
-
 	float _range_ga;
-	float _range_scale;
 
 	uint8_t _check_state_cnt;
 	uint8_t _cntl_reg1;
@@ -179,51 +144,10 @@ private:
 	uint8_t _temperature_counter;
 	uint8_t _temperature_error_count;
 
-
-	/**
-	 * @brief Performs the on-sensor scale calibration routine.
-	 *
-	 * @note The sensor will continue to provide measurements, these
-	 *       will however reflect the uncalibrated sensor state until
-	 *       the calibration routine has been completed.
-	 *
-	 * @param enable set to 1 to enable self-test strap, 0 to disable
-	 */
-	int calibrate(struct file *file_pointer, unsigned enable);
-
 	/**
 	 * Collect the result of the most recent measurement.
 	 */
 	int collect();
-
-	/**
-	* Check the current scale calibration
-	*
-	* @return 0 if scale calibration is ok, 1 else
-	*/
-	int check_scale();
-
-	/**
-	* Check the current offset calibration
-	*
-	* @return 0 if offset calibration is ok, 1 else
-	*/
-	int check_offset();
-
-	/**
-	 * @brief Performs a poll cycle; collect from the previous measurement
-	 *        and start a new one.
-	 *
-	 * This is the heart of the measurement state machine.  This function
-	 * alternately starts a measurement, or collects the data from the
-	 * previous measurement.
-	 *
-	 * When the interval between measurements is greater than the minimum
-	 * measurement interval, a gap is inserted between collection
-	 * and measurement to provide the most recent measurement possible
-	 * at the next interval.
-	 */
-	void Run() override;
 
 	/**
 	 * Issue a measurement command.
@@ -244,18 +168,6 @@ private:
 	 *       to make it more aggressive about resetting the bus in case of errors.
 	 */
 	void start();
-
-	/**
-	 * @brief Performs the on-sensor scale calibration routine.
-	 *
-	 * @note The sensor will continue to provide measurements, these
-	 *       will however reflect the uncalibrated sensor state until
-	 *       the calibration routine has been completed.
-	 *
-	 * @param enable set to 1 to enable self-test positive strap, -1 to enable
-	 *        negative strap, 0 to set to normal mode
-	 */
-	int set_excitement(unsigned enable);
 
 	/**
 	 * @brief Sets the sensor internal range to handle at least the argument in Gauss.
@@ -282,8 +194,4 @@ private:
 	 */
 	int write_reg(uint8_t reg, uint8_t val);
 
-	/* this class has pointer data members, do not allow copying it */
-	LIS3MDL(const LIS3MDL &);
-
-	LIS3MDL operator=(const LIS3MDL &);
 }; // class LIS3MDL

@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,8 +35,8 @@ px4_add_module(
 	MAIN load_mon
 	COMPILE_FLAGS
 	SRCS
-		load_mon.cpp
+		LoadMon.cpp
+		LoadMon.hpp
 	DEPENDS
 		px4_work_queue
-	)
-
+)

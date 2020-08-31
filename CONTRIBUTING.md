@@ -41,4 +41,4 @@ Since we care about safety, we will regularly ask you for test results. Best is 
 
 Push changes to your repo and send a [pull request](https://github.com/PX4/Firmware/compare/).
 
-MuncherMake sure to provide some testing feedback and if possible the link to a flight log file. Upload flight log files to [Flight Review](http://logs.px4.io) and link the resulting report.
+Make sure to provide some testing feedback and if possible the link to a flight log file. Upload flight log files to [Flight Review](http://logs.px4.io) and link the resulting report.

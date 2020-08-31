@@ -157,7 +157,7 @@ private:
 	uORB::Publication<rc_channels_s>	_rc_pub{ORB_ID(rc_channels)};				/**< raw r/c control topic */
 	uORB::Publication<actuator_controls_s>	_actuator_group_3_pub{ORB_ID(actuator_controls_3)};	/**< manual control as actuator topic */
 
-	uORB::PublicationMulti<manual_control_setpoint_s>	_manual_control_pub{ORB_ID(manual_control_setpoint), ORB_PRIO_HIGH};	/**< manual control signal topic */
+	uORB::PublicationMulti<manual_control_setpoint_s>	_manual_control_setpoint_pub{ORB_ID(manual_control_setpoint)};	/**< manual control signal topic */
 
 	rc_channels_s _rc {};			/**< r/c channel data */
 
@@ -166,10 +166,7 @@ private:
 
 	hrt_abstime _last_rc_to_param_map_time = 0;
 
-	math::LowPassFilter2p _filter_roll{50.0f, 10.f}; /**< filters for the main 4 stick inputs */
-	math::LowPassFilter2p _filter_pitch{50.0f, 10.f}; /** we want smooth setpoints as inputs to the controllers */
-	math::LowPassFilter2p _filter_yaw{50.0f, 10.f};
-	math::LowPassFilter2p _filter_throttle{50.0f, 10.f};
+	uint8_t _channel_count_previous{0};
 
 	perf_counter_t		_loop_perf;			/**< loop performance counter */
 
@@ -222,9 +219,6 @@ private:
 		(ParamFloat<px4::params::RC_STAB_TH>) _param_rc_stab_th,
 		(ParamFloat<px4::params::RC_MAN_TH>) _param_rc_man_th,
 		(ParamFloat<px4::params::RC_RETURN_TH>) _param_rc_return_th,
-
-		(ParamFloat<px4::params::RC_FLT_SMP_RATE>) _param_rc_flt_smp_rate,
-		(ParamFloat<px4::params::RC_FLT_CUTOFF>) _param_rc_flt_cutoff,
 
 		(ParamInt<px4::params::RC_CHAN_CNT>) _param_rc_chan_cnt
 	)

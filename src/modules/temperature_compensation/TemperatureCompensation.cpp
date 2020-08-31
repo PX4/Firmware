@@ -71,8 +71,6 @@ int TemperatureCompensation::initialize_parameter_handles(ParameterHandles &para
 				parameter_handles.gyro_cal_handles[j].x1[i] = param_find(nbuf);
 				sprintf(nbuf, "TC_G%d_X0_%d", j, i);
 				parameter_handles.gyro_cal_handles[j].x0[i] = param_find(nbuf);
-				sprintf(nbuf, "TC_G%d_SCL_%d", j, i);
-				parameter_handles.gyro_cal_handles[j].scale[i] = param_find(nbuf);
 			}
 
 			sprintf(nbuf, "TC_G%d_TREF", j);
@@ -103,8 +101,6 @@ int TemperatureCompensation::initialize_parameter_handles(ParameterHandles &para
 				parameter_handles.accel_cal_handles[j].x1[i] = param_find(nbuf);
 				sprintf(nbuf, "TC_A%d_X0_%d", j, i);
 				parameter_handles.accel_cal_handles[j].x0[i] = param_find(nbuf);
-				sprintf(nbuf, "TC_A%d_SCL_%d", j, i);
-				parameter_handles.accel_cal_handles[j].scale[i] = param_find(nbuf);
 			}
 
 			sprintf(nbuf, "TC_A%d_TREF", j);
@@ -137,8 +133,6 @@ int TemperatureCompensation::initialize_parameter_handles(ParameterHandles &para
 			parameter_handles.baro_cal_handles[j].x1 = param_find(nbuf);
 			sprintf(nbuf, "TC_B%d_X0", j);
 			parameter_handles.baro_cal_handles[j].x0 = param_find(nbuf);
-			sprintf(nbuf, "TC_B%d_SCL", j);
-			parameter_handles.baro_cal_handles[j].scale = param_find(nbuf);
 			sprintf(nbuf, "TC_B%d_TREF", j);
 			parameter_handles.baro_cal_handles[j].ref_temp = param_find(nbuf);
 			sprintf(nbuf, "TC_B%d_TMIN", j);
@@ -175,17 +169,11 @@ int TemperatureCompensation::parameters_update()
 					param_get(parameter_handles.gyro_cal_handles[j].x2[i], &(_parameters.gyro_cal_data[j].x2[i]));
 					param_get(parameter_handles.gyro_cal_handles[j].x1[i], &(_parameters.gyro_cal_data[j].x1[i]));
 					param_get(parameter_handles.gyro_cal_handles[j].x0[i], &(_parameters.gyro_cal_data[j].x0[i]));
-					param_get(parameter_handles.gyro_cal_handles[j].scale[i], &(_parameters.gyro_cal_data[j].scale[i]));
 				}
 
 			} else {
-				// Set all cal values to zero and scale factor to unity
+				// Set all cal values to zero
 				memset(&_parameters.gyro_cal_data[j], 0, sizeof(_parameters.gyro_cal_data[j]));
-
-				// Set the scale factor to unity
-				for (unsigned int i = 0; i < 3; i++) {
-					_parameters.gyro_cal_data[j].scale[i] = 1.0f;
-				}
 
 				PX4_WARN("FAIL GYRO %d CAL PARAM LOAD - USING DEFAULTS", j);
 				ret = PX4_ERROR;
@@ -208,17 +196,11 @@ int TemperatureCompensation::parameters_update()
 					param_get(parameter_handles.accel_cal_handles[j].x2[i], &(_parameters.accel_cal_data[j].x2[i]));
 					param_get(parameter_handles.accel_cal_handles[j].x1[i], &(_parameters.accel_cal_data[j].x1[i]));
 					param_get(parameter_handles.accel_cal_handles[j].x0[i], &(_parameters.accel_cal_data[j].x0[i]));
-					param_get(parameter_handles.accel_cal_handles[j].scale[i], &(_parameters.accel_cal_data[j].scale[i]));
 				}
 
 			} else {
-				// Set all cal values to zero and scale factor to unity
+				// Set all cal values to zero
 				memset(&_parameters.accel_cal_data[j], 0, sizeof(_parameters.accel_cal_data[j]));
-
-				// Set the scale factor to unity
-				for (unsigned int i = 0; i < 3; i++) {
-					_parameters.accel_cal_data[j].scale[i] = 1.0f;
-				}
 
 				PX4_WARN("FAIL ACCEL %d CAL PARAM LOAD - USING DEFAULTS", j);
 				ret = PX4_ERROR;
@@ -241,14 +223,10 @@ int TemperatureCompensation::parameters_update()
 				param_get(parameter_handles.baro_cal_handles[j].x2, &(_parameters.baro_cal_data[j].x2));
 				param_get(parameter_handles.baro_cal_handles[j].x1, &(_parameters.baro_cal_data[j].x1));
 				param_get(parameter_handles.baro_cal_handles[j].x0, &(_parameters.baro_cal_data[j].x0));
-				param_get(parameter_handles.baro_cal_handles[j].scale, &(_parameters.baro_cal_data[j].scale));
 
 			} else {
-				// Set all cal values to zero and scale factor to unity
+				// Set all cal values to zero
 				memset(&_parameters.baro_cal_data[j], 0, sizeof(_parameters.baro_cal_data[j]));
-
-				// Set the scale factor to unity
-				_parameters.baro_cal_data[j].scale = 1.0f;
 
 				PX4_WARN("FAIL BARO %d CAL PARAM LOAD - USING DEFAULTS", j);
 				ret = PX4_ERROR;
@@ -256,7 +234,7 @@ int TemperatureCompensation::parameters_update()
 		}
 	}
 
-	/* the offsets & scales might have changed, so make sure to report that change later when applying the
+	/* the offsets might have changed, so make sure to report that change later when applying the
 	 * next corrections
 	 */
 	_gyro_data.reset_temperature();
@@ -374,8 +352,7 @@ int TemperatureCompensation::set_sensor_id(uint32_t device_id, int topic_instanc
 	return -1;
 }
 
-int TemperatureCompensation::update_scales_and_offsets_gyro(int topic_instance, float temperature, float *offsets,
-		float *scales)
+int TemperatureCompensation::update_offsets_gyro(int topic_instance, float temperature, float *offsets)
 {
 	// Check if temperature compensation is enabled
 	if (_parameters.gyro_tc_enable != 1) {
@@ -392,11 +369,6 @@ int TemperatureCompensation::update_scales_and_offsets_gyro(int topic_instance, 
 	// Calculate and update the offsets
 	calc_thermal_offsets_3D(_parameters.gyro_cal_data[mapping], temperature, offsets);
 
-	// Update the scales
-	for (unsigned axis_index = 0; axis_index < 3; axis_index++) {
-		scales[axis_index] = _parameters.gyro_cal_data[mapping].scale[axis_index];
-	}
-
 	// Check if temperature delta is large enough to warrant a new publication
 	if (fabsf(temperature - _gyro_data.last_temperature[topic_instance]) > 1.0f) {
 		_gyro_data.last_temperature[topic_instance] = temperature;
@@ -406,8 +378,7 @@ int TemperatureCompensation::update_scales_and_offsets_gyro(int topic_instance, 
 	return 1;
 }
 
-int TemperatureCompensation::update_scales_and_offsets_accel(int topic_instance, float temperature, float *offsets,
-		float *scales)
+int TemperatureCompensation::update_offsets_accel(int topic_instance, float temperature, float *offsets)
 {
 	// Check if temperature compensation is enabled
 	if (_parameters.accel_tc_enable != 1) {
@@ -424,11 +395,6 @@ int TemperatureCompensation::update_scales_and_offsets_accel(int topic_instance,
 	// Calculate and update the offsets
 	calc_thermal_offsets_3D(_parameters.accel_cal_data[mapping], temperature, offsets);
 
-	// Update the scales
-	for (unsigned axis_index = 0; axis_index < 3; axis_index++) {
-		scales[axis_index] = _parameters.accel_cal_data[mapping].scale[axis_index];
-	}
-
 	// Check if temperature delta is large enough to warrant a new publication
 	if (fabsf(temperature - _accel_data.last_temperature[topic_instance]) > 1.0f) {
 		_accel_data.last_temperature[topic_instance] = temperature;
@@ -438,8 +404,7 @@ int TemperatureCompensation::update_scales_and_offsets_accel(int topic_instance,
 	return 1;
 }
 
-int TemperatureCompensation::update_scales_and_offsets_baro(int topic_instance, float temperature, float *offsets,
-		float *scales)
+int TemperatureCompensation::update_offsets_baro(int topic_instance, float temperature, float *offsets)
 {
 	// Check if temperature compensation is enabled
 	if (_parameters.baro_tc_enable != 1) {
@@ -455,9 +420,6 @@ int TemperatureCompensation::update_scales_and_offsets_baro(int topic_instance, 
 
 	// Calculate and update the offsets
 	calc_thermal_offsets_1D(_parameters.baro_cal_data[mapping], temperature, *offsets);
-
-	// Update the scales
-	*scales = _parameters.baro_cal_data[mapping].scale;
 
 	// Check if temperature delta is large enough to warrant a new publication
 	if (fabsf(temperature - _baro_data.last_temperature[topic_instance]) > 1.0f) {

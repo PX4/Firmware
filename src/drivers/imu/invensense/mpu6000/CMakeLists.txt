@@ -39,6 +39,7 @@ px4_add_module(
 		MPU6000.cpp
 		MPU6000.hpp
 		mpu6000_main.cpp
+		InvenSense_MPU6000_registers.hpp
 	DEPENDS
 		drivers_accelerometer
 		drivers_gyroscope

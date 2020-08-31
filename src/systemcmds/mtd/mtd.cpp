@@ -92,11 +92,7 @@ static int	ramtron_attach(void);
 #else
 
 #ifndef PX4_I2C_BUS_MTD
-#  ifdef PX4_I2C_BUS_ONBOARD
-#    define PX4_I2C_BUS_MTD PX4_I2C_BUS_ONBOARD
-#  else
-#    error PX4_I2C_BUS_MTD and PX4_I2C_BUS_ONBOARD not defined, cannot locate onboard EEPROM
-#  endif
+#error "Board needs to define PX4_I2C_BUS_MTD for onboard EEPROM bus"
 #endif
 
 

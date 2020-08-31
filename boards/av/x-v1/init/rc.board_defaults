@@ -3,6 +3,8 @@
 # av_x1-v1 specific board init
 #------------------------------------------------------------------------------
 
+# system_power unavailable
+param set CBRK_SUPPLY_CHK 894281
 
 if [ $AUTOCNF = yes ]
 then

@@ -1,0 +1,37 @@
+Mixer for SITL autogyro.
+=========================================================
+
+# 0 mixer for the rudder (Rotor roll)
+M: 1
+O:       10000   10000   0 -10000  10000
+S: 0 2   10000   10000    0 -10000  10000
+
+# 1 mixer for the pusher/puller throttle
+M: 1
+O:      10000  10000      0 -10000  10000
+S: 0 3      0  20000 -10000 -10000  10000
+
+# 2 mixer for the aileron
+M: 1
+O:      10000  10000   0 -10000  10000
+S: 0 0  -10000  -10000    0 -10000  10000
+
+# 3 mixer for the elevator (Rotor pitch)
+M: 1
+O:       10000   10000   0 -10000  10000
+S: 0 1   10000   10000    0 -10000  10000
+
+# 4 mixer for the prerotator AUX1
+M: 1
+O:       10000   10000   0 -10000  10000
+S: 1 5   10000   10000    0 -10000  10000
+
+# 5 mixer for the manual elevator AUX2
+M: 1
+O:       10000   10000   0 -10000  10000
+S: 1 6   10000   10000    0 -10000  10000
+
+# 6 mixer for the release device AUX3
+M: 1
+O:       10000   10000   0 -10000  10000
+S: 1 7   10000   10000    0 -10000  10000

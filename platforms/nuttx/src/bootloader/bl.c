@@ -588,7 +588,7 @@ bootloader(unsigned timeout)
 				goto cmd_bad;
 			}
 
-			bl_state = STATE_PROTO_GET_SYNC;
+			SET_BL_STATE(STATE_PROTO_GET_SYNC);
 			break;
 
 		// get device info

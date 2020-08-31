@@ -49,7 +49,7 @@
 #include "state_machine_helper.h"
 #include "commander_helper.h"
 
-static constexpr const char reason_no_rc[] = "no RC";
+static constexpr const char reason_no_rc[] = "No manual control stick input";
 static constexpr const char reason_no_offboard[] = "no offboard";
 static constexpr const char reason_no_rc_and_no_offboard[] = "no RC and no offboard";
 static constexpr const char reason_no_local_position[] = "no local position";
@@ -105,7 +105,7 @@ transition_result_t arming_state_transition(vehicle_status_s *status, const safe
 		const arming_state_t new_arming_state, actuator_armed_s *armed, const bool fRunPreArmChecks,
 		orb_advert_t *mavlink_log_pub, vehicle_status_flags_s *status_flags,
 		const PreFlightCheck::arm_requirements_t &arm_requirements,
-		const hrt_abstime &time_since_boot)
+		const hrt_abstime &time_since_boot, arm_disarm_reason_t calling_reason)
 {
 	// Double check that our static arrays are still valid
 	static_assert(vehicle_status_s::ARMING_STATE_INIT == 0, "ARMING_STATE_INIT == 0");
@@ -216,11 +216,19 @@ transition_result_t arming_state_transition(vehicle_status_s *status, const safe
 
 		// Finish up the state transition
 		if (valid_transition) {
+			bool was_armed = armed->armed;
 			armed->armed = (new_arming_state == vehicle_status_s::ARMING_STATE_ARMED);
 			armed->ready_to_arm = (new_arming_state == vehicle_status_s::ARMING_STATE_ARMED)
 					      || (new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY);
 			ret = TRANSITION_CHANGED;
 			status->arming_state = new_arming_state;
+
+			if (was_armed && !armed->armed) { // disarm transition
+				status->latest_disarming_reason = (uint8_t)calling_reason;
+
+			} else if (!was_armed && armed->armed) { // arm transition
+				status->latest_arming_reason = (uint8_t)calling_reason;
+			}
 
 			if (new_arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 				armed->armed_time_ms = hrt_absolute_time() / 1000;
@@ -532,8 +540,8 @@ bool set_nav_state(vehicle_status_s *status, actuator_armed_s *armed, commander_
 
 			enable_failsafe(status, old_failsafe, mavlink_log_pub, reason_no_datalink);
 
-		} else if (rc_lost && !data_link_loss_act_configured && is_armed) {
-			/* go into failsafe if RC is lost and datalink loss is not set up and rc loss is not DISABLED */
+		} else if (rc_lost && !data_link_loss_act_configured && status->data_link_lost && is_armed) {
+			/* go into failsafe if RC is lost and datalink is lost and datalink loss is not set up */
 			enable_failsafe(status, old_failsafe, mavlink_log_pub, reason_no_rc);
 
 			set_link_loss_nav_state(status, armed, status_flags, internal_state, rc_loss_act);
@@ -1042,12 +1050,12 @@ void battery_failsafe(orb_advert_t *mavlink_log_pub, const vehicle_status_s &sta
 			if (status_flags.condition_global_position_valid && status_flags.condition_home_position_valid) {
 				internal_state->main_state = commander_state_s::MAIN_STATE_AUTO_RTL;
 				internal_state->timestamp = hrt_absolute_time();
-				mavlink_log_critical(mavlink_log_pub, "%s, executing RTL", battery_critical);
+				mavlink_log_critical(mavlink_log_pub, "%s, executing RTL", battery_dangerous);
 
 			} else {
 				internal_state->main_state = commander_state_s::MAIN_STATE_AUTO_LAND;
 				internal_state->timestamp = hrt_absolute_time();
-				mavlink_log_emergency(mavlink_log_pub, "%s, can't execute RTL, landing instead", battery_critical);
+				mavlink_log_emergency(mavlink_log_pub, "%s, can't execute RTL, landing instead", battery_dangerous);
 			}
 
 			break;
@@ -1058,7 +1066,7 @@ void battery_failsafe(orb_advert_t *mavlink_log_pub, const vehicle_status_s &sta
 		case LOW_BAT_ACTION::LAND:
 			internal_state->main_state = commander_state_s::MAIN_STATE_AUTO_LAND;
 			internal_state->timestamp = hrt_absolute_time();
-			mavlink_log_emergency(mavlink_log_pub, "%s, landing", battery_critical);
+			mavlink_log_emergency(mavlink_log_pub, "%s, landing", battery_dangerous);
 
 			break;
 		}

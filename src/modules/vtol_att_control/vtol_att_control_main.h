@@ -79,7 +79,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vtol_vehicle_status.h>
-
+#include <uORB/topics/vehicle_status.h>
 #include "standard.h"
 #include "tailsitter.h"
 #include "tiltrotor.h"
@@ -138,7 +138,7 @@ private:
 	uORB::Subscription _land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription _local_pos_sp_sub{ORB_ID(vehicle_local_position_setpoint)};			// setpoint subscription
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};			// sensor subscription
-	uORB::Subscription _manual_control_sp_sub{ORB_ID(manual_control_setpoint)};	//manual control setpoint subscription
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	//manual control setpoint subscription
 	uORB::Subscription _mc_virtual_att_sp_sub{ORB_ID(mc_virtual_attitude_setpoint)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription _pos_sp_triplet_sub{ORB_ID(position_setpoint_triplet)};			// local position setpoint subscription
@@ -146,6 +146,7 @@ private:
 	uORB::Subscription _v_att_sub{ORB_ID(vehicle_attitude)};		//vehicle attitude subscription
 	uORB::Subscription _v_control_mode_sub{ORB_ID(vehicle_control_mode)};	//vehicle control mode subscription
 	uORB::Subscription _vehicle_cmd_sub{ORB_ID(vehicle_command)};
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::Publication<actuator_controls_s>		_actuators_0_pub{ORB_ID(actuator_controls_0)};		//input for the mixer (roll,pitch,yaw,thrust)
 	uORB::Publication<actuator_controls_s>		_actuators_1_pub{ORB_ID(actuator_controls_1)};
@@ -164,7 +165,7 @@ private:
 	actuator_controls_s			_actuators_out_1{};	//actuator controls going to the fw mixer (used for elevons)
 
 	airspeed_validated_s 				_airspeed_validated{};			// airspeed
-	manual_control_setpoint_s		_manual_control_sp{}; //manual control setpoint
+	manual_control_setpoint_s		_manual_control_setpoint{}; //manual control setpoint
 	position_setpoint_triplet_s		_pos_sp_triplet{};
 	tecs_status_s				_tecs_status{};
 	vehicle_attitude_s			_v_att{};				//vehicle attitude
@@ -203,7 +204,16 @@ private:
 		param_t diff_thrust_scale;
 		param_t down_pitch_max;
 		param_t forward_thrust_scale;
+		param_t dec_to_pitch_ff;
+		param_t dec_to_pitch_i;
+		param_t back_trans_dec_sp;
+		param_t vt_mc_on_fmu;
+		param_t vt_forward_thrust_enable_mode;
+		param_t mpc_land_alt1;
+		param_t mpc_land_alt2;
 	} _params_handles{};
+
+	hrt_abstime _last_run_timestamp{0};
 
 	/* for multicopters it is usual to have a non-zero idle speed of the engines
 	 * for fixed wings we want to have an idle speed of zero since we do not want

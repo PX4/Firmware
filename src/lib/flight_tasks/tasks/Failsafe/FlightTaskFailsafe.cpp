@@ -36,42 +36,43 @@
 
 #include "FlightTaskFailsafe.hpp"
 
-bool FlightTaskFailsafe::activate(vehicle_local_position_setpoint_s last_setpoint)
+bool FlightTaskFailsafe::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 	_position_setpoint = _position;
 	_velocity_setpoint.zero();
-	_thrust_setpoint = matrix::Vector3f(0.0f, 0.0f, -_param_mpc_thr_hover.get() * 0.6f);
+	_acceleration_setpoint = matrix::Vector3f(0.f, 0.f, .3f);
 	_yaw_setpoint = _yaw;
-	_yawspeed_setpoint = 0.0f;
+	_yawspeed_setpoint = 0.f;
 	return ret;
 }
 
 bool FlightTaskFailsafe::update()
 {
+	bool ret = FlightTask::update();
+
 	if (PX4_ISFINITE(_position(0)) && PX4_ISFINITE(_position(1))) {
 		// stay at current position setpoint
-		_velocity_setpoint(0) = _velocity_setpoint(1) = 0.0f;
-		_thrust_setpoint(0) = _thrust_setpoint(1) = 0.0f;
+		_velocity_setpoint(0) = _velocity_setpoint(1) = 0.f;
+		_acceleration_setpoint(0) = _acceleration_setpoint(1) = 0.f;
 
 	} else if (PX4_ISFINITE(_velocity(0)) && PX4_ISFINITE(_velocity(1))) {
 		// don't move along xy
 		_position_setpoint(0) = _position_setpoint(1) = NAN;
-		_thrust_setpoint(0) = _thrust_setpoint(1) = NAN;
+		_acceleration_setpoint(0) = _acceleration_setpoint(1) = NAN;
 	}
 
 	if (PX4_ISFINITE(_position(2))) {
 		// stay at current altitude setpoint
-		_velocity_setpoint(2) = 0.0f;
-		_thrust_setpoint(2) = NAN;
+		_velocity_setpoint(2) = 0.f;
+		_acceleration_setpoint(2) = NAN;
 
 	} else if (PX4_ISFINITE(_velocity(2))) {
 		// land with landspeed
 		_velocity_setpoint(2) = _param_mpc_land_speed.get();
 		_position_setpoint(2) = NAN;
-		_thrust_setpoint(2) = NAN;
+		_acceleration_setpoint(2) = NAN;
 	}
 
-	return true;
-
+	return ret;
 }

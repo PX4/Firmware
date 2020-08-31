@@ -69,9 +69,11 @@
 class SDP3X : public Airspeed, public I2CSPIDriver<SDP3X>
 {
 public:
-	SDP3X(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address = I2C_ADDRESS_1_SDP3X) :
+	SDP3X(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address = I2C_ADDRESS_1_SDP3X,
+	      bool keep_retrying = false) :
 		Airspeed(bus, bus_frequency, address, CONVERSION_INTERVAL),
-		I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
+		I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
+		_keep_retrying{keep_retrying}
 	{
 	}
 
@@ -83,11 +85,20 @@ public:
 
 	void	RunImpl();
 
+	void start();
+
 private:
+	enum class State {
+		RequireConfig,
+		Configuring,
+		Running
+	};
 
 	int	measure() override { return 0; }
 	int	collect() override;
 	int	probe() override;
+	int	configure();
+	int	read_scale();
 
 	math::LowPassFilter2p _filter{SPD3X_MEAS_RATE, SDP3X_MEAS_DRIVER_FILTER_FREQ};
 
@@ -104,4 +115,6 @@ private:
 	int write_command(uint16_t command);
 
 	uint16_t _scale{0};
+	const bool _keep_retrying;
+	State _state{State::RequireConfig};
 };

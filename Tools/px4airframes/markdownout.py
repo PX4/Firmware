@@ -5,9 +5,10 @@ import os
 class MarkdownTablesOutput():
     def __init__(self, groups, board, image_path):
         result = ("# Airframes Reference\n"
-                  "> **Note** **This list is auto-generated from the source code**.\n"
+                  "> **Note** **This list is [auto-generated](https://github.com/PX4/Firmware/edit/master/Tools/px4airframes/markdownout.py) from the source code**.\n"
                   "> \n"
-                  "> The **AUX** channels are only available on Pixhawk Boards (labeled with **AUX OUT**).\n"
+                  "> **AUX** channels may not be present on some flight controllers.\n"
+                  "> If present, PWM AUX channels are commonly labelled **AUX OUT**.\n"
                   "> \n"
                   "\n")
 
