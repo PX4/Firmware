@@ -46,7 +46,7 @@
  *
  * @min -1
  * @max 15
- * @unit meters
+ * @unit m
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(CP_DIST, -1.0f);
@@ -58,7 +58,7 @@ PARAM_DEFINE_FLOAT(CP_DIST, -1.0f);
  *
  * @min 0
  * @max 1
- * @unit seconds
+ * @unit s
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(CP_DELAY, 0.4f);
@@ -70,7 +70,7 @@ PARAM_DEFINE_FLOAT(CP_DELAY, 0.4f);
  *
  * @min 0
  * @max 90
- * @unit [deg]
+ * @unit deg
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(CP_GUIDE_ANG, 30.f);

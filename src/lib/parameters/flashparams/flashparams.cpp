@@ -110,7 +110,6 @@ param_export_internal(bool only_unsaved)
 		/* append the appropriate BSON type object */
 
 		switch (param_type(s->param)) {
-
 		case PARAM_TYPE_INT32:
 			i = s->val.i;
 
@@ -125,18 +124,6 @@ param_export_internal(bool only_unsaved)
 			f = s->val.f;
 
 			if (bson_encoder_append_double(&encoder, param_name(s->param), f)) {
-				debug("BSON append failed for '%s'", param_name(s->param));
-				goto out;
-			}
-
-			break;
-
-		case PARAM_TYPE_STRUCT ... PARAM_TYPE_STRUCT_MAX:
-			if (bson_encoder_append_binary(&encoder,
-						       param_name(s->param),
-						       BSON_BIN_BINARY,
-						       param_size(s->param),
-						       param_get_value_ptr_external(s->param))) {
 				debug("BSON append failed for '%s'", param_name(s->param));
 				goto out;
 			}
@@ -229,6 +216,8 @@ param_import_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
 		return 0;
 	}
 
+	param_modify_on_import(node);
+
 	/*
 	 * Find the parameter this node represents.  If we don't know it,
 	 * ignore the node.
@@ -300,8 +289,6 @@ param_import_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
 		debug("unrecognised node type");
 		goto out;
 	}
-
-	param_modify_on_import(node->name, node->type, v);
 
 	if (param_set_external(param, v, state->mark_saved, true)) {
 

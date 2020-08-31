@@ -191,31 +191,6 @@ __END_DECLS
 
 //#define GPIO_SD_CARDDETECT (GPIO_PULLUP | PIN_INT_BOTH | PIN_PORTD | PIN10)
 
-/* SPI
- *
- *  SD Card is on SPI 0
- *	FXOS8700CQ Accelerometer & Magnetometer is on SPI 1
- *	FXAS21002CQ Gyro is on SPI 2
- */
-
-/* SPI Bus assignments */
-
-#define PX4_SPI_BUS_MEMORY                  PX4_BUS_NUMBER_TO_PX4(0)
-#define PX4_SPI_BUS_SENSORS                 PX4_BUS_NUMBER_TO_PX4(1)
-#define PX4_SPI_BUS_EXTERNAL                PX4_BUS_NUMBER_TO_PX4(2)
-#define PX4_SPI_BUS_RAMTRON                 PX4_SPI_BUS_MEMORY
-#define PX4_SPI_BUS_EXT                     PX4_SPI_BUS_EXTERNAL
-
-
-/* SPI chip selects */
-
-#define GPIO_SPI_CS_MEMORY                  (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTC | PIN2)
-#define GPIO_SPI_CS_FXAS21002CQ_GYRO        (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTB | PIN9)
-#define GPIO_SPI_CS_FXOS8700CQ_ACCEL_MAG    (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTB | PIN10)
-#define GPIO_SPI1_CS_CALMEM                 (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTA | PIN19)
-#define GPIO_SPI2_CS                        (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTB | PIN20)
-#define GPIO_SPI2_EXT                       (GPIO_LOWDRIVE | GPIO_OUTPUT_ONE  | PIN_PORTD | PIN15)
-
 /* SPI device reset signals
  * In Active state
  */
@@ -232,41 +207,6 @@ __END_DECLS
 #define GPIO_EXTI_ACCEL_MAG_INT2            (GPIO_PULLUP | PIN_INT_BOTH | PIN_PORTE | PIN10)
 #define GPIO_EXTI_BARO_INT1                 (GPIO_PULLUP | PIN_INT_BOTH | PIN_PORTD | PIN11)
 #define GPIO_EXTI_BARO_INT2                 (GPIO_PULLUP | PIN_INT_BOTH | PIN_PORTD | PIN7)
-
-/* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
-
-#include <drivers/drv_sensor.h>
-#define PX4_SPIDEV_MEMORY                   SPIDEV_FLASH(0)
-#define PX4_MEMORY_BUS_CS_GPIO              {GPIO_SPI_CS_MEMORY}
-#define PX4_MEMORY_BUS_FIRST_CS             PX4_SPIDEV_MEMORY
-#define PX4_MEMORY_BUS_LAST_CS              PX4_SPIDEV_MEMORY
-
-#define PX4_SPIDEV_ACCEL_MAG                PX4_MK_SPI_SEL(0,DRV_ACC_DEVTYPE_FXOS8701C)
-#define PX4_SPIDEV_GYRO                     PX4_MK_SPI_SEL(0,DRV_GYR_DEVTYPE_FXAS2100C)
-#define PX4_SPIDEV_CALMEM                   PX4_MK_SPI_SEL(0,DRV_DEVTYPE_UNUSED)
-#define PX4_SENSOR_BUS_CS_GPIO              {GPIO_SPI_CS_FXOS8700CQ_ACCEL_MAG, GPIO_SPI_CS_FXAS21002CQ_GYRO, GPIO_SPI1_CS_CALMEM}
-#define PX4_SENSOR_BUS_FIRST_CS             PX4_SPIDEV_ACCEL_MAG
-#define PX4_SENSOR_BUS_LAST_CS              PX4_SPIDEV_CALMEM
-
-#define PX4_SPIDEV_EXTERNAL1                PX4_MK_SPI_SEL(0,0)
-#define PX4_SPIDEV_EXTERNAL2                PX4_MK_SPI_SEL(0,1)
-#define PX4_EXTERNAL_BUS_CS_GPIO            {GPIO_SPI2_CS, GPIO_SPI2_EXT}
-#define PX4_EXTERNAL_BUS_FIRST_CS           PX4_SPIDEV_EXTERNAL1
-#define PX4_EXTERNAL_BUS_LAST_CS            PX4_SPIDEV_EXTERNAL2
-
-#define PX4_SPIDEV_ICM_20602                PX4_SPIDEV_EXTERNAL1
-#define PX4_SPIDEV_ICM_20608                PX4_SPIDEV_EXTERNAL1
-#define PX4_SPIDEV_ICM_20689                PX4_SPIDEV_EXTERNAL1
-#define PX4_SPIDEV_EXT_MPU                  PX4_SPIDEV_EXTERNAL1
-#define PX4_SPIDEV_MPU                      PX4_SPIDEV_EXTERNAL1
-
-/* I2C busses */
-
-#define PX4_I2C_BUS_ONBOARD                 PX4_BUS_NUMBER_TO_PX4(1)
-#define PX4_I2C_BUS_EXPANSION               PX4_BUS_NUMBER_TO_PX4(0)
-
-
-#define PX4_I2C_BUS_LED                     PX4_I2C_BUS_EXPANSION
 
 /*
  * ADC channels
@@ -368,7 +308,7 @@ __END_DECLS
 #define VDD_ETH_EN(on_true)                px4_arch_gpiowrite(nGPIO_ETHERNET_P_EN, !(on_true))
 // Do not have #define VDD_5V_PERIPH_EN(on_true)          px4_arch_gpiowrite(GPIO_nVDD_5V_PERIPH_EN, !(on_true))
 // Do not have #define VDD_5V_HIPOWER_EN(on_true)         px4_arch_gpiowrite(GPIO_nVDD_5V_HIPOWER_EN, !(on_true))
-#define VDD_3V3_SENSORS_EN(on_true)        px4_arch_gpiowrite(GPIO_SENSOR_P_EN, !(on_true))
+#define VDD_3V3_SENSORS_EN(on_true)        px4_arch_gpiowrite(GPIO_SENSOR_P_EN, (on_true))
 #define VDD_3V3_SPEKTRUM_POWER_EN(on_true) px4_arch_gpiowrite(GPIO_SPEKTRUM_P_EN, !(on_true))
 #define READ_VDD_3V3_SPEKTRUM_POWER_EN()   px4_arch_gpioread(GPIO_SPEKTRUM_P_EN)
 // Do not have #define VDD_5V_RC_EN(on_true)              px4_arch_gpiowrite(GPIO_VDD_5V_RC_EN, (on_true))
@@ -400,7 +340,6 @@ __END_DECLS
 #define LED_TIM3_CH4OUT   /* PTC8  RGB_B */ PIN_FTM3_CH4_1
 
 /* This board provides a DMA pool and APIs */
-
 #define BOARD_DMA_ALLOC_POOL_SIZE 5120
 
 /* This board provides the board_on_reset interface */

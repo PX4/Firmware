@@ -38,7 +38,6 @@
 #include <drivers/device/Device.hpp>
 #include <lib/perf/perf_counter.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/topics/uavcan_parameter_value.h>
 #include <uORB/topics/vehicle_command_ack.h>
 

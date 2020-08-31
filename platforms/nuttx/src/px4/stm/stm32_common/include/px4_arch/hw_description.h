@@ -307,4 +307,3 @@ struct bus_device_external_cfg_t {
 };
 
 } // namespace SPI
-

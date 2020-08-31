@@ -9,7 +9,7 @@
 #  Otherwise, the variable name goes to the end of the argument.
 #
 
-set FMU_CMD fmu
+set OUTPUT_CMD pwm_out
 set MIXER_AUX_FILE none
 set OUTPUT_AUX_DEV /dev/pwm_output1
 set OUTPUT_DEV none
@@ -45,16 +45,16 @@ then
 			set OUTPUT_MODE io
 			if param greater DSHOT_CONFIG 0
 			then
-				set FMU_CMD dshot
+				set OUTPUT_CMD dshot
 			fi
 		fi
 	else
 		if param greater DSHOT_CONFIG 0
 		then
 			set OUTPUT_MODE dshot
-			set FMU_CMD dshot
+			set OUTPUT_CMD dshot
 		else
-			set OUTPUT_MODE fmu
+			set OUTPUT_MODE pwm_out
 		fi
 	fi
 fi
@@ -91,11 +91,11 @@ then
 		fi
 	fi
 
-	if [ $OUTPUT_MODE = $FMU_CMD ]
+	if [ $OUTPUT_MODE = $OUTPUT_CMD ]
 	then
-		if ! $FMU_CMD mode_$FMU_MODE
+		if ! $OUTPUT_CMD mode_$FMU_MODE
 		then
-			echo "$FMU_CMD start failed" >> $LOG_FILE
+			echo "$OUTPUT_CMD start failed" >> $LOG_FILE
 			# Error tune.
 			tune_control play -t 2
 		fi
@@ -109,7 +109,7 @@ then
 		fi
 	fi
 
-	if [ $OUTPUT_MODE = io -o $OUTPUT_MODE = uavcan_esc ]
+	if [ $OUTPUT_MODE = io ]
 	then
 		sh /etc/init.d/rc.io
 	fi
@@ -206,7 +206,7 @@ then
 
 	if [ $MIXER_AUX_FILE != none ]
 	then
-		if $FMU_CMD mode_${AUX_MODE}
+		if $OUTPUT_CMD mode_${AUX_MODE}
 		then
 			# Append aux mixer to main device.
 			if param greater SYS_HITL 0
@@ -233,14 +233,14 @@ then
 				set FAILSAFE_AUX none
 			fi
 		else
-			echo "ERROR: Could not start: fmu mode_pwm" >> $LOG_FILE
+			echo "ERROR: Could not start: pwm_out mode_pwm" >> $LOG_FILE
 			tune_control play -t 20
 			set PWM_AUX_OUT none
 			set FAILSAFE_AUX none
 		fi
 
 		# for DShot do not configure pwm values
-		if [ $FMU_CMD != dshot ]
+		if [ $OUTPUT_CMD != dshot ]
 		then
 			# Set min / max for aux out and rates.
 			if [ $PWM_AUX_OUT != none ]
@@ -322,7 +322,7 @@ then
 	fi
 fi
 
-if [ $OUTPUT_MODE = fmu -o $OUTPUT_MODE = io ]
+if [ $OUTPUT_MODE = pwm_out -o $OUTPUT_MODE = io ]
 then
 	if [ $PWM_OUT != none ]
 	then
@@ -401,7 +401,7 @@ then
 	pwm failsafe -c 8 -p p:PWM_MAIN_FAIL8
 fi
 
-unset FMU_CMD
+unset OUTPUT_CMD
 unset MIXER_AUX_FILE
 unset OUTPUT_AUX_DEV
 unset OUTPUT_DEV

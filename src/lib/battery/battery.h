@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,7 @@
 #include <px4_platform_common/board_common.h>
 #include <math.h>
 #include <float.h>
+#include <lib/ecl/AlphaFilter/AlphaFilter.hpp>
 
 /**
  * BatteryBase is a base class for any type of battery.
@@ -63,7 +64,7 @@
 class Battery : public ModuleParams
 {
 public:
-	Battery(int index, ModuleParams *parent);
+	Battery(int index, ModuleParams *parent, const int sample_interval_us);
 
 	~Battery();
 
@@ -87,21 +88,18 @@ public:
 	 */
 	float full_cell_voltage() { return _params.v_charged; }
 
-	int source() { return _params.source; }
-
 	/**
 	 * Update current battery status message.
 	 *
 	 * @param voltage_raw: Battery voltage, in Volts
 	 * @param current_raw: Battery current, in Amps
 	 * @param timestamp: Time at which the ADC was read (use hrt_absolute_time())
-	 * @param selected_source: This battery is on the brick that the selected source for selected_source
+	 * @param source: Source type in relation to BAT%d_SOURCE param.
 	 * @param priority: The brick number -1. The term priority refers to the Vn connection on the LTC4417
 	 * @param throttle_normalized: Throttle of the vehicle, between 0 and 1
-	 * @param should_publish If True, this function published a battery_status uORB message.
 	 */
 	void updateBatteryStatus(hrt_abstime timestamp, float voltage_v, float current_a, bool connected,
-				 bool selected_source, int priority, float throttle_normalized, bool should_publish);
+				 int source, int priority, float throttle_normalized);
 
 	/**
 	 * Publishes the uORB battery_status message with the most recently-updated data.
@@ -215,18 +213,15 @@ protected:
 	}
 
 private:
-	void filterVoltage(float voltage_v);
-	void filterThrottle(float throttle);
-	void filterCurrent(float current_a);
 	void sumDischarged(hrt_abstime timestamp, float current_a);
-	void estimateRemaining(float voltage_v, float current_a, float throttle);
+	void estimateRemaining(const float voltage_v, const float current_a, const float throttle);
 	void determineWarning(bool connected);
 	void computeScale();
 
 	bool _battery_initialized = false;
-	float _voltage_filtered_v = -1.f;
-	float _throttle_filtered = -1.f;
-	float _current_filtered_a = -1.f;
+	AlphaFilter<float> _voltage_filter_v;
+	AlphaFilter<float> _current_filter_a;
+	AlphaFilter<float> _throttle_filter;
 	float _discharged_mah = 0.f;
 	float _discharged_mah_loop = 0.f;
 	float _remaining_voltage = -1.f;		///< normalized battery charge level remaining based on voltage

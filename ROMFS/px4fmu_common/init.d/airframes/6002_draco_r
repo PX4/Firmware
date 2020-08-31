@@ -36,52 +36,48 @@ then
 	# Attitude & rate gains
 	###############################################
 	# Roll
-	param set MC_ROLL_P 6.50000
-	param set MC_ROLLRATE_P 0.15000
-	param set MC_ROLLRATE_I 0.05000
-	param set MC_ROLLRATE_D 0.00130
-	param set MC_ROLLRATE_MAX 800.00000
+	param set MC_ROLL_P 6.5
+	param set MC_ROLLRATE_P 0.15
+	param set MC_ROLLRATE_I 0.05
+	param set MC_ROLLRATE_D 0.0013
+	param set MC_ROLLRATE_MAX 800
 	# Pitch
-	param set MC_PITCH_P 6.50000
-	param set MC_PITCHRATE_P 0.15000
-	param set MC_PITCHRATE_I 0.05000
-	param set MC_PITCHRATE_D 0.00160
-	param set MC_PITCHRATE_MAX 800.00000
+	param set MC_PITCH_P 6.5
+	param set MC_PITCHRATE_P 0.15
+	param set MC_PITCHRATE_I 0.05
+	param set MC_PITCHRATE_D 0.0016
+	param set MC_PITCHRATE_MAX 800
 	# Yaw
-	param set MC_YAW_P 2.80000
-	param set MC_YAWRATE_P 0.20000
-	param set MC_YAWRATE_I 0.10000
-	param set MC_YAWRATE_D 0.00000
-	param set MC_YAW_FF 0.00000
-	param set MC_YAWRATE_MAX 700.00000
+	param set MC_YAW_P 2.8
+	param set MC_YAWRATE_P 0.2
+	param set MC_YAWRATE_I 0.1
+	param set MC_YAWRATE_D 0
+	param set MC_YAW_FF 0
+	param set MC_YAWRATE_MAX 700
 
 	###############################################
 	# Multirotor Position Gains
 	###############################################
-	param set MPC_ACC_HOR 8.0000
-	param set MPC_THR_MIN 0.06000
-	param set MPC_THR_HOVER 0.3000
+	param set MPC_ACC_HOR 8
+	param set MPC_THR_MIN 0.06
+	param set MPC_THR_HOVER 0.3
 	# altitude control gains
-	param set MPC_Z_P 1.00000
-	param set MPC_Z_VEL_P 0.20000
-	param set MPC_Z_VEL_I 0.02000
-	param set MPC_Z_VEL_D 0.00000
+	param set MPC_Z_P 1
+	param set MPC_Z_VEL_P_ACC 4
+	param set MPC_Z_VEL_I_ACC 0.4
 	# position control gains
 	param set MPC_XY_P 0.9500
-	param set MPC_XY_VEL_P 0.0900
-	param set MPC_XY_VEL_I 0.0200
-	param set MPC_XY_VEL_D 0.0100
+	param set MPC_XY_VEL_P_ACC 1.8
+	param set MPC_XY_VEL_I_ACC 0.4
+	param set MPC_XY_VEL_D_ACC 0.2
 	# etc gains
-	param set MPC_TKO_RAMP_T 0.4000
-	param set MPC_TKO_SPEED 1.5000
-	param set MPC_VEL_MANUAL 5.0000
-
-	# Disable RC filtering
-	param set RC_FLT_CUTOFF 0.00000
+	param set MPC_TKO_RAMP_T 0.4
+	param set MPC_TKO_SPEED 1.5
+	param set MPC_VEL_MANUAL 5
 
 	# Filter settings
-	param set IMU_DGYRO_CUTOFF 90.00000
-	param set IMU_GYRO_CUTOFF 100.00000
+	param set IMU_DGYRO_CUTOFF 90
+	param set IMU_GYRO_CUTOFF 100
 
 	# Thrust curve (avoids the need for TPA)
 	param set THR_MDL_FAC 0.25
@@ -95,9 +91,7 @@ then
 	# DSHOT
 	param set DSHOT_CONFIG 600
 
-	param set COM_ARM_MAG 0.2000
-
-	param set MIS_TAKEOFF_ALT 1.1000
+	param set MIS_TAKEOFF_ALT 1.1
 
 	#####################################
 	# EKF
@@ -108,7 +102,7 @@ then
 	param set EKF2_AID_MASK 1
 	param set EKF2_RNG_AID 1
 	param set EKF2_MAG_TYPE 1
-	param set EKF2_OF_QMIN 80.0000
+	param set EKF2_OF_QMIN 80
 
 	# default horizontal stablization sensors
 	param set SENS_EN_PMW3901 1
@@ -140,10 +134,5 @@ then
 	param set MAV_1_FORWARD 1
 	param set MAV_1_RATE 800000
 	param set SER_TEL2_BAUD 921600
-
-	# Disable internal magnetometer sensor
-	param set CAL_MAG0_EN 0
-	# Enable external magnetometer sensor
-	param set CAL_MAG1_EN 1
 fi
 

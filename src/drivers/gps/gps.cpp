@@ -53,7 +53,7 @@
 #include <px4_platform_common/cli.h>
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/gps_dump.h>
@@ -430,15 +430,17 @@ void GPS::handleInjectDataTopic()
 
 		if (updated) {
 			gps_inject_data_s msg;
-			_orb_inject_data_sub.copy(&msg);
 
-			/* Write the message to the gps device. Note that the message could be fragmented.
-			 * But as we don't write anywhere else to the device during operation, we don't
-			 * need to assemble the message first.
-			 */
-			injectData(msg.data, msg.len);
+			if (_orb_inject_data_sub.copy(&msg)) {
 
-			++_last_rate_rtcm_injection_count;
+				/* Write the message to the gps device. Note that the message could be fragmented.
+				 * But as we don't write anywhere else to the device during operation, we don't
+				 * need to assemble the message first.
+				 */
+				injectData(msg.data, msg.len);
+
+				++_last_rate_rtcm_injection_count;
+			}
 		}
 	} while (updated && num_injections < max_num_injections);
 }

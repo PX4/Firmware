@@ -49,7 +49,7 @@ public:
 	FlightTaskManualPosition();
 
 	virtual ~FlightTaskManualPosition() = default;
-	bool activate(vehicle_local_position_setpoint_s last_setpoint) override;
+	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool updateInitialize() override;
 
 	/**

@@ -39,7 +39,7 @@
  */
 
 #include "input_mavlink.h"
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/vehicle_roi.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/position_setpoint_triplet.h>

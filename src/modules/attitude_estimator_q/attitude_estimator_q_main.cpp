@@ -54,7 +54,6 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/ekf2_timestamps.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -76,7 +75,7 @@ class AttitudeEstimatorQ : public ModuleBase<AttitudeEstimatorQ>, public ModuleP
 public:
 
 	AttitudeEstimatorQ();
-	~AttitudeEstimatorQ() override = default;
+	~AttitudeEstimatorQ() override;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -118,9 +117,7 @@ private:
 
 	uORB::Publication<vehicle_attitude_s>	_att_pub{ORB_ID(vehicle_attitude)};
 
-#if defined(ENABLE_LOCKSTEP_SCHEDULER)
-	uORB::Publication<ekf2_timestamps_s>	_ekf2_timestamps_pub {ORB_ID(ekf2_timestamps)};
-#endif
+	int		_lockstep_component{-1};
 
 	float		_mag_decl{0.0f};
 	float		_bias_max{0.0f};
@@ -158,15 +155,12 @@ private:
 		(ParamInt<px4::params::ATT_ACC_COMP>) _param_att_acc_comp,
 		(ParamFloat<px4::params::ATT_BIAS_MAX>) _param_att_bias_mas,
 		(ParamInt<px4::params::SYS_HAS_MAG>) _param_sys_has_mag
-#if defined(ENABLE_LOCKSTEP_SCHEDULER)
-		, (ParamInt<px4::params::SYS_MC_EST_GROUP>) _param_est_group
-#endif
 	)
 };
 
 AttitudeEstimatorQ::AttitudeEstimatorQ() :
 	ModuleParams(nullptr),
-	WorkItem(MODULE_NAME, px4::wq_configurations::att_pos_ctrl)
+	WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers)
 {
 	_vel_prev.zero();
 	_pos_acc.zero();
@@ -183,6 +177,13 @@ AttitudeEstimatorQ::AttitudeEstimatorQ() :
 	_gyro_bias.zero();
 
 	update_parameters(true);
+
+	_lockstep_component = px4_lockstep_register_component();
+}
+
+AttitudeEstimatorQ::~AttitudeEstimatorQ()
+{
+	px4_lockstep_unregister_component(_lockstep_component);
 }
 
 bool
@@ -274,7 +275,7 @@ AttitudeEstimatorQ::Run()
 					// vision external heading usage (ATT_EXT_HDG_M 1)
 					if (_param_att_ext_hdg_m.get() == 1) {
 						// Check for timeouts on data
-						_ext_hdg_good = vision.timestamp > 0 && (hrt_elapsed_time(&vision.timestamp) < 500000);
+						_ext_hdg_good = vision.timestamp_sample > 0 && (hrt_elapsed_time(&vision.timestamp_sample) < 500000);
 					}
 				}
 			}
@@ -303,7 +304,7 @@ AttitudeEstimatorQ::Run()
 					// Motion Capture external heading usage (ATT_EXT_HDG_M 2)
 					if (_param_att_ext_hdg_m.get() == 2) {
 						// Check for timeouts on data
-						_ext_hdg_good = mocap.timestamp > 0 && (hrt_elapsed_time(&mocap.timestamp) < 500000);
+						_ext_hdg_good = mocap.timestamp_sample > 0 && (hrt_elapsed_time(&mocap.timestamp_sample) < 500000);
 					}
 				}
 			}
@@ -315,7 +316,7 @@ AttitudeEstimatorQ::Run()
 			if (_gps_sub.copy(&gps)) {
 				if (_param_att_mag_decl_a.get() && (gps.eph < 20.0f)) {
 					/* set magnetic declination automatically */
-					update_mag_declination(math::radians(get_mag_declination(gps.lat, gps.lon)));
+					update_mag_declination(get_mag_declination_radians(gps.lat, gps.lon));
 				}
 			}
 		}
@@ -363,24 +364,9 @@ AttitudeEstimatorQ::Run()
 			/* the instance count is not used here */
 			_att_pub.publish(att);
 
-#if defined(ENABLE_LOCKSTEP_SCHEDULER)
-
-			if (_param_est_group.get() == 3) {
-				// In this case the estimator_q is running without LPE and needs
-				// to publish ekf2_timestamps because SITL lockstep requires it.
-				ekf2_timestamps_s ekf2_timestamps;
-				ekf2_timestamps.timestamp = now;
-				ekf2_timestamps.airspeed_timestamp_rel = 0;
-				ekf2_timestamps.distance_sensor_timestamp_rel = 0;
-				ekf2_timestamps.optical_flow_timestamp_rel = 0;
-				ekf2_timestamps.vehicle_air_data_timestamp_rel = 0;
-				ekf2_timestamps.vehicle_magnetometer_timestamp_rel = 0;
-				ekf2_timestamps.visual_odometry_timestamp_rel = 0;
-				_ekf2_timestamps_pub.publish(ekf2_timestamps);
-			}
-
-#endif
 		}
+
+		px4_lockstep_progress(_lockstep_component);
 	}
 }
 

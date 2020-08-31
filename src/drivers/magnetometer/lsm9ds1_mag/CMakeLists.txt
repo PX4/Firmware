@@ -32,7 +32,7 @@
 ############################################################################
 
 px4_add_module(
-	MODULE drivers__mag__st__lsm9ds1_mag
+	MODULE drivers__magnetometer__st__lsm9ds1_mag
 	MAIN lsm9ds1_mag
 	SRCS
 		lsm9ds1_mag_main.cpp

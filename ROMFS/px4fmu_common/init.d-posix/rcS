@@ -32,7 +32,8 @@ set PWM_OUT                     none
 set SDCARD_MIXERS_PATH          etc/mixers
 set USE_IO                      no
 set VEHICLE_TYPE                none
-set LOGGER_BUF			1000
+set LOGGER_ARGS                 ""
+set LOGGER_BUF                  1000
 
 set RUN_MINIMAL_SHELL           no
 
@@ -121,24 +122,16 @@ then
 	param set BAT_N_CELLS 3
 
 	param set CAL_ACC0_ID 1311244
-	param set CAL_ACC_PRIME 1311244
-
-	param set CAL_GYRO0_ID 2294028
-	param set CAL_GYRO_PRIME 2294028
-
+	param set CAL_GYRO0_ID 1311244
 	param set CAL_MAG0_ID 197388
-	param set CAL_MAG_PRIME 197388
 
 	param set CBRK_AIRSPD_CHK 0
+	param set CBRK_SUPPLY_CHK 894281
 
-	param set COM_DISARM_LAND 0.5
-	param set COM_OBL_ACT 2
-	param set COM_OBL_RC_ACT 0
+	# Don't require RC calibration and configuration
 	param set COM_RC_IN_MODE 1
 
-	param set EKF2_AID_MASK 1
 	param set EKF2_ANGERR_INIT 0.01
-	param set EKF2_HGT_MODE 0
 	param set EKF2_GBIAS_INIT 0.01
 
 	# Prevent high accel bias
@@ -155,26 +148,13 @@ then
 	param set MC_ROLL_P 6
 	param set MC_ROLLRATE_P 0.2
 
-	param set MPC_ALT_MODE 0
-	param set MPC_HOLD_MAX_Z 2
-	param set MPC_Z_VEL_I 0.15
-	param set MPC_Z_VEL_P 0.6
+	param set MPC_Z_VEL_P_ACC 12.0
+	param set MPC_Z_VEL_I_ACC 3.0
 	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_P 0.2
-	param set MPC_XY_VEL_I 0.02
-	param set MPC_XY_VEL_D 0.016
+	param set MPC_XY_VEL_P_ACC 4.0
+	param set MPC_XY_VEL_I_ACC 0.4
+	param set MPC_XY_VEL_D_ACC 0.32
 
-	param set MPC_JERK_MIN 10
-	param set MPC_JERK_MAX 20
-	param set MPC_ACC_HOR_MAX 3
-	param set MPC_SPOOLUP_TIME 0.5
-	param set MPC_TKO_RAMP_T 1
-
-	param set NAV_ACC_RAD 2
-	param set NAV_DLL_ACT 2
-
-	param set RTL_DESCEND_ALT 5
-	param set RTL_LAND_DELAY 5
 	param set RTL_RETURN_ALT 30
 
 	# By default log from boot until first disarm.
@@ -188,11 +168,15 @@ then
 	param set SYS_RESTART_TYPE 2
 
 	param set TRIG_INTERFACE 3
-
 fi
 
+param set COM_CPU_MAX -1 # disable check, no CPU load reported on posix yet
+
+# Simulator IMU data provided at 250 Hz
+param set IMU_INTEG_RATE 250
+
 # Adapt timeout parameters if simulation runs faster or slower than realtime.
-if [ ! -z $PX4_SIM_SPEED_FACTOR ]; then
+if [ -n "$PX4_SIM_SPEED_FACTOR" ]; then
 	COM_DL_LOSS_T_LONGER=$(echo "$PX4_SIM_SPEED_FACTOR * 10" | bc)
 	echo "COM_DL_LOSS_T set to $COM_DL_LOSS_T_LONGER"
 	param set COM_DL_LOSS_T $COM_DL_LOSS_T_LONGER
@@ -236,8 +220,12 @@ then
 fi
 
 dataman start
-replay tryapplyparams
-simulator start -c $simulator_tcp_port
+# only start the simulator if not in replay mode, as both control the lockstep time
+if ! replay tryapplyparams
+then
+	simulator start -c $simulator_tcp_port
+fi
+battery_simulator start
 tone_alarm start
 rc_update start
 sensors start
@@ -284,6 +272,12 @@ mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $ud
 [ -e "$autostart_file".post ] && sh "$autostart_file".post
 
 # Run script to start logging
+if param compare SYS_MC_EST_GROUP 2
+then
+	set LOGGER_ARGS "-p ekf2_timestamps"
+else
+	set LOGGER_ARGS "-p vehicle_attitude"
+fi
 sh etc/init.d/rc.logging
 
 mavlink boot_complete

@@ -123,9 +123,11 @@ PARAM_DEFINE_INT32(SDLOG_MISSION, 0);
  * 5 : Debugging topics (debug_*.msg topics, for custom code)
  * 6 : Topics for sensor comparison (low rate raw IMU, Baro and Magnetomer data)
  * 7 : Topics for computer vision and collision avoidance
+ * 8 : Raw FIFO high-rate IMU (Gyro)
+ * 9 : Raw FIFO high-rate IMU (Accel)
  *
  * @min 0
- * @max 255
+ * @max 1023
  * @bit 0 Default set (general log analysis)
  * @bit 1 Estimator replay (EKF2)
  * @bit 2 Thermal calibration
@@ -134,10 +136,12 @@ PARAM_DEFINE_INT32(SDLOG_MISSION, 0);
  * @bit 5 Debug
  * @bit 6 Sensor comparison
  * @bit 7 Computer Vision and Avoidance
+ * @bit 8 Raw FIFO high-rate IMU (Gyro)
+ * @bit 9 Raw FIFO high-rate IMU (Accel)
  * @reboot_required true
  * @group SD Logging
  */
-PARAM_DEFINE_INT32(SDLOG_PROFILE, 3);
+PARAM_DEFINE_INT32(SDLOG_PROFILE, 1);
 
 /**
  * Maximum number of log directories to keep

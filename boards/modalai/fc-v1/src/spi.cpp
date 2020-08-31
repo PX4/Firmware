@@ -40,8 +40,7 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 		initSPIDevice(DRV_IMU_DEVTYPE_ICM20602, SPI::CS{GPIO::PortI, GPIO::Pin9}, SPI::DRDY{GPIO::PortF, GPIO::Pin2}),
 	}),
 	initSPIBus(SPI::Bus::SPI2, {
-		// ICM-42688
-		initSPIDevice(DRV_DEVTYPE_UNUSED, SPI::CS{GPIO::PortH, GPIO::Pin5}, SPI::DRDY{GPIO::PortH, GPIO::Pin12}),
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM42688P, SPI::CS{GPIO::PortH, GPIO::Pin5}, SPI::DRDY{GPIO::PortH, GPIO::Pin12}),
 	}),
 	initSPIBus(SPI::Bus::SPI5, {
 		initSPIDevice(SPIDEV_FLASH(0), SPI::CS{GPIO::PortG, GPIO::Pin7})
@@ -53,4 +52,3 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 };
 
 static constexpr bool unused = validateSPIConfig(px4_spi_buses);
-

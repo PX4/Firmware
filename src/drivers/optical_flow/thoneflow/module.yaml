@@ -1,0 +1,6 @@
+module_name: ThoneFlow-3901U optical flow sensor
+serial_config:
+    - command: thoneflow start -d ${SERIAL_DEV}
+      port_config_param:
+        name: SENS_TFLOW_CFG
+        group: Sensors

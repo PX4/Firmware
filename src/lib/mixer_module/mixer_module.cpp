@@ -35,7 +35,7 @@
 
 #include <lib/mixer/MultirotorMixer/MultirotorMixer.hpp>
 
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <px4_platform_common/log.h>
 
 using namespace time_literals;
@@ -115,7 +115,7 @@ void MixingOutput::updateParams()
 	}
 }
 
-bool MixingOutput::updateSubscriptions(bool allow_wq_switch)
+bool MixingOutput::updateSubscriptions(bool allow_wq_switch, bool limit_callbacks_to_primary)
 {
 	if (_groups_subscribed == _groups_required) {
 		return false;
@@ -143,12 +143,33 @@ bool MixingOutput::updateSubscriptions(bool allow_wq_switch)
 			}
 		}
 
+		bool sub_group_0_callback_registered = false;
+		bool sub_group_1_callback_registered = false;
+
 		// register callback to all required actuator control groups
 		for (unsigned i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-			if (_groups_required & (1 << i)) {
-				PX4_DEBUG("subscribe to actuator_controls_%d", i);
 
-				if (!_control_subs[i].registerCallback()) {
+			if (limit_callbacks_to_primary) {
+				// don't register additional callbacks if actuator_controls_0 or actuator_controls_1 are already registered
+				if ((i > 1) && (sub_group_0_callback_registered || sub_group_1_callback_registered)) {
+					break;
+				}
+			}
+
+			if (_groups_required & (1 << i)) {
+				if (_control_subs[i].registerCallback()) {
+					PX4_DEBUG("subscribed to actuator_controls_%d", i);
+
+					if (limit_callbacks_to_primary) {
+						if (i == 0) {
+							sub_group_0_callback_registered = true;
+
+						} else if (i == 1) {
+							sub_group_1_callback_registered = true;
+						}
+					}
+
+				} else {
 					PX4_ERR("actuator_controls_%d register callback failed!", i);
 				}
 			}
@@ -499,12 +520,7 @@ int MixingOutput::controlCallback(uintptr_t handle, uint8_t control_group, uint8
 	input = output->_controls[control_group].control[control_index];
 
 	/* limit control input */
-	if (input > 1.0f) {
-		input = 1.0f;
-
-	} else if (input < -1.0f) {
-		input = -1.0f;
-	}
+	input = math::constrain(input, -1.f, 1.f);
 
 	/* motor spinup phase - lock throttle to zero */
 	if (output->_output_limit.state == OUTPUT_LIMIT_STATE_RAMP) {

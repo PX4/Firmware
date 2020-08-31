@@ -52,19 +52,36 @@ using namespace time_literals;
 const char *const UavcanGnssBridge::NAME = "gnss";
 
 UavcanGnssBridge::UavcanGnssBridge(uavcan::INode &node) :
+	UavcanCDevSensorBridgeBase("uavcan_gnss", "/dev/uavcan/gnss", "/dev/gnss", ORB_ID(vehicle_gps_position)),
 	_node(node),
 	_sub_auxiliary(node),
 	_sub_fix(node),
 	_sub_fix2(node),
 	_pub_fix2(node),
-	_orb_to_uavcan_pub_timer(node, TimerCbBinder(this, &UavcanGnssBridge::broadcast_from_orb))
+	_orb_to_uavcan_pub_timer(node, TimerCbBinder(this, &UavcanGnssBridge::broadcast_from_orb)),
+	_report_pub(nullptr),
+	_channel_using_fix2(new bool[_max_channels])
 {
+	for (uint8_t i = 0; i < _max_channels; i++) {
+		_channel_using_fix2[i] = false;
+	}
+}
+
+UavcanGnssBridge::~UavcanGnssBridge()
+{
+	delete [] _channel_using_fix2;
 }
 
 int
 UavcanGnssBridge::init()
 {
-	int res = _pub_fix2.init(uavcan::TransferPriority::MiddleLower);
+	int res = device::CDev::init();
+
+	if (res < 0) {
+		return res;
+	}
+
+	res = _pub_fix2.init(uavcan::TransferPriority::MiddleLower);
 
 	if (res < 0) {
 		PX4_WARN("GNSS fix2 pub failed %i", res);
@@ -97,26 +114,6 @@ UavcanGnssBridge::init()
 	return res;
 }
 
-unsigned
-UavcanGnssBridge::get_num_redundant_channels() const
-{
-	return (_receiver_node_id < 0) ? 0 : 1;
-}
-
-void
-UavcanGnssBridge::print_status() const
-{
-	printf("RX errors: %d, using old Fix: %d, receiver node id: ",
-	       _sub_fix.getFailureCount(), int(_old_fix_subscriber_active));
-
-	if (_receiver_node_id < 0) {
-		printf("N/A\n");
-
-	} else {
-		printf("%d\n", _receiver_node_id);
-	}
-}
-
 void
 UavcanGnssBridge::gnss_auxiliary_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::gnss::Auxiliary> &msg)
 {
@@ -129,6 +126,14 @@ UavcanGnssBridge::gnss_auxiliary_sub_cb(const uavcan::ReceivedDataStructure<uavc
 void
 UavcanGnssBridge::gnss_fix_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::gnss::Fix> &msg)
 {
+	// Check to see if this node is also publishing a Fix2 message.
+	// If so, ignore the old "Fix" message for this node.
+	const int8_t ch = get_channel_index_for_node(msg.getSrcNodeID().get());
+
+	if (ch > -1 && _channel_using_fix2[ch]) {
+		return;
+	}
+
 	const bool valid_pos_cov = !msg.position_covariance.empty();
 	const bool valid_vel_cov = !msg.velocity_covariance.empty();
 
@@ -144,11 +149,11 @@ UavcanGnssBridge::gnss_fix_sub_cb(const uavcan::ReceivedDataStructure<uavcan::eq
 void
 UavcanGnssBridge::gnss_fix2_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::gnss::Fix2> &msg)
 {
-	if (_old_fix_subscriber_active) {
-		PX4_INFO("GNSS Fix2 message detected, disabling support for the old Fix message");
-		_sub_fix.stop();
-		_old_fix_subscriber_active = false;
-		_receiver_node_id = -1;
+	const int8_t ch = get_channel_index_for_node(msg.getSrcNodeID().get());
+
+	if (ch > -1 && !_channel_using_fix2[ch]) {
+		PX4_WARN("GNSS Fix2 msg detected for ch %d; disabling Fix msg for this node", ch);
+		_channel_using_fix2[ch] = true;
 	}
 
 	float pos_cov[9] {};
@@ -263,18 +268,7 @@ void UavcanGnssBridge::process_fixx(const uavcan::ReceivedDataStructure<FixType>
 				    const float (&pos_cov)[9], const float (&vel_cov)[9],
 				    const bool valid_pos_cov, const bool valid_vel_cov)
 {
-	// This bridge does not support redundant GNSS receivers yet.
-	if (_receiver_node_id < 0) {
-		_receiver_node_id = msg.getSrcNodeID().get();
-		PX4_INFO("GNSS receiver node ID: %d", _receiver_node_id);
-
-	} else {
-		if (_receiver_node_id != msg.getSrcNodeID().get()) {
-			return;  // This GNSS receiver is the redundant one, ignore it.
-		}
-	}
-
-	vehicle_gps_position_s report{};
+	auto report = ::vehicle_gps_position_s();
 
 	/*
 	 * FIXME HACK
@@ -400,14 +394,7 @@ void UavcanGnssBridge::process_fixx(const uavcan::ReceivedDataStructure<FixType>
 	report.heading = NAN;
 	report.heading_offset = NAN;
 
-	// Publish to a multi-topic
-	_gps_pub.publish(report);
-
-	// Doing less time critical stuff here
-	if (_orb_to_uavcan_pub_timer.isRunning()) {
-		_orb_to_uavcan_pub_timer.stop();
-		PX4_INFO("GNSS ORB->UAVCAN bridge stopped, because there are other GNSS publishers");
-	}
+	publish(msg.getSrcNodeID().get(), &report);
 }
 
 void

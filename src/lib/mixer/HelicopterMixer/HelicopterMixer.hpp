@@ -33,7 +33,7 @@
 
 #pragma once
 
-#include <mixer/Mixer/Mixer.hpp>
+#include <mixer/MixerBase/Mixer.hpp>
 
 /** helicopter swash servo mixer */
 struct mixer_heli_servo_s {

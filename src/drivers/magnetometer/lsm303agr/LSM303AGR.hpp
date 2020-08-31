@@ -31,19 +31,13 @@
  *
  ****************************************************************************/
 
-#ifndef DRIVERS_IMU_LSM303AGR_LSM303AGR_HPP_
-#define DRIVERS_IMU_LSM303AGR_LSM303AGR_HPP_
+#pragma once
 
 #include <drivers/drv_hrt.h>
 #include <drivers/device/spi.h>
-#include <drivers/drv_mag.h>
-#include <drivers/device/ringbuffer.h>
-#include <drivers/device/integrator.h>
-#include <mathlib/math/filter/LowPassFilter2p.hpp>
-#include <lib/conversion/rotation.h>
-#include <perf/perf_counter.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <systemlib/err.h>
+#include <lib/perf/perf_counter.h>
+#include <px4_platform_common/i2c_spi_buses.h>
+#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 
 // Register mapping
 static constexpr uint8_t WHO_AM_I_M = 0x4F;
@@ -88,25 +82,27 @@ static constexpr uint8_t OUTY_H_REG_M = 0x6B;
 static constexpr uint8_t OUTZ_L_REG_M = 0x6C;
 static constexpr uint8_t OUTZ_H_REG_M = 0x6D;
 
-class LSM303AGR : public device::SPI, public px4::ScheduledWorkItem
+class LSM303AGR : public device::SPI, public I2CSPIDriver<LSM303AGR>
 {
 public:
-	LSM303AGR(int bus, const char *path, uint32_t device, enum Rotation rotation);
+	LSM303AGR(I2CSPIBusOption bus_option, int bus, int device, enum Rotation rotation, int bus_frequency,
+		  spi_mode_e spi_mode);
 	virtual ~LSM303AGR();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	int		init() override;
 
-	/**
-	 * Diagnostics - print some basic information about the driver.
-	 */
-	void			print_info();
+	void			print_status() override;
 
-protected:
-	virtual int		probe();
+	void			RunImpl();
 
 private:
+	int		probe() override;
+
+	PX4Magnetometer		_px4_mag;
 
 	bool			_collect_phase{false};
 
@@ -114,12 +110,7 @@ private:
 
 	unsigned		_call_mag_interval{0};
 
-	mag_calibration_s	_mag_scale{};
-
-	static constexpr float	_mag_range_scale{1.5f / 1000.0f}; // 1.5 milligauss/LSB
 	static constexpr float	_mag_range_ga{49.152f};
-
-	int			_class_instance{-1};
 
 	unsigned		_mag_samplerate{100};
 
@@ -127,27 +118,17 @@ private:
 	perf_counter_t		_bad_registers;
 	perf_counter_t		_bad_values;
 
-	enum Rotation		_rotation;
-
-	orb_advert_t		_mag_topic{nullptr};
-	int					_mag_orb_class_instance{-1};
-
 	/**
 	 * Start automatic measurement.
 	 */
 	void			start();
 
 	/**
-	 * Stop automatic measurement.
-	 */
-	void			stop();
-
-	/**
 	 * Reset chip.
 	 *
 	 * Resets the chip and measurements ranges, but not scale and offset.
 	 */
-	int				reset();
+	int			reset();
 
 
 	bool			self_test();
@@ -165,39 +146,19 @@ private:
 	int			collect();
 
 	/**
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 *
-	 * This is the heart of the measurement state machine.  This function
-	 * alternately starts a measurement, or collects the data from the
-	 * previous measurement.
-	 *
-	 * When the interval between measurements is greater than the minimum
-	 * measurement interval, a gap is inserted between collection
-	 * and measurement to provide the most recent measurement possible
-	 * at the next interval.
-	 */
-	void			Run() override;
-
-	/**
 	 * Read a register from the LSM303AGR
 	 *
 	 * @param		The register to read.
 	 * @return		The value that was read.
 	 */
-	uint8_t			read_reg(unsigned reg);
+	uint8_t			read_reg(unsigned reg) override;
 
 	/**
 	 * Write a register in the LSM303AGR
 	 *
 	 * @param reg		The register to write.
 	 * @param value		The new value to write.
+	 * @return		OK on success, negative errno otherwise.
 	 */
-	void			write_reg(unsigned reg, uint8_t value);
-
-	/* this class cannot be copied */
-	LSM303AGR(const LSM303AGR &);
-	LSM303AGR operator=(const LSM303AGR &);
+	int			write_reg(unsigned reg, uint8_t value) override;
 };
-
-#endif /* DRIVERS_IMU_LSM303AGR_LSM303AGR_HPP_ */

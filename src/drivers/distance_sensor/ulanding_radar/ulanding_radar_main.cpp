@@ -116,7 +116,7 @@ $ ulanding_radar stop
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start driver");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', "/dev/ttyS3", "<file:dev>", "Serial device", false);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 1, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop driver");
 	return PX4_OK;
 }

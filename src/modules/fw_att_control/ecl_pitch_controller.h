@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2013-2020 Estimation and Control Library (ECL). All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,9 +60,9 @@ public:
 	ECL_PitchController() = default;
 	~ECL_PitchController() = default;
 
-	float control_attitude(const struct ECL_ControlData &ctl_data) override;
-	float control_euler_rate(const struct ECL_ControlData &ctl_data) override;
-	float control_bodyrate(const struct ECL_ControlData &ctl_data) override;
+	float control_attitude(const float dt, const ECL_ControlData &ctl_data) override;
+	float control_euler_rate(const float dt, const ECL_ControlData &ctl_data) override;
+	float control_bodyrate(const float dt, const ECL_ControlData &ctl_data) override;
 
 	/* Additional Setters */
 	void set_max_rate_pos(float max_rate_pos)

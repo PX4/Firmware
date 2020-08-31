@@ -42,14 +42,11 @@ static constexpr int16_t combine(uint8_t lsb, uint8_t msb) { return (msb << 8u) 
 
 LSM9DS1_MAG::LSM9DS1_MAG(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation,
 			 int bus_frequency, spi_mode_e spi_mode) :
-	SPI(MODULE_NAME, nullptr, bus, device, spi_mode, bus_frequency),
+	SPI(DRV_MAG_DEVTYPE_ST_LSM9DS1_M, MODULE_NAME, bus, device, spi_mode, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
-	_px4_mag(get_device_id(), ORB_PRIO_DEFAULT, rotation)
+	_px4_mag(get_device_id(), rotation)
 {
-	set_device_type(DRV_MAG_DEVTYPE_ST_LSM9DS1_M);
-	_px4_mag.set_device_type(DRV_MAG_DEVTYPE_ST_LSM9DS1_M);
-
-	_px4_mag.set_temperature(NAN); // temperature not available
+	_px4_mag.set_external(external());
 }
 
 LSM9DS1_MAG::~LSM9DS1_MAG()
@@ -68,20 +65,22 @@ int LSM9DS1_MAG::probe()
 	return PX4_ERROR;
 }
 
-bool LSM9DS1_MAG::Init()
+int LSM9DS1_MAG::init()
 {
-	if (SPI::init() != PX4_OK) {
-		return false;
+	int ret = SPI::init();
+
+	if (ret != PX4_OK) {
+		return ret;
 	}
 
 	if (!Reset()) {
 		PX4_ERR("reset failed");
-		return false;
+		return PX4_ERROR;
 	}
 
 	Start();
 
-	return true;
+	return PX4_OK;
 }
 
 bool LSM9DS1_MAG::Reset()
@@ -147,14 +146,7 @@ void LSM9DS1_MAG::RegisterClearBits(Register reg, uint8_t clearbits)
 
 void LSM9DS1_MAG::Start()
 {
-	Stop();
-
 	ScheduleOnInterval(1000000 / ST_LSM9DS1_MAG::M_ODR / 2);
-}
-
-void LSM9DS1_MAG::Stop()
-{
-	ScheduleClear();
 }
 
 void LSM9DS1_MAG::RunImpl()
@@ -208,6 +200,4 @@ void LSM9DS1_MAG::print_status()
 	perf_print_counter(_interval_perf);
 	perf_print_counter(_transfer_perf);
 	perf_print_counter(_data_overrun_perf);
-
-	_px4_mag.print_status();
 }

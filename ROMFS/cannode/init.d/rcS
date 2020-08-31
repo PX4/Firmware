@@ -68,8 +68,8 @@ unset BOARD_RC_DEFAULTS
 #
 # Start system state indicator.
 #
-rgbled start -X
-rgbled_ncp5623c start -X
+rgbled start -X -q
+rgbled_ncp5623c start -X -q
 rgbled_pwm start
 
 if param greater LIGHT_EN_BLINKM 0

@@ -1,3 +1,41 @@
+/****************************************************************************
+ *
+ *   Copyright (C) 2019 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/**
+ * @file ina226.h
+ *
+ */
+
 #pragma once
 
 
@@ -12,6 +50,8 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/parameter_update.h>
 #include <px4_platform_common/i2c_spi_buses.h>
+
+using namespace time_literals;
 
 /* Configuration Constants */
 #define INA226_BASEADDR 	                    0x41 /* 7-bit address. 8-bit address is 0x41 */
@@ -98,7 +138,9 @@
 #define INA226_SUL                           (1 << 14)
 #define INA226_SOL                           (1 << 15)
 
-#define INA226_CONVERSION_INTERVAL 	          (100000-7) /* 100 ms / 10 Hz */
+#define INA226_SAMPLE_FREQUENCY_HZ            10
+#define INA226_SAMPLE_INTERVAL_US             (1_s / INA226_SAMPLE_FREQUENCY_HZ)
+#define INA226_CONVERSION_INTERVAL            (INA226_SAMPLE_INTERVAL_US - 7)
 #define MAX_CURRENT                           164.0f    /* 164 Amps */
 #define DN_MAX                                32768.0f  /* 2^15 */
 #define INA226_CONST                          0.00512f  /* is an internal fixed value used to ensure scaling is maintained properly  */
@@ -125,7 +167,7 @@ public:
 	 * Tries to call the init() function. If it fails, then it will schedule to retry again in
 	 * INA226_INIT_RETRY_INTERVAL_US microseconds. It will keep retrying at this interval until initialization succeeds.
 	 *
-	 * @return OK if initialization succeeded on the first try. Negative value otherwise.
+	 * @return PX4_OK if initialization succeeded on the first try. Negative value otherwise.
 	 */
 	int force_init();
 
@@ -139,7 +181,7 @@ protected:
 
 private:
 	bool			        _sensor_ok{false};
-	int				        _measure_interval{0};
+	unsigned                        _measure_interval{0};
 	bool			        _collect_phase{false};
 	bool 					_initialized{false};
 
@@ -149,8 +191,8 @@ private:
 	perf_counter_t 		_measure_errors;
 
 	int16_t           _bus_voltage{0};
-	int16_t           _power{-1};
-	int16_t           _current{-1};
+	int16_t           _power{0};
+	int16_t           _current{0};
 	int16_t           _shunt{0};
 	int16_t           _cal{0};
 	bool              _mode_triggered{false};
@@ -167,16 +209,8 @@ private:
 	uORB::Subscription  _actuators_sub{ORB_ID(actuator_controls_0)};
 	uORB::Subscription  _parameters_sub{ORB_ID(parameter_update)};
 
-
-	/**
-	* Test whetpower_monitorhe device supported by the driver is present at a
-	* specific address.
-	*
-	* @param address	The I2C bus address to read or write.
-	* @return			.
-	*/
-	int               read(uint8_t address);
-	int               write(uint8_t address, uint16_t data);
+	int read(uint8_t address, int16_t &data);
+	int write(uint8_t address, uint16_t data);
 
 	/**
 	* Initialise the automatic measurement state machine and start it.

@@ -70,7 +70,7 @@ MPU6000_I2C_interface(int bus, uint32_t devid, int device_type, bool external_bu
 }
 
 MPU6000_I2C::MPU6000_I2C(int bus, int device_type, int bus_frequency) :
-	I2C("MPU6000_I2C", nullptr, bus, PX4_I2C_MPU6050_ADDR, bus_frequency),
+	I2C(DRV_IMU_DEVTYPE_MPU6000, MODULE_NAME, bus, PX4_I2C_MPU6050_ADDR, bus_frequency)
 	_device_type(device_type)
 {
 }
@@ -100,7 +100,7 @@ MPU6000_I2C::read(unsigned reg_speed, void *data, unsigned count)
 	 */
 	uint32_t offset = count < sizeof(MPUReport) ? 0 : offsetof(MPUReport, status);
 	uint8_t cmd = MPU6000_REG(reg_speed);
-	int ret = transfer(&cmd, 1, &((uint8_t *)data)[offset], count);
+	int ret = transfer(&cmd, 1, &((uint8_t *)data)[offset], count - offset);
 	return ret == OK ? count : ret;
 }
 

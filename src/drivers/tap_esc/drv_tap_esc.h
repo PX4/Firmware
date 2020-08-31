@@ -37,8 +37,6 @@
 
 #include <stdint.h>
 
-#define TAP_ESC_DEVICE_PATH	"/dev/tap_esc"
-
 /* At the moment the only known use is with a current sensor */
 #define ESC_HAVE_CURRENT_SENSOR
 

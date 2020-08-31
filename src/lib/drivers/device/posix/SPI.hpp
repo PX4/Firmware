@@ -77,14 +77,14 @@ protected:
 	/**
 	 * Constructor
 	 *
+	 * @param device_type	The device type (see drv_sensor.h)
 	 * @param name		Driver name
-	 * @param devname	Device node name
 	 * @param bus		SPI bus on which the device lives
 	 * @param device	Device handle (used by SPI_SELECT)
 	 * @param mode		SPI clock/data mode
 	 * @param frequency	SPI clock frequency
 	 */
-	SPI(const char *name, const char *devname, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency);
+	SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency);
 	virtual ~SPI();
 
 	/**

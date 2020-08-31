@@ -229,7 +229,7 @@ int uORBTest::UnitTest::test_unadvertise()
 	orb_test_s t{};
 
 	for (int i = 0; i < 4; ++i) {
-		_pfd[i] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance_test[i], ORB_PRIO_MAX);
+		_pfd[i] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance_test[i]);
 
 		if (instance_test[i] != i) {
 			return test_fail("got wrong instance (should be %i, is %i)", i, instance_test[i]);
@@ -335,12 +335,12 @@ int uORBTest::UnitTest::test_multi()
 	orb_test_s u{};
 
 	int instance0;
-	_pfd[0] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance0, ORB_PRIO_MAX);
+	_pfd[0] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance0);
 
 	test_note("advertised");
 
 	int instance1;
-	_pfd[1] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance1, ORB_PRIO_MIN);
+	_pfd[1] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance1);
 
 	if (instance0 != 0) {
 		return test_fail("mult. id0: %d", instance0);
@@ -385,25 +385,6 @@ int uORBTest::UnitTest::test_multi()
 		return test_fail("sub #1 val. mismatch: %d", u.val);
 	}
 
-	/* test priorities */
-	int prio;
-
-	if (PX4_OK != orb_priority(sfd0, &prio)) {
-		return test_fail("prio #0");
-	}
-
-	if (prio != ORB_PRIO_MAX) {
-		return test_fail("prio: %d", prio);
-	}
-
-	if (PX4_OK != orb_priority(sfd1, &prio)) {
-		return test_fail("prio #1");
-	}
-
-	if (prio != ORB_PRIO_MIN) {
-		return test_fail("prio: %d", prio);
-	}
-
 	if (PX4_OK != latency_test<orb_test_s>(ORB_ID(orb_test), false)) {
 		return test_fail("latency test failed");
 	}
@@ -431,7 +412,7 @@ int uORBTest::UnitTest::pub_test_multi2_main()
 		orb_advert_t &pub = orb_pub[i];
 		int idx = i;
 //		PX4_WARN("advertise %i, t=%" PRIu64, i, hrt_absolute_time());
-		pub = orb_advertise_multi(ORB_ID(orb_test_medium_multi), &data_topic, &idx, ORB_PRIO_DEFAULT);
+		pub = orb_advertise_multi(ORB_ID(orb_test_medium_multi), &data_topic, &idx);
 
 		if (idx != i) {
 			_thread_should_exit = true;
@@ -550,12 +531,10 @@ int uORBTest::UnitTest::test_multi_reversed()
 	t.val = 0;
 
 	int instance2;
-
-	_pfd[2] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance2, ORB_PRIO_MAX);
+	_pfd[2] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance2);
 
 	int instance3;
-
-	_pfd[3] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance3, ORB_PRIO_MIN);
+	_pfd[3] = orb_advertise_multi(ORB_ID(orb_multitest), &t, &instance3);
 
 	test_note("advertised");
 

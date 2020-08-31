@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ############################################################################
 #
-#   Copyright (c) 2017 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2017-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,27 +32,59 @@
 #
 ############################################################################
 
-#
-# Basic central executable for PX4 maintenance
-#
+"""
+    Basic central executable for PX4 maintenance.
+    Used by PX4 Homebrew formulae - https://github.com/PX4/homebrew-px4.
+"""
 
-# for python2.7 compatibility
+# For python2.7 compatibility
 from __future__ import print_function
 
-import sys
 import argparse
+import array
+import base64
 import binascii
+import json
+import os
 import serial
 import socket
 import struct
-import json
-import zlib
-import base64
+import subprocess
+import sys
 import time
-import array
-import os
+import zlib
 
 from sys import platform as _platform
+
+
+def get_version():
+    """
+        Get PX4 Firmware latest Git tag.
+    """
+    px4_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    if os.path.isdir(os.path.join(px4_dir, '.git')):
+        # If inside a clone PX4 Firmware repository, get version from "git describe"
+        cmd = 'git describe --abbrev=0 --tags'
+        try:
+            version = subprocess.check_output(
+                cmd, cwd=px4_dir, shell=True).decode().strip()
+        except subprocess.CalledProcessError:
+            print('Unable to get version number from git tags')
+            exit(1)
+    else:
+        # Else, get it from remote repo tags (requires network access)
+        cmd = "git ls-remote --tags git://github.com/PX4/Firmware.git | cut -d/ -f3- | sort -n -t. -k1,1 -k2,2 -k3,3 | awk '/^v[^{]*$/{version=$1}END{print version}'"
+
+        try:
+            version = subprocess.check_output(
+                cmd, cwd=px4_dir, shell=True).decode().strip()
+        except subprocess.CalledProcessError:
+            print('Unable to get version number from git remote tags')
+            exit(1)
+
+    return version
+
 
 # Detect python version
 if sys.version_info[0] < 3:
@@ -60,9 +92,10 @@ if sys.version_info[0] < 3:
 else:
     runningPython3 = True
 
-def main():
 
-    print("PX4 release v1.6")
+def main():
+    print("PX4 release", get_version())
+
 
 if __name__ == '__main__':
     main()

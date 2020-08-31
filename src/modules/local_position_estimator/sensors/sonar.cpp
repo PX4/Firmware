@@ -26,11 +26,11 @@ void BlockLocalPositionEstimator::sonarInit()
 	// if finished
 	if (_sonarStats.getCount() > REQ_SONAR_INIT_COUNT) {
 		if (_sonarStats.getStdDev()(0) > SONAR_MAX_INIT_STD) {
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] sonar init std > min");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] sonar init std > min");
 			_sonarStats.reset();
 
 		} else if ((_timeStamp - _time_init_sonar) > SONAR_TIMEOUT) {
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] sonar init timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] sonar init timeout ");
 			_sonarStats.reset();
 
 		} else {
@@ -124,7 +124,7 @@ void BlockLocalPositionEstimator::sonarCorrect()
 	if (beta > BETA_TABLE[n_y_sonar]) {
 		if (!(_sensorFault & SENSOR_SONAR)) {
 			_sensorFault |= SENSOR_SONAR;
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] sonar fault,  beta %5.2f", double(beta));
+			mavlink_log_info(&mavlink_log_pub, "[lpe] sonar fault,  beta %5.2f", double(beta));
 		}
 
 		// abort correction
@@ -132,7 +132,7 @@ void BlockLocalPositionEstimator::sonarCorrect()
 
 	} else if (_sensorFault & SENSOR_SONAR) {
 		_sensorFault &= ~SENSOR_SONAR;
-		//mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] sonar OK");
+		//mavlink_log_info(&mavlink_log_pub, "[lpe] sonar OK");
 	}
 
 	// kalman filter correction if no fault
@@ -151,7 +151,7 @@ void BlockLocalPositionEstimator::sonarCheckTimeout()
 		if (!(_sensorTimeout & SENSOR_SONAR)) {
 			_sensorTimeout |= SENSOR_SONAR;
 			_sonarStats.reset();
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] sonar timeout ");
+			mavlink_log_info(&mavlink_log_pub, "[lpe] sonar timeout ");
 		}
 	}
 }

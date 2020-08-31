@@ -5,17 +5,14 @@
 
 adc start
 
-# External I2C bus
-hmc5883 -T -X start
-qmc5883 -X start
-
 # Internal I2C bus
 hmc5883 -T -I -R 12 start
+qmc5883 -I -R 12 start
 
-mpu6000 -s -R 8 start
-mpu9250 -s -R 8 start
-lsm303d -R 10 start
-l3gd20 -R 14 start
+mpu6000 -s -R 2 start
+mpu6500 -s -R 2 start
+lsm303d -s -R 10 start
+l3gd20 -s -R 14 start
 
 # Internal SPI
 ms5611 -s start

@@ -111,13 +111,6 @@ static void *entry_adapter(void *ptr)
 	return nullptr;
 }
 
-void
-px4_systemreset(bool to_bootloader)
-{
-	PX4_WARN("Called px4_system_reset");
-	system_exit(0);
-}
-
 px4_task_t px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_size, px4_main_t entry,
 			      char *const argv[])
 {
@@ -449,4 +442,3 @@ int px4_prctl(int option, const char *arg2, px4_task_t pid)
 
 	return rv;
 }
-

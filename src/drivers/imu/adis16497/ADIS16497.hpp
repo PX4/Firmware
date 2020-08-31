@@ -45,7 +45,7 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 // TODO : This is a copy of the NuttX CRC32 table
 static constexpr uint32_t crc32_tab[] = {
@@ -83,18 +83,25 @@ static constexpr uint32_t crc32_tab[] = {
 	0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94, 0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-class ADIS16497 : public device::SPI, public px4::ScheduledWorkItem
+class ADIS16497 : public device::SPI, public I2CSPIDriver<ADIS16497>
 {
 public:
-	ADIS16497(int bus, uint32_t device, enum Rotation rotation = ROTATION_NONE);
+	ADIS16497(I2CSPIBusOption bus_option, int bus, int32_t device, enum Rotation rotation, int bus_frequency,
+		  spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio);
 	virtual ~ADIS16497();
 
-	virtual int		init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	void			print_info();
+	int		init() override;
 
+	void			print_status() override;
+
+	void			RunImpl();
 protected:
-	virtual int		probe();
+	int		probe() override;
+	void exit_and_cleanup() override;
 
 private:
 
@@ -103,6 +110,8 @@ private:
 
 	perf_counter_t		_sample_perf;
 	perf_counter_t		_bad_transfers;
+
+	const spi_drdy_gpio_t _drdy_gpio;
 
 #pragma pack(push, 1)
 	// Report conversation with the ADIS16497, including command byte.
@@ -136,18 +145,11 @@ private:
 	void			start();
 
 	/**
-	 * Stop automatic measurement.
-	 */
-	void			stop();
-
-	/**
 	 * Reset chip.
 	 *
 	 * Resets the chip and measurements ranges, but not scale and offset.
 	 */
 	int			reset();
-
-	void			Run() override;
 
 	static int		data_ready_interrupt(int irq, void *context, void *arg);
 

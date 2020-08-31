@@ -36,7 +36,7 @@
  *
  * @reboot_required true
  * @min 0
- * @max 5
+ * @max 6
  * @group Sensors
  * @value 0 Disabled
  * @value 1 SF10/a

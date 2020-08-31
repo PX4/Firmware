@@ -33,6 +33,8 @@
 
 #include "CM8JL65.hpp"
 
+#include <fcntl.h>
+
 static constexpr unsigned char crc_msb_vector[] = {
 	0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
 	0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
@@ -85,7 +87,7 @@ static constexpr unsigned char crc_lsb_vector[] = {
 
 CM8JL65::CM8JL65(const char *port, uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
-	_px4_rangefinder(0 /* TODO: device ids */, ORB_PRIO_DEFAULT, rotation)
+	_px4_rangefinder(0 /* TODO: device ids */, rotation)
 {
 	// Store the port name.
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -164,8 +166,12 @@ CM8JL65::collect()
 			index--;
 		}
 
+	} else if (bytes_read == -1 && errno == EAGAIN) {
+		return -EAGAIN;
+
 	} else {
-		PX4_INFO("read error: %d", bytes_read);
+
+		PX4_ERR("read error: %i, errno: %i", bytes_read, errno);
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 		return PX4_ERROR;
@@ -325,8 +331,6 @@ CM8JL65::print_info()
 {
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-
-	_px4_rangefinder.print_status();
 }
 
 void

@@ -33,7 +33,6 @@
 
 set(SRCS
     stub_daemon.cpp
-    stub_parameter.cpp
    )
 
 px4_add_library(test_stubs ${SRCS})

@@ -80,6 +80,7 @@ px4_add_romfs_files(
 	4070_aerofc
 	4071_ifo
 	4072_draco
+	4073_ifo-s
 	4080_zmr250
 	4090_nanomind
 	4100_tiltquadrotor
@@ -146,7 +147,7 @@ px4_add_romfs_files(
 	50001_axialracing_ax10
 	50002_traxxas_stampede_2wd
 	50003_aion_robotics_r1_rover
-	50004_dfrobot_gpx_asurada
+	50004_nxpcup_car_dfrobot_gpx
 
 	# [60000, 61000] (Unmanned) Underwater Robots
 	60000_uuv_generic

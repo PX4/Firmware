@@ -36,10 +36,10 @@ then
 	echo "Configuring Flight Core - V106"
 
 	#
-	# In Flight Core, J1 and J4 can be setup to be used as serial ports for TELEM2
-	# and TELEM3 respectively, and connected to VOXL via cables.  We'll configure
-	# this out of the box.  The user can later change this if they want, as these
-	# are configurable and not necessarily required to be used with VOXL.
+	# In Flight Core, J1 can be setup to be used as a serial port for TELEM2
+	# and connected to VOXL via cables.  We'll configure this out of the box.
+	# The user can later change this if they want, as these are configurable
+	# and not necessarily required to be used with VOXL.
 	#
 	if [ $AUTOCNF = no ]
 	then
@@ -47,15 +47,8 @@ then
 		then
 			echo "V106 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 			param set MAV_1_CONFIG 102 # TELEM2
-			param set MAV_1_MODE 0	# normal
+			param set MAV_1_MODE 2	# Onboard
 			param set SER_TEL2_BAUD 921600 # VIO data
-		fi
-		if param compare MAV_2_CONFIG 0
-		then
-			echo "V106 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-			param set MAV_2_CONFIG 103 # TELEM3
-			param set MAV_2_MODE 0	# normal
-			param set SER_TEL3_BAUD 57600 # standard data
 		fi
 	fi
 
@@ -64,13 +57,8 @@ then
 	then
 		echo "V106 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 		param set MAV_1_CONFIG 102 # TELEM2
-		param set MAV_1_MODE 0	# normal
+		param set MAV_1_MODE 2	# Onboard
 		param set SER_TEL2_BAUD 921600 # VIO data
-
-		echo "V106 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-		param set MAV_2_CONFIG 103 # TELEM3
-		param set MAV_2_MODE 0	# normal
-		param set SER_TEL3_BAUD 57600 # standard data
 	fi
 fi
 
@@ -83,9 +71,9 @@ then
 
 	#
 	# TELEM2 port is physically routed in the PCB, thus not configurable.
-	# The following will detect a fresh install, or if the user has changed the setting
-	# and revert to the VOXL-Flight defaults.  This does allow the user to change the mode
-	# and baud rates if they choose to do so, although VOXL is expecting what is set below
+	# The following will detect a fresh install, or if the user has changed the setting and
+	# revert to the VOXL-Flight defaults.  This does allow the user to change the mode and
+	# baud rates and mode if they choose to do so, although VOXL is expecting what is set below
 	#
 	if [ $AUTOCNF = no ]
 	then
@@ -93,18 +81,8 @@ then
 		then
 			echo "V110 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 			param set MAV_1_CONFIG 102 # TELEM2
-			param set MAV_1_MODE 0	# normal
+			param set MAV_1_MODE 2	# Onboard
 			param set SER_TEL2_BAUD 921600
-		fi
-		#
-		# J1002 is setup as a spare serial port, if not setup by the user let's default it to TELEM3
-		#
-		if param compare MAV_2_CONFIG 0
-		then
-			echo "V110 - Defualt configuration TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-			param set MAV_2_CONFIG 103 # TELEM3
-			param set MAV_2_MODE 0	# normal
-			param set SER_TEL3_BAUD 57600 # standard data
 		fi
 	fi
 
@@ -113,13 +91,8 @@ then
 	then
 		echo "V110 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
 		param set MAV_1_CONFIG 102 # TELEM2
-		param set MAV_1_MODE 0	# normal
+		param set MAV_1_MODE 2	# Onboard
 		param set SER_TEL2_BAUD 921600
-
-		echo "V110 - Auto Configuring TELEM3 on /dev/ttyS1 at 57600 in Normal Mode"
-		param set MAV_2_CONFIG 103 # TELEM3
-		param set MAV_2_MODE 0	# normal
-		param set SER_TEL3_BAUD 57600
 	fi
 fi
 

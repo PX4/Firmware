@@ -27,8 +27,7 @@ px4_add_board(
 		differential_pressure # all available differential pressure drivers
 		distance_sensor # all available distance sensor drivers
 		gps
-		#imu # all available imu drivers
-		imu/mpu9250
+		imu/invensense/mpu9250
 		lights/rgbled
 		linux_pwm_out
 		#magnetometer # all available magnetometer drivers
@@ -49,7 +48,7 @@ px4_add_board(
 		fw_pos_control_l1
 		land_detector
 		landing_target_estimator
-		#load_mon
+		load_mon
 		local_position_estimator
 		logger
 		mavlink
@@ -75,7 +74,6 @@ px4_add_board(
 		param
 		perf
 		pwm
-		reboot
 		sd_bench
 		shutdown
 		tests # tests and test runner

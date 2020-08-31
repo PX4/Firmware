@@ -67,10 +67,10 @@
 #define PARAMS_OVERRIDE_FILE PX4_ROOTFSDIR "/replay_params.txt"
 
 using namespace std;
+using namespace time_literals;
 
 namespace px4
 {
-class Replay;
 
 char *Replay::_replay_file = nullptr;
 
@@ -750,6 +750,13 @@ Replay::run()
 		return;
 	}
 
+	_speed_factor = 1.f;
+	const char *speedup = getenv("PX4_SIM_SPEED_FACTOR");
+
+	if (speedup) {
+		_speed_factor = atof(speedup);
+	}
+
 	onEnterMainLoop();
 
 	_replay_start_time = hrt_absolute_time();
@@ -767,9 +774,7 @@ Replay::run()
 		return;
 	}
 
-	//we update the timestamps from the file by a constant offset to match
-	//the current replay time
-	const uint64_t timestamp_offset = _replay_start_time - _file_start_time;
+	const uint64_t timestamp_offset = getTimestampOffset();
 	uint32_t nr_published_messages = 0;
 	streampos last_additional_message_pos = _data_section_start;
 
@@ -849,13 +854,23 @@ Replay::run()
 	if (!should_exit()) {
 		PX4_INFO("Replay done (published %u msgs, %.3lf s)", nr_published_messages,
 			 (double)hrt_elapsed_time(&_replay_start_time) / 1.e6);
-
-		//TODO: add parameter -q?
-		replay_file.close();
-		px4_shutdown_request(false, false);
 	}
 
 	onExitMainLoop();
+
+	if (!should_exit()) {
+		replay_file.close();
+		px4_shutdown_request();
+		// we need to ensure the shutdown logic gets updated and eventually triggers shutdown
+		hrt_abstime t = hrt_absolute_time();
+
+		for (int i = 0; i < 1000; ++i) {
+			struct timespec ts;
+			abstime_to_ts(&ts, t);
+			px4_clock_settime(CLOCK_MONOTONIC, &ts);
+			t += 10_ms;
+		}
+	}
 }
 
 void
@@ -884,7 +899,20 @@ Replay::handleTopicDelay(uint64_t next_file_time, uint64_t timestamp_offset)
 
 	// if some topics have a timestamp smaller than the log file start, publish them immediately
 	if (cur_time < publish_timestamp && next_file_time > _file_start_time) {
-		px4_usleep(publish_timestamp - cur_time);
+		if (_speed_factor > FLT_EPSILON) {
+			// avoid many small usleep calls
+			_accumulated_delay += (publish_timestamp - cur_time) / _speed_factor;
+
+			if (_accumulated_delay > 3000) {
+				system_usleep(_accumulated_delay);
+				_accumulated_delay = 0.f;
+			}
+		}
+
+		// adjust the lockstep time to the publication time
+		struct timespec ts;
+		abstime_to_ts(&ts, publish_timestamp);
+		px4_clock_settime(CLOCK_MONOTONIC, &ts);
 	}
 
 	return publish_timestamp;
@@ -927,7 +955,7 @@ Replay::publishTopic(Subscription &sub, void *data)
 
 			if (advertised) {
 				int instance;
-				sub.orb_advert = orb_advertise_multi(sub.orb_meta, data, &instance, ORB_PRIO_DEFAULT);
+				sub.orb_advert = orb_advertise_multi(sub.orb_meta, data, &instance);
 				published = true;
 			}
 		}
@@ -987,7 +1015,7 @@ Replay::applyParams(bool quiet)
 {
 	if (!isSetup()) {
 		if (quiet) {
-			return 0;
+			return -1;
 		}
 
 		PX4_ERR("no log file given (via env variable %s)", replay::ENV_FILENAME);
@@ -1055,7 +1083,7 @@ The module is typically used together with uORB publisher rules, to specify whic
 The replay module will just publish all messages that are found in the log. It also applies the parameters from
 the log.
 
-The replay procedure is documented on the [System-wide Replay](https://dev.px4.io/en/debug/system_wide_replay.html)
+The replay procedure is documented on the [System-wide Replay](https://dev.px4.io/master/en/debug/system_wide_replay.html)
 page.
 )DESCR_STR");
 

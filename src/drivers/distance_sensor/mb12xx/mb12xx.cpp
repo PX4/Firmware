@@ -74,7 +74,6 @@ using namespace time_literals;
 #define MB12XX_BASE_ADDR                        0x70   // 7-bit address is 0x70 = 112. 8-bit address is 0xE0 = 224.
 #define MB12XX_MIN_ADDR                         0x5A   // 7-bit address is 0x5A = 90.  8-bit address is 0xB4 = 180.
 #define MB12XX_BUS_SPEED                        100000 // 100kHz bus speed.
-#define MB12XX_DEVICE_PATH                      "/dev/mb12xx"
 
 /* MB12xx Registers addresses */
 #define MB12XX_TAKE_RANGE_REG                   0x51 // Measure range Register.
@@ -150,11 +149,10 @@ private:
 	px4::Array<uint8_t, RANGE_FINDER_MAX_SENSORS> _sensor_rotations {};
 
 	int _measure_interval{MB12XX_MEASURE_INTERVAL};	// Initialize the measure interval for a single sensor.
-	int _orb_class_instance{-1};
 
-	size_t _sensor_index{0};	// Initialize counter for cycling i2c adresses to zero.
+	int _sensor_index{0};	// Initialize counter for cycling i2c adresses to zero.
 
-	size_t _sensor_count{0};
+	int _sensor_count{0};
 
 	orb_advert_t _distance_sensor_topic{nullptr};
 
@@ -179,7 +177,7 @@ private:
 };
 
 MB12XX::MB12XX(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int address) :
-	I2C("MB12xx", MB12XX_DEVICE_PATH, bus, address, bus_frequency),
+	I2C(DRV_DIST_DEVTYPE_MB12XX, MODULE_NAME, bus, address, bus_frequency),
 	ModuleParams(nullptr),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
@@ -235,7 +233,7 @@ MB12XX::collect()
 	report.variance         = 0.0f;
 
 	int instance_id;
-	orb_publish_auto(ORB_ID(distance_sensor), &_distance_sensor_topic, &report, &instance_id, ORB_PRIO_DEFAULT);
+	orb_publish_auto(ORB_ID(distance_sensor), &_distance_sensor_topic, &report, &instance_id);
 
 	// Begin the next measurement.
 	if (measure() != PX4_OK) {
@@ -348,8 +346,8 @@ MB12XX::print_status()
 	perf_print_counter(_comms_error);
 	PX4_INFO("poll interval:  %ums", _measure_interval / 1000);
 
-	for (size_t i = 0; i < _sensor_count; i++) {
-		PX4_INFO("sensor: %u, address %u", i, _sensor_addresses[i]);
+	for (int i = 0; i < _sensor_count; i++) {
+		PX4_INFO("sensor: %i, address %u", i, _sensor_addresses[i]);
 	}
 }
 

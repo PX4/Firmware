@@ -1,0 +1,143 @@
+#!/bin/sh
+#
+# @name UVify IFO
+#
+# @type Quadrotor x
+# @class Copter
+#
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+#
+# @board px4_fmu-v2 exclude
+# @board px4_fmu-v3 exclude
+# @board px4_fmu-v4pro exclude
+# @board px4_fmu-v5 exclude
+# @board px4_fmu-v5x exclude
+# @board intel_aerofc-v1 exclude
+#
+# @maintainer Hyon Lim <lim@uvify.com>
+#
+
+set VEHICLE_TYPE mc
+set MIXER quad_x
+set PWM_OUT 1234
+
+if [ $AUTOCNF = yes ]
+then
+	# Attitude & rate gains
+	#param set MC_ROLL_P 7
+	param set MC_ROLLRATE_P 0.15
+	#param set MC_ROLLRATE_I 0.9
+	param set MC_ROLLRATE_D 0.0013
+
+	#param set MC_PITCH_P 7
+	param set MC_PITCHRATE_P 0.15
+	#param set MC_PITCHRATE_I 1.1
+	param set MC_PITCHRATE_D 0.0016
+
+	param set MC_YAW_P 2.8
+	param set MC_YAWRATE_P 0.2
+	#param set MC_YAWRATE_I 0.15
+	param set MC_YAWRATE_D 0
+
+	#param set MC_ROLL_TC 0.19
+	#param set MC_PITCH_TC 0.16
+
+	# Manual mode settings: Unleash Draco R's power :)
+	#param set MPC_MAN_TILT_MAX 70
+	#param set MC_PITCHRATE_MAX 1600
+	#param set MC_ROLLRATE_MAX 1600
+	#param set MC_YAWRATE_MAX 700
+	param set MPC_MANTHR_MIN 0.08
+	#param set MPC_MAN_TILT_MAX 35
+	#param set MPC_TILTMAX_AIR 20
+
+	# Filter settings
+	param set IMU_GYRO_CUTOFF 100
+
+	# Thrust curve (avoids the need for TPA)
+	#param set THR_MDL_FAC 0.25
+
+	# Obsolete
+	#param set PWM_MAX 1950
+	#param set PWM_MIN 1100
+	#param set PWM_RATE 0
+
+	# Sensors
+	param set SENS_BOARD_ROT 10
+	# Yaw 180
+	param set SENS_FLOW_ROT 4
+	# TFMini on TELEM3
+	param set SENS_TFMINI_CFG 103
+
+	# Smart Battery
+	param set SENS_EN_BATT 1
+
+	# EKF2
+	param set EKF2_AID_MASK 3
+	param set EKF2_GND_EFF_DZ 6
+	param set EKF2_HGT_MODE 1
+	param set EKF2_MIN_RNG 0.3
+	param set EKF2_RNG_AID 1
+
+	# Flow
+	param set EKF2_OF_QMIN 70
+
+	# Position control
+	param set MPC_Z_P 1.1
+	param set MPC_Z_VEL_P_ACC 6
+	param set MPC_Z_VEL_I_ACC 1
+
+	param set MPC_THR_MIN 0.06
+	param set MPC_THR_HOVER 0.44
+
+	param set MIS_TAKEOFF_ALT 1.1
+	param set MPC_XY_P 1.7
+	param set MPC_XY_VEL_P_ACC 2.6
+	param set MPC_XY_VEL_I_ACC 1.2
+	param set MPC_XY_VEL_D_ACC 0.2
+	param set MPC_TKO_RAMP_T 1
+	param set MPC_TKO_SPEED 1.1
+	param set MPC_VEL_MANUAL 3
+
+	param set BAT_SOURCE 0
+	param set BAT_N_CELLS 4
+	param set BAT_V_DIV 10.14
+	param set BAT_A_PER_V 18.18
+	#param set CBRK_IO_SAFETY 22027
+	param set COM_ARM_EKF_AB 0.005
+	param set COM_DISARM_LAND 2
+
+	# Filter settings
+	param set IMU_GYRO_CUTOFF 90
+
+	# Don't try to be intelligent on RC loss: just cut the motors
+	param set NAV_RCL_ACT 6
+
+	# enable to use high-rate logging for better rate tracking analysis
+	# param set SDLOG_PROFILE 19
+
+	# TELEM1 ttyS1 - Wifi module
+	param set MAV_0_CONFIG 101
+	param set MAV_0_RATE 0
+	param set MAV_0_MODE 2	# onboard
+	param set SER_TEL1_BAUD 921600
+
+	# TELEM2 ttyS2 - Sub 1-Ghz
+	param set MAV_1_CONFIG 102
+	param set MAV_1_MODE 0	# normal
+	param set SER_TEL2_BAUD 57600
+
+	# DSHOT
+	param set DSHOT_CONFIG 600
+
+	# EKF OF POSITION
+	param set EKF2_OF_POS_X 0.06
+	param set EKF2_OF_POS_Y 0.03
+	param set EKF2_OF_POS_Z -0.07
+
+	# Failsafe
+	param set COM_LOW_BAT_ACT 3
+fi

@@ -16,7 +16,7 @@ class ModuleDocumentation(object):
     valid_categories = ['driver', 'estimator', 'controller', 'system',
                         'communication', 'command', 'template', 'simulation']
     valid_subcategories = ['', 'distance_sensor', 'imu', 'airspeed_sensor',
-                           'magnetometer', 'baro']
+                           'magnetometer', 'baro', 'optical_flow']
 
     max_line_length = 80 # wrap lines that are longer than this
 
@@ -128,7 +128,7 @@ class ModuleDocumentation(object):
         self._paring_implicit_options = True
         if self._is_bool_true(args[0]):
             self._handle_usage_param_flag(['\'I\'', "\"Internal I2C bus(es)\"", 'true'])
-            self._handle_usage_param_flag(['\'X\'', "\"External I2C bus(es\")", 'true'])
+            self._handle_usage_param_flag(['\'X\'', "\"External I2C bus(es)\"", 'true'])
         if self._is_bool_true(args[1]):
             self._handle_usage_param_flag(['\'s\'', "\"Internal SPI bus(es)\"", 'true'])
             self._handle_usage_param_flag(['\'S\'', "\"External SPI bus(es)\"", 'true'])
@@ -142,6 +142,7 @@ class ModuleDocumentation(object):
             self._handle_usage_param_int(['\'m\'', '-1', '0', '3', "\"SPI mode\"", 'true'])
 
         self._handle_usage_param_int(['\'f\'', '-1', '0', '1000000', "\"bus frequency in kHz\"", 'true'])
+        self._handle_usage_param_flag(['\'q\'', "\"quiet startup (no message if no device found)\"", 'true'])
         self._paring_implicit_options = False
 
     def _handle_usage_params_i2c_address(self, args):

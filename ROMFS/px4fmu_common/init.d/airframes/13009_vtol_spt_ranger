@@ -55,9 +55,9 @@ then
 	param set MPC_TKO_SPEED   1
 	param set MPC_XY_P    0.3
 	param set MPC_XY_VEL_MAX  3
-	param set MPC_XY_VEL_P    0.05
+	param set MPC_XY_VEL_P_ACC 1
 	param set MPC_Z_P 0.5
-	param set MPC_Z_VEL_P 0.1
+	param set MPC_Z_VEL_P_ACC 2
 	param set MPC_YAWRAUTO_MAX 40
 
 	param set NAV_ACC_RAD 3

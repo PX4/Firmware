@@ -118,7 +118,7 @@ class BlinkM : public device::I2C, public I2CSPIDriver<BlinkM>
 {
 public:
 	BlinkM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address);
-	virtual ~BlinkM() = default;
+	~BlinkM() override;
 
 	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
 					     int runtime_instance);
@@ -254,8 +254,8 @@ const char *const BlinkM::script_names[] = {
 extern "C" __EXPORT int blinkm_main(int argc, char *argv[]);
 
 BlinkM::BlinkM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address) :
-	I2C("blinkm", BLINKM0_DEVICE_PATH, bus, address, bus_frequency),
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	I2C(DRV_LED_DEVTYPE_BLINKM, MODULE_NAME, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
 	led_color_1(LED_OFF),
 	led_color_2(LED_OFF),
 	led_color_3(LED_OFF),
@@ -276,6 +276,13 @@ BlinkM::BlinkM(I2CSPIBusOption bus_option, const int bus, int bus_frequency, con
 	led_thread_ready(true),
 	num_of_used_sats(0)
 {
+	// now register the driver
+	register_driver(BLINKM0_DEVICE_PATH, &fops, 0666, (void *)this);
+}
+
+BlinkM::~BlinkM()
+{
+	unregister_driver(BLINKM0_DEVICE_PATH);
 }
 
 int

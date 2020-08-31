@@ -67,106 +67,9 @@
 #define BOARD_ARMED_LED        LED_BLUE
 #define BOARD_ARMED_STATE_LED  LED_GREEN
 
-/**
- *  Define the Chip Selects for SPI1
- *  CS           Devices                                 DRDY
- *  ---- ----------------------------------------------- -----
- *  PC2  MPU9250                                         PD15
- *  PC15 ICM, ICM_20602, ICM_20608                       PC14
- *  PE15 HMC5983                                         PE12
- *  ---- ----------------------------------------------- -----
- */
-#define GPIO_SPI1_CS_PORTC_PIN2      (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN2)
-#define GPIO_SPI1_CS_PORTC_PIN15     (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN15)
-#define GPIO_SPI1_CS_PORTE_PIN15     (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN15)
-
-/* Define the Data Ready interrupts On SPI 1. */
-#define GPIO_DRDY_PORTD_PIN15        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
-#define GPIO_DRDY_PORTC_PIN14        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
-#define GPIO_DRDY_PORTE_PIN12        (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTE|GPIO_PIN12)
-
-
-/* Define the Chip Selects for SPI2. */
-#define GPIO_SPI2_CS_MS5611          (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN7)
-#define GPIO_SPI2_CS_FRAM            (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN10)
-
-/* Define the Chip Selects for SPI4. */
-
 #ifdef CONFIG_STM32_SPI4
 #  define BOARD_HAS_BUS_MANIFEST 1 // We support a bus manifest because spi 4 is optional
-#  define GPIO_SPI4_CS_1         (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN8)  //ESP_RTS_PIN
 #endif /* CONFIG_STM32_SPI4 */
-/**
- * Define the ability to shut off off the sensor signals
- * by changing the signals to inputs.
- */
-#define _PIN_OFF(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_2MHz))
-
-/* SPI 1 bus off. */
-#define GPIO_SPI1_SCK_OFF            _PIN_OFF(GPIO_SPI1_SCK)
-#define GPIO_SPI1_MISO_OFF           _PIN_OFF(GPIO_SPI1_MISO)
-#define GPIO_SPI1_MOSI_OFF           _PIN_OFF(GPIO_SPI1_MOSI)
-
-/* SPI 1 CS's  off. */
-#define GPIO_SPI1_CS_OFF_PORTC_PIN2  _PIN_OFF(GPIO_SPI1_CS_PORTC_PIN2)
-#define GPIO_SPI1_CS_OFF_PORTC_PIN15 _PIN_OFF(GPIO_SPI1_CS_PORTC_PIN15)
-#define GPIO_SPI1_CS_OFF_PORTE_PIN15 _PIN_OFF(GPIO_SPI1_CS_PORTE_PIN15)
-
-/* SPI 1 DRDY's off. */
-#define GPIO_DRDY_OFF_PORTD_PIN15    _PIN_OFF(GPIO_DRDY_PORTD_PIN15)
-#define GPIO_DRDY_OFF_PORTC_PIN14    _PIN_OFF(GPIO_DRDY_PORTC_PIN14)
-#define GPIO_DRDY_OFF_PORTE_PIN12    _PIN_OFF(GPIO_DRDY_PORTE_PIN12)
-
-/* SPI 4 bus off. */
-#ifdef CONFIG_STM32_SPI4
-#  define GPIO_SPI4_SCK_OFF          _PIN_OFF(GPIO_SPI4_SCK)
-#  define GPIO_SPI4_MISO_OFF         _PIN_OFF(GPIO_SPI4_MISO)
-#  define GPIO_SPI4_MOSI_OFF         _PIN_OFF(GPIO_SPI4_MOSI)
-#endif /* CONFIG_STM32_SPI4 */
-
-/**
- * N.B we do not have control over the SPI 2 buss powered devices
- * so the the ms5611 is not resetable.
- *
- */
-
-#define PX4_SPI_BUS_SENSORS          1
-#define PX4_SPI_BUS_RAMTRON          2
-#define PX4_SPI_BUS_BARO             PX4_SPI_BUS_RAMTRON
-
-#ifdef CONFIG_STM32_SPI4
-#  define PX4_SPI_BUS_EXTERNAL       4
-/* The mask passes to init the SPI bus pins
- * N.B This works ONLY with buss numbers that are powers of 2
- * Adding SPI3 would break this!
- */
-#  define   SPI_BUS_INIT_MASK_EXT     PX4_SPI_BUS_EXTERNAL
-#endif /* CONFIG_STM32_SPI4 */
-
-#include <drivers/drv_sensor.h>
-
-/* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
-#define PX4_SPIDEV_MPU               PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU6000)
-#define PX4_SPIDEV_HMC               PX4_MK_SPI_SEL(0, DRV_MAG_DEVTYPE_HMC5883)
-#define PX4_SPIDEV_LIS               PX4_MK_SPI_SEL(0, DRV_MAG_DEVTYPE_LIS3MDL)
-#define PX4_SPIDEV_ICM_20608         PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ICM20608)
-#define PX4_SPIDEV_ICM_20602         PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ICM20602)
-#define PX4_SPIDEV_MPU2              PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250)
-
-/**
- * Onboard MS5611 and FRAM are both on bus SPI2.
- * spi_dev_e:SPIDEV_FLASH has the value 2 and is used in the NuttX ramtron driver.
- * PX4_MK_SPI_SEL  differentiate by adding in PX4_SPI_DEVICE_ID.
- */
-#define PX4_SPIDEV_BARO             PX4_MK_SPI_SEL(0, DRV_BARO_DEVTYPE_MS5611)
-
-#ifdef CONFIG_STM32_SPI4
-#  define PX4_SPIDEV_EXTERNAL       PX4_MK_SPI_SEL(0, 0)
-#endif /* CONFIG_STM32_SPI4 */
-
-/* I2C busses. */
-#define PX4_I2C_BUS_EXPANSION        1
-#define PX4_I2C_BUS_LED              PX4_I2C_BUS_EXPANSION
 
 /**
  * ADC channels:
@@ -277,8 +180,8 @@
 
 #define BOARD_HAS_PWM    DIRECT_PWM_OUTPUT_CHANNELS
 
-/* This board provides a DMA pool and APIs. */
-#define BOARD_DMA_ALLOC_POOL_SIZE (5120 + 512 + 1024)	// 5120 fat + 512 + 1024 spi
+/* This board provides a DMA pool and APIs */
+#define BOARD_DMA_ALLOC_POOL_SIZE 5120
 
 #define BOARD_HAS_ON_RESET 1
 

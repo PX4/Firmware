@@ -95,7 +95,7 @@ private:
 
 	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};
 	uORB::Subscription _landing_gear_sub{ORB_ID(landing_gear)};
-	uORB::Subscription _manual_control_sp_sub{ORB_ID(manual_control_setpoint)};
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _motor_limits_sub{ORB_ID(multirotor_motor_limits)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription _v_control_mode_sub{ORB_ID(vehicle_control_mode)};
@@ -107,12 +107,12 @@ private:
 	uORB::SubscriptionCallbackWorkItem _vehicle_angular_velocity_sub{this, ORB_ID(vehicle_angular_velocity)};
 
 	uORB::Publication<actuator_controls_s>		_actuators_0_pub;
-	uORB::PublicationMulti<rate_ctrl_status_s>	_controller_status_pub{ORB_ID(rate_ctrl_status), ORB_PRIO_DEFAULT};	/**< controller status publication */
+	uORB::PublicationMulti<rate_ctrl_status_s>	_controller_status_pub{ORB_ID(rate_ctrl_status)};	/**< controller status publication */
 	uORB::Publication<landing_gear_s>		_landing_gear_pub{ORB_ID(landing_gear)};
 	uORB::Publication<vehicle_rates_setpoint_s>	_v_rates_sp_pub{ORB_ID(vehicle_rates_setpoint)};			/**< rate setpoint publication */
 
 	landing_gear_s 			_landing_gear{};
-	manual_control_setpoint_s	_manual_control_sp{};
+	manual_control_setpoint_s	_manual_control_setpoint{};
 	vehicle_control_mode_s		_v_control_mode{};
 	vehicle_status_s		_vehicle_status{};
 

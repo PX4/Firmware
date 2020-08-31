@@ -22,10 +22,10 @@ void BlockLocalPositionEstimator::flowInit()
 
 	// if finished
 	if (_flowQStats.getCount() > REQ_FLOW_INIT_COUNT) {
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] flow init: "
-					     "quality %d std %d",
-					     int(_flowQStats.getMean()(0)),
-					     int(_flowQStats.getStdDev()(0)));
+		mavlink_log_info(&mavlink_log_pub, "[lpe] flow init: "
+				 "quality %d std %d",
+				 int(_flowQStats.getMean()(0)),
+				 int(_flowQStats.getStdDev()(0)));
 		_sensorTimeout &= ~SENSOR_FLOW;
 		_sensorFault &= ~SENSOR_FLOW;
 	}
@@ -185,13 +185,13 @@ void BlockLocalPositionEstimator::flowCorrect()
 
 	if (beta > BETA_TABLE[n_y_flow]) {
 		if (!(_sensorFault & SENSOR_FLOW)) {
-			mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] flow fault,  beta %5.2f", double(beta));
+			mavlink_log_info(&mavlink_log_pub, "[lpe] flow fault,  beta %5.2f", double(beta));
 			_sensorFault |= SENSOR_FLOW;
 		}
 
 	} else if (_sensorFault & SENSOR_FLOW) {
 		_sensorFault &= ~SENSOR_FLOW;
-		mavlink_and_console_log_info(&mavlink_log_pub, "[lpe] flow OK");
+		mavlink_log_info(&mavlink_log_pub, "[lpe] flow OK");
 	}
 
 	if (!(_sensorFault & SENSOR_FLOW)) {

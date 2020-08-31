@@ -17,17 +17,17 @@ then
 	# GPS LED
 	rgbled_ncp5623c start -X -a 0x38
 
-	#mpu6000 -s -R 4 -T 20608 start
-	mpu9250 -R 4 start
+	#icm20608g -s -R 10 start
+	mpu9250 start -s -R 10
 
 	# Default GNSS with LIS3MDL magnetometer with external i2c.
-	lis3mdl -R 2 -X start
+	lis3mdl start -R 2 -X
 fi
 
 # Draco
 if param compare SYS_AUTOSTART 4072
 then
-	mpu9250 -R 2 start
+	mpu9250 start -s -R 8
 fi
 
 # IFO
@@ -37,8 +37,22 @@ then
 	rgbled_ncp5623c start -X -a 0x38
 
 	# IFO rgb LED
-	pca9685 start
+	pca9685 -X start
 
-	mpu9250 -R 2 start
-	lis3mdl -R 2 -X start
+	mpu9250 start -s -R 8
+	lis3mdl start -R 2 -X
+fi
+
+# IFO-S
+if param compare SYS_AUTOSTART 4073
+then
+	# IFO GPS LED
+	rgbled_ncp5623c start -X -a 0x38
+
+	# IMU
+	mpu9250 start -s -R 8
+	lis3mdl start -R 2 -X
+
+	# FLOW on SPI2
+	pmw3901 start -s -b 2
 fi

@@ -31,14 +31,15 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__qmc5883
+	MODULE drivers__magnetometer__qmc5883
 	MAIN qmc5883
 	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
 	SRCS
-		qmc5883_i2c.cpp
-		qmc5883_spi.cpp
-		qmc5883.cpp
+		QMC5883_I2C.cpp
+		QMC5883.cpp
+		QMC5883.hpp
+		qmc5883_main.cpp
 	DEPENDS
+		drivers_magnetometer
 		px4_work_queue
 	)

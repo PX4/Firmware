@@ -34,9 +34,11 @@
 /**
  * @file voxlpm.hpp
  *
- * Shared defines for the voxlpm (QTY2 LTC2946) driver.
+ * Shared defines for the voxlpm driver.
  *
  * This is roughly what's goin on:
+ *
+ * - VOXLPM v2 (QTY2 LTC2946) -
  *
  *             +~~~~~~~~~~~~~~+
  *  VBATT -----| RSENSE_VBATT | ----------+---------------------> VBATT TO ESCS
@@ -52,6 +54,24 @@
  *     #################              #################
  *     # LTC2946, 0x6a #              # LTC2946, 0x6b #
  *     #################              #################
+ *
+  * - VOXLPM v3 (QTY2 INA231) -
+ *
+ *             +~~~~~~~~~~~~~~+
+ *  VBATT -----| RSENSE_VBATT | ----------+---------------------> VBATT TO ESCS
+ *     |       +~~~~~~~~~~~~~~+           |
+ *     |              |          +--------+------+
+ *     +----+    +----+          | 5/12V REGULATOR  |
+ *          |    |               +--------+------+
+ *          |    |                        |   +~~~~~~~~~~~~~~+
+ *          |    |                        +---| RSENSE_5VOUT |---> 5/12VDC TO COMPUTE/PERIPHERAL
+ *          |    |                        |   +~~~~~~~~~~~~~~+
+ *          |    |                        |         |
+ *         V|    |A                      V|         |A
+ *     #################              #################
+ *     # INA231, 0x44  #              # INA231, 0x45  #
+ *     #################              #################
+ *
  *
  *     Publishes:                     Publishes:
  *     - ORB_ID(battery_status)
@@ -69,12 +89,15 @@
 
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/power_monitor.h>
 #include <uORB/topics/parameter_update.h>
 
+using namespace time_literals;
+
 /*
- * Note that these are unshifted addresses.
+ * VOXLPM v2 - Note that these are unshifted addresses.
  */
 #define VOXLPM_LTC2946_ADDR_VBATT		0x6a // 0x6a  = 0xd4 >> 1
 #define VOXLPM_LTC2946_ADDR_P5VD		0x6b // 0x6b  = 0xd6 >> 1
@@ -85,6 +108,7 @@
 #define VOXLPM_LTC2946_POWER_MSB2_REG		0x05
 #define VOXLPM_LTC2946_CTRLB_MSG1_REG		0x06
 #define VOXLPM_LTC2946_CTRLB_LSB_REG		0x07
+#define VOXLPM_LTC2946_STATUS_REG		0x80
 
 #define VOXLPM_LTC2946_DELTA_SENSE_MSB_REG	0x14
 #define VOXLPM_LTC2946_DELTA_SENSE_LSB_REG	0x15
@@ -104,7 +128,7 @@
  * 2:0 - [Channel Configuration]
  *       000 --> Alternate Voltage, Current Measurement
  */
-#define DEFAULT_CTRLA_REG_VAL			0x18
+#define DEFAULT_LTC2946_CTRLA_REG_VAL		0x18
 
 /*
  * CTRLB (Address 0x01 - LTC2946_CTRLA_REG)
@@ -122,7 +146,7 @@
  * 1:0 - [Auto-Reset Mode/Reset]
  *       01 --> Enable Auto-Reset
  */
-#define DEFAULT_CTRLB_REG_VAL			0x01
+#define DEFAULT_LTC2946_CTRLB_REG_VAL		0x01
 
 /* 12 bits */
 #define VOXLPM_LTC2946_RESOLUTION 		4095.0f
@@ -134,14 +158,67 @@
 #define VOXLPM_LTC2946_VFS_DELTA_SENSE 		0.1024f
 
 /* Power sense resistor for battery current */
-#define VOXLPM_RSENSE_VBATT			0.0005f
+#define VOXLPM_LTC2946_VBAT_SHUNT		0.0005f
 
 /* Power sense resistor for 5VDC output current */
-#define VOXLPM_RSENSE_5VOUT			0.005f
+#define VOXLPM_LTC2946_VREG_SHUNT		0.005f
+
+/*
+ * VOXLPM v3 - Coniguration from SBOS644C –FEBRUARY 2013–REVISED MARCH 2018
+ *             http://www.ti.com/lit/ds/symlink/ina231.pdf
+ */
+#define VOXLPM_INA231_ADDR_VBATT		0x44
+#define VOXLPM_INA231_ADDR_P5_12VDC		0x45
+
+/* INA231 Registers addresses */
+#define INA231_REG_CONFIG			0x00
+#define INA231_REG_SHUNTVOLTAGE			0x01
+#define INA231_REG_BUSVOLTAGE			0x02
+#define INA231_REG_POWER			0x03
+#define INA231_REG_CURRENT			0x04
+#define INA231_REG_CALIBRATION			0x05
+#define INA231_REG_MASKENABLE			0x06
+#define INA231_REG_ALERTLIMIT			0x07
+
+/* [0:2] Mode - Shunt and bus, 111, continuous (INA231A default) */
+#define INA231_CONFIG_MODE			(0x07 << 0)
+/* [5:3] Shunt Voltage Conversion Time, 100, 1.1ms (INA231A default) */
+#define INA231_CONFIG_SHUNT_CT			(0x04 << 3)
+/* [8:6] Shunt Voltage Conversion Time, 100, 1.1ms (INA231A default) */
+#define INA231_CONFIG_BUS_CT			(0x04 << 6)
+/* [11:9] Averaging Mode, 010, 16 */
+#define INA231_CONFIG_AVG			(0x02 << 9)
+/* [1] Reset bit */
+#define INA231_RST_BIT				(0x01 << 15)
+/* Configuration register settings */
+#define INA231_CONFIG				(INA231_CONFIG_MODE+INA231_CONFIG_SHUNT_CT+INA231_CONFIG_BUS_CT+INA231_CONFIG_AVG)
+
+#define INA231_CONST				0.00512f  /* is an internal fixed value used to ensure scaling is maintained properly  */
+#define INA231_VBUSSCALE			0.00125f  /* LSB of bus voltage is 1.25 mV  */
+#define INA231_VSHUNTSCALE			0.0000025f /* LSB of shunt voltage is 2.5 uV  */
+
+/* From SCH-M00041 REVB */
+#define VOXLPM_INA231_VBAT_SHUNT		0.0005f   /* VBAT shunt is 500 micro-ohm */
+#define VOXLPM_INA231_VREG_SHUNT		0.005f    /* VREG output shunt is 5 milli-ohm */
+#define VOXLPM_INA231_VBAT_MAX_AMPS		90.0f     /* 90.0 Amps max through VBAT sense resistor */
+#define VOXLPM_INA231_VREG_MAX_AMPS		6.0f      /* 6.0 Amps max through VREG sense resistor */
+
+/* ina231.pdf section 8.5 */
+#define VOXLPM_INA231_VBAT_I_LSB		(VOXLPM_INA231_VBAT_MAX_AMPS/32768.0f)
+#define VOXLPM_INA231_VREG_I_LSB		(VOXLPM_INA231_VREG_MAX_AMPS/32768.0f)
+
+#define swap16(w)				__builtin_bswap16((w))
+
+enum VOXLPM_TYPE {
+	VOXLPM_UNKOWN,
+	VOXLPM_TYPE_V2_LTC,
+	VOXLPM_TYPE_V3_INA
+};
 
 enum VOXLPM_CH_TYPE {
 	VOXLPM_CH_TYPE_VBATT = 0,
-	VOXLPM_CH_TYPE_P5VDC
+	VOXLPM_CH_TYPE_P5VDC,
+	VOXLPM_CH_TYPE_P12VDC
 };
 
 class VOXLPM : public device::I2C, public ModuleParams, public I2CSPIDriver<VOXLPM>
@@ -155,29 +232,46 @@ public:
 	static void print_usage();
 
 	virtual int		init();
+	int			force_init();
 	void			print_status() override;
 
 	void 			RunImpl();
+
 private:
+	int			probe() override;
 	void 			start();
 	int 			measure();
+	int 			load_params(VOXLPM_TYPE pm_type, VOXLPM_CH_TYPE ch_type);
+	int 			init_ltc2946();
+	int 			init_ina231();
+	int 			measure_ltc2946();
+	int 			measure_ina231();
 
-	static constexpr unsigned 		_meas_interval{100000}; // 100ms
+	bool			_initialized;
+	static constexpr unsigned _meas_interval_us{100_ms};
 	perf_counter_t		_sample_perf;
+	perf_counter_t		_comms_errors;
 
 	uORB::PublicationMulti<power_monitor_s>		_pm_pub_topic{ORB_ID(power_monitor)};
 	uORB::Subscription _parameter_sub{ORB_ID(parameter_update)};
 
 	power_monitor_s 	_pm_status{};
 
+	VOXLPM_TYPE		_pm_type{VOXLPM_UNKOWN};
 	const VOXLPM_CH_TYPE	_ch_type;
 	float			_voltage{0.0f};
 	float			_amperage{0.0f};
-	float			_rsense{0.0f};
+	float			_rshunt{0.0005f};
+	float			_vshunt{0.0f};
+	float			_vshuntamps{0.0f};
+	int16_t			_cal{0};
 
 	Battery 		_battery;
+	uORB::Subscription	_actuators_sub{ORB_ID(actuator_controls_0)};
+	actuator_controls_s	_actuator_controls{};
 
 	uint8_t 		read_reg(uint8_t addr);
 	int 			read_reg_buf(uint8_t addr, uint8_t *buf, uint8_t len);
-	int 			write_reg(uint8_t value, uint8_t addr);
+	int 			write_reg(uint8_t addr, uint8_t value);
+	int 			write_word_swapped(uint8_t addr, uint16_t value);
 };

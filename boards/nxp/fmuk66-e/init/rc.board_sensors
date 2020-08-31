@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# NXP fmuk66-e specific board defaults
+#------------------------------------------------------------------------------
+
+adc start
+
+# Internal Mag I2C bus roll 180, yaw 90
+bmm150 -I -R 10 start
+
+# Onboard I2C baros
+bmp280 -I start
+
+# Internal SPI (accel + mag)
+bmi088 -A -R 4 -s start
+bmi088 -G -R 4 -s start
+
+# Internal SPI bus ICM-42688
+icm42688p -R 12 -s start

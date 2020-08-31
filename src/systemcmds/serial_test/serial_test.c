@@ -516,7 +516,7 @@ static void dump_serial_port_stats(void)
 #if !defined(__PX4_NUTTX)
 	struct serial_icounter_struct icount = { 0 };
 
-	int ret = ioctl(_fd, TIOCGICOUNT, &icount);
+	int ret = ioctl(g_mod._fd, TIOCGICOUNT, &icount);
 
 	if (ret != -1) {
 		printf("%s: TIOCGICOUNT: ret=%i, rx=%i, tx=%i, frame = %i, overrun = %i, parity = %i, brk = %i, buf_overrun = %i\n",

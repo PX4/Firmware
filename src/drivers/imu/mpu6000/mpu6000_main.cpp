@@ -162,7 +162,7 @@ mpu6000_main(int argc, char *argv[])
 		break;
 
 	case MPU_DEVICE_TYPE_ICM20608:
-		dev_type_driver = DRV_IMU_DEVTYPE_ICM20608;
+		dev_type_driver = DRV_IMU_DEVTYPE_ICM20608G;
 		break;
 
 	case MPU_DEVICE_TYPE_ICM20689:

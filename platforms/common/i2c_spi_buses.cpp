@@ -86,6 +86,7 @@ int BusCLIArguments::getopt(int argc, char *argv[], const char *options)
 
 		*(p++) = 'b'; *(p++) = ':'; // bus
 		*(p++) = 'f'; *(p++) = ':'; // frequency
+		*(p++) = 'q'; // quiet flag
 
 		// copy all options
 		const char *option = options;
@@ -156,6 +157,10 @@ int BusCLIArguments::getopt(int argc, char *argv[], const char *options)
 
 		case 'm':
 			spi_mode = (spi_mode_e)atoi(_optarg);
+			break;
+
+		case 'q':
+			quiet_start = true;
 			break;
 
 		default:
@@ -392,6 +397,19 @@ bool BusInstanceIterator::external() const
 	}
 }
 
+int BusInstanceIterator::externalBusIndex() const
+{
+	if (busType() == BOARD_INVALID_BUS) {
+		return 0;
+
+	} else if (busType() == BOARD_SPI_BUS) {
+		return _spi_bus_iterator.externalBusIndex();
+
+	} else {
+		return _i2c_bus_iterator.externalBusIndex();
+	}
+}
+
 I2CBusIterator::FilterType BusInstanceIterator::i2cFilter(I2CSPIBusOption bus_option)
 {
 	switch (bus_option) {
@@ -476,25 +494,47 @@ int I2CSPIDriverBase::module_start(const BusCLIArguments &cli, BusInstanceIterat
 			continue;
 		}
 
+		if (cli.i2c_address != 0 && instance->_i2c_address == 0) {
+			PX4_ERR("Bug: driver %s does not pass the I2C address to I2CSPIDriverBase", instance->ItemName());
+		}
+
 		iterator.addInstance(instance);
 		started = true;
 
 		// print some info that we are running
 		switch (iterator.busType()) {
 		case BOARD_I2C_BUS:
-			PX4_INFO_RAW("%s #%i on I2C bus %d%s\n",
-				     instance->ItemName(), runtime_instance, iterator.bus(), iterator.external() ? " (external)" : "");
+			PX4_INFO_RAW("%s #%i on I2C bus %d", instance->ItemName(), runtime_instance, iterator.bus());
+
+			if (iterator.external()) {
+				PX4_INFO_RAW(" (external, equal to '-b %i')\n", iterator.externalBusIndex());
+
+			} else {
+				PX4_INFO_RAW("\n");
+			}
+
 			break;
 
 		case BOARD_SPI_BUS:
-			PX4_INFO_RAW("%s #%i on SPI bus %d (devid=0x%x)%s\n",
-				     instance->ItemName(), runtime_instance, iterator.bus(), PX4_SPI_DEV_ID(iterator.devid()),
-				     iterator.external() ? " (external)" : "");
+			PX4_INFO_RAW("%s #%i on SPI bus %d (devid=0x%x)",
+				     instance->ItemName(), runtime_instance, iterator.bus(), PX4_SPI_DEV_ID(iterator.devid()));
+
+			if (iterator.external()) {
+				PX4_INFO_RAW(" (external, equal to '-b %i')\n", iterator.externalBusIndex());
+
+			} else {
+				PX4_INFO_RAW("\n");
+			}
+
 			break;
 
 		case BOARD_INVALID_BUS:
 			break;
 		}
+	}
+
+	if (!started && !cli.quiet_start) {
+		PX4_WARN("%s: no instance started (no device on bus?)", px4_get_taskname());
 	}
 
 	return started ? 0 : -1;

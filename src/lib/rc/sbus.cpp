@@ -288,7 +288,7 @@ sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_fails
 	 * so we detect frame boundaries by the inter-frame delay.
 	 *
 	 * The minimum frame spacing is 7ms; with 25 bytes at 100000bps
-	 * frame transmission time is ~2ms.
+	 * frame transmission time is 3ms.
 	 *
 	 * We expect to only be called when bytes arrive for processing,
 	 * and if an interval of more than 3ms passes between calls,

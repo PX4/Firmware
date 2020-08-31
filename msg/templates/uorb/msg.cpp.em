@@ -89,6 +89,9 @@ void print_message(const @uorb_struct &message)
 	PX4_INFO_RAW("Not implemented on flash constrained hardware\n");
 @[else]
 	PX4_INFO_RAW(" @(uorb_struct)\n");
+
+	const hrt_abstime now = hrt_absolute_time();
+
 @[for field in sorted_fields]@
 	@( print_field(field) )@
 @[end for]@

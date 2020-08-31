@@ -34,4 +34,3 @@
 
 
 #include "../../../imxrt/include/px4_arch/io_timer_hw_description.h"
-

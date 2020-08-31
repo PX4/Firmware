@@ -150,4 +150,3 @@ __EXPORT uint32_t io_timer_channel_get_as_pwm_input(unsigned channel);
 
 
 __END_DECLS
-

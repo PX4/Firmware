@@ -36,11 +36,12 @@
  * Implementation of the API declared in px4_shutdown.h.
  */
 
-#include <board_config.h>
-
+#include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/workqueue.h>
 #include <px4_platform_common/shutdown.h>
 #include <px4_platform_common/tasks.h>
+
+#include <drivers/drv_hrt.h>
 
 #ifndef MODULE_NAME
 #define MODULE_NAME "shutdown"
@@ -51,6 +52,12 @@
 #include <stdint.h>
 #include <errno.h>
 #include <pthread.h>
+
+#ifdef __PX4_NUTTX
+#include <nuttx/board.h>
+#endif
+
+using namespace time_literals;
 
 static pthread_mutex_t shutdown_mutex =
 	PTHREAD_MUTEX_INITIALIZER; // protects access to shutdown_hooks & shutdown_lock_counter
@@ -86,39 +93,7 @@ int px4_shutdown_unlock()
 	return ret;
 }
 
-
-#if (defined(__PX4_NUTTX) && !defined(CONFIG_SCHED_WORKQUEUE)) || __PX4_QURT
-// minimal NuttX/QuRT build without work queue support
-
-int px4_register_shutdown_hook(shutdown_hook_t hook)
-{
-	return -EINVAL;
-}
-
-int px4_unregister_shutdown_hook(shutdown_hook_t hook)
-{
-	return -EINVAL;
-}
-
-int px4_shutdown_request(bool reboot, bool to_bootloader)
-{
-	int ret = 0;
-	pthread_mutex_lock(&shutdown_mutex);
-
-	// FIXME: if shutdown_lock_counter > 0, we should wait, but unfortunately we don't have work queues
-	if (reboot) {
-		px4_systemreset(to_bootloader);
-
-	} else {
-		ret = board_shutdown();
-	}
-
-	pthread_mutex_unlock(&shutdown_mutex);
-
-	return ret;
-}
-
-#else
+#if defined(CONFIG_SCHED_WORKQUEUE)
 
 static struct work_s shutdown_work = {};
 static uint16_t shutdown_counter = 0; ///< count how many times the shutdown worker was executed
@@ -128,20 +103,12 @@ static uint16_t shutdown_counter = 0; ///< count how many times the shutdown wor
 #define SHUTDOWN_ARG_TO_BOOTLOADER (1<<2)
 static uint8_t shutdown_args = 0;
 
-
-static const int max_shutdown_hooks = 1;
+static constexpr int max_shutdown_hooks = 1;
 static shutdown_hook_t shutdown_hooks[max_shutdown_hooks] = {};
 
-
-static const int shutdown_timeout_ms = 5000; ///< force shutdown after this time if modules do not respond in time
-
-
-/**
- * work queue callback method to shutdown.
- * @param arg unused
- */
-static void shutdown_worker(void *arg);
-
+static hrt_abstime shutdown_time_us = 0;
+static constexpr hrt_abstime shutdown_timeout_us =
+	5_s; ///< force shutdown after this time if modules do not respond in time
 
 int px4_register_shutdown_hook(shutdown_hook_t hook)
 {
@@ -175,9 +142,11 @@ int px4_unregister_shutdown_hook(shutdown_hook_t hook)
 	return -EINVAL;
 }
 
-
-
-void shutdown_worker(void *arg)
+/**
+ * work queue callback method to shutdown.
+ * @param arg unused
+ */
+static void shutdown_worker(void *arg)
 {
 	PX4_DEBUG("shutdown worker (%i)", shutdown_counter);
 	bool done = true;
@@ -192,14 +161,29 @@ void shutdown_worker(void *arg)
 		}
 	}
 
-	if ((done && shutdown_lock_counter == 0) || ++shutdown_counter > shutdown_timeout_ms / 10) {
+	const hrt_abstime now = hrt_absolute_time();
+	const bool delay_elapsed = (now > shutdown_time_us);
+
+	if (delay_elapsed && ((done && shutdown_lock_counter == 0) || (now > (shutdown_time_us + shutdown_timeout_us)))) {
 		if (shutdown_args & SHUTDOWN_ARG_REBOOT) {
-			PX4_WARN("Reboot NOW.");
-			px4_systemreset(shutdown_args & SHUTDOWN_ARG_TO_BOOTLOADER);
+#if defined(CONFIG_BOARDCTL_RESET)
+			PX4_INFO_RAW("Reboot NOW.");
+			board_reset((shutdown_args & SHUTDOWN_ARG_TO_BOOTLOADER) ? 1 : 0);
+#else
+			PX4_PANIC("board reset not available");
+#endif
 
 		} else {
-			PX4_WARN("Shutdown NOW. Good Bye.");
-			board_shutdown();
+#if defined(CONFIG_BOARDCTL_POWEROFF)
+			PX4_INFO_RAW("Powering off NOW.");
+			board_power_off(0);
+#elif !defined(CONFIG_BOARDCTL_POWEROFF) && defined(__PX4_POSIX)
+			// simply exit on posix if real shutdown (poweroff) not available
+			PX4_INFO_RAW("Exiting NOW.");
+			system_exit(0);
+#else
+			PX4_PANIC("board shutdown not available");
+#endif
 		}
 
 		pthread_mutex_unlock(&shutdown_mutex); // must NEVER come here
@@ -210,40 +194,56 @@ void shutdown_worker(void *arg)
 	}
 }
 
-int px4_shutdown_request(bool reboot, bool to_bootloader)
+#if defined(CONFIG_BOARDCTL_RESET)
+int px4_reboot_request(bool to_bootloader, uint32_t delay_us)
 {
-	// fail immediately if the board does not support the requested method
-#if defined BOARD_HAS_NO_RESET
-	if (reboot) {
-		return -EINVAL;
-	}
-
-#endif
-#if !defined(BOARD_HAS_POWER_CONTROL)
-
-	if (!reboot) {
-		return -EINVAL;
-	}
-
-#endif
+	pthread_mutex_lock(&shutdown_mutex);
 
 	if (shutdown_args & SHUTDOWN_ARG_IN_PROGRESS) {
+		pthread_mutex_unlock(&shutdown_mutex);
 		return 0;
 	}
 
-	shutdown_args |= SHUTDOWN_ARG_IN_PROGRESS;
-
-	if (reboot) {
-		shutdown_args |= SHUTDOWN_ARG_REBOOT;
-	}
+	shutdown_args |= SHUTDOWN_ARG_REBOOT;
 
 	if (to_bootloader) {
 		shutdown_args |= SHUTDOWN_ARG_TO_BOOTLOADER;
 	}
 
-	shutdown_worker(nullptr);
+	shutdown_time_us = hrt_absolute_time();
+
+	if (delay_us > 0) {
+		shutdown_time_us += delay_us;
+	}
+
+	work_queue(HPWORK, &shutdown_work, (worker_t)&shutdown_worker, nullptr, 1);
+	pthread_mutex_unlock(&shutdown_mutex);
 	return 0;
 }
+#endif // CONFIG_BOARDCTL_RESET
 
+#if defined(CONFIG_BOARDCTL_POWEROFF) || defined(__PX4_POSIX)
+int px4_shutdown_request(uint32_t delay_us)
+{
+	pthread_mutex_lock(&shutdown_mutex);
 
-#endif /* (defined(__PX4_NUTTX) && !defined(CONFIG_SCHED_WORKQUEUE)) || __PX4_QURT */
+	if (shutdown_args & SHUTDOWN_ARG_IN_PROGRESS) {
+		pthread_mutex_unlock(&shutdown_mutex);
+		return 0;
+	}
+
+	shutdown_args |= SHUTDOWN_ARG_IN_PROGRESS;
+
+	shutdown_time_us = hrt_absolute_time();
+
+	if (delay_us > 0) {
+		shutdown_time_us += delay_us;
+	}
+
+	work_queue(HPWORK, &shutdown_work, (worker_t)&shutdown_worker, nullptr, 1);
+	pthread_mutex_unlock(&shutdown_mutex);
+	return 0;
+}
+#endif // CONFIG_BOARDCTL_POWEROFF
+
+#endif // CONFIG_SCHED_WORKQUEUE)

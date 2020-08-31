@@ -43,6 +43,8 @@
 
 #include "board_config.h"
 
+#include <px4_platform_common/init.h>
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -87,6 +89,9 @@ int board_app_initialize(uintptr_t arg)
 
 	return OK;
 #else
+
+	px4_platform_init();
+
 	/* Perform board-specific initialization */
 
 	return s32k1xx_bringup();

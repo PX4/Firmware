@@ -50,6 +50,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_accel.h>
 #include <uORB/topics/sensor_gyro.h>
+#include <uORB/topics/sensor_gyro_fifo.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
 
@@ -80,6 +81,7 @@ void unlock()
 		reset(); \
 		perf_counter_t p = perf_alloc(PC_ELAPSED, name); \
 		for (int i = 0; i < count; i++) { \
+			px4_usleep(1); \
 			lock(); \
 			perf_begin(p); \
 			op; \
@@ -106,6 +108,7 @@ private:
 	vehicle_status_s status;
 	vehicle_local_position_s lpos;
 	sensor_gyro_s gyro;
+	sensor_gyro_fifo_s gyro_fifo;
 };
 
 bool MicroBenchORB::run_tests()
@@ -135,6 +138,8 @@ void MicroBenchORB::reset()
 	lpos.dist_bottom_valid = rand();
 
 	gyro.timestamp = rand();
+
+	gyro_fifo.timestamp = rand();
 }
 
 ut_declare_test_c(test_microbench_uorb, MicroBenchORB)
@@ -144,23 +149,29 @@ bool MicroBenchORB::time_px4_uorb()
 	int fd_status = orb_subscribe(ORB_ID(vehicle_status));
 	int fd_lpos = orb_subscribe(ORB_ID(vehicle_local_position));
 	int fd_gyro = orb_subscribe(ORB_ID(sensor_gyro));
+	int fd_gyro_fifo = orb_subscribe(ORB_ID(sensor_gyro_fifo));
 
 	int ret = 0;
 	bool updated = false;
 	uint64_t time = 0;
 
-	PERF("orb_check vehicle_status", ret = orb_check(fd_status, &updated), 1000);
-	PERF("orb_copy vehicle_status", ret = orb_copy(ORB_ID(vehicle_status), fd_status, &status), 1000);
+	PERF("orb_check vehicle_status", ret = orb_check(fd_status, &updated), 100);
+	PERF("orb_copy vehicle_status", ret = orb_copy(ORB_ID(vehicle_status), fd_status, &status), 100);
 
 	printf("\n");
 
-	PERF("orb_check vehicle_local_position", ret = orb_check(fd_lpos, &updated), 1000);
-	PERF("orb_copy vehicle_local_position", ret = orb_copy(ORB_ID(vehicle_local_position), fd_lpos, &lpos), 1000);
+	PERF("orb_check vehicle_local_position", ret = orb_check(fd_lpos, &updated), 100);
+	PERF("orb_copy vehicle_local_position", ret = orb_copy(ORB_ID(vehicle_local_position), fd_lpos, &lpos), 100);
 
 	printf("\n");
 
-	PERF("orb_check sensor_gyro", ret = orb_check(fd_gyro, &updated), 1000);
-	PERF("orb_copy sensor_gyro", ret = orb_copy(ORB_ID(sensor_gyro), fd_gyro, &gyro), 1000);
+	PERF("orb_check sensor_gyro", ret = orb_check(fd_gyro, &updated), 100);
+	PERF("orb_copy sensor_gyro", ret = orb_copy(ORB_ID(sensor_gyro), fd_gyro, &gyro), 100);
+
+	printf("\n");
+
+	PERF("orb_check sensor_gyro_fifo", ret = orb_check(fd_gyro_fifo, &updated), 100);
+	PERF("orb_copy sensor_gyro_fifo", ret = orb_copy(ORB_ID(sensor_gyro_fifo), fd_gyro_fifo, &gyro_fifo), 100);
 
 	printf("\n");
 
@@ -179,6 +190,7 @@ bool MicroBenchORB::time_px4_uorb()
 	orb_unsubscribe(fd_status);
 	orb_unsubscribe(fd_lpos);
 	orb_unsubscribe(fd_gyro);
+	orb_unsubscribe(fd_gyro_fifo);
 
 	return true;
 }
@@ -190,41 +202,48 @@ bool MicroBenchORB::time_px4_uorb_direct()
 	uint64_t time = 0;
 
 	uORB::Subscription vstatus{ORB_ID(vehicle_status)};
-	PERF("uORB::Subscription orb_check vehicle_status", ret = vstatus.updated(), 1000);
-	PERF("uORB::Subscription orb_copy vehicle_status", ret = vstatus.copy(&status), 1000);
+	PERF("uORB::Subscription orb_check vehicle_status", ret = vstatus.updated(), 100);
+	PERF("uORB::Subscription orb_copy vehicle_status", ret = vstatus.copy(&status), 100);
 
 	printf("\n");
 
 	uORB::Subscription local_pos{ORB_ID(vehicle_local_position)};
-	PERF("uORB::Subscription orb_check vehicle_local_position", ret = local_pos.updated(), 1000);
-	PERF("uORB::Subscription orb_copy vehicle_local_position", ret = local_pos.copy(&lpos), 1000);
+	PERF("uORB::Subscription orb_check vehicle_local_position", ret = local_pos.updated(), 100);
+	PERF("uORB::Subscription orb_copy vehicle_local_position", ret = local_pos.copy(&lpos), 100);
 
 	{
 		printf("\n");
 		uORB::Subscription sens_gyro0{ORB_ID(sensor_gyro), 0};
-		PERF("uORB::Subscription orb_check sensor_gyro:0", ret = sens_gyro0.updated(), 1000);
-		PERF("uORB::Subscription orb_copy sensor_gyro:0", ret = sens_gyro0.copy(&gyro), 1000);
+		PERF("uORB::Subscription orb_check sensor_gyro:0", ret = sens_gyro0.updated(), 100);
+		PERF("uORB::Subscription orb_copy sensor_gyro:0", ret = sens_gyro0.copy(&gyro), 100);
 	}
 
 	{
 		printf("\n");
 		uORB::Subscription sens_gyro1{ORB_ID(sensor_gyro), 1};
-		PERF("uORB::Subscription orb_check sensor_gyro:1", ret = sens_gyro1.updated(), 1000);
-		PERF("uORB::Subscription orb_copy sensor_gyro:1", ret = sens_gyro1.copy(&gyro), 1000);
+		PERF("uORB::Subscription orb_check sensor_gyro:1", ret = sens_gyro1.updated(), 100);
+		PERF("uORB::Subscription orb_copy sensor_gyro:1", ret = sens_gyro1.copy(&gyro), 100);
 	}
 
 	{
 		printf("\n");
 		uORB::Subscription sens_gyro2{ORB_ID(sensor_gyro), 2};
-		PERF("uORB::Subscription orb_check sensor_gyro:2", ret = sens_gyro2.updated(), 1000);
-		PERF("uORB::Subscription orb_copy sensor_gyro:2", ret = sens_gyro2.copy(&gyro), 1000);
+		PERF("uORB::Subscription orb_check sensor_gyro:2", ret = sens_gyro2.updated(), 100);
+		PERF("uORB::Subscription orb_copy sensor_gyro:2", ret = sens_gyro2.copy(&gyro), 100);
 	}
 
 	{
 		printf("\n");
 		uORB::Subscription sens_gyro3{ORB_ID(sensor_gyro), 3};
-		PERF("uORB::Subscription orb_check sensor_gyro:3", ret = sens_gyro3.updated(), 1000);
-		PERF("uORB::Subscription orb_copy sensor_gyro:3", ret = sens_gyro3.copy(&gyro), 1000);
+		PERF("uORB::Subscription orb_check sensor_gyro:3", ret = sens_gyro3.updated(), 100);
+		PERF("uORB::Subscription orb_copy sensor_gyro:3", ret = sens_gyro3.copy(&gyro), 100);
+	}
+
+	{
+		printf("\n");
+		uORB::Subscription sens_gyro_fifo0{ORB_ID(sensor_gyro_fifo), 0};
+		PERF("uORB::Subscription orb_check sensor_gyro_fifo:0", ret = sens_gyro_fifo0.updated(), 100);
+		PERF("uORB::Subscription orb_copy sensor_gyro_fifo:0", ret = sens_gyro_fifo0.copy(&gyro_fifo), 100);
 	}
 
 	return true;

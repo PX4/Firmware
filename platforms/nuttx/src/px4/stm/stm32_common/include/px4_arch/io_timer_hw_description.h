@@ -274,4 +274,3 @@ static inline constexpr io_timers_t initIOTimer(Timer::Timer timer, DMA dshot_dm
 
 	return ret;
 }
-

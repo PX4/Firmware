@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # @name Spedix S250AQ
-# @url https://docs.px4.io/en/framebuild_multicopter/spedix_s250_pixracer.html
+# @url https://docs.px4.io/master/en/framebuild_multicopter/spedix_s250_pixracer.html
 #
 # @type Quadrotor asymmetric
 # @class Copter
@@ -51,12 +51,6 @@ then
 	param set MC_YAWRATE_MAX 400
 	param set MC_ACRO_R_MAX 360
 	param set MC_ACRO_P_MAX 360
-	param set MC_TPA_BREAK_D 0.3
-	param set MC_TPA_BREAK_I 1
-	param set MC_TPA_BREAK_P 0.3
-	param set MC_TPA_RATE_D 1
-	param set MC_TPA_RATE_I 0
-	param set MC_TPA_RATE_P 1
 
 	param set MPC_THR_MIN 0.06
 	param set MPC_MANTHR_MIN 0.06

@@ -74,12 +74,16 @@ __EXPORT void mavlink_vasprintf(int severity, orb_advert_t *mavlink_log_pub, con
  */
 
 /**
- * Send a mavlink info message (not printed to console).
+ * Send a mavlink info message (also printed to console).
  *
  * @param _pub		Pointer to the uORB advert;
  * @param _text		The text to log;
  */
-#define mavlink_log_info(_pub, _text, ...)	mavlink_vasprintf(_MSG_PRIO_INFO, _pub, _text, ##__VA_ARGS__);
+#define mavlink_log_info(_pub, _text, ...)			\
+	do { \
+		mavlink_vasprintf(_MSG_PRIO_INFO, _pub, _text, ##__VA_ARGS__); \
+		PX4_INFO(_text, ##__VA_ARGS__); \
+	} while(0);
 
 /**
  * Send a mavlink warning message and print to console.
@@ -116,28 +120,3 @@ __EXPORT void mavlink_vasprintf(int severity, orb_advert_t *mavlink_log_pub, con
 		mavlink_vasprintf(_MSG_PRIO_CRITICAL, _pub, _text, ##__VA_ARGS__); \
 		PX4_WARN(_text, ##__VA_ARGS__); \
 	} while(0);
-
-/**
- * Send a mavlink emergency message and print to console.
- *
- * @param _pub		Pointer to the uORB advert;
- * @param _text		The text to log;
- */
-#define mavlink_and_console_log_info(_pub, _text, ...)			\
-	do { \
-		mavlink_log_info(_pub, _text, ##__VA_ARGS__); \
-		PX4_INFO(_text, ##__VA_ARGS__); \
-	} while(0);
-
-struct mavlink_logmessage {
-	char text[MAVLINK_LOG_MAXLEN + 1];
-	unsigned char severity;
-};
-
-struct mavlink_logbuffer {
-	unsigned int start;
-	unsigned int size;
-	int count;
-	struct mavlink_logmessage *elems;
-};
-

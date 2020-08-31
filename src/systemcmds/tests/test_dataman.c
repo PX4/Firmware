@@ -181,7 +181,7 @@ int test_dataman(int argc, char *argv[])
 		px4_sem_setprotocol(sems, SEM_PRIO_NONE);
 
 		/* start the task */
-		if ((task = px4_task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_MAX - 5, 2048, task_main, av)) <= 0) {
+		if ((task = px4_task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT, 2048, task_main, av)) <= 0) {
 			PX4_ERR("task start failed");
 		}
 	}

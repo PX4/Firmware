@@ -47,7 +47,6 @@
 #include <drivers/drv_hrt.h>
 
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/vehicle_command.h>

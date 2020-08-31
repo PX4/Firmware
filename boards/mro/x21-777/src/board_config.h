@@ -34,27 +34,17 @@
 /**
  * @file board_config.h
  *
- * mRo x2.1 777 internal definitions
+ * Board internal definitions
  */
 
 #pragma once
 
-/****************************************************************************************************
- * Included Files
- ****************************************************************************************************/
-
 #include <px4_platform_common/px4_config.h>
 #include <nuttx/compiler.h>
 #include <stdint.h>
-
 #include <stm32_gpio.h>
 
-/****************************************************************************************************
- * Definitions
- ****************************************************************************************************/
-
 /* PX4IO connection configuration */
-
 #define BOARD_USES_PX4IO_VERSION       2
 #define PX4IO_SERIAL_DEVICE            "/dev/ttyS4"
 #define PX4IO_SERIAL_TX_GPIO           GPIO_USART6_TX
@@ -68,56 +58,10 @@
 #define PX4IO_SERIAL_CLOCK             STM32_PCLK2_FREQUENCY
 #define PX4IO_SERIAL_BITRATE           1500000               /* 1.5Mbps -> max rate for IO */
 
-
-/* PX4FMU GPIOs ***********************************************************************************/
 /* LEDs */
 
 #define GPIO_LED1		(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN12)
 #define BOARD_OVERLOAD_LED     LED_RED
-
-/* External interrupts but on board*/
-#define GPIO_EXTI_MPU_DRDY              (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
-
-/* Data ready pins but on board */
-
-#define GPIO_EXTI_ICM_2060X_DRDY      (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
-
-/* Data ready pins off */
-#define GPIO_EXTI_MPU_DRDY_OFF          (GPIO_INPUT|GPIO_PULLDOWN|GPIO_EXTI|GPIO_PORTD|GPIO_PIN15)
-#define GPIO_EXTI_ICM_2060X_DRDY_OFF  (GPIO_INPUT|GPIO_PULLDOWN|GPIO_EXTI|GPIO_PORTC|GPIO_PIN14)
-
-/* SPI1 off */
-#define GPIO_SPI1_SCK_OFF   (GPIO_INPUT|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN5)
-#define GPIO_SPI1_MISO_OFF  (GPIO_INPUT|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN6)
-#define GPIO_SPI1_MOSI_OFF  (GPIO_INPUT|GPIO_PULLDOWN|GPIO_PORTA|GPIO_PIN7)
-
-/* SPI1 chip selects off */
-#define GPIO_SPI_CS_ICM_2060X_OFF (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_2MHz|GPIO_PORTC|GPIO_PIN15)
-#define GPIO_SPI_CS_BARO_OFF        (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_2MHz|GPIO_PORTD|GPIO_PIN7)
-#define GPIO_SPI_CS_MPU_OFF		    (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_2MHz|GPIO_PORTC|GPIO_PIN2)
-
-/* SPI chip selects */
-#define GPIO_SPI_CS_ICM_2060X	 (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN15)
-#define GPIO_SPI_CS_BARO         (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN7)
-#define GPIO_SPI_CS_FRAM         (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN10)
-#define GPIO_SPI_CS_MPU          (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTC|GPIO_PIN2)
-
-#define PX4_SPI_BUS_SENSORS	1
-#define PX4_SPI_BUS_RAMTRON	2
-#define PX4_SPI_BUS_BARO	PX4_SPI_BUS_SENSORS
-
-/* Use these in place of the uint32_t enumeration to select a specific SPI device on SPI1 */
-#include <drivers/drv_sensor.h>
-#define PX4_SPIDEV_ICM_20602 PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ICM20602)
-#define PX4_SPIDEV_ICM_20608 PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_ICM20608)
-#define PX4_SPIDEV_BARO      PX4_MK_SPI_SEL(0, DRV_BARO_DEVTYPE_MS5611)
-#define PX4_SPIDEV_MPU       PX4_MK_SPI_SEL(0, DRV_IMU_DEVTYPE_MPU9250)
-
-/* I2C busses */
-
-/* There is no I2C2 so there is not notion of internal / external*/
-#define PX4_I2C_BUS_EXPANSION 1
-#define PX4_I2C_BUS_LED		PX4_I2C_BUS_EXPANSION
 
 /*
  * ADC channels
@@ -134,7 +78,7 @@
 
 /* Power supply control and monitoring GPIOs */
 // Signal is not connected
-#define GPIO_VDD_5V_PERIPH_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
+#define GPIO_nVDD_5V_PERIPH_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
 #define GPIO_VDD_BRICK_VALID	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN5)
 #define GPIO_VDD_3V3_SENSORS_EN	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN3)
 #define GPIO_VDD_5V_PERIPH_OC	(GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN15)
@@ -145,8 +89,7 @@
 #define GPIO_TONE_ALARM_IDLE	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN15)
 #define GPIO_TONE_ALARM		(GPIO_ALT|GPIO_AF1|GPIO_SPEED_2MHz|GPIO_PUSHPULL|GPIO_PORTA|GPIO_PIN15)
 
-/* PWM
- */
+/* PWM */
 #define DIRECT_PWM_OUTPUT_CHANNELS	6
 #define DIRECT_INPUT_TIMER_CHANNELS  6
 
@@ -157,8 +100,8 @@
 #define GPIO_OTGFS_VBUS		(GPIO_INPUT|GPIO_FLOAT|GPIO_SPEED_100MHz|GPIO_OPENDRAIN|GPIO_PORTA|GPIO_PIN9)
 
 /* High-resolution timer */
-#define HRT_TIMER		8	/* use timer8 for the HRT */
-#define HRT_TIMER_CHANNEL	1	/* use capture/compare channel */
+#define HRT_TIMER               8  /* use timer8 for the HRT */
+#define HRT_TIMER_CHANNEL       3  /* use capture/compare channel 3 */
 
 /* PWM input driver. Use FMU AUX5 pins attached to timer4 channel 2 */
 #define PWMIN_TIMER		4
@@ -178,12 +121,12 @@
 #define BOARD_HAS_PWM	DIRECT_PWM_OUTPUT_CHANNELS
 
 /* This board provides a DMA pool and APIs */
-#define BOARD_DMA_ALLOC_POOL_SIZE (5120 + 512 + 512)	// 5120 fat + 512 + 512 spi
+#define BOARD_DMA_ALLOC_POOL_SIZE 5120
 
 /* This board provides the board_on_reset interface */
-
 #define BOARD_HAS_ON_RESET 1
 
+#define BOARD_HAS_STATIC_MANIFEST 1
 
 #define SDIO_SLOTNO                    0  /* Only one slot */
 #define SDIO_MINOR                     0
@@ -193,12 +136,8 @@
 #define BOARD_NUM_IO_TIMERS 3
 
 __BEGIN_DECLS
-
 #ifndef __ASSEMBLY__
 
-/****************************************************************************************************
- * Public Functions
- ****************************************************************************************************/
 
 /****************************************************************************
  * Name: stm32_sdio_initialize
@@ -210,24 +149,12 @@ __BEGIN_DECLS
 
 int stm32_sdio_initialize(void);
 
-/****************************************************************************************************
- * Name: stm32_spiinitialize
- *
- * Description:
- *   Called to configure SPI chip select GPIO pins for the PX4FMU board.
- *
- ****************************************************************************************************/
-
 extern void stm32_spiinitialize(void);
-
-extern void board_peripheral_reset(int ms);
 
 extern void stm32_usbinitialize(void);
 
 extern void board_peripheral_reset(int ms);
 
 #include <px4_platform_common/board_common.h>
-
 #endif /* __ASSEMBLY__ */
-
 __END_DECLS

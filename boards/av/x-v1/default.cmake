@@ -33,7 +33,6 @@ px4_add_board(
 		lights/blinkm
 		#lights/rgbled
 		#lights/rgbled_ncp5623c
-		#lights/rgbled_pwm
 		magnetometer # all available magnetometer drivers
 		mkblctrl
 		optical_flow # all available optical flow drivers
@@ -43,7 +42,7 @@ px4_add_board(
 		#protocol_splitter
 		#pwm_input
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		rc_input
 		roboclaw
 		tap_esc
@@ -82,7 +81,6 @@ px4_add_board(
 		vtol_att_control
 	SYSTEMCMDS
 		#bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
@@ -99,7 +97,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		tests # tests and test runner
 		top
 		topic_listener
@@ -115,4 +112,5 @@ px4_add_board(
 		px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
 		rover_steering_control # Rover example app
 		uuv_example_app
+		work_item
 	)

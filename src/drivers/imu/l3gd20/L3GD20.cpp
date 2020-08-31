@@ -35,24 +35,20 @@
 
 constexpr uint8_t L3GD20::_checked_registers[];
 
-L3GD20::L3GD20(int bus, uint32_t device, enum Rotation rotation) :
-	SPI("L3GD20", nullptr, bus, device, SPIDEV_MODE3, 11 * 1000 * 1000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(this->get_device_id())),
-	_px4_gyro(get_device_id(), ORB_PRIO_DEFAULT, rotation),
+L3GD20::L3GD20(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
+	       spi_mode_e spi_mode) :
+	SPI(DRV_GYR_DEVTYPE_L3GD20, MODULE_NAME, bus, device, spi_mode, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_px4_gyro(get_device_id(), rotation),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
 	_errors(perf_alloc(PC_COUNT, MODULE_NAME": err")),
 	_bad_registers(perf_alloc(PC_COUNT, MODULE_NAME": bad_reg")),
 	_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": dupe"))
 {
-	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_L3GD20);
 }
 
 L3GD20::~L3GD20()
 {
-	/* make sure we are truly inactive */
-	stop();
-
-	/* delete the perf counter */
 	perf_free(_sample_perf);
 	perf_free(_errors);
 	perf_free(_bad_registers);
@@ -121,7 +117,7 @@ L3GD20::read_reg(unsigned reg)
 	return cmd[1];
 }
 
-void
+int
 L3GD20::write_reg(unsigned reg, uint8_t value)
 {
 	uint8_t	cmd[2] {};
@@ -129,7 +125,7 @@ L3GD20::write_reg(unsigned reg, uint8_t value)
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
 
-	transfer(cmd, nullptr, sizeof(cmd));
+	return transfer(cmd, nullptr, sizeof(cmd));
 }
 
 void
@@ -226,18 +222,9 @@ L3GD20::set_samplerate(unsigned frequency)
 void
 L3GD20::start()
 {
-	/* make sure we are stopped first */
-	stop();
-
 	/* start polling at the specified rate */
 	uint64_t interval = 1000000 / L3GD20_DEFAULT_RATE;
 	ScheduleOnInterval(interval - L3GD20_TIMER_REDUCTION, 10000);
-}
-
-void
-L3GD20::stop()
-{
-	ScheduleClear();
 }
 
 void
@@ -289,13 +276,6 @@ L3GD20::reset()
 }
 
 void
-L3GD20::Run()
-{
-	/* make another measurement */
-	measure();
-}
-
-void
 L3GD20::check_registers()
 {
 	uint8_t v;
@@ -326,7 +306,7 @@ L3GD20::check_registers()
 }
 
 void
-L3GD20::measure()
+L3GD20::RunImpl()
 {
 	/* status register and data as read back from the device */
 #pragma pack(push, 1)
@@ -412,8 +392,9 @@ L3GD20::measure()
 }
 
 void
-L3GD20::print_info()
+L3GD20::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	printf("gyro reads:          %u\n", _read);
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_errors);
@@ -433,7 +414,6 @@ L3GD20::print_info()
 		}
 	}
 
-	_px4_gyro.print_status();
 }
 
 void

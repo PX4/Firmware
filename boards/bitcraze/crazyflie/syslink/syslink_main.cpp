@@ -411,7 +411,8 @@ Syslink::handle_message(syslink_message_t *msg)
 		memcpy(&vbat, &msg->data[1], sizeof(float));
 		//memcpy(&iset, &msg->data[5], sizeof(float));
 
-		_battery.updateBatteryStatus(t, vbat, -1, true, true, 0, 0, true);
+		_battery.updateBatteryStatus(t, vbat, -1, true,
+					     battery_status_s::BATTERY_SOURCE_POWER_MODULE, 0, 0);
 
 
 		// Update battery charge state

@@ -39,7 +39,7 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 	initSPIBus(SPI::Bus::SPI1, {
 		initSPIDevice(DRV_IMU_DEVTYPE_MPU9250, SPI::CS{GPIO::PortC, GPIO::Pin2}, SPI::DRDY{GPIO::PortD, GPIO::Pin15}),
 		initSPIDevice(DRV_IMU_DEVTYPE_ICM20602, SPI::CS{GPIO::PortC, GPIO::Pin15}, SPI::DRDY{GPIO::PortC, GPIO::Pin14}),
-		initSPIDevice(DRV_IMU_DEVTYPE_ICM20608, SPI::CS{GPIO::PortC, GPIO::Pin15}, SPI::DRDY{GPIO::PortC, GPIO::Pin14}),
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM20608G, SPI::CS{GPIO::PortC, GPIO::Pin15}, SPI::DRDY{GPIO::PortC, GPIO::Pin14}),
 		initSPIDevice(DRV_MAG_DEVTYPE_HMC5883, SPI::CS{GPIO::PortE, GPIO::Pin15}, SPI::DRDY{GPIO::PortE, GPIO::Pin12}), // hmc5983
 		initSPIDevice(DRV_MAG_DEVTYPE_LIS3MDL, SPI::CS{GPIO::PortE, GPIO::Pin15}, SPI::DRDY{GPIO::PortE, GPIO::Pin12}),
 	}, {GPIO::PortE, GPIO::Pin3}),
@@ -73,4 +73,3 @@ __EXPORT bool board_has_bus(enum board_bus_types type, uint32_t bus)
 
 	return rv;
 }
-

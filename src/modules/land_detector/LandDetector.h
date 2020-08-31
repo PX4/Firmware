@@ -56,11 +56,13 @@
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_status.h>
 
 using namespace time_literals;
 
@@ -70,10 +72,8 @@ namespace land_detector
 class LandDetector : public ModuleBase<LandDetector>, ModuleParams, px4::ScheduledWorkItem
 {
 public:
-
 	LandDetector();
 	virtual ~LandDetector();
-
 
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[])
@@ -99,12 +99,12 @@ protected:
 	/**
 	 * Updates parameters.
 	 */
-	virtual void _update_params();
+	virtual void _update_params() {};
 
 	/**
 	 * Updates subscribed uORB topics.
 	 */
-	virtual void _update_topics();
+	virtual void _update_topics() {};
 
 	/**
 	 * @return true if UAV is in a landed state.
@@ -136,17 +136,22 @@ protected:
 	 */
 	virtual bool _get_ground_effect_state() { return false; }
 
-	/** Run main land detector loop at this interval. */
-	static constexpr uint32_t LAND_DETECTOR_UPDATE_INTERVAL = 20_ms;
-
 	systemlib::Hysteresis _freefall_hysteresis{false};
 	systemlib::Hysteresis _landed_hysteresis{true};
 	systemlib::Hysteresis _maybe_landed_hysteresis{true};
 	systemlib::Hysteresis _ground_contact_hysteresis{true};
 	systemlib::Hysteresis _ground_effect_hysteresis{false};
 
-	actuator_armed_s         _actuator_armed{};
-	vehicle_acceleration_s   _vehicle_acceleration{};
+	vehicle_local_position_s _vehicle_local_position{};
+	vehicle_status_s         _vehicle_status{};
+
+	matrix::Vector3f _acceleration{};
+
+	bool _armed{false};
+	bool _previous_armed_state{false};	///< stores the previous actuator_armed.armed state
+
+private:
+	void Run() override;
 
 	vehicle_land_detected_s _land_detected = {
 		.timestamp = 0,
@@ -157,29 +162,19 @@ protected:
 		.landed = true,
 	};
 
-	vehicle_local_position_s _vehicle_local_position{};
-
-	uORB::Publication<vehicle_land_detected_s> _vehicle_land_detected_pub{ORB_ID(vehicle_land_detected)};
-
-private:
-
-	void Run() override;
-
-	void _update_state();
-
-	void _update_total_flight_time();
-
-	bool _previous_armed_state{false};	///< stores the previous actuator_armed.armed state
-
 	hrt_abstime _takeoff_time{0};
 	hrt_abstime _total_flight_time{0};	///< total vehicle flight time in microseconds
 
-	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, "land_detector_cycle")};
+	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
+
+	uORB::Publication<vehicle_land_detected_s> _vehicle_land_detected_pub{ORB_ID(vehicle_land_detected)};
 
 	uORB::Subscription _actuator_armed_sub{ORB_ID(actuator_armed)};
 	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
 	uORB::Subscription _vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
-	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
+
+	uORB::SubscriptionCallbackWorkItem _vehicle_local_position_sub{this, ORB_ID(vehicle_local_position)};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(
 		ModuleParams,

@@ -107,6 +107,11 @@ MS5611::init()
 				/* This is likely not this device, abort */
 				ret = -EINVAL;
 				break;
+
+			} else if (brp.pressure > 1500.0f) {
+				/* This is likely not this device, abort */
+				ret = -EINVAL;
+				break;
 			}
 		}
 
@@ -335,8 +340,6 @@ void MS5611::print_status()
 	perf_print_counter(_comms_errors);
 
 	printf("device:         %s\n", _device_type == MS5611_DEVICE ? "ms5611" : "ms5607");
-
-	_px4_barometer.print_status();
 }
 
 namespace ms5611

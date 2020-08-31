@@ -34,3 +34,4 @@
 px4_add_library(arch_spi
 	spi.cpp
 )
+target_compile_options(arch_spi PRIVATE ${MAX_CUSTOM_OPT_LEVEL})

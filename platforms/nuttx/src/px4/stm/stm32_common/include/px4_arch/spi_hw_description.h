@@ -64,7 +64,7 @@ static inline constexpr px4_spi_bus_t initSPIBus(SPI::Bus bus, const px4_spi_bus
 		GPIO::GPIOPin power_enable = {})
 {
 	px4_spi_bus_t ret{};
-	ret.requires_locking = true; // TODO: set this to false once all drivers are converted to use the I2CSPIDriver class
+	ret.requires_locking = false;
 
 	for (int i = 0; i < SPI_BUS_MAX_DEVICES; ++i) {
 		ret.devices[i] = devices.devices[i];
@@ -114,8 +114,7 @@ static inline constexpr px4_spi_bus_t initSPIBusExternal(SPI::Bus bus, const bus
 
 	ret.bus = (int)bus;
 	ret.is_external = true;
-	// TODO: set requires_locking to false once all drivers are converted to use the I2CSPIDriver class
-	ret.requires_locking = true; // external buses are never accessed by NuttX drivers
+	ret.requires_locking = false; // external buses are never accessed by NuttX drivers
 	return ret;
 }
 

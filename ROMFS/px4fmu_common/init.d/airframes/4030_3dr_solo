@@ -43,7 +43,7 @@ then
 	# main board rotation: pitch 180
 	param set SENS_BOARD_ROT    12
 	# solo external mag rotation
-	param set CAL_MAG0_ROT      30
+	param set CAL_MAG0_ROT      38
 	# no safety switch
 	param set CBRK_IO_SAFETY    22027
 	# battery voltage not available yet

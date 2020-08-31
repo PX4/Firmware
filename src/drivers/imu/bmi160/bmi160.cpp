@@ -49,29 +49,25 @@ const uint8_t BMI160::_checked_registers[BMI160_NUM_CHECKED_REGISTERS] = {    BM
 									      BMIREG_NV_CONF
 									 };
 
-BMI160::BMI160(int bus, uint32_t device, enum Rotation rotation) :
-	SPI("BMI160", nullptr, bus, device, SPIDEV_MODE3, BMI160_BUS_SPEED),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(this->get_device_id())),
-	_px4_accel(get_device_id(), (external() ? ORB_PRIO_MAX - 1 : ORB_PRIO_HIGH - 1), rotation),
-	_px4_gyro(get_device_id(), (external() ? ORB_PRIO_MAX - 1 : ORB_PRIO_HIGH - 1), rotation),
-	_accel_reads(perf_alloc(PC_COUNT, "bmi160_accel_read")),
-	_gyro_reads(perf_alloc(PC_COUNT, "bmi160_gyro_read")),
-	_sample_perf(perf_alloc(PC_ELAPSED, "bmi160_read")),
-	_bad_transfers(perf_alloc(PC_COUNT, "bmi160_bad_transfers")),
-	_bad_registers(perf_alloc(PC_COUNT, "bmi160_bad_registers")),
-	_good_transfers(perf_alloc(PC_COUNT, "bmi160_good_transfers")),
-	_reset_retries(perf_alloc(PC_COUNT, "bmi160_reset_retries")),
-	_duplicates(perf_alloc(PC_COUNT, "bmi160_duplicates"))
+BMI160::BMI160(I2CSPIBusOption bus_option, int bus, int32_t device, enum Rotation rotation, int bus_frequency,
+	       spi_mode_e spi_mode) :
+	SPI(DRV_IMU_DEVTYPE_BMI160, MODULE_NAME, bus, device, spi_mode, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_px4_accel(get_device_id(), rotation),
+	_px4_gyro(get_device_id(), rotation),
+	_accel_reads(perf_alloc(PC_COUNT, MODULE_NAME": accel read")),
+	_gyro_reads(perf_alloc(PC_COUNT, MODULE_NAME": gyro read")),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
+	_bad_transfers(perf_alloc(PC_COUNT, MODULE_NAME": bad transfers")),
+	_bad_registers(perf_alloc(PC_COUNT, MODULE_NAME": bad registers")),
+	_good_transfers(perf_alloc(PC_COUNT, MODULE_NAME": good transfers")),
+	_reset_retries(perf_alloc(PC_COUNT, MODULE_NAME": reset retries")),
+	_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": duplicates"))
 {
-	_px4_accel.set_device_type(DRV_ACC_DEVTYPE_BMI160);
-	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_BMI160);
 }
 
 BMI160::~BMI160()
 {
-	/* make sure we are truly inactive */
-	stop();
-
 	/* delete the perf counter */
 	perf_free(_sample_perf);
 	perf_free(_accel_reads);
@@ -83,8 +79,7 @@ BMI160::~BMI160()
 	perf_free(_duplicates);
 }
 
-int
-BMI160::init()
+int BMI160::init()
 {
 	/* do SPI init (and probe) first */
 	int ret = SPI::init();
@@ -127,18 +122,13 @@ int BMI160::reset()
 	set_gyro_range(BMI160_GYRO_DEFAULT_RANGE_DPS);
 	gyro_set_sample_rate(BMI160_GYRO_DEFAULT_RATE);
 
-
-	//_set_dlpf_filter(BMI160_ACCEL_DEFAULT_ONCHIP_FILTER_FREQ); //NOT CONSIDERING FILTERING YET
-
-	//Enable Accelerometer in normal mode
+	// Enable Accelerometer in normal mode
 	write_reg(BMIREG_CMD, BMI_ACCEL_NORMAL_MODE);
-	up_udelay(4100);
-	//usleep(4100);
+	px4_usleep(4100);
 
 	//Enable Gyroscope in normal mode
 	write_reg(BMIREG_CMD, BMI_GYRO_NORMAL_MODE);
-	up_udelay(80300);
-	//usleep(80300);
+	px4_usleep(80300);
 
 	uint8_t retries = 10;
 
@@ -163,8 +153,7 @@ int BMI160::reset()
 	return OK;
 }
 
-int
-BMI160::probe()
+int BMI160::probe()
 {
 	/* look for device ID */
 	_whoami = read_reg(BMIREG_CHIP_ID);
@@ -183,8 +172,7 @@ BMI160::probe()
 	return -EIO;
 }
 
-int
-BMI160::accel_set_sample_rate(float frequency)
+int BMI160::accel_set_sample_rate(float frequency)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = (BMI_ACCEL_RATE_25_8 | BMI_ACCEL_RATE_1600);
@@ -250,8 +238,7 @@ BMI160::accel_set_sample_rate(float frequency)
 	return OK;
 }
 
-int
-BMI160::gyro_set_sample_rate(float frequency)
+int BMI160::gyro_set_sample_rate(float frequency)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = (BMI_GYRO_RATE_200 | BMI_GYRO_RATE_25);
@@ -301,95 +288,30 @@ BMI160::gyro_set_sample_rate(float frequency)
 	return OK;
 }
 
-void
-BMI160::_set_dlpf_filter(uint16_t bandwidth)
-{
-	_dlpf_freq = 0;
-	bandwidth = bandwidth;   //TO BE IMPLEMENTED
-	/*uint8_t setbits = BW_SCAL_ODR_BW_XL;
-	uint8_t clearbits = BW_XL_50_HZ;
-
-	if (bandwidth == 0) {
-	    _dlpf_freq = 408;
-	    clearbits = BW_SCAL_ODR_BW_XL | BW_XL_50_HZ;
-	    setbits = 0;
-	}
-
-	if (bandwidth <= 50) {
-	    setbits |= BW_XL_50_HZ;
-	    _dlpf_freq = 50;
-
-	} else if (bandwidth <= 105) {
-	    setbits |= BW_XL_105_HZ;
-	    _dlpf_freq = 105;
-
-	} else if (bandwidth <= 211) {
-	    setbits |= BW_XL_211_HZ;
-	    _dlpf_freq = 211;
-
-	} else if (bandwidth <= 408) {
-	    setbits |= BW_XL_408_HZ;
-	    _dlpf_freq = 408;
-
-	}
-	modify_reg(CTRL_REG6_XL, clearbits, setbits);*/
-}
-
-/*
-  deliberately trigger an error in the sensor to trigger recovery
- */
-void
-BMI160::test_error()
-{
-	write_reg(BMIREG_CMD, BMI160_SOFT_RESET);
-	::printf("error triggered\n");
-	print_registers();
-}
-
-uint8_t
-BMI160::read_reg(unsigned reg)
+uint8_t BMI160::read_reg(uint8_t reg)
 {
 	uint8_t cmd[2] = { (uint8_t)(reg | DIR_READ), 0};
-
 	transfer(cmd, cmd, sizeof(cmd));
-
 	return cmd[1];
 }
 
-uint16_t
-BMI160::read_reg16(unsigned reg)
-{
-	uint8_t cmd[3] = { (uint8_t)(reg | DIR_READ), 0, 0 };
-
-	transfer(cmd, cmd, sizeof(cmd));
-
-	return (uint16_t)(cmd[1] << 8) | cmd[2];
-}
-
-void
-BMI160::write_reg(unsigned reg, uint8_t value)
+int BMI160::write_reg(unsigned reg, uint8_t value)
 {
 	uint8_t	cmd[2];
-
 	cmd[0] = reg | DIR_WRITE;
 	cmd[1] = value;
-
-	transfer(cmd, nullptr, sizeof(cmd));
+	return transfer(cmd, nullptr, sizeof(cmd));
 }
 
-void
-BMI160::modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits)
+void BMI160::modify_reg(uint8_t reg, uint8_t clearbits, uint8_t setbits)
 {
-	uint8_t	val;
-
-	val = read_reg(reg);
+	uint8_t	val = read_reg(reg);
 	val &= ~clearbits;
 	val |= setbits;
 	write_checked_reg(reg, val);
 }
 
-void
-BMI160::write_checked_reg(unsigned reg, uint8_t value)
+void BMI160::write_checked_reg(uint8_t reg, uint8_t value)
 {
 	write_reg(reg, value);
 
@@ -401,8 +323,7 @@ BMI160::write_checked_reg(unsigned reg, uint8_t value)
 	}
 }
 
-int
-BMI160::set_accel_range(unsigned max_g)
+int BMI160::set_accel_range(unsigned max_g)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = BMI_ACCEL_RANGE_2_G | BMI_ACCEL_RANGE_16_G;
@@ -443,8 +364,7 @@ BMI160::set_accel_range(unsigned max_g)
 	return OK;
 }
 
-int
-BMI160::set_gyro_range(unsigned max_dps)
+int BMI160::set_gyro_range(unsigned max_dps)
 {
 	uint8_t setbits = 0;
 	uint8_t clearbits = BMI_GYRO_RANGE_125_DPS | BMI_GYRO_RANGE_250_DPS;
@@ -491,33 +411,15 @@ BMI160::set_gyro_range(unsigned max_dps)
 	return OK;
 }
 
-void
-BMI160::start()
+void BMI160::start()
 {
-	/* make sure we are stopped first */
-	stop();
-
 	/* start polling at the specified rate */
 	ScheduleOnInterval((1_s / BMI160_GYRO_DEFAULT_RATE) - BMI160_TIMER_REDUCTION, 1000);
 
 	reset();
 }
 
-void
-BMI160::stop()
-{
-	ScheduleClear();
-}
-
-void
-BMI160::Run()
-{
-	/* make another measurement */
-	measure();
-}
-
-void
-BMI160::check_registers(void)
+void BMI160::check_registers()
 {
 	uint8_t v;
 
@@ -559,8 +461,7 @@ BMI160::check_registers(void)
 	_checked_next = (_checked_next + 1) % BMI160_NUM_CHECKED_REGISTERS;
 }
 
-void
-BMI160::measure()
+void BMI160::RunImpl()
 {
 	if (hrt_absolute_time() < _reset_wait) {
 		// we're waiting for a reset to complete
@@ -577,7 +478,7 @@ BMI160::measure()
 		int16_t		gyro_x;
 		int16_t		gyro_y;
 		int16_t		gyro_z;
-	} report;
+	} report{};
 
 	/* start measuring */
 	perf_begin(_sample_perf);
@@ -587,7 +488,7 @@ BMI160::measure()
 	 */
 	bmi_report.cmd = BMIREG_GYR_X_L | DIR_READ;
 
-	uint8_t		status = read_reg(BMIREG_STATUS);
+	uint8_t status = read_reg(BMIREG_STATUS);
 
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
 
@@ -613,8 +514,6 @@ BMI160::measure()
 	uint8_t temp_h = read_reg(BMIREG_TEMP_1);
 
 	report.temp = ((temp_h << 8) + temp_l);
-
-
 
 	report.accel_x = bmi_report.accel_x;
 	report.accel_y = bmi_report.accel_y;
@@ -689,9 +588,9 @@ BMI160::measure()
 	perf_end(_sample_perf);
 }
 
-void
-BMI160::print_info()
+void BMI160::print_status()
 {
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_accel_reads);
 	perf_print_counter(_gyro_reads);
@@ -700,44 +599,4 @@ BMI160::print_info()
 	perf_print_counter(_good_transfers);
 	perf_print_counter(_reset_retries);
 	perf_print_counter(_duplicates);
-
-	::printf("checked_next: %u\n", _checked_next);
-
-	for (uint8_t i = 0; i < BMI160_NUM_CHECKED_REGISTERS; i++) {
-		uint8_t v = read_reg(_checked_registers[i]);
-
-		if (v != _checked_values[i]) {
-			::printf("reg %02x:%02x should be %02x\n",
-				 (unsigned)_checked_registers[i],
-				 (unsigned)v,
-				 (unsigned)_checked_values[i]);
-		}
-
-		if (v != _checked_bad[i]) {
-			::printf("reg %02x:%02x was bad %02x\n",
-				 (unsigned)_checked_registers[i],
-				 (unsigned)v,
-				 (unsigned)_checked_bad[i]);
-		}
-	}
-
-	_px4_accel.print_status();
-	_px4_gyro.print_status();
-}
-
-void
-BMI160::print_registers()
-{
-	printf("BMI160 registers\n");
-
-	for (uint8_t reg = 0x40; reg <= 0x47; reg++) {
-		uint8_t v = read_reg(reg);
-		printf("%02x:%02x ", (unsigned)reg, (unsigned)v);
-
-		if (reg % 13 == 0) {
-			printf("\n");
-		}
-	}
-
-	printf("\n");
 }

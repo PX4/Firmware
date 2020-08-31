@@ -38,6 +38,65 @@
 using namespace matrix;
 using namespace ControlMath;
 
+TEST(ControlMathTest, LimitTiltUnchanged)
+{
+	Vector3f body = Vector3f(0.f, 0.f, 1.f).normalized();
+	Vector3f body_before = body;
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	EXPECT_EQ(body, body_before);
+
+	body = Vector3f(0.f, .1f, 1.f).normalized();
+	body_before = body;
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	EXPECT_EQ(body, body_before);
+}
+
+TEST(ControlMathTest, LimitTiltOpposite)
+{
+	Vector3f body = Vector3f(0.f, 0.f, -1.f).normalized();
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	float angle = acosf(body.dot(Vector3f(0.f, 0.f, 1.f)));
+	EXPECT_NEAR(angle * M_RAD_TO_DEG_F, 45.f, 1e-4f);
+	EXPECT_FLOAT_EQ(body.length(), 1.f);
+}
+
+TEST(ControlMathTest, LimitTiltAlmostOpposite)
+{
+	// This case doesn't trigger corner case handling but is very close to it
+	Vector3f body = Vector3f(0.001f, 0.f, -1.f).normalized();
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	float angle = acosf(body.dot(Vector3f(0.f, 0.f, 1.f)));
+	EXPECT_NEAR(angle * M_RAD_TO_DEG_F, 45.f, 1e-4f);
+	EXPECT_FLOAT_EQ(body.length(), 1.f);
+}
+
+TEST(ControlMathTest, LimitTilt45degree)
+{
+	Vector3f body = Vector3f(1.f, 0.f, 0.f);
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	EXPECT_EQ(body, Vector3f(M_SQRT1_2_F, 0, M_SQRT1_2_F));
+
+	body = Vector3f(0.f, 1.f, 0.f);
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 45.f);
+	EXPECT_EQ(body, Vector3f(0.f, M_SQRT1_2_F, M_SQRT1_2_F));
+}
+
+TEST(ControlMathTest, LimitTilt10degree)
+{
+	Vector3f body = Vector3f(1.f, 1.f, .1f).normalized();
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 10.f);
+	float angle = acosf(body.dot(Vector3f(0.f, 0.f, 1.f)));
+	EXPECT_NEAR(angle * M_RAD_TO_DEG_F, 10.f, 1e-4f);
+	EXPECT_FLOAT_EQ(body.length(), 1.f);
+	EXPECT_FLOAT_EQ(body(0), body(1));
+
+	body = Vector3f(1, 2, .2f);
+	limitTilt(body, Vector3f(0.f, 0.f, 1.f), M_DEG_TO_RAD_F * 10.f);
+	angle = acosf(body.dot(Vector3f(0.f, 0.f, 1.f)));
+	EXPECT_NEAR(angle * M_RAD_TO_DEG_F, 10.f, 1e-4f);
+	EXPECT_FLOAT_EQ(body.length(), 1.f);
+	EXPECT_FLOAT_EQ(2.f * body(0), body(1));
+}
 
 TEST(ControlMathTest, ThrottleAttitudeMapping)
 {
@@ -76,12 +135,12 @@ TEST(ControlMathTest, ConstrainXYPriorities)
 {
 	const float max = 5.f;
 	// v0 already at max
-	Vector2f v0(max, 0);
+	Vector2f v0(max, 0.f);
 	Vector2f v1(v0(1), -v0(0));
 
 	Vector2f v_r = constrainXY(v0, v1, max);
 	EXPECT_FLOAT_EQ(v_r(0), max);
-	EXPECT_FLOAT_EQ(v_r(1), 0);
+	EXPECT_FLOAT_EQ(v_r(1), 0.f);
 
 	// norm of v1 exceeds max but v0 is zero
 	v0.zero();
@@ -100,7 +159,7 @@ TEST(ControlMathTest, ConstrainXYPriorities)
 	v1 = Vector2f(0.f, -4.f);
 	v_r = constrainXY(v0, v1, max);
 	EXPECT_FLOAT_EQ(v_r(0), v0(0));
-	EXPECT_GT(v_r(0), 0);
+	EXPECT_GT(v_r(0), 0.f);
 	const float remaining = sqrtf(max * max - (v0(0) * v0(0)));
 	EXPECT_FLOAT_EQ(v_r(1), -remaining);
 }

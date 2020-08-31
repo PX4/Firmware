@@ -32,6 +32,7 @@
 ############################################################################
 
 set(msg_out_path ${CMAKE_CURRENT_BINARY_DIR})
+get_filename_component(micrortps_bridge_path ${msg_out_path} PATH)
 
 if (NOT "${config_rtps_send_topics}" STREQUAL "" OR NOT "${config_rtps_receive_topics}" STREQUAL "")
 
@@ -54,19 +55,19 @@ if (NOT "${config_rtps_send_topics}" STREQUAL "" OR NOT "${config_rtps_receive_t
 	endif()
 
 	foreach(topic ${config_rtps_send_topics})
-		list(APPEND topic_bridge_files_out ${msg_out_path}/micrortps_agent/${topic}_Publisher.cpp)
-		list(APPEND topic_bridge_files_out ${msg_out_path}/micrortps_agent/${topic}_Publisher.h)
+		list(APPEND topic_bridge_files_out ${micrortps_bridge_path}/micrortps_agent/${topic}_Publisher.cpp)
+		list(APPEND topic_bridge_files_out ${micrortps_bridge_path}/micrortps_agent/${topic}_Publisher.h)
 	endforeach()
 
 	foreach(topic ${config_rtps_receive_topics})
-		list(APPEND topic_bridge_files_out ${msg_out_path}/micrortps_agent/${topic}_Subscriber.cpp)
-		list(APPEND topic_bridge_files_out ${msg_out_path}/micrortps_agent/${topic}_Subscriber.h)
+		list(APPEND topic_bridge_files_out ${micrortps_bridge_path}/micrortps_agent/${topic}_Subscriber.cpp)
+		list(APPEND topic_bridge_files_out ${micrortps_bridge_path}/micrortps_agent/${topic}_Subscriber.h)
 	endforeach()
 
 	list(APPEND topic_bridge_files_out
-		${msg_out_path}/micrortps_client/microRTPS_client.cpp
-		${msg_out_path}/micrortps_client/microRTPS_transport.cpp
-		${msg_out_path}/micrortps_client/microRTPS_transport.h
+		${micrortps_bridge_path}/micrortps_client/microRTPS_client.cpp
+		${micrortps_bridge_path}/micrortps_client/microRTPS_transport.cpp
+		${micrortps_bridge_path}/micrortps_client/microRTPS_transport.h
 		)
 
 	add_custom_command(OUTPUT ${topic_bridge_files_out}
@@ -78,9 +79,9 @@ if (NOT "${config_rtps_send_topics}" STREQUAL "" OR NOT "${config_rtps_receive_t
 			--topic-msg-dir ${PX4_SOURCE_DIR}/msg
 			--uorb-templates-dir templates/uorb_microcdr
 			--urtps-templates-dir templates/urtps
-			--agent-outdir ${CMAKE_CURRENT_BINARY_DIR}/micrortps_agent
-			--client-outdir ${CMAKE_CURRENT_BINARY_DIR}/micrortps_client
-			--idl-dir ${CMAKE_CURRENT_BINARY_DIR}/micrortps_agent/idl
+			--agent-outdir ${micrortps_bridge_path}/micrortps_agent/src
+			--client-outdir ${micrortps_bridge_path}/micrortps_client
+			--idl-dir ${micrortps_bridge_path}/micrortps_agent/idl
 			>micrortps_bridge.log >/dev/null
 		DEPENDS ${send_topic_files} ${receive_topic_files}
 		COMMENT "Generating RTPS topic bridge"
@@ -93,11 +94,11 @@ if (NOT "${config_rtps_send_topics}" STREQUAL "" OR NOT "${config_rtps_receive_t
 		STACK_MAIN 4096
 		INCLUDES
 			${CMAKE_CURRENT_SOURCE_DIR}
-			${CMAKE_CURRENT_BINARY_DIR}/micrortps_client
+			${micrortps_bridge_path}/micrortps_client
 		SRCS
 			microRTPS_client_main.cpp
-			${msg_out_path}/micrortps_client/microRTPS_client.cpp
-			${msg_out_path}/micrortps_client/microRTPS_transport.cpp
+			${micrortps_bridge_path}/micrortps_client/microRTPS_client.cpp
+			${micrortps_bridge_path}/micrortps_client/microRTPS_transport.cpp
 		MODULE_CONFIG
 			module.yaml
 		DEPENDS

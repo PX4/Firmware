@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,13 +33,17 @@
 
 #include "battery.hpp"
 
-#include <drivers/drv_hrt.h>
+#include <lib/ecl/geo/geo.h>
+#include <px4_defines.h>
 
 const char *const UavcanBatteryBridge::NAME = "battery";
 
 UavcanBatteryBridge::UavcanBatteryBridge(uavcan::INode &node) :
 	UavcanCDevSensorBridgeBase("uavcan_battery", "/dev/uavcan/battery", "/dev/battery", ORB_ID(battery_status)),
-	_sub_battery(node)
+	ModuleParams(nullptr),
+	_sub_battery(node),
+	_warning(battery_status_s::BATTERY_WARNING_NONE),
+	_last_timestamp(0)
 {
 }
 
@@ -69,36 +73,72 @@ UavcanBatteryBridge::battery_sub_cb(const uavcan::ReceivedDataStructure<uavcan::
 
 	battery.timestamp = hrt_absolute_time();
 	battery.voltage_v = msg.voltage;
-	battery.voltage_filtered_v = battery.voltage_v;
+	battery.voltage_filtered_v = msg.voltage;
 	battery.current_a = msg.current;
-	battery.current_filtered_a = battery.current_a;
+	battery.current_filtered_a = msg.current;
 	// battery.average_current_a = msg.;
-	// battery.discharged_mah = msg.;
 
-	// between 0 and 1
-	if (msg.full_charge_capacity_wh > 0) {
-		battery.remaining = msg.remaining_capacity_wh / msg.full_charge_capacity_wh;
+	sumDischarged(battery.timestamp, battery.current_a);
+	battery.discharged_mah = _discharged_mah;
 
-	} else {
-		battery.remaining = 0;
-
-	}
-
+	battery.remaining = msg.state_of_charge_pct / 100.0f; // between 0 and 1
 	// battery.scale = msg.; // Power scaling factor, >= 1, or -1 if unknown
-	battery.temperature = msg.temperature;
+	battery.temperature = msg.temperature + CONSTANTS_ABSOLUTE_NULL_CELSIUS; // Kelvin to Celcius
 	// battery.cell_count = msg.;
-	// battery.voltage_cell_v[4] = msg.;
-	// battery.max_cell_voltage_delta = msg.;
+	battery.connected = true;
+	battery.source = msg.status_flags & uavcan::equipment::power::BatteryInfo::STATUS_FLAG_IN_USE;
+	// battery.priority = msg.;
 	battery.capacity = msg.full_charge_capacity_wh;
 	// battery.cycle_count = msg.;
 	// battery.run_time_to_empty = msg.;
 	// battery.average_time_to_empty = msg.;
 	battery.serial_number = msg.model_instance_id;
-	battery.connected = true;
-	battery.system_source = msg.status_flags & uavcan::equipment::power::BatteryInfo::STATUS_FLAG_IN_USE;
-	// battery.priority = msg.;
+	battery.id = msg.getSrcNodeID().get();
+
+	// battery.voltage_cell_v[0] = msg.;
+	// battery.max_cell_voltage_delta = msg.;
+
 	// battery.is_powering_off = msg.;
-	// battery.warning = msg.;
+
+	determineWarning(battery.remaining);
+	battery.warning = _warning;
 
 	publish(msg.getSrcNodeID().get(), &battery);
+}
+
+void
+UavcanBatteryBridge::sumDischarged(hrt_abstime timestamp, float current_a)
+{
+	// Not a valid measurement
+	if (current_a < 0.f) {
+		// Because the measurement was invalid we need to stop integration
+		// and re-initialize with the next valid measurement
+		_last_timestamp = 0;
+		return;
+	}
+
+	// Ignore first update because we don't know dt.
+	if (_last_timestamp != 0) {
+		const float dt = (timestamp - _last_timestamp) / 1e6;
+		// mAh since last loop: (current[A] * 1000 = [mA]) * (dt[s] / 3600 = [h])
+		_discharged_mah_loop = (current_a * 1e3f) * (dt / 3600.f);
+		_discharged_mah += _discharged_mah_loop;
+	}
+
+	_last_timestamp = timestamp;
+}
+
+void
+UavcanBatteryBridge::determineWarning(float remaining)
+{
+	// propagate warning state only if the state is higher, otherwise remain in current warning state
+	if (remaining < _param_bat_emergen_thr.get() || (_warning == battery_status_s::BATTERY_WARNING_EMERGENCY)) {
+		_warning = battery_status_s::BATTERY_WARNING_EMERGENCY;
+
+	} else if (remaining < _param_bat_crit_thr.get() || (_warning == battery_status_s::BATTERY_WARNING_CRITICAL)) {
+		_warning = battery_status_s::BATTERY_WARNING_CRITICAL;
+
+	} else if (remaining < _param_bat_low_thr.get() || (_warning == battery_status_s::BATTERY_WARNING_LOW)) {
+		_warning = battery_status_s::BATTERY_WARNING_LOW;
+	}
 }

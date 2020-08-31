@@ -235,8 +235,8 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 	memset(&att_sp, 0, sizeof(att_sp));
 	struct vehicle_global_position_s global_pos;
 	memset(&global_pos, 0, sizeof(global_pos));
-	struct manual_control_setpoint_s manual_sp;
-	memset(&manual_sp, 0, sizeof(manual_sp));
+	struct manual_control_setpoint_s manual_control_setpoint;
+	memset(&manual_control_setpoint, 0, sizeof(manual_control_setpoint));
 	struct vehicle_status_s vstatus;
 	memset(&vstatus, 0, sizeof(vstatus));
 	struct position_setpoint_s global_sp;
@@ -265,7 +265,7 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 
 	int global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
 
-	int manual_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
+	int manual_control_setpoint_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 
 	int vstatus_sub = orb_subscribe(ORB_ID(vehicle_status));
 
@@ -325,8 +325,8 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 				orb_check(global_pos_sub, &pos_updated);
 				bool att_sp_updated;
 				orb_check(att_sp_sub, &att_sp_updated);
-				bool manual_sp_updated;
-				orb_check(manual_sp_sub, &manual_sp_updated);
+				bool manual_control_setpoint_updated;
+				orb_check(manual_control_setpoint_sub, &manual_control_setpoint_updated);
 
 				/* get a local copy of attitude */
 				orb_copy(ORB_ID(vehicle_attitude), att_sub, &att);
@@ -338,10 +338,10 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 				/* control attitude / heading */
 				control_attitude(&_att_sp, &att, &actuators);
 
-				if (manual_sp_updated)
+				if (manual_control_setpoint_updated)
 					/* get the RC (or otherwise user based) input */
 				{
-					orb_copy(ORB_ID(manual_control_setpoint), manual_sp_sub, &manual_sp);
+					orb_copy(ORB_ID(manual_control_setpoint), manual_control_setpoint_sub, &manual_control_setpoint);
 				}
 
 				// XXX copy from manual depending on flight / usage mode to override

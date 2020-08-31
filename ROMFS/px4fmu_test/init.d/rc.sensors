@@ -3,11 +3,6 @@
 # Standard startup script for onboard sensor drivers.
 #
 
-# Configure all I2C buses to 100 KHz as they
-# are all external or slow
-fmu i2c 1 100000
-fmu i2c 2 100000
-
 if ms5611 -s start
 then
 fi

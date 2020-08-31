@@ -39,7 +39,6 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <drivers/device/spi.h>
-#include <drivers/drv_mag.h>
 #include <drivers/drv_device.h>
 
 #include "hmc5883.h"
@@ -63,9 +62,6 @@ public:
 	virtual int	init();
 	virtual int	read(unsigned address, void *data, unsigned count);
 	virtual int	write(unsigned address, void *data, unsigned count);
-
-	virtual int	ioctl(unsigned operation, unsigned &arg);
-
 };
 
 device::Device *
@@ -75,13 +71,11 @@ HMC5883_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi
 }
 
 HMC5883_SPI::HMC5883_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
-	SPI("HMC5883_SPI", nullptr, bus, device, spi_mode, bus_frequency)
+	SPI(DRV_MAG_DEVTYPE_HMC5883, MODULE_NAME, bus, device, spi_mode, bus_frequency)
 {
-	_device_id.devid_s.devtype = DRV_MAG_DEVTYPE_HMC5883;
 }
 
-int
-HMC5883_SPI::init()
+int HMC5883_SPI::init()
 {
 	int ret;
 
@@ -111,34 +105,7 @@ HMC5883_SPI::init()
 	return OK;
 }
 
-int
-HMC5883_SPI::ioctl(unsigned operation, unsigned &arg)
-{
-	int ret;
-
-	switch (operation) {
-
-	case MAGIOCGEXTERNAL:
-		/*
-		 * Even if this sensor is on the external SPI
-		 * bus it is still internal to the autopilot
-		 * assembly, so always return 0 for internal.
-		 */
-		return 0;
-
-	case DEVIOCGDEVICEID:
-		return CDev::ioctl(nullptr, operation, arg);
-
-	default: {
-			ret = -EINVAL;
-		}
-	}
-
-	return ret;
-}
-
-int
-HMC5883_SPI::write(unsigned address, void *data, unsigned count)
+int HMC5883_SPI::write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 
@@ -152,8 +119,7 @@ HMC5883_SPI::write(unsigned address, void *data, unsigned count)
 	return transfer(&buf[0], &buf[0], count + 1);
 }
 
-int
-HMC5883_SPI::read(unsigned address, void *data, unsigned count)
+int HMC5883_SPI::read(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 

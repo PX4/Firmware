@@ -47,6 +47,7 @@
 #include <uORB/topics/mount_orientation.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_local_position.h>
 
 namespace vmount
 {
@@ -124,6 +125,7 @@ protected:
 private:
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_global_position_sub{ORB_ID(vehicle_global_position)};
+	uORB::Subscription _vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 
 	uORB::Publication<mount_orientation_s> _mount_orientation_pub{ORB_ID(mount_orientation)};
 };

@@ -35,8 +35,7 @@ px4_add_board(
 		#imu # all available imu drivers
 		imu/l3gd20
 		imu/lsm303d
-		imu/mpu6000
-		#imu/mpu9250
+		imu/invensense/mpu6000
 		#iridiumsbd
 		irlock
 		#lights/blinkm
@@ -50,7 +49,7 @@ px4_add_board(
 		#protocol_splitter
 		#pwm_input
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		px4io
 		#tap_esc
 		#telemetry # all available telemetry drivers
@@ -88,7 +87,6 @@ px4_add_board(
 
 	SYSTEMCMDS
 		bl_update
-		#config
 		#dumpfile
 		#esc_calib
 		hardfault_log

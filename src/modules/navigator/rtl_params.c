@@ -123,7 +123,7 @@ PARAM_DEFINE_INT32(RTL_TYPE, 0);
  * Defines the half-angle of a cone centered around the destination position that
  * affects the altitude at which the vehicle returns.
  *
- * @unit degrees
+ * @unit deg
  * @min 0
  * @max 90
  * @value 0 No cone, always climb to RTL_RETURN_ALT above destination.
@@ -135,3 +135,15 @@ PARAM_DEFINE_INT32(RTL_TYPE, 0);
  * @group Return Mode
  */
 PARAM_DEFINE_INT32(RTL_CONE_ANG, 0);
+
+/**
+ * RTL precision land mode
+ *
+ * Use precision landing when doing an RTL landing phase.
+ *
+ * @value 0 No precision landing
+ * @value 1 Opportunistic precision landing
+ * @value 2 Required precision landing
+ * @group Return To Land
+ */
+PARAM_DEFINE_INT32(RTL_PLD_MD, 0);

@@ -95,6 +95,8 @@ public:
 				_head = _head->getSibling();
 			}
 
+			removeNode->setSibling(nullptr);
+
 			return true;
 		}
 
@@ -108,6 +110,8 @@ public:
 				} else {
 					node->setSibling(nullptr);
 				}
+
+				removeNode->setSibling(nullptr);
 
 				return true;
 			}

@@ -9,7 +9,7 @@
     <arg name="R" default="0"/>
     <arg name="P" default="0"/>
     <arg name="Y" default="0"/>
-    <!-- vehcile model and config -->
+    <!-- vehicle model and config -->
     <arg name="est" default="ekf2"/>
     <arg name="vehicle" default="iris"/>
     <arg name="ID" default="1"/>

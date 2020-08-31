@@ -36,10 +36,11 @@
  * SMBus v2.0 protocol implementation.
  *
  * @author Jacob Dahl <dahl.jakejacob@gmail.com>
+ * @author Bazooka Joe <BazookaJoe1900@gmail.com>
  */
 
 #include <drivers/device/i2c.h>
-
+#include <perf/perf_counter.h>
 #include <string.h>
 
 #define SMBUS_PEC_POLYNOMIAL	0x07	///< Polynomial for calculating PEC
@@ -48,7 +49,7 @@ class SMBus : public device::I2C
 {
 public:
 	SMBus(int bus_num, uint16_t address);
-	~SMBus() override = default;
+	~SMBus() override;
 
 	/**
 	 * @brief Sends a block write command.
@@ -57,7 +58,7 @@ public:
 	 * @param length The number of bytes being written.
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
-	int block_write(const uint8_t cmd_code, void *data, uint8_t byte_count, bool use_pec);
+	int block_write(const uint8_t cmd_code, const void *data, uint8_t byte_count, const bool use_pec);
 
 	/**
 	 * @brief Sends a block read command.
@@ -66,7 +67,7 @@ public:
 	 * @param length The number of bytes being read.
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
-	int block_read(const uint8_t cmd_code, void *data, const uint8_t length, bool use_pec);
+	int block_read(const uint8_t cmd_code, void *data, const uint8_t length, const bool use_pec);
 
 	/**
 	 * @brief Sends a read word command.
@@ -91,5 +92,7 @@ public:
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
 	uint8_t get_pec(uint8_t *buffer, uint8_t length);
+
+	perf_counter_t _interface_errors{perf_alloc(PC_COUNT, MODULE_NAME": errors")};
 
 };

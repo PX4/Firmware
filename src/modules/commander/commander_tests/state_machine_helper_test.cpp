@@ -305,8 +305,8 @@ bool StateMachineHelperTest::armingStateTransitionTest()
 					     nullptr /* no mavlink_log_pub */,
 					     &status_flags,
 					     arm_req,
-					     2e6 /* 2 seconds after boot, everything should be checked */
-								    );
+					     2e6, /* 2 seconds after boot, everything should be checked */
+					     arm_disarm_reason_t::UNIT_TEST);
 
 		// Validate result of transition
 		ut_compare(test->assertMsg, test->expected_transition_result, result);

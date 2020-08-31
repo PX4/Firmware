@@ -163,7 +163,7 @@ stm32_boardinitialize(void)
 	px4_gpio_init(gpio, arraySize(gpio));
 
 	/* configure SPI interfaces */
-	stm32_spiinitialize();
+	px4_arch_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
 
 	/* configure USB interfaces */
 	stm32_usbinitialize();
@@ -198,10 +198,13 @@ stm32_boardinitialize(void)
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
 	/* Power on Interfaces */
+	px4_arch_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
 	board_control_spi_sensors_power(true, 0xffff);
 	VDD_3V3_SPEKTRUM_POWER_EN(true);
 
 	px4_platform_init();
+
+	stm32_spiinitialize();
 
 	/* configure the DMA allocator */
 	if (board_dma_alloc_init() < 0) {

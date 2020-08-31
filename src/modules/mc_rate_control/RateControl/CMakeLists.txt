@@ -33,12 +33,10 @@
 
 px4_add_library(RateControl
 	RateControl.cpp
+	RateControl.hpp
 )
-target_include_directories(RateControl
-	PUBLIC
-	${CMAKE_CURRENT_SOURCE_DIR}
-)
-
+target_compile_options(RateControl PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
+target_include_directories(RateControl PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(RateControl PRIVATE mathlib)
 
 px4_add_unit_gtest(SRC RateControlTest.cpp LINKLIBS RateControl)

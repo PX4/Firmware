@@ -59,12 +59,12 @@
 #define MPU9250_LOW_SPI_BUS_SPEED	1000*1000
 #define MPU9250_HIGH_SPI_BUS_SPEED	20*1000*1000
 
-device::Device *MPU9250_SPI_interface(int bus, uint32_t cs);
+device::Device *MPU9250_SPI_interface(int bus, uint32_t cs, int bus_frequency, spi_mode_e spi_mode);
 
 class MPU9250_SPI : public device::SPI
 {
 public:
-	MPU9250_SPI(int bus, uint32_t device);
+	MPU9250_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
 	~MPU9250_SPI() override = default;
 
 	int	read(unsigned address, void *data, unsigned count) override;
@@ -74,30 +74,31 @@ protected:
 	int probe() override;
 
 private:
-
 	/* Helper to set the desired speed and isolate the register on return */
 	void set_bus_frequency(unsigned &reg_speed_reg_out);
+
+	const int _high_bus_speed;
 };
 
 device::Device *
-MPU9250_SPI_interface(int bus, uint32_t cs)
+MPU9250_SPI_interface(int bus, uint32_t cs, int bus_frequency, spi_mode_e spi_mode)
 {
-	return new MPU9250_SPI(bus, cs);
+	return new MPU9250_SPI(bus, cs, bus_frequency, spi_mode);
 }
 
-MPU9250_SPI::MPU9250_SPI(int bus, uint32_t device) :
-	SPI("MPU9250", nullptr, bus, device, SPIDEV_MODE3, MPU9250_LOW_SPI_BUS_SPEED)
+MPU9250_SPI::MPU9250_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI(DRV_IMU_DEVTYPE_MPU9250, MODULE_NAME, bus, device, spi_mode, MPU9250_LOW_SPI_BUS_SPEED),
+	_high_bus_speed(bus_frequency)
 {
-	set_device_type(DRV_IMU_DEVTYPE_MPU9250);
 }
 
 void
 MPU9250_SPI::set_bus_frequency(unsigned &reg_speed)
 {
 	/* Set the desired speed */
-	set_frequency(MPU9250_IS_HIGH_SPEED(reg_speed) ? MPU9250_HIGH_SPI_BUS_SPEED : MPU9250_LOW_SPI_BUS_SPEED);
+	set_frequency(MPU9250_IS_HIGH_SPEED(reg_speed) ? _high_bus_speed : MPU9250_LOW_SPI_BUS_SPEED);
 
-	/* Isoolate the register on return */
+	/* Isolate the register on return */
 	reg_speed = MPU9250_REG(reg_speed);
 }
 

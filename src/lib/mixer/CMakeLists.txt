@@ -32,7 +32,7 @@
 ############################################################################
 
 # required by other mixers
-add_subdirectory(Mixer)
+add_subdirectory(MixerBase)
 
 add_subdirectory(HelicopterMixer)
 add_subdirectory(MultirotorMixer)

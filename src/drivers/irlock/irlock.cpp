@@ -43,12 +43,9 @@
 #include <string.h>
 
 #include <drivers/device/i2c.h>
-#include <drivers/device/ringbuffer.h>
-
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/i2c_spi_buses.h>
-
 #include <uORB/Publication.hpp>
 #include <uORB/topics/irlock_report.h>
 
@@ -75,9 +72,6 @@
 #define IRLOCK_TAN_ANG_PER_PIXEL_X	(2*IRLOCK_TAN_HALF_FOV_X/IRLOCK_RES_X)
 #define IRLOCK_TAN_ANG_PER_PIXEL_Y	(2*IRLOCK_TAN_HALF_FOV_Y/IRLOCK_RES_Y)
 
-#define IRLOCK_BASE_DEVICE_PATH	"/dev/irlock"
-#define IRLOCK0_DEVICE_PATH	"/dev/irlock0"
-
 #define IRLOCK_OBJECTS_MAX	5	/** up to 5 objects can be detected/reported **/
 
 struct irlock_target_s {
@@ -92,34 +86,26 @@ struct irlock_target_s {
 struct irlock_s {
 	hrt_abstime timestamp; /** microseconds since system start **/
 	uint8_t num_targets;
-	struct irlock_target_s targets[IRLOCK_OBJECTS_MAX];
+	irlock_target_s targets[IRLOCK_OBJECTS_MAX];
 };
 
 class IRLOCK : public device::I2C, public I2CSPIDriver<IRLOCK>
 {
 public:
 	IRLOCK(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address);
-	virtual ~IRLOCK();
+	~IRLOCK() override = default;
 
 	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
 					     int runtime_instance);
 	static void print_usage();
 
-	void custom_method(const BusCLIArguments &cli) override;
-
 	int init() override;
 	int probe() override;
 	void print_status() override;
-	int test();
-
-	virtual ssize_t read(struct file *filp, char *buffer, size_t buflen);
 
 	/** read from device and schedule next read **/
 	void		RunImpl();
 private:
-
-	/** start periodic reads from sensor **/
-	void 		start();
 
 	/** low level communication with sensor **/
 	int 		read_device();
@@ -128,34 +114,17 @@ private:
 	int 		read_device_block(struct irlock_target_s *block);
 
 	/** internal variables **/
-	ringbuffer::RingBuffer *_reports;
-	bool _sensor_ok;
-	uint32_t _read_failures;
+	uint32_t _read_failures{0};
 
-	int _orb_class_instance;
 	uORB::Publication<irlock_report_s> _irlock_report_topic{ORB_ID(irlock_report)};
 };
 
-extern "C" __EXPORT int irlock_main(int argc, char *argv[]);
-
 IRLOCK::IRLOCK(I2CSPIBusOption bus_option, const int bus, int bus_frequency, const int address) :
-	I2C("irlock", IRLOCK0_DEVICE_PATH, bus, address, bus_frequency),
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
-	_reports(nullptr),
-	_sensor_ok(false),
-	_read_failures(0),
-	_orb_class_instance(-1)
+	I2C(DRV_SENS_DEVTYPE_IRLOCK, MODULE_NAME, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address)
 {
 }
 
-IRLOCK::~IRLOCK()
-{
-	if (_reports != nullptr) {
-		delete _reports;
-	}
-}
-
-/** initialise driver to communicate with sensor **/
 int IRLOCK::init()
 {
 	/** initialise I2C bus **/
@@ -165,21 +134,10 @@ int IRLOCK::init()
 		return ret;
 	}
 
-	/** allocate buffer storing values read from sensor **/
-	_reports = new ringbuffer::RingBuffer(2, sizeof(struct irlock_s));
-
-	if (_reports == nullptr) {
-		return ENOTTY;
-
-	} else {
-		_sensor_ok = true;
-		/** start work queue **/
-		start();
-		return OK;
-	}
+	ScheduleNow();
+	return OK;
 }
 
-/** probe the device is on the I2C bus **/
 int IRLOCK::probe()
 {
 	/*
@@ -198,60 +156,7 @@ int IRLOCK::probe()
 
 void IRLOCK::print_status()
 {
-	/** display reports in queue **/
-	if (_sensor_ok) {
-		_reports->print_info("report queue: ");
-		PX4_INFO("read errors:%lu", (unsigned long)_read_failures);
-
-	} else {
-		PX4_WARN("sensor is not healthy");
-	}
-}
-
-/** test driver **/
-int IRLOCK::test()
-{
-	/** exit immediately if sensor is not healty **/
-	if (!_sensor_ok) {
-		PX4_ERR("sensor is not healthy");
-		return -1;
-	}
-
-	/** instructions to user **/
-	PX4_INFO("searching for object for 10 seconds");
-
-	/** read from sensor for 10 seconds **/
-	struct irlock_s report;
-	uint64_t start_time = hrt_absolute_time();
-
-	while ((hrt_absolute_time() - start_time) < 10000000) {
-		if (_reports->get(&report)) {
-			/** output all objects found **/
-			for (uint8_t i = 0; i < report.num_targets; i++) {
-				PX4_INFO("sig:%d x:%4.3f y:%4.3f width:%4.3f height:%4.3f",
-					 (int)report.targets[i].signature,
-					 (double)report.targets[i].pos_x,
-					 (double)report.targets[i].pos_y,
-					 (double)report.targets[i].size_x,
-					 (double)report.targets[i].size_y);
-			}
-		}
-
-		/** sleep for 0.05 seconds **/
-		usleep(50000);
-	}
-
-	return OK;
-}
-
-/** start periodic reads from sensor **/
-void IRLOCK::start()
-{
-	/** flush ring and reset state machine **/
-	_reports->flush();
-
-	/** start work queue cycle **/
-	ScheduleNow();
+	PX4_INFO("read errors: %lu", (unsigned long)_read_failures);
 }
 
 void IRLOCK::RunImpl()
@@ -259,34 +164,9 @@ void IRLOCK::RunImpl()
 	/** ignoring failure, if we do, we will be back again right away... **/
 	read_device();
 
-	/** schedule the next cycle **/
 	ScheduleDelayed(IRLOCK_CONVERSION_INTERVAL_US);
 }
 
-ssize_t IRLOCK::read(struct file *filp, char *buffer, size_t buflen)
-{
-	unsigned count = buflen / sizeof(struct irlock_s);
-	struct irlock_s *rbuf = reinterpret_cast<struct irlock_s *>(buffer);
-	int ret = 0;
-
-	if (count < 1) {
-		return -ENOSPC;
-	}
-
-	/** try to read **/
-	while (count--) {
-		if (_reports->get(rbuf)) {
-			ret += sizeof(*rbuf);
-			++rbuf;
-		}
-	}
-
-	return ret ? ret : -EAGAIN;
-
-	return ret;
-}
-
-/** sync device to ensure reading starts at new frame*/
 bool IRLOCK::sync_device()
 {
 	uint8_t sync_byte;
@@ -310,7 +190,6 @@ bool IRLOCK::sync_device()
 	return false;
 }
 
-/** read all available frames from sensor **/
 int IRLOCK::read_device()
 {
 	/** if we sync, then we are starting a new frame, else fail **/
@@ -318,10 +197,8 @@ int IRLOCK::read_device()
 		return -ENOTTY;
 	}
 
-	struct irlock_s report;
-
+	irlock_s report{};
 	report.timestamp = hrt_absolute_time();
-
 	report.num_targets = 0;
 
 	while (report.num_targets < IRLOCK_OBJECTS_MAX) {
@@ -331,8 +208,6 @@ int IRLOCK::read_device()
 
 		report.num_targets++;
 	}
-
-	_reports->force(&report);
 
 	// publish over uORB
 	if (report.num_targets > 0) {
@@ -350,11 +225,9 @@ int IRLOCK::read_device()
 	return OK;
 }
 
-/** read a word (two bytes) from sensor **/
 int IRLOCK::read_device_word(uint16_t *word)
 {
-	uint8_t bytes[2];
-	memset(bytes, 0, sizeof bytes);
+	uint8_t bytes[2] {};
 
 	int status = transfer(nullptr, 0, &bytes[0], 2);
 	*word = bytes[1] << 8 | bytes[0];
@@ -362,8 +235,7 @@ int IRLOCK::read_device_word(uint16_t *word)
 	return status;
 }
 
-/** read a single block (a full frame) from sensor **/
-int IRLOCK::read_device_block(struct irlock_target_s *block)
+int IRLOCK::read_device_block(irlock_target_s *block)
 {
 	uint8_t bytes[12];
 	memset(bytes, 0, sizeof bytes);
@@ -391,14 +263,12 @@ int IRLOCK::read_device_block(struct irlock_target_s *block)
 	return status;
 }
 
-void
-IRLOCK::print_usage()
+void IRLOCK::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("irlock", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
 	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x54);
-	PRINT_MODULE_USAGE_COMMAND("test");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
@@ -418,11 +288,6 @@ I2CSPIDriverBase *IRLOCK::instantiate(const BusCLIArguments &cli, const BusInsta
 	}
 
 	return instance;
-}
-void
-IRLOCK::custom_method(const BusCLIArguments &cli)
-{
-	test();
 }
 
 extern "C" __EXPORT int irlock_main(int argc, char *argv[])
@@ -451,10 +316,6 @@ extern "C" __EXPORT int irlock_main(int argc, char *argv[])
 
 	if (!strcmp(verb, "status")) {
 		return ThisDriver::module_status(iterator);
-	}
-
-	if (!strcmp(verb, "test")) {
-		return ThisDriver::module_custom_method(cli, iterator, false);
 	}
 
 	ThisDriver::print_usage();

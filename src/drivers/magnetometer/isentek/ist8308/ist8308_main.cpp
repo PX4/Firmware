@@ -34,177 +34,73 @@
 #include "IST8308.hpp"
 
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-namespace ist8308
+I2CSPIDriverBase *IST8308::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
+	IST8308 *instance = new IST8308(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency, cli.rotation);
 
-enum class BUS {
-	ALL = 0,
-	I2C_EXTERNAL  = 1,
-	I2C_EXTERNAL1 = 2,
-	I2C_EXTERNAL2 = 3,
-	I2C_EXTERNAL3 = 4,
-	I2C_INTERNAL  = 5,
-};
-
-struct bus_option {
-	BUS busid;
-	uint8_t busnum;
-	IST8308 *dev;
-} bus_options[] = {
-#if defined(PX4_I2C_BUS_ONBOARD)
-	{ BUS::I2C_INTERNAL, PX4_I2C_BUS_ONBOARD, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION)
-	{ BUS::I2C_EXTERNAL, PX4_I2C_BUS_EXPANSION, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION1)
-	{ BUS::I2C_EXTERNAL1, PX4_I2C_BUS_EXPANSION1, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION2)
-	{ BUS::I2C_EXTERNAL2, PX4_I2C_BUS_EXPANSION2, nullptr },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION3)
-	{ BUS::I2C_EXTERNAL3, PX4_I2C_BUS_EXPANSION3, nullptr },
-#endif
-};
-
-// find a bus structure for a busid
-static bus_option *find_bus(BUS busid)
-{
-	for (bus_option &bus_option : bus_options) {
-		if ((busid == BUS::ALL || busid == bus_option.busid)
-		    && bus_option.dev != nullptr) {
-
-			return &bus_option;
-		}
-	}
-
-	return nullptr;
-}
-
-static bool start_bus(bus_option &bus, enum Rotation rotation)
-{
-	IST8308 *dev = new IST8308(bus.busnum, I2C_ADDRESS_DEFAULT, rotation);
-
-	if (dev == nullptr) {
+	if (!instance) {
 		PX4_ERR("alloc failed");
-		return false;
+		return nullptr;
 	}
 
-	if (!dev->Init()) {
-		PX4_ERR("driver start failed");
-		delete dev;
-		return false;
+	if (instance->init() != PX4_OK) {
+		delete instance;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
 	}
 
-	bus.dev = dev;
-
-	return true;
+	return instance;
 }
 
-static int start(BUS busid, enum Rotation rotation)
+void IST8308::print_usage()
 {
-	for (bus_option &bus_option : bus_options) {
-		if (bus_option.dev != nullptr) {
-			// this device is already started
-			PX4_WARN("already started");
-			continue;
-		}
-
-		if (busid != BUS::ALL && bus_option.busid != busid) {
-			// not the one that is asked for
-			continue;
-		}
-
-		if (start_bus(bus_option, rotation)) {
-			return 0;
-		}
-	}
-
-	return -1;
+	PRINT_MODULE_USAGE_NAME("ist8308", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("magnetometer");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
-
-static int stop(BUS busid)
-{
-	bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		delete bus->dev;
-		bus->dev = nullptr;
-
-	} else {
-		PX4_WARN("driver not running");
-		return -1;
-	}
-
-	return 0;
-}
-
-static int status(BUS busid)
-{
-	bus_option *bus = find_bus(busid);
-
-	if (bus != nullptr && bus->dev != nullptr) {
-		bus->dev->PrintInfo();
-		return 0;
-	}
-
-	PX4_WARN("driver not running");
-	return -1;
-}
-
-static int usage()
-{
-	PX4_INFO("missing command: try 'start', 'stop', 'status'");
-	PX4_INFO("options:");
-	PX4_INFO("    -R rotation");
-
-	return 0;
-}
-
-} // namespace ist8308
 
 extern "C" int ist8308_main(int argc, char *argv[])
 {
-	enum Rotation rotation = ROTATION_NONE;
-	int myoptind = 1;
-	int ch = 0;
-	const char *myoptarg = nullptr;
-	ist8308::BUS busid = ist8308::BUS::ALL;
+	int ch;
+	using ThisDriver = IST8308;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = I2C_SPEED;
 
-	// start options
-	while ((ch = px4_getopt(argc, argv, "R:b:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		case 'b':
-			busid = (ist8308::BUS)atoi(myoptarg);
-			break;
-
-		default:
-			return ist8308::usage();
 		}
 	}
 
-	if (myoptind >= argc) {
-		return ist8308::usage();
+	const char *verb = cli.optarg();
+
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	const char *verb = argv[myoptind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_MAG_DEVTYPE_IST8308);
 
 	if (!strcmp(verb, "start")) {
-		return ist8308::start(busid, rotation);
-
-	} else if (!strcmp(verb, "stop")) {
-		return ist8308::stop(busid);
-
-	} else if (!strcmp(verb, "status")) {
-		return ist8308::status(busid);
-
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	return ist8308::usage();
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

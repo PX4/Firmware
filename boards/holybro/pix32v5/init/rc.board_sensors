@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# PX4 FMUv5 specific board sensors init
+#------------------------------------------------------------------------------
+
+adc start
+
+# Internal SPI bus ICM-20602
+icm20602 -s -R 2 start
+
+# Internal SPI bus ICM-20689
+icm20689 -s -R 2 start
+
+# Internal SPI bus BMI055 accel/gyro
+bmi055 -A -R 2 -s start
+bmi055 -G -R 2 -s start
+
+# internal compass
+ist8310 -I start
+
+# Baro on internal SPI
+ms5611 -s start

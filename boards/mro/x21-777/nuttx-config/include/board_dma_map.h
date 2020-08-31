@@ -74,7 +74,7 @@
 | Channel 10 | SAI1_B           | SAI2_B           | SAI2_A           | -                | -                | -                | SAI1_A           | -                |
 | Channel 11 | SDMMC2           | -                | QUADSPI          | -                | -                | SDMMC2           | -                | -                |
 |            |                  |                  |                  |                  |                  |                  |                  |                  |
-| Usage      | SPI1_RX_1        |                  | USART6_RX_2      | SPI1_TX_1        |                  | USART1_RX_2      | SDMMC1_2         | USART6_TX_2      |
+| Usage      | SPI1_RX_1        |                  | USART6_RX_2      | SPI1_TX_1        |                  | TIM1_UP          | SDMMC1_2         | USART6_TX_2      |
  */
 
 // DMA1 Channel/Stream Selections
@@ -91,9 +91,9 @@
 //--------------------------------------------//---------------------------//----------------
 #define DMAMAP_SPI1_RX    DMAMAP_SPI1_RX_1    // DMA2, Stream 0, Channel 3    (SPI sensors RX)
 //      AVAILABLE                             // DMA2, Stream 1
-#define DMAMAP_USART6_RX  DMAMAP_USART6_RX_2  // DMA2, Stream 2, Channel 5
-#define DMAMAP_SPI1_TX    DMAMAP_SPI1_TX_1    // DMA2, Stream 3, Channel 3    (SPI sensors TX)
+#define DMAMAP_USART6_RX  DMAMAP_USART6_RX_2  // DMA2, Stream 2, Channel 5    (PX4_IO RX)
+//      AVAILABLE                             // DMA2, Stream 3, Channel 3
 //      AVAILABLE                             // DMA2, Stream 4
-#define DMAMAP_USART1_RX  DMAMAP_USART1_RX_2  // DMA2, Stream 5, Channel 4
-#define DMAMAP_SDMMC1     DMAMAP_SDMMC1_2     // DMA2, Stream 6, Channel 4
-#define DMAMAP_USART6_TX  DMAMAP_USART6_TX_2  // DMA2, Stream 7, Channel 5
+#define DMAMAP_SPI1_TX    DMAMAP_SPI1_TX_2    // DMA2, Stream 5, Channel 3    (SPI sensors TX)
+#define DMAMAP_SDMMC1     DMAMAP_SDMMC1_2     // DMA2, Stream 6, Channel 4    (SDMMC)
+#define DMAMAP_USART6_TX  DMAMAP_USART6_TX_2  // DMA2, Stream 7, Channel 5    (PX4_IO TX)

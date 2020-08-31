@@ -150,7 +150,7 @@ int
 MavlinkMissionManager::update_active_mission(dm_item_t dataman_id, uint16_t count, int32_t seq)
 {
 	// We want to make sure the whole struct is initialized including padding before getting written by dataman.
-	mission_s mission {};
+	mission_s mission{};
 	mission.timestamp = hrt_absolute_time();
 	mission.dataman_id = dataman_id;
 	mission.count = count;
@@ -217,7 +217,6 @@ MavlinkMissionManager::update_geofence_count(unsigned count)
 	}
 
 	return PX4_OK;
-
 }
 
 int
@@ -248,7 +247,7 @@ MavlinkMissionManager::update_safepoint_count(unsigned count)
 void
 MavlinkMissionManager::send_mission_ack(uint8_t sysid, uint8_t compid, uint8_t type)
 {
-	mavlink_mission_ack_t wpa;
+	mavlink_mission_ack_t wpa{};
 
 	wpa.target_system = sysid;
 	wpa.target_component = compid;
@@ -261,34 +260,31 @@ MavlinkMissionManager::send_mission_ack(uint8_t sysid, uint8_t compid, uint8_t t
 }
 
 void
-MavlinkMissionManager::send_mission_current(uint16_t seq)
+MavlinkMissionManager::send_mission_current(int32_t seq)
 {
-	unsigned item_count = _count[MAV_MISSION_TYPE_MISSION];
+	int32_t item_count = _count[MAV_MISSION_TYPE_MISSION];
 
 	if (seq < item_count) {
-		mavlink_mission_current_t wpc;
-
+		mavlink_mission_current_t wpc{};
 		wpc.seq = seq;
-
 		mavlink_msg_mission_current_send_struct(_mavlink->get_channel(), &wpc);
 
-	} else if (seq == 0 && item_count == 0) {
+	} else if (seq <= 0 && item_count == 0) {
 		/* don't broadcast if no WPs */
 
 	} else {
-		PX4_DEBUG("WPM: Send MISSION_CURRENT ERROR: seq %u out of bounds", seq);
+		PX4_DEBUG("WPM: Send MISSION_CURRENT ERROR: seq %d out of bounds", seq);
 
 		_mavlink->send_statustext_critical("ERROR: wp index out of bounds");
 	}
 }
-
 
 void
 MavlinkMissionManager::send_mission_count(uint8_t sysid, uint8_t compid, uint16_t count, MAV_MISSION_TYPE mission_type)
 {
 	_time_last_sent = hrt_absolute_time();
 
-	mavlink_mission_count_t wpc;
+	mavlink_mission_count_t wpc{};
 
 	wpc.target_system = sysid;
 	wpc.target_component = compid;
@@ -300,11 +296,10 @@ MavlinkMissionManager::send_mission_count(uint8_t sysid, uint8_t compid, uint16_
 	PX4_DEBUG("WPM: Send MISSION_COUNT %u to ID %u, mission type=%i", wpc.count, wpc.target_system, mission_type);
 }
 
-
 void
 MavlinkMissionManager::send_mission_item(uint8_t sysid, uint8_t compid, uint16_t seq)
 {
-	mission_item_s mission_item = {};
+	mission_item_s mission_item{};
 	int read_result = 0;
 
 	switch (_mission_type) {
@@ -357,7 +352,7 @@ MavlinkMissionManager::send_mission_item(uint8_t sysid, uint8_t compid, uint16_t
 		_time_last_sent = hrt_absolute_time();
 
 		if (_int_mode) {
-			mavlink_mission_item_int_t wp = {};
+			mavlink_mission_item_int_t wp{};
 			format_mavlink_mission_item(&mission_item, reinterpret_cast<mavlink_mission_item_t *>(&wp));
 
 			wp.target_system = sysid;
@@ -370,7 +365,7 @@ MavlinkMissionManager::send_mission_item(uint8_t sysid, uint8_t compid, uint16_t
 			PX4_DEBUG("WPM: Send MISSION_ITEM_INT seq %u to ID %u", wp.seq, wp.target_system);
 
 		} else {
-			mavlink_mission_item_t wp = {};
+			mavlink_mission_item_t wp{};
 			format_mavlink_mission_item(&mission_item, &wp);
 
 			wp.target_system = sysid;
@@ -423,7 +418,7 @@ MavlinkMissionManager::send_mission_request(uint8_t sysid, uint8_t compid, uint1
 		_time_last_sent = hrt_absolute_time();
 
 		if (_int_mode) {
-			mavlink_mission_request_int_t wpr;
+			mavlink_mission_request_int_t wpr{};
 			wpr.target_system = sysid;
 			wpr.target_component = compid;
 			wpr.seq = seq;
@@ -434,7 +429,7 @@ MavlinkMissionManager::send_mission_request(uint8_t sysid, uint8_t compid, uint1
 
 		} else {
 
-			mavlink_mission_request_t wpr;
+			mavlink_mission_request_t wpr{};
 			wpr.target_system = sysid;
 			wpr.target_component = compid;
 			wpr.seq = seq;
@@ -452,11 +447,10 @@ MavlinkMissionManager::send_mission_request(uint8_t sysid, uint8_t compid, uint1
 	}
 }
 
-
 void
 MavlinkMissionManager::send_mission_item_reached(uint16_t seq)
 {
-	mavlink_mission_item_reached_t wp_reached;
+	mavlink_mission_item_reached_t wp_reached{};
 
 	wp_reached.seq = seq;
 
@@ -464,7 +458,6 @@ MavlinkMissionManager::send_mission_item_reached(uint16_t seq)
 
 	PX4_DEBUG("WPM: Send MISSION_ITEM_REACHED reached_seq %u", wp_reached.seq);
 }
-
 
 void
 MavlinkMissionManager::send(const hrt_abstime now)
@@ -591,11 +584,10 @@ MavlinkMissionManager::handle_message(const mavlink_message_t *msg)
 	}
 }
 
-
 void
 MavlinkMissionManager::handle_mission_ack(const mavlink_message_t *msg)
 {
-	mavlink_mission_ack_t wpa;
+	mavlink_mission_ack_t wpa{};
 	mavlink_msg_mission_ack_decode(msg, &wpa);
 
 	if (CHECK_SYSID_COMPID_MISSION(wpa)) {
@@ -648,7 +640,6 @@ MavlinkMissionManager::handle_mission_ack(const mavlink_message_t *msg)
 	}
 }
 
-
 void
 MavlinkMissionManager::handle_mission_set_current(const mavlink_message_t *msg)
 {
@@ -691,6 +682,14 @@ MavlinkMissionManager::handle_mission_request_list(const mavlink_message_t *msg)
 	mavlink_msg_mission_request_list_decode(msg, &wprl);
 
 	if (CHECK_SYSID_COMPID_MISSION(wprl)) {
+		const bool maybe_completed = (_transfer_seq == current_item_count());
+
+		// If all mission items have been sent and a new mission request list comes in, we can proceed even if  MISSION_ACK was
+		// never received. This could happen on a quick reconnect that doesn't trigger MAVLINK_MISSION_PROTOCOL_TIMEOUT_DEFAULT
+		if (maybe_completed) {
+			switch_to_idle_state();
+		}
+
 		if (_state == MAVLINK_WPM_STATE_IDLE || (_state == MAVLINK_WPM_STATE_SENDLIST
 				&& (uint8_t)_mission_type == wprl.mission_type)) {
 			_time_last_recv = hrt_absolute_time();
@@ -729,7 +728,7 @@ MavlinkMissionManager::handle_mission_request_list(const mavlink_message_t *msg)
 		} else {
 			PX4_DEBUG("WPM: MISSION_REQUEST_LIST ERROR: busy");
 
-			_mavlink->send_statustext_critical("IGN REQUEST LIST: Busy");
+			_mavlink->send_statustext_info("Mission download request ignored, already active");
 		}
 	}
 }
@@ -1465,9 +1464,11 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 		case MAV_CMD_IMAGE_STOP_CAPTURE:
 		case MAV_CMD_VIDEO_START_CAPTURE:
 		case MAV_CMD_VIDEO_STOP_CAPTURE:
+		case MAV_CMD_DO_CONTROL_VIDEO:
 		case MAV_CMD_DO_SET_CAM_TRIGG_DIST:
 		case MAV_CMD_DO_SET_CAM_TRIGG_INTERVAL:
 		case MAV_CMD_SET_CAMERA_MODE:
+		case MAV_CMD_SET_CAMERA_ZOOM:
 		case MAV_CMD_DO_VTOL_TRANSITION:
 		case MAV_CMD_NAV_DELAY:
 		case MAV_CMD_NAV_RETURN_TO_LAUNCH:
@@ -1537,12 +1538,14 @@ MavlinkMissionManager::format_mavlink_mission_item(const struct mission_item_s *
 		case NAV_CMD_IMAGE_STOP_CAPTURE:
 		case NAV_CMD_VIDEO_START_CAPTURE:
 		case NAV_CMD_VIDEO_STOP_CAPTURE:
+		case NAV_CMD_DO_CONTROL_VIDEO:
 		case NAV_CMD_DO_MOUNT_CONFIGURE:
 		case NAV_CMD_DO_MOUNT_CONTROL:
 		case NAV_CMD_DO_SET_ROI:
 		case NAV_CMD_DO_SET_CAM_TRIGG_DIST:
 		case NAV_CMD_DO_SET_CAM_TRIGG_INTERVAL:
 		case NAV_CMD_SET_CAMERA_MODE:
+		case NAV_CMD_SET_CAMERA_ZOOM:
 		case NAV_CMD_DO_VTOL_TRANSITION:
 			break;
 

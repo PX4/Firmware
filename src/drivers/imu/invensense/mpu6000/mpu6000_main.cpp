@@ -34,120 +34,73 @@
 #include "MPU6000.hpp"
 
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
-namespace mpu6000
+void MPU6000::print_usage()
 {
-MPU6000 *g_dev{nullptr};
-
-static int start(enum Rotation rotation)
-{
-	if (g_dev != nullptr) {
-		PX4_WARN("already started");
-		return 0;
-	}
-
-	// create the driver
-#if defined(PX4_SPI_BUS_SENSORS) && defined(PX4_SPIDEV_MPU)
-	g_dev = new MPU6000(PX4_SPI_BUS_SENSORS, PX4_SPIDEV_MPU, rotation);
-#elif defined(PX4_SPI_BUS_EXT) && defined(PX4_SPIDEV_EXT_MPU)
-	g_dev = new MPU6000(PX4_SPI_BUS_EXT, PX4_SPIDEV_EXT_MPU, rotation);
-#endif
-
-	if (g_dev == nullptr) {
-		PX4_ERR("driver start failed");
-		return -1;
-	}
-
-	if (!g_dev->Init()) {
-		PX4_ERR("driver init failed");
-		delete g_dev;
-		g_dev = nullptr;
-		return -1;
-	}
-
-	return 0;
+	PRINT_MODULE_USAGE_NAME("mpu6000", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-static int stop()
+I2CSPIDriverBase *MPU6000::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+				       int runtime_instance)
 {
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
-		return -1;
+	MPU6000 *instance = new MPU6000(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
+					cli.bus_frequency, cli.spi_mode, iterator.DRDYGPIO());
+
+	if (!instance) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	g_dev->Stop();
-	delete g_dev;
-	g_dev = nullptr;
-
-	return 0;
-}
-
-static int reset()
-{
-	if (g_dev == nullptr) {
-		PX4_WARN("driver not running");
-		return 0;
+	if (OK != instance->init()) {
+		delete instance;
+		return nullptr;
 	}
 
-	return g_dev->Reset();
+	return instance;
 }
-
-static int status()
-{
-	if (g_dev == nullptr) {
-		PX4_INFO("driver not running");
-		return 0;
-	}
-
-	g_dev->PrintInfo();
-
-	return 0;
-}
-
-static int usage()
-{
-	PX4_INFO("missing command: try 'start', 'stop', 'reset', 'status'");
-	PX4_INFO("options:");
-	PX4_INFO("    -R rotation");
-
-	return 0;
-}
-
-} // namespace mpu6000
 
 extern "C" int mpu6000_main(int argc, char *argv[])
 {
-	enum Rotation rotation = ROTATION_NONE;
-	int myoptind = 1;
-	int ch = 0;
-	const char *myoptarg = nullptr;
+	int ch;
+	using ThisDriver = MPU6000;
+	BusCLIArguments cli{false, true};
+	cli.default_spi_frequency = SPI_SPEED;
 
-	// start options
-	while ((ch = px4_getopt(argc, argv, "R:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
-			rotation = (enum Rotation)atoi(myoptarg);
+			cli.rotation = (enum Rotation)atoi(cli.optarg());
 			break;
-
-		default:
-			return mpu6000::usage();
 		}
 	}
 
-	const char *verb = argv[myoptind];
+	const char *verb = cli.optarg();
 
-	if (!strcmp(verb, "start")) {
-		return mpu6000::start(rotation);
-
-	} else if (!strcmp(verb, "stop")) {
-		return mpu6000::stop();
-
-	} else if (!strcmp(verb, "status")) {
-		return mpu6000::status();
-
-	} else if (!strcmp(verb, "reset")) {
-		return mpu6000::reset();
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	return mpu6000::usage();
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_IMU_DEVTYPE_MPU6000);
+
+	if (!strcmp(verb, "start")) {
+		return ThisDriver::module_start(cli, iterator);
+	}
+
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return -1;
 }

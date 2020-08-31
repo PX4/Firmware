@@ -51,6 +51,7 @@
 #include <v2.0/standard/mavlink.h>
 #endif
 
+using namespace time_literals;
 
 constexpr const char MavlinkFTP::_root_dir[];
 
@@ -960,7 +961,7 @@ void MavlinkFTP::send(const hrt_abstime t)
 
 	if (_work_buffer1 || _work_buffer2) {
 		// free the work buffers if they are not used for a while
-		if (hrt_elapsed_time(&_last_work_buffer_access) > 2000000) {
+		if (hrt_elapsed_time(&_last_work_buffer_access) > 2_s) {
 			if (_work_buffer1) {
 				delete[] _work_buffer1;
 				_work_buffer1 = nullptr;
@@ -970,6 +971,16 @@ void MavlinkFTP::send(const hrt_abstime t)
 				delete[] _work_buffer2;
 				_work_buffer2 = nullptr;
 			}
+		}
+
+	} else if (_session_info.fd != -1) {
+		// close session without activity
+		if (hrt_elapsed_time(&_last_work_buffer_access) > 10_s) {
+			::close(_session_info.fd);
+			_session_info.fd = -1;
+			_session_info.stream_download = false;
+			_last_reply_valid = false;
+			PX4_WARN("Session was closed without activity");
 		}
 	}
 

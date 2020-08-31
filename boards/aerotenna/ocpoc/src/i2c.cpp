@@ -39,4 +39,3 @@ constexpr px4_i2c_bus_t px4_i2c_buses[I2C_BUS_MAX_BUS_ITEMS] = {
 	initI2CBusExternal(5), // i2c-5: GPS/Compass #2
 	initI2CBusExternal(3), // i2c-3: GPS/Compass #3
 };
-

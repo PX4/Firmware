@@ -31,8 +31,8 @@ px4_add_board(
 		imu/adis16448
 		imu/adis16477
 		imu/adis16497
-		imu/bmi088
-		imu/mpu6000
+		imu/bosch/bmi088
+		imu/invensense/icm20602
 		imu/st/ism330dlc
 		irlock
 		lights/blinkm
@@ -47,7 +47,7 @@ px4_add_board(
 		#protocol_splitter
 		pwm_input
 		pwm_out_sim
-		px4fmu
+		pwm_out
 		px4io
 		rc_input
 		roboclaw
@@ -65,6 +65,7 @@ px4_add_board(
 		commander
 		dataman
 		ekf2
+		esc_battery
 		events
 		fw_att_control
 		fw_pos_control_l1
@@ -89,10 +90,10 @@ px4_add_board(
 		vtol_att_control
 	SYSTEMCMDS
 		bl_update
-		config
 		dmesg
 		dumpfile
 		esc_calib
+		gpio
 		hardfault_log
 		i2cdetect
 		led_control
@@ -107,7 +108,6 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		shutdown
 		tests # tests and test runner
 		top
 		topic_listener
@@ -124,4 +124,5 @@ px4_add_board(
 		px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
 		rover_steering_control # Rover example app
 		uuv_example_app
+		work_item
 	)

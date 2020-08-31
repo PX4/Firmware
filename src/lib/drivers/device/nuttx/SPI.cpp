@@ -57,21 +57,19 @@
 namespace device
 {
 
-SPI::SPI(const char *name, const char *devname, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency) :
-	CDev(name, devname),
+SPI::SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency) :
+	CDev(name, nullptr),
 	_device(device),
 	_mode(mode),
-	_frequency(frequency),
-	_dev(nullptr)
+	_frequency(frequency)
 {
+	_device_id.devid_s.devtype = device_type;
 	// fill in _device_id fields for a SPI device
 	_device_id.devid_s.bus_type = DeviceBusType_SPI;
 	_device_id.devid_s.bus = bus;
 	// Use the 2. LSB byte as SPI address. This is currently 0, but will allow to extend
 	// for multiple instances of the same device on a bus, should that ever be required.
 	_device_id.devid_s.address = (uint8_t)(device >> 8);
-	// devtype needs to be filled in by the driver
-	_device_id.devid_s.devtype = 0;
 
 	if (!px4_spi_bus_requires_locking(bus)) {
 		_locking_mode = LOCK_NONE;
@@ -121,8 +119,8 @@ SPI::init()
 		return ret;
 	}
 
-	/* tell the workd where we are */
-	DEVICE_LOG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
+	/* tell the world where we are */
+	DEVICE_DEBUG("on SPI bus %d at %d (%u KHz)", get_device_bus(), PX4_SPI_DEV_ID(_device), _frequency / 1000);
 
 	return PX4_OK;
 }

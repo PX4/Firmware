@@ -211,7 +211,7 @@ __EXPORT int fmuk66_spi_bus_initialize(void)
 
 	/* Configure SPI-based devices */
 
-	struct spi_dev_s *spi_sensors = px4_spibus_initialize(1);
+	struct spi_dev_s *spi_sensors = px4_spibus_initialize(PX4_BUS_NUMBER_TO_PX4(1));
 
 	if (!spi_sensors) {
 		syslog(LOG_ERR, "[boot] FAILED to initialize SPI port %d\n", 1);
@@ -227,7 +227,7 @@ __EXPORT int fmuk66_spi_bus_initialize(void)
 
 	/* Get the SPI port for the Memory */
 
-	struct spi_dev_s *spi_memory = px4_spibus_initialize(0);
+	struct spi_dev_s *spi_memory = px4_spibus_initialize(PX4_BUS_NUMBER_TO_PX4(0));
 
 	if (!spi_memory) {
 		syslog(LOG_ERR, "[boot] FAILED to initialize SPI port %d\n", 0);
@@ -243,7 +243,7 @@ __EXPORT int fmuk66_spi_bus_initialize(void)
 
 	/* Configure EXTERNAL SPI-based devices */
 
-	struct spi_dev_s *spi_ext = px4_spibus_initialize(2);
+	struct spi_dev_s *spi_ext = px4_spibus_initialize(PX4_BUS_NUMBER_TO_PX4(2));
 
 	if (!spi_ext) {
 		syslog(LOG_ERR, "[boot] FAILED to initialize SPI port %d\n", 2);
@@ -300,26 +300,15 @@ __EXPORT int fmuk66_spi_bus_initialize(void)
 
 static inline void kinetis_spixselect(const px4_spi_bus_t *bus, struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-	int matched_dev_idx = -1;
-
 	for (int i = 0; i < SPI_BUS_MAX_DEVICES; ++i) {
 		if (bus->devices[i].cs_gpio == 0) {
 			break;
 		}
 
 		if (devid == bus->devices[i].devid) {
-			matched_dev_idx = i;
-
-		} else {
-			// Making sure the other peripherals are not selected
-			kinetis_gpiowrite(bus->devices[i].cs_gpio, 1);
+			// SPI select is active low, so write !selected to select the device
+			kinetis_gpiowrite(bus->devices[i].cs_gpio, !selected);
 		}
-	}
-
-	// different devices might use the same CS, so make sure to configure the one we want last
-	if (matched_dev_idx != -1) {
-		// SPI select is active low, so write !selected to select the device
-		kinetis_gpiowrite(bus->devices[matched_dev_idx].cs_gpio, !selected);
 	}
 }
 

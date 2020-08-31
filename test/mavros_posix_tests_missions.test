@@ -18,6 +18,7 @@
     </include>
     <!-- ROStest -->
     <test test-name="FW_mission_1" pkg="px4" type="mission_test.py" time-limit="300.0" args="FW_mission_1.plan" vehicle="plane"/>
+    <test test-name="FW_mission_1" pkg="px4" type="mission_test.py" time-limit="300.0" args="FW_mission_1.plan" vehicle="plane_catapult"/>
     <test test-name="MC_mission_box" pkg="px4" type="mission_test.py" time-limit="300.0" args="MC_mission_box.plan" vehicle="iris"/>
     <test test-name="VTOL_mission_1" pkg="px4" type="mission_test.py" time-limit="300.0" args="VTOL_mission_1.plan" vehicle="standard_vtol"/>
     <test test-name="VTOL_mission_1" pkg="px4" type="mission_test.py" time-limit="300.0" args="VTOL_mission_1.plan" vehicle="tailsitter"/>

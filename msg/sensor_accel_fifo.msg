@@ -8,6 +8,8 @@ float32 scale
 
 uint8 samples             # number of valid samples
 
-int16[16] x               # acceleration in the NED X board axis in m/s/s
-int16[16] y               # acceleration in the NED Y board axis in m/s/s
-int16[16] z               # acceleration in the NED Z board axis in m/s/s
+int16[32] x               # acceleration in the NED X board axis in m/s/s
+int16[32] y               # acceleration in the NED Y board axis in m/s/s
+int16[32] z               # acceleration in the NED Z board axis in m/s/s
+
+uint8 rotation            # Direction the sensor faces (see Rotation enum)

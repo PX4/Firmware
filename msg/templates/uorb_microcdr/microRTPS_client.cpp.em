@@ -81,6 +81,27 @@ void* send(void *data);
 uint8_t last_remote_msg_seq = 0;
 uint8_t last_msg_seq = 0;
 
+@[if recv_topics]@
+// Publishers for received messages
+struct RcvTopicsPubs
+{
+@[    for idx, topic in enumerate(recv_topics)]@
+    uORB::Publication<@(receive_base_types[idx])_s> @(topic)_pub{ORB_ID(@(topic))};
+@[    end for]@
+};
+@[end if]@
+
+@[if send_topics]@
+// Subscribers for messages to send
+struct SendTopicsSubs
+{
+@[    for idx, topic in enumerate(send_topics)]@
+    uORB::Subscription @(topic)_sub{ORB_ID(@(topic))};
+@[    end for]@
+};
+@[end if]@
+
+
 @[if send_topics]@
 void* send(void* /*unused*/)
 {
@@ -89,11 +110,7 @@ void* send(void* /*unused*/)
     int loop = 0, read = 0;
     uint32_t length = 0;
     size_t header_length = 0;
-
-    /* subscribe to topics */
-@[for idx, topic in enumerate(send_topics)]@
-    uORB::Subscription @(topic)_sub{ORB_ID(@(topic))};
-@[end for]@
+    SendTopicsSubs *subs = new SendTopicsSubs();
 
     // ucdrBuffer to serialize using the user defined buffer
     ucdrBuffer writer;
@@ -106,30 +123,32 @@ void* send(void* /*unused*/)
     while (!_should_exit_task)
     {
 @[for idx, topic in enumerate(send_topics)]@
-        @(send_base_types[idx])_s @(topic)_data;
-        if (@(topic)_sub.update(&@(topic)_data)) {
+        {
+            @(send_base_types[idx])_s @(topic)_data;
+            if (subs->@(topic)_sub.update(&@(topic)_data)) {
 @[if topic == 'Timesync' or topic == 'timesync']@
-            if(@(topic)_data.sys_id == 0 && @(topic)_data.seq != last_remote_msg_seq && @(topic)_data.tc1 == 0) {
-                last_remote_msg_seq = @(topic)_data.seq;
+                if(@(topic)_data.sys_id == 0 && @(topic)_data.seq != last_remote_msg_seq && @(topic)_data.tc1 == 0) {
+                    last_remote_msg_seq = @(topic)_data.seq;
 
-                @(topic)_data.timestamp = hrt_absolute_time();
-                @(topic)_data.sys_id = 1;
-                @(topic)_data.seq = last_msg_seq;
-                @(topic)_data.tc1 = hrt_absolute_time() * 1000ULL;
-                @(topic)_data.ts1 = @(topic)_data.ts1;
+                    @(topic)_data.timestamp = hrt_absolute_time();
+                    @(topic)_data.sys_id = 1;
+                    @(topic)_data.seq = last_msg_seq;
+                    @(topic)_data.tc1 = hrt_absolute_time() * 1000ULL;
+                    @(topic)_data.ts1 = @(topic)_data.ts1;
 
-                last_msg_seq++;
+                    last_msg_seq++;
 @[end if]@
-                // copy raw data into local buffer. Payload is shifted by header length to make room for header
-                serialize_@(send_base_types[idx])(&writer, &@(topic)_data, &data_buffer[header_length], &length);
-                if (0 < (read = transport_node->write(static_cast<char>(@(rtps_message_id(ids, topic))), data_buffer, length)))
-                {
-                    total_sent += read;
-                    ++sent;
+                    // copy raw data into local buffer. Payload is shifted by header length to make room for header
+                    serialize_@(send_base_types[idx])(&writer, &@(topic)_data, &data_buffer[header_length], &length);
+                    if (0 < (read = transport_node->write(static_cast<char>(@(rtps_message_id(ids, topic))), data_buffer, length)))
+                    {
+                        total_sent += read;
+                        ++sent;
+                    }
+@[if topic == 'Timesync' or topic == 'timesync']@
                 }
-@[if topic == 'Timesync' or topic == 'timesync']@
-            }
 @[end if]@
+             }
         }
 @[end for]@
         px4_usleep(_options.sleep_ms * 1000);
@@ -142,6 +161,8 @@ void* send(void* /*unused*/)
     PX4_INFO("SENT: %" PRIu64 " messages in %d LOOPS, %" PRIu64 " bytes in %.03f seconds - %.02fKB/s",
                 sent, loop, total_sent, elapsed_secs, total_sent / (1e3 * elapsed_secs));
 
+    delete subs;
+
     return nullptr;
 }
 
@@ -149,12 +170,16 @@ static int launch_send_thread(pthread_t &sender_thread)
 {
     pthread_attr_t sender_thread_attr;
     pthread_attr_init(&sender_thread_attr);
-    pthread_attr_setstacksize(&sender_thread_attr, PX4_STACK_ADJUSTED(4000));
+    pthread_attr_setstacksize(&sender_thread_attr, PX4_STACK_ADJUSTED(2250));
     struct sched_param param;
     (void)pthread_attr_getschedparam(&sender_thread_attr, &param);
     param.sched_priority = SCHED_PRIORITY_DEFAULT;
     (void)pthread_attr_setschedparam(&sender_thread_attr, &param);
     pthread_create(&sender_thread, &sender_thread_attr, send, nullptr);
+    if (pthread_setname_np(sender_thread, "micrortps_client_send"))
+    {
+        PX4_ERR("Could not set pthread name (%d)", errno);
+    }
     pthread_attr_destroy(&sender_thread_attr);
 
     return 0;
@@ -164,16 +189,14 @@ static int launch_send_thread(pthread_t &sender_thread)
 void micrortps_start_topics(struct timespec &begin, uint64_t &total_read, uint64_t &received, int &loop)
 {
 @[if recv_topics]@
-
     char data_buffer[BUFFER_SIZE] = {};
     int read = 0;
     uint8_t topic_ID = 255;
+    RcvTopicsPubs *pubs = new RcvTopicsPubs();
 
-    // Declare received topics
-@[for idx, topic in enumerate(recv_topics)]@
-    @(receive_base_types[idx])_s @(topic)_data;
-    uORB::Publication<@(receive_base_types[idx])_s> @(topic)_pub{ORB_ID(@(topic))};
-@[end for]@
+    // Set the main task name to 'micrortps_client_rcv' in case there is
+    // data to receive
+    px4_prctl(PR_SET_NAME, "micrortps_client_rcv", px4_getpid());
 
     // ucdrBuffer to deserialize using the user defined buffer
     ucdrBuffer reader;
@@ -200,8 +223,9 @@ void micrortps_start_topics(struct timespec &begin, uint64_t &total_read, uint64
 @[for idx, topic in enumerate(recv_topics)]@
                 case @(rtps_message_id(ids, topic)):
                 {
+                    @(receive_base_types[idx])_s @(topic)_data;
                     deserialize_@(receive_base_types[idx])(&reader, &@(topic)_data, data_buffer);
-                    @(topic)_pub.publish(@(topic)_data);
+                    pubs->@(topic)_pub.publish(@(topic)_data);
                     ++received;
                 }
                 break;
@@ -219,6 +243,9 @@ void micrortps_start_topics(struct timespec &begin, uint64_t &total_read, uint64
         px4_usleep(_options.sleep_ms * 1000);
         ++loop;
     }
+@[if recv_topics]@
+    delete pubs;
+@[end if]@
 @[if send_topics]@
     _should_exit_task = true;
     pthread_join(sender_thread, nullptr);

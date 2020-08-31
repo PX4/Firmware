@@ -55,15 +55,13 @@
 #define MPL3115A2_CTRL_TRIGGER          (CTRL_REG1_OST | CTRL_REG1_OS(MPL3115A2_OSR))
 
 MPL3115A2::MPL3115A2(I2CSPIBusOption bus_option, const int bus, int bus_frequency) :
-	I2C("MPL3115A2", nullptr, bus, MPL3115A2_ADDRESS, bus_frequency),
+	I2C(DRV_BARO_DEVTYPE_MPL3115A2, MODULE_NAME, bus, MPL3115A2_ADDRESS, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_px4_barometer(get_device_id()),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
 	_measure_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": measure")),
 	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": com_err"))
 {
-	set_device_type(DRV_BARO_DEVTYPE_MPL3115A2);
-	_px4_barometer.set_device_type(DRV_BARO_DEVTYPE_MPL3115A2);
 }
 
 MPL3115A2::~MPL3115A2()
@@ -286,6 +284,4 @@ void MPL3115A2::print_status()
 	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-
-	_px4_barometer.print_status();
 }

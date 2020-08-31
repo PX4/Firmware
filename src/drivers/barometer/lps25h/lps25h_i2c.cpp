@@ -65,9 +65,8 @@ device::Device *LPS25H_I2C_interface(int bus, int bus_frequency)
 }
 
 LPS25H_I2C::LPS25H_I2C(int bus, int bus_frequency) :
-	I2C("LPS25H_I2C", nullptr, bus, LPS25H_ADDRESS, bus_frequency)
+	I2C(DRV_BARO_DEVTYPE_LPS25H, MODULE_NAME, bus, LPS25H_ADDRESS, bus_frequency)
 {
-	set_device_type(DRV_BARO_DEVTYPE_LPS25H);
 }
 
 int LPS25H_I2C::probe()

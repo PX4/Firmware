@@ -39,11 +39,11 @@ px4_add_module(
 	MAIN fw_pos_control_l1
 	SRCS
 		FixedwingPositionControl.cpp
+		FixedwingPositionControl.hpp
 	DEPENDS
-		git_ecl
-		ecl_l1
-		ecl_tecs
+		l1
 		launchdetection
 		landing_slope
 		runway_takeoff
+		tecs
 	)

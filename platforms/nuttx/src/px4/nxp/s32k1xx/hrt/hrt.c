@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2016-2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,16 +33,17 @@
 
 /**
  * @file drv_hrt.c
- * Author: David Sidrane <david_s5@nscdg.com>
+ * Author: Peter van der Perk <peter.vanderperk@nxp.com>
+ *         David Sidrane <david_s5@nscdg.com>
  *
  * High-resolution timer callouts and timekeeping.
  *
- * This can use any Kinetis TPM timer.
+ * This can use any S32K FTM timer.
  *
  * Note that really, this could use systick too, but that's
  * monopolised by NuttX and stealing it would just be awkward.
  *
- * We don't use the NuttX Kinetis driver per se; rather, we
+ * We don't use the NuttX S32K driver per se; rather, we
  * claim the timer and then drive it directly.
  */
 
@@ -65,63 +66,10 @@
 #include <board_config.h>
 #include <drivers/drv_hrt.h>
 
-
-#include "chip.h"
-#include "hardware/s32k1xx_sim.h"
-
-//todo:stubs
-#define HRT_COUNTER_PERIOD  65536
-#define HRT_COUNTER_SCALE(_c) (_c)
-
-hrt_abstime
-hrt_absolute_time(void)
-{
-	hrt_abstime abstime;
-	uint32_t  count;
-	irqstate_t  flags;
-
-	/*
-	 * Counter state.  Marked volatile as they may change
-	 * inside this routine but outside the irqsave/restore
-	 * pair.  Discourage the compiler from moving loads/stores
-	 * to these outside of the protected range.
-	 */
-	static volatile hrt_abstime base_time;
-	static volatile uint32_t last_count;
-
-	/* prevent re-entry */
-	flags = px4_enter_critical_section();
-
-	/* get the current counter value */
-	count = 0; //rCNT todo:fix this;
-
-	/*
-	 * Determine whether the counter has wrapped since the
-	 * last time we're called.
-	 *
-	 * This simple test is sufficient due to the guarantee that
-	 * we are always called at least once per counter period.
-	 */
-	if (count < last_count) {
-		base_time += HRT_COUNTER_PERIOD;
-	}
-
-	/* save the count for next time */
-	last_count = count;
-
-	/* compute the current time */
-	abstime = HRT_COUNTER_SCALE(base_time + count);
-
-	px4_leave_critical_section(flags);
-
-	return abstime;
-}
-#if 0
-
-#include "kinetis_tpm.h"
+#include "hardware/s32k1xx_ftm.h"
 
 #undef PPM_DEBUG
-
+//#define CONFIG_DEBUG_HRT
 #ifdef CONFIG_DEBUG_HRT
 #  define hrtinfo _info
 #else
@@ -137,10 +85,12 @@ hrt_absolute_time(void)
 
 /* HRT configuration */
 
-#define HRT_TIMER_CLOCK        BOARD_TPM_FREQ                          /* The input clock frequency to the TPM block */
-#define HRT_TIMER_BASE         CAT(CAT(KINETIS_TPM, HRT_TIMER),_BASE)  /* The Base address of the TPM */
-#define HRT_TIMER_VECTOR       CAT(KINETIS_IRQ_TPM, HRT_TIMER)         /* The TPM Interrupt vector */
-#define HRT_SIM_SCGC2_TPM      CAT(SIM_SCGC2_TPM, HRT_TIMER)           /* The Clock Gating enable bit for this TPM */
+#define HRT_TIMER_CLOCK        BOARD_FTM_FREQ                 /* The input clock frequency to the FTM block */
+#define HRT_TIMER_BASE         S32K1XX_FTM0_BASE              /* The Base address of the FTM */
+#define HRT_TIMER_VECTOR       S32K1XX_IRQ_FTM0_CH0_1         /* The FTM Interrupt vector */
+
+#define LOG_1(n) (((n) >= 2) ? 1 : 0)
+#define LOG_2(n) (((n) >= 1<<2) ? (2 + LOG_1((n)>>2)) : LOG_1(n))
 
 #if HRT_TIMER == 1 && defined(CONFIG_KINETIS_TPM1)
 #  error must not set CONFIG_KINETIS_TPM1=y and HRT_TIMER=1
@@ -192,27 +142,26 @@ hrt_absolute_time(void)
 
 #define REG(_reg)	_REG(HRT_TIMER_BASE + (_reg))
 
-#define rSC         REG(KINETIS_TPM_SC_OFFSET)
-#define rCNT        REG(KINETIS_TPM_CNT_OFFSET)
-#define rMOD        REG(KINETIS_TPM_MOD_OFFSET)
-#define rC0SC       REG(KINETIS_TPM_C0SC_OFFSET)
-#define rC0V        REG(KINETIS_TPM_C0V_OFFSET)
-#define rC1SC       REG(KINETIS_TPM_C1SC_OFFSET)
-#define rC1V        REG(KINETIS_TPM_C1V_OFFSET)
-#define rSTATUS     REG(KINETIS_TPM_STATUS_OFFSET)
-#define rCOMBINE    REG(KINETIS_TPM_COMBINE_OFFSET)
-#define rPOL        REG(KINETIS_TPM_POL_OFFSET)
-#define rFILTER     REG(KINETIS_TPM_FILTER_OFFSET)
-#define rQDCTRL     REG(KINETIS_TPM_QDCTRL_OFFSET)
-#define rCONF       REG(KINETIS_TPM_CONF_OFFSET)
-
+#define rSC         REG(S32K1XX_FTM_SC_OFFSET)
+#define rCNT        REG(S32K1XX_FTM_CNT_OFFSET)
+#define rMOD        REG(S32K1XX_FTM_MOD_OFFSET)
+#define rC0SC       REG(S32K1XX_FTM_C0SC_OFFSET)
+#define rC0V        REG(S32K1XX_FTM_C0V_OFFSET)
+#define rC1SC       REG(S32K1XX_FTM_C1SC_OFFSET)
+#define rC1V        REG(S32K1XX_FTM_C1V_OFFSET)
+#define rSTATUS     REG(S32K1XX_FTM_STATUS_OFFSET)
+#define rCOMBINE    REG(S32K1XX_FTM_COMBINE_OFFSET)
+#define rPOL        REG(S32K1XX_FTM_POL_OFFSET)
+#define rFILTER     REG(S32K1XX_FTM_FILTER_OFFSET)
+#define rQDCTRL     REG(S32K1XX_FTM_QDCTRL_OFFSET)
+#define rCONF       REG(S32K1XX_FTM_CONF_OFFSET)
 /*
 * Specific registers and bits used by HRT sub-functions
 */
 
 # define rCNV_HRT        CAT3(rC, HRT_TIMER_CHANNEL, V)            /* Channel Value Register used by HRT */
 # define rCNSC_HRT       CAT3(rC, HRT_TIMER_CHANNEL, SC)           /* Channel Status and Control Register used by HRT */
-# define STATUS_HRT      CAT3(TPM_STATUS_CH, HRT_TIMER_CHANNEL, F) /* Capture and Compare Status Register used by HRT */
+# define STATUS_HRT      CAT3(FTM_STATUS_CH, HRT_TIMER_CHANNEL, F) /* Capture and Compare Status Register used by HRT */
 
 #if (HRT_TIMER_CHANNEL != 0) && (HRT_TIMER_CHANNEL != 1)
 # error HRT_TIMER_CHANNEL must be a value between 0 and 1
@@ -228,6 +177,11 @@ static uint16_t           latency_baseline;
 
 /* timer count at interrupt (for latency purposes) */
 static uint16_t           latency_actual;
+
+/* latency histogram */
+const uint16_t latency_bucket_count = LATENCY_BUCKET_COUNT;
+const uint16_t latency_buckets[LATENCY_BUCKET_COUNT] = { 1, 2, 5, 10, 20, 50, 100, 1000 };
+__EXPORT uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
 
 /* timer-specific functions */
 static void hrt_tim_init(void);
@@ -255,8 +209,8 @@ static void hrt_call_invoke(void);
 
 #define rCNV_PPM       CAT3(rC,HRT_PPM_CHANNEL,V)                     /* Channel Value Register used by PPM */
 #define rCNSC_PPM      CAT3(rC,HRT_PPM_CHANNEL,SC)                    /* Channel Status and Control Register used by PPM */
-#define STATUS_PPM     CAT3(TPM_STATUS_CH, HRT_PPM_CHANNEL ,F)        /* Capture and Compare Status Register used by PPM */
-#define CNSC_PPM      (TPM_CnSC_CHIE | TPM_CnSC_ELSB | TPM_CnSC_ELSA) /* Input Capture configuration both Edges, interrupt */
+#define STATUS_PPM     CAT3(FTM_STATUS_CH, HRT_PPM_CHANNEL ,F)        /* Capture and Compare Status Register used by PPM */
+#define CNSC_PPM      (FTM_CNSC_CHIE | FTM_CNSC_ELSB | FTM_CNSC_ELSA) /* Input Capture configuration both Edges, interrupt */
 
 /* Sanity checking */
 
@@ -330,21 +284,7 @@ static void	hrt_ppm_decode(uint32_t status);
  */
 static void hrt_tim_init(void)
 {
-
-	/* Select a the clock source to the TPM */
-
-	uint32_t regval = _REG(KINETIS_SIM_SOPT2);
-	regval &= ~(SIM_SOPT2_TPMSRC_MASK);
-	regval |= BOARD_TPM_CLKSRC;
-	_REG(KINETIS_SIM_SOPT2) = regval;
-
-
-	/* Enabled System Clock Gating Control for TPM */
-
-	regval = _REG(KINETIS_SIM_SCGC2);
-	regval |= HRT_SIM_SCGC2_TPM;
-	_REG(KINETIS_SIM_SCGC2) = regval;
-
+	/* Clock is enabled in S32K1XX_pheriphclocks.c */
 
 	/* claim our interrupt vector */
 
@@ -352,28 +292,29 @@ static void hrt_tim_init(void)
 
 	/* disable and configure the timer */
 
-	rSC = TPM_SC_TOF;
+	rSC = FTM_SC_TOF;
 
 	rCNT = 0;
 	rMOD = HRT_COUNTER_PERIOD - 1;
 
-	rSTATUS   = (TPM_STATUS_TOF | STATUS_HRT | STATUS_PPM);
-	rCNSC_HRT = (TPM_CnSC_CHF | TPM_CnSC_CHIE | TPM_CnSC_MSA);
-	rCNSC_PPM = (TPM_CnSC_CHF | CNSC_PPM);
+	rCNSC_HRT = (FTM_CNSC_CHF | FTM_CNSC_CHIE | FTM_CNSC_MSA);
+	rCNSC_PPM = (FTM_CNSC_CHF | CNSC_PPM);
 	rCOMBINE  = 0;
 	rPOL      = 0;
 	rFILTER   = 0;
 	rQDCTRL   = 0;
-	rCONF     = TPM_CONF_DBGMODE_CONT;
+	rCONF     = 0xC0; //FTM continues in DBG
 
 	/* set an initial capture a little ways off */
 
 	rCNV_PPM  = 0;
 	rCNV_HRT  = 1000;
 
-	/* enable the timer */
-
-	rSC |= (TPM_SC_TOIE | TPM_SC_CMOD_LPTPM_CLK | TPM_SC_PS_DIV16);
+	/* Use FIXEDCLK src and enable the timer
+	 * Set calculate prescaler for HRT_TIMER_FREQ */
+	rSC |= (FTM_SC_TOIE | FTM_SC_CLKS_EXTCLK |
+		(LOG_2(HRT_TIMER_CLOCK / HRT_TIMER_FREQ) << FTM_SC_PS_SHIFT
+		 & FTM_SC_PS_MASK));
 
 	/* enable interrupts */
 	up_enable_irq(HRT_TIMER_VECTOR);
@@ -543,13 +484,13 @@ hrt_tim_isr(int irq, void *context, void *arg)
 	uint32_t status = rSTATUS;
 
 	/* ack the interrupts we just read */
-
-	rSTATUS = status;
+	rSTATUS = 0x00;
 
 #ifdef HRT_PPM_CHANNEL
 
 	/* was this a PPM edge? */
 	if (status & (STATUS_PPM)) {
+		rCNSC_PPM = rCNSC_PPM & ~(FTM_SC_RF);
 		hrt_ppm_decode(status);
 	}
 
@@ -557,6 +498,7 @@ hrt_tim_isr(int irq, void *context, void *arg)
 
 	/* was this a timer tick? */
 	if (status & STATUS_HRT) {
+		rCNSC_HRT = rCNSC_HRT & ~(FTM_SC_RF);
 
 		/* do latency calculations */
 		hrt_latency_update();
@@ -685,7 +627,7 @@ hrt_init(void)
 
 #ifdef HRT_PPM_CHANNEL
 	/* configure the PPM input pin */
-	px4_arch_configgpio(GPIO_PPM_IN);
+	//px4_arch_configgpio(GPIO_PPM_IN);
 #endif
 }
 
@@ -933,4 +875,3 @@ hrt_call_delay(struct hrt_call *entry, hrt_abstime delay)
 }
 
 #endif /* HRT_TIMER */
-#endif

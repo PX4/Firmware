@@ -58,7 +58,7 @@ public:
 
 	void reset();
 
-	void update(float accel_x);
+	void update(const float dt, float accel_x);
 	LaunchDetectionResult getLaunchDetected();
 	bool launchDetectionEnabled() { return _param_laun_all_on.get(); }
 

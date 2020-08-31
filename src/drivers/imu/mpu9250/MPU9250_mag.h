@@ -105,9 +105,7 @@ struct ak8963_regs {
 };
 #pragma pack(pop)
 
-extern device::Device *AK8963_I2C_interface(int bus);
-
-typedef device::Device *(*MPU9250_mag_constructor)(int, bool);
+extern device::Device *AK8963_I2C_interface(int bus, int bus_frequency);
 
 /**
  * Helper class implementing the magnetometer driver node.
@@ -125,8 +123,6 @@ public:
 	int ak8963_setup_master_i2c();
 	bool ak8963_check_id(uint8_t &id);
 	bool ak8963_read_adjustments();
-
-	void print_status() { _px4_mag.print_status(); }
 
 protected:
 	device::Device			*_interface;
@@ -148,6 +144,8 @@ private:
 	PX4Magnetometer		_px4_mag;
 
 	MPU9250 *_parent;
+
+	float _ak8963_ASA[3] {1.f, 1.f, 1.f};
 
 	bool _mag_reading_data{false};
 

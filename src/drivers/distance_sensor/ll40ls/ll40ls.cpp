@@ -57,14 +57,14 @@ I2C bus driver for LidarLite rangefinders.
 
 The sensor/driver must be enabled using the parameter SENS_EN_LL40LS.
 
-Setup/usage information: https://docs.px4.io/en/sensor/lidar_lite.html
+Setup/usage information: https://docs.px4.io/master/en/sensor/lidar_lite.html
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("ll40ls", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("distance_sensor");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND("regdump");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
@@ -99,6 +99,7 @@ extern "C" __EXPORT int ll40ls_main(int argc, char *argv[])
 	int ch;
 	using ThisDriver = LidarLiteI2C;
 	BusCLIArguments cli{true, false};
+	cli.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 	cli.default_i2c_frequency = 100000;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {

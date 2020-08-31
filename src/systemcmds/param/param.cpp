@@ -137,7 +137,7 @@ $ reboot
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("show", "Show parameter values");
 	PRINT_MODULE_USAGE_PARAM_FLAG('a', "Show all parameters (not just used)", true);
-	PRINT_MODULE_USAGE_PARAM_FLAG('c', "Show only changed and used params", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('c', "Show only changed params (unused too)", true);
 	PRINT_MODULE_USAGE_PARAM_FLAG('q', "quiet mode, print only param value (name needs to be exact)", true);
 	PRINT_MODULE_USAGE_ARG("<filter>", "Filter by param name (wildcard at end allowed, eg. sys_*)", true);
 
@@ -457,7 +457,8 @@ static int
 do_show(const char *search_string, bool only_changed)
 {
 	PARAM_PRINT("Symbols: x = used, + = saved, * = unsaved\n");
-	param_foreach(do_show_print, (char *)search_string, only_changed, true);
+	// also show unused params if we show non-default values only
+	param_foreach(do_show_print, (char *)search_string, only_changed, !only_changed);
 	PARAM_PRINT("\n %u/%u parameters used.\n", param_count_used(), param_count());
 
 	return 0;
@@ -636,10 +637,6 @@ do_show_print(void *arg, param_t param)
 		}
 
 		break;
-
-	case PARAM_TYPE_STRUCT ... PARAM_TYPE_STRUCT_MAX:
-		PARAM_PRINT("<struct type %d size %zu>\n", 0 + param_type(param), param_size(param));
-		return;
 
 	default:
 		PARAM_PRINT("<unknown type %d>\n", 0 + param_type(param));

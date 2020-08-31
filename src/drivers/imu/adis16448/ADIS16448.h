@@ -50,7 +50,7 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 #include <perf/perf_counter.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
 using namespace time_literals;
 
@@ -98,21 +98,24 @@ static constexpr float ADIS16448_MAG_SENSITIVITY{1.0 / 7.0 / 1000.0};						// 7 
 static constexpr float ADIS16448_ACCEL_GYRO_UPDATE_RATE{819.2}; // accel and gryo max update 819.2 samples per second
 static constexpr float ADIS16448_MAG_BARO_UPDATE_RATE{51.2}; // xMAGN_OUT and BARO_OUT registers update at 51.2 samples per second
 
-class ADIS16448 : public device::SPI, public px4::ScheduledWorkItem
+class ADIS16448 : public device::SPI, public I2CSPIDriver<ADIS16448>
 {
 public:
-	ADIS16448(int bus, uint32_t device, enum Rotation rotation);
+	ADIS16448(I2CSPIBusOption bus_option, int bus, int32_t device, enum Rotation rotation, int bus_frequency,
+		  spi_mode_e spi_mode);
 	virtual ~ADIS16448();
 
-	virtual int init();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
-	/**
-	 * Diagnostics - print some basic information about the driver and sensor.
-	 */
-	void print_info();
+	int init() override;
 
+	void print_status() override;
+
+	void RunImpl();
 protected:
-	virtual int probe();
+	int probe() override;
 
 private:
 
@@ -134,16 +137,6 @@ private:
 	 * Fetch measurements from the sensor and update the report buffers.
 	 */
 	int measure();
-
-	/**
-	 * Static trampoline from the hrt_call context; because we don't have a
-	 * generic hrt wrapper yet.
-	 * Called by the HRT in interrupt context at the specified rate if
-	 * automatic polling is enabled.
-	 *
-	 * @param arg       Instance pointer for the driver that is polling.
-	 */
-	void Run();
 
 	/**
 	 * Modify a register in the ADIS16448
@@ -195,11 +188,6 @@ private:
 	 * Start automatic measurement.
 	 */
 	void start();
-
-	/**
-	 * Stop automatic measurement.
-	 */
-	void stop();
 
 	PX4Accelerometer	_px4_accel;
 	PX4Barometer		_px4_baro;

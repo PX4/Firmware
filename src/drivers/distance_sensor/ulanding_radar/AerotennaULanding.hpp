@@ -113,9 +113,6 @@ private:
 
 	int _file_descriptor{-1};
 
-	unsigned int _head{0};
-	unsigned int _tail{0};
-
 	uint8_t _buffer[ULANDING_BUFFER_LENGTH] {};
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};

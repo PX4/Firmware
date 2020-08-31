@@ -27,9 +27,9 @@ then
 	param set MC_ROLLRATE_I 0.037
 	param set MC_ROLLRATE_D 0.0044
 	param set MC_ROLL_P 8.5
-	param set MPC_XY_VEL_P 0.11
-	param set MPC_XY_VEL_D 0.013
+	param set MPC_XY_VEL_P_ACC 2.2
+	param set MPC_XY_VEL_D_ACC 0.26
 	param set MPC_XY_P 1.1
-	param set MPC_Z_VEL_P 0.24
+	param set MPC_Z_VEL_P_ACC 4.8
 	param set MPC_Z_P 1.2
 fi

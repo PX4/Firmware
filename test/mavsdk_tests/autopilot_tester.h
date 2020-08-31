@@ -56,6 +56,7 @@ public:
 		double leg_length_m {20.0};
 		double relative_altitude_m {10.0};
 		bool rtl_at_end {false};
+		bool fly_through {false};
 	};
 
 	void connect(const std::string uri);
@@ -69,28 +70,30 @@ public:
 	void land();
 	void transition_to_fixedwing();
 	void transition_to_multicopter();
-	void wait_until_disarmed();
+	void wait_until_disarmed(std::chrono::seconds timeout_duration = std::chrono::seconds(90));
 	void wait_until_hovering();
 	void prepare_square_mission(MissionOptions mission_options);
+	void prepare_straight_mission(MissionOptions mission_options);
 	void execute_mission();
 	void execute_rtl();
-	void offboard_goto(const Offboard::PositionNEDYaw &target, float acceptance_radius_m = 0.3f,
+	void offboard_goto(const Offboard::PositionNedYaw &target, float acceptance_radius_m = 0.3f,
 			   std::chrono::seconds timeout_duration = std::chrono::seconds(60));
 	void offboard_land();
 	void request_ground_truth();
+	void check_mission_item_speed_above(int item_index, float min_speed_m_s);
+	void check_tracks_mission(float corridor_radius_m = 1.0f);
 
 
 private:
 	mavsdk::geometry::CoordinateTransformation get_coordinate_transformation();
-	std::shared_ptr<mavsdk::MissionItem> create_mission_item(
+	mavsdk::Mission::MissionItem create_mission_item(
 		const mavsdk::geometry::CoordinateTransformation::LocalCoordinate &local_coordinate,
 		const MissionOptions &mission_options,
 		const mavsdk::geometry::CoordinateTransformation &ct);
-	Telemetry::GroundTruth get_ground_truth_position();
 
 	bool ground_truth_horizontal_position_close_to(const Telemetry::GroundTruth &target_pos, float acceptance_radius_m);
-	bool estimated_position_close_to(const Offboard::PositionNEDYaw &target_position, float acceptance_radius_m);
-	bool estimated_horizontal_position_close_to(const Offboard::PositionNEDYaw &target_pos, float acceptance_radius_m);
+	bool estimated_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
+	bool estimated_horizontal_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
 
 	mavsdk::Mavsdk _mavsdk{};
 	std::unique_ptr<mavsdk::Telemetry> _telemetry{};
@@ -111,9 +114,9 @@ bool poll_condition_with_timeout(
 	unsigned iteration = 0;
 
 	while (!fun()) {
-		std::this_thread::sleep_for(duration_ms / 10);
+		std::this_thread::sleep_for(duration_ms / 100);
 
-		if (iteration++ >= 10) {
+		if (iteration++ >= 100) {
 			return false;
 		}
 	}

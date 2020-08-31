@@ -5,12 +5,6 @@
 
 adc start
 
-# Possible external compasses
-hmc5883 -X start
-lis3mdl -X start
-ist8310 -X start
-qmc5883 -X start
-
 # Internal Mag I2C bus roll 180, yaw 90
 bmm150 -I -R 10 start
 
@@ -19,7 +13,7 @@ bmp280 -I start
 mpl3115a2 -I start
 
 # Internal SPI (accel + mag)
-fxos8701cq start
+fxos8701cq -s start
 
 # Internal SPI (gyro)
-fxas21002c start
+fxas21002c -s start

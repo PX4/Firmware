@@ -181,6 +181,18 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE ${PX4_BUILD_TYPE} CACHE STRING "Build type" FORCE)
 endif()
 
+if((CMAKE_BUILD_TYPE STREQUAL "Debug") OR (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+	set(MAX_CUSTOM_OPT_LEVEL -O0)
+elseif(CMAKE_BUILD_TYPE MATCHES "Sanitizer")
+	set(MAX_CUSTOM_OPT_LEVEL -O1)
+else()
+	if(px4_constrained_flash_build)
+		set(MAX_CUSTOM_OPT_LEVEL -Os)
+	else()
+		set(MAX_CUSTOM_OPT_LEVEL -O2)
+	endif()
+endif()
+
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release;RelWithDebInfo;MinSizeRel;Coverage;AddressSanitizer;UndefinedBehaviorSanitizer")
 message(STATUS "cmake build type: ${CMAKE_BUILD_TYPE}")
 
@@ -209,20 +221,22 @@ endif()
 
 #=============================================================================
 
-# gold linker - use if available
-include(CMakeDependentOption)
-CMAKE_DEPENDENT_OPTION(USE_LD_GOLD
-                      "Use GNU gold linker" ON
-                      "NOT WIN32;NOT APPLE" OFF
-)
+# gold linker - use if available (posix only for now)
+if(${PX4_PLATFORM} STREQUAL "posix")
+	include(CMakeDependentOption)
+	CMAKE_DEPENDENT_OPTION(USE_LD_GOLD
+			"Use GNU gold linker" ON
+			"NOT WIN32;NOT APPLE" OFF
+	)
 
-if(USE_LD_GOLD)
-	execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
-	if("${LD_VERSION}" MATCHES "GNU gold")
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
-		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
-	else()
-		set(USE_LD_GOLD OFF)
+	if(USE_LD_GOLD)
+		execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
+		if("${LD_VERSION}" MATCHES "GNU gold")
+			set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold")
+			set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold")
+		else()
+			set(USE_LD_GOLD OFF)
+		endif()
 	endif()
 endif()
 
@@ -368,18 +382,19 @@ list(APPEND CMAKE_MODULE_PATH ${PX4_SOURCE_DIR}/cmake/gtest/)
 include(px4_add_gtest)
 if(BUILD_TESTING)
 	include(gtest)
+
+	add_custom_target(test_results
+			COMMAND GTEST_COLOR=1 ${CMAKE_CTEST_COMMAND} --output-on-failure -T Test -R ${TESTFILTER} USES_TERMINAL
+			DEPENDS
+				px4
+				examples__dyn_hello
+				test_mixer_multirotor
+			USES_TERMINAL
+			COMMENT "Running tests"
+			WORKING_DIRECTORY ${PX4_BINARY_DIR})
+	set_target_properties(test_results PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif()
 
-add_custom_target(test_results
-		COMMAND GTEST_COLOR=1 ${CMAKE_CTEST_COMMAND} --output-on-failure -T Test -R ${TESTFILTER} USES_TERMINAL
-		DEPENDS
-			px4
-			examples__dyn_hello
-			test_mixer_multirotor
-		USES_TERMINAL
-		COMMENT "Running tests"
-		WORKING_DIRECTORY ${PX4_BINARY_DIR})
-set_target_properties(test_results PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 #=============================================================================
 # subdirectories

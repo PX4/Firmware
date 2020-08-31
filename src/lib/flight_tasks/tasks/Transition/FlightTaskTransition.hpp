@@ -47,15 +47,11 @@ public:
 	FlightTaskTransition() = default;
 
 	virtual ~FlightTaskTransition() = default;
-	bool activate(vehicle_local_position_setpoint_s last_setpoint) override;
+	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool updateInitialize() override;
 	bool update() override;
 
 private:
-	void checkSetpoints(vehicle_local_position_setpoint_s &setpoints);
-	void updateAccelerationEstimate();
-
 	float _transition_altitude = 0.0f;
 	float _transition_yaw = 0.0f;
-	matrix::Vector3f _velocity_prev{};
 };

@@ -48,7 +48,7 @@
  * @group Battery Calibration
  * @unit norm
  * @min 0.12
- * @max 0.4
+ * @max 0.5
  * @decimal 2
  * @increment 0.01
  * @reboot_required true
@@ -65,7 +65,7 @@ PARAM_DEFINE_FLOAT(BAT_LOW_THR, 0.15f);
  * @group Battery Calibration
  * @unit norm
  * @min 0.05
- * @max 0.1
+ * @max 0.25
  * @decimal 2
  * @increment 0.01
  * @reboot_required true
@@ -82,7 +82,7 @@ PARAM_DEFINE_FLOAT(BAT_CRIT_THR, 0.07f);
  * @group Battery Calibration
  * @unit norm
  * @min 0.03
- * @max 0.07
+ * @max 0.1
  * @decimal 2
  * @increment 0.01
  * @reboot_required true

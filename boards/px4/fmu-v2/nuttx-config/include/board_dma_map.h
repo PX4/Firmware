@@ -48,7 +48,7 @@
 |            |   TIM5_UP_1      |   TIM5_TRIG_1    |                  |   TIM5_TRIG_2    |                  |                  |                  |                  |
 | Channel 7  | -                | TIM6_UP          | I2C2_RX          | I2C2_RX_1        | USART3_TX_2      | DAC1             | DAC2             | I2C2_TX          |
 |            |                  |                  |                  |                  |                  |                  |                  |                  |
-| Usage      |                  | USART3_RX        | UART4_RX         | UART7_RX         |                  | USART2_RX        | TIM4_UP          |                  |
+| Usage      |                  | USART3_RX        | UART4_RX         | UART7_RX         | USART3_TX_2      | USART2_RX        | TIM4_UP          |                  |
 
 
 |    DMA2    | Stream 0         | Stream 1         | Stream 2         | Stream 3         | Stream 4         | Stream 5         | Stream 6         | Stream 7         |
@@ -76,7 +76,7 @@
 //      DMAMAP_USART3_RX                      // DMA1, Stream 1, Channel 4
 //      DMAMAP_UART4_RX                       // DMA1, Stream 2, Channel 4
 //      DMAMAP_UART7_RX                       // DMA1, Stream 3, Channel 5
-//      AVAILABLE                             // DMA1, Stream 4
+#define DMAMAP_USART3_TX  DMAMAP_USART3_TX_2  // DMA1, Stream 4, Channel 7    (TELEM2 TX)
 //      DMAMAP_USART2_RX                      // DMA1, Stream 5, Channel 4
 //      DMAMAP_TIM4_UP                        // DMA1, Stream 6, Channel 2    (DSHOT)
 

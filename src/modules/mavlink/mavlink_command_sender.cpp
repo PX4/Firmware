@@ -189,8 +189,8 @@ void MavlinkCommandSender::check_timeout(mavlink_channel_t channel)
 
 		if (item->num_sent_per_channel[channel] < max_sent && item->num_sent_per_channel[channel] != -1) {
 			// We are behind and need to do a retransmission.
+			item->command.confirmation = ++item->num_sent_per_channel[channel];
 			mavlink_msg_command_long_send_struct(channel, &item->command);
-			item->num_sent_per_channel[channel]++;
 
 			CMD_DEBUG("command %d sent (not first, retries: %d/%d, channel: %d)",
 				  item->command.command,
@@ -210,8 +210,8 @@ void MavlinkCommandSender::check_timeout(mavlink_channel_t channel)
 			}
 
 			// We are the first of a new retransmission series.
+			item->command.confirmation = ++item->num_sent_per_channel[channel];
 			mavlink_msg_command_long_send_struct(channel, &item->command);
-			item->num_sent_per_channel[channel]++;
 			// Therefore, we are the ones setting the timestamp of this retry round.
 			item->last_time_sent_us = hrt_absolute_time();
 

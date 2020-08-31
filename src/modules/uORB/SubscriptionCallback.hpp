@@ -127,14 +127,30 @@ public:
 
 	void call() override
 	{
-		// schedule immediately if no interval, otherwise check time elapsed
-		if ((_interval_us == 0) || (hrt_elapsed_time_atomic(&_last_update) >= _interval_us)) {
-			_work_item->ScheduleNow();
+		// schedule immediately if updated (queue depth or subscription interval)
+		if ((_required_updates == 0)
+		    || (_subscription.get_node()->published_message_count() >= (_subscription.get_last_generation() + _required_updates))) {
+			if (updated()) {
+				_work_item->ScheduleNow();
+			}
 		}
+	}
+
+	/**
+	 * Optionally limit callback until more samples are available.
+	 *
+	 * @param required_updates Number of queued updates required before a callback can be called.
+	 */
+	void set_required_updates(uint8_t required_updates)
+	{
+		// TODO: constrain to queue depth?
+		_required_updates = required_updates;
 	}
 
 private:
 	px4::WorkItem *_work_item;
+
+	uint8_t _required_updates{0};
 };
 
 } // namespace uORB

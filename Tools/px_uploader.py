@@ -74,6 +74,9 @@ if sys.version_info[0] < 3:
 else:
     runningPython3 = True
 
+class FirmwareNotSuitableException(Exception):
+    def __init__(self, message):
+        super(FirmwareNotSuitableException, self).__init__(message)
 
 class firmware(object):
     '''Loads a firmware file'''
@@ -319,7 +322,7 @@ class uploader(object):
 
         except NotImplementedError:
             raise RuntimeError("Programing not supported for this version of silicon!\n"
-                               "See https://docs.px4.io/en/flight_controller/silicon_errata.html")
+                               "See https://docs.px4.io/master/en/flight_controller/silicon_errata.html")
         except RuntimeError:
             # timeout, no response yet
             return False
@@ -567,13 +570,13 @@ class uploader(object):
         # Make sure we are doing the right thing
         start = time.time()
         if self.board_type != fw.property('board_id'):
-            msg = "Firmware not suitable for this board (board_type=%u board_id=%u)" % (
+            msg = "Firmware not suitable for this board (Firmware board_type=%u board_id=%u)" % (
                 self.board_type, fw.property('board_id'))
             print("WARNING: %s" % msg)
             if force:
                 print("FORCED WRITE, FLASHING ANYWAY!")
             else:
-                raise IOError(msg)
+                raise FirmwareNotSuitableException(msg)
 
         # Prevent uploads where the image would overflow the flash
         if self.fw_maxsize < fw.property('image_size'):
@@ -798,6 +801,7 @@ def main():
             baud_flightstack = [int(x) for x in args.baud_flightstack.split(',')]
 
             successful = False
+            unsuitable_board = False
             for port in portlist:
 
                 # print("Trying %s" % port)
@@ -828,7 +832,7 @@ def main():
                     continue
 
                 found_bootloader = False
-                while (True):
+                while True:
                     up.open()
 
                     # port is open, try talking to it
@@ -869,6 +873,11 @@ def main():
                     # print the error
                     print("\nERROR: %s" % ex.args)
 
+                except FirmwareNotSuitableException:
+                    unsuitable_board = True
+                    up.close()
+                    continue
+
                 except IOError:
                     up.close()
                     continue
@@ -882,6 +891,12 @@ def main():
                     sys.exit(0)
                 else:
                     sys.exit(1)
+
+            if unsuitable_board:
+                # If we land here, we went through all ports, did not flash any
+                # board and found at least one unsuitable board.
+                # Exit with 2, so a caller can distinguish from other errors
+                sys.exit(2)
 
             # Delay retries to < 20 Hz to prevent spin-lock from hogging the CPU
             time.sleep(0.05)

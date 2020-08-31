@@ -30,9 +30,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+
 /**
- * @file FlightTaskAuto.cpp
+ * @file FlightTaskOffboard.cpp
  */
+
 #include "FlightTaskOffboard.hpp"
 #include <mathlib/mathlib.h>
 #include <float.h>
@@ -43,11 +45,6 @@ bool FlightTaskOffboard::updateInitialize()
 {
 	bool ret = FlightTask::updateInitialize();
 
-	_sub_triplet_setpoint.update();
-
-	// require a valid triplet
-	ret = ret && _sub_triplet_setpoint.get().current.valid;
-
 	// require valid position / velocity in xy
 	return ret && PX4_ISFINITE(_position(0))
 	       && PX4_ISFINITE(_position(1))
@@ -55,7 +52,7 @@ bool FlightTaskOffboard::updateInitialize()
 	       && PX4_ISFINITE(_velocity(1));
 }
 
-bool FlightTaskOffboard::activate(vehicle_local_position_setpoint_s last_setpoint)
+bool FlightTaskOffboard::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 	_position_setpoint = _position;
@@ -66,8 +63,12 @@ bool FlightTaskOffboard::activate(vehicle_local_position_setpoint_s last_setpoin
 
 bool FlightTaskOffboard::update()
 {
+	bool ret = FlightTask::update();
+
 	// reset setpoint for every loop
 	_resetSetpoints();
+
+	_sub_triplet_setpoint.update();
 
 	if (!_sub_triplet_setpoint.get().current.valid) {
 		_setDefaultConstraints();
@@ -104,7 +105,7 @@ bool FlightTaskOffboard::update()
 		}
 
 		// don't have to continue
-		return true;
+		return ret;
 
 	} else {
 		_position_lock.setAll(NAN);
@@ -122,7 +123,7 @@ bool FlightTaskOffboard::update()
 		}
 
 		// don't have to continue
-		return true;
+		return ret;
 
 	} else {
 		_position_lock.setAll(NAN);
@@ -142,7 +143,7 @@ bool FlightTaskOffboard::update()
 		}
 
 		// don't have to continue
-		return true;
+		return ret;
 
 	} else {
 		_position_lock.setAll(NAN);
@@ -150,8 +151,10 @@ bool FlightTaskOffboard::update()
 
 	// IDLE
 	if (_sub_triplet_setpoint.get().current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
-		_thrust_setpoint.zero();
-		return true;
+		_position_setpoint.setNaN(); // Don't require any position/velocity setpoints
+		_velocity_setpoint.setNaN();
+		_acceleration_setpoint = Vector3f(0.f, 0.f, 100.f); // High downwards acceleration to make sure there's no thrust
+		return ret;
 	}
 
 	// Possible inputs:
@@ -228,13 +231,13 @@ bool FlightTaskOffboard::update()
 	// Acceleration
 	// Note: this is not supported yet and will be mapped to normalized thrust directly.
 	if (_sub_triplet_setpoint.get().current.acceleration_valid) {
-		_thrust_setpoint(0) = _sub_triplet_setpoint.get().current.a_x;
-		_thrust_setpoint(1) = _sub_triplet_setpoint.get().current.a_y;
-		_thrust_setpoint(2) = _sub_triplet_setpoint.get().current.a_z;
+		_acceleration_setpoint(0) = _sub_triplet_setpoint.get().current.a_x;
+		_acceleration_setpoint(1) = _sub_triplet_setpoint.get().current.a_y;
+		_acceleration_setpoint(2) = _sub_triplet_setpoint.get().current.a_z;
 	}
 
 	// use default conditions of upwards position or velocity to take off
 	_constraints.want_takeoff = _checkTakeoff();
 
-	return true;
+	return ret;
 }

@@ -9,7 +9,7 @@ parameters:
             description:
                 short: Battery ${i} voltage divider (V divider)
                 long: |
-                    This is the divider from battery ${i} voltage to 3.3V ADC voltage.
+                    This is the divider from battery ${i} voltage to ADC voltage.
                     If using e.g. Mauch power modules the value from the datasheet
                     can be applied straight here. A value of -1 means to use
                     the board default.
@@ -25,7 +25,7 @@ parameters:
             description:
                 short: Battery ${i} current per volt (A/V)
                 long: |
-                    The voltage seen by the 3.3V ADC multiplied by this factor
+                    The voltage seen by the ADC multiplied by this factor
                     will determine the battery current. A value of -1 means to use
                     the board default.
 
@@ -36,11 +36,24 @@ parameters:
             instance_start: 1
             default: [-1.0, -1.0]
 
-        BAT${i}_ADC_CHANNEL:
+        BAT${i}_V_CHANNEL:
             description:
-                short: Battery ${i} ADC Channel
+                short: Battery ${i} Voltage ADC Channel
                 long: |
                     This parameter specifies the ADC channel used to monitor voltage of main power battery.
+                    A value of -1 means to use the board default.
+
+            type: int32
+            reboot_required: true
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: [-1, -1]
+
+        BAT${i}_I_CHANNEL:
+            description:
+                short: Battery ${i} Current ADC Channel
+                long: |
+                    This parameter specifies the ADC channel used to monitor current of main power battery.
                     A value of -1 means to use the board default.
 
             type: int32

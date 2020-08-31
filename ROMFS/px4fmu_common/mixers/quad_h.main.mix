@@ -4,7 +4,7 @@ Multirotor mixer for PX4FMU
 This file defines a single mixer for a quadrotor in the H configuration.  All controls
 are mixed 100%.
 
-R: 4h 10000 10000 10000 0
+R: 4h
 
 Gimbal / payload mixer for last two channels
 -----------------------------------------------------

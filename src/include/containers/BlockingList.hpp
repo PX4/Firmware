@@ -39,14 +39,14 @@
 
 #pragma once
 
-#include "List.hpp"
+#include "IntrusiveSortedList.hpp"
 #include "LockGuard.hpp"
 
 #include <pthread.h>
 #include <stdlib.h>
 
 template<class T>
-class BlockingList : public List<T>
+class BlockingList : public IntrusiveSortedList<T>
 {
 public:
 
@@ -59,25 +59,25 @@ public:
 	void add(T newNode)
 	{
 		LockGuard lg{_mutex};
-		List<T>::add(newNode);
+		IntrusiveSortedList<T>::add(newNode);
 	}
 
 	bool remove(T removeNode)
 	{
 		LockGuard lg{_mutex};
-		return List<T>::remove(removeNode);
+		return IntrusiveSortedList<T>::remove(removeNode);
 	}
 
 	size_t size()
 	{
 		LockGuard lg{_mutex};
-		return List<T>::size();
+		return IntrusiveSortedList<T>::size();
 	}
 
 	void clear()
 	{
 		LockGuard lg{_mutex};
-		List<T>::clear();
+		IntrusiveSortedList<T>::clear();
 	}
 
 	pthread_mutex_t &mutex() { return _mutex; }

@@ -32,6 +32,8 @@
 ############################################################################
 px4_add_module(
 	MODULE drivers__pga460
+	COMPILE_FLAGS
+		-Wno-error=strict-overflow # TODO: fix
 	MAIN pga460
 	SRCS
 		pga460.cpp

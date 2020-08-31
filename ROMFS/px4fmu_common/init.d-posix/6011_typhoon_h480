@@ -15,8 +15,8 @@ then
 	param set MC_ROLLRATE_P 0.15
 	param set MC_ROLLRATE_I 0.1
 	param set MC_ROLL_P 6.0
-	param set MPC_XY_VEL_I 0.2
-	param set MPC_XY_VEL_P 0.15
+	param set MPC_XY_VEL_I_ACC 4
+	param set MPC_XY_VEL_P_ACC 3
 
 	param set RTL_DESCEND_ALT 10
 	param set RTL_LAND_DELAY 0

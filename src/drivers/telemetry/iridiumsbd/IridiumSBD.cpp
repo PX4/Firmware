@@ -213,7 +213,7 @@ int IridiumSBD::ioctl(struct file *filp, int cmd, unsigned long arg)
 // private functions                                                 //
 ///////////////////////////////////////////////////////////////////////
 
-void IridiumSBD::main_loop_helper(int argc, char *argv[])
+int IridiumSBD::main_loop_helper(int argc, char *argv[])
 {
 	// start the main loop and stay in it
 	IridiumSBD::instance->main_loop(argc, argv);
@@ -225,6 +225,7 @@ void IridiumSBD::main_loop_helper(int argc, char *argv[])
 	IridiumSBD::instance = nullptr;
 
 	PX4_WARN("stopped");
+	return 0;
 }
 
 void IridiumSBD::main_loop(int argc, char *argv[])

@@ -1,0 +1,67 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-base-focal:2020-04-01
+    strategy:
+      matrix:
+        config: [
+          tests,
+          #python_coverage,
+          ]
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: coverage_${{matrix.config}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
+        restore-keys: coverage_${{matrix.config}}-ccache-
+    - name: setup ccache
+      run: |
+          mkdir -p ~/.ccache
+          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 6" >> ~/.ccache/ccache.conf
+          echo "max_size = 100M" >> ~/.ccache/ccache.conf
+          ccache -s
+          ccache -z
+
+    - name: make ${{matrix.config}}
+      env:
+        PX4_CMAKE_BUILD_TYPE: "Coverage"
+      run: make ${{matrix.config}}
+
+    # Report test coverage
+    - name: Upload coverage
+      run: |
+          git config --global credential.helper "" # disable the keychain credential helper
+          git config --global --add credential.helper store # enable the local store credential helper
+          echo "https://x-access-token:${{ secrets.ACCESS_TOKEN }}@github.com" >> ~/.git-credentials # add credential
+          git config --global url."https://github.com/".insteadof git@github.com: # credentials add credential
+          mkdir -p coverage
+          lcov --directory build/px4_sitl_test --base-directory build/px4_sitl_test --gcov-tool gcov --capture -o coverage/lcov.info
+    - name: Upload coverage information to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: ${{matrix.config}}
+        file: coverage/lcov.info

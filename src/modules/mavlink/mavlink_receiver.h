@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,7 @@
 #include "mavlink_mission.h"
 #include "mavlink_parameters.h"
 #include "mavlink_timesync.h"
+#include "tune_publisher.h"
 
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
@@ -53,12 +54,10 @@
 #include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
 #include <px4_platform_common/module_params.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationQueued.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/actuator_outputs.h>
-#include <uORB/topics/airspeed.h>
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/cellular_status.h>
@@ -67,11 +66,13 @@
 #include <uORB/topics/debug_key_value.h>
 #include <uORB/topics/debug_value.h>
 #include <uORB/topics/debug_vect.h>
+#include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/follow_target.h>
 #include <uORB/topics/gps_inject_data.h>
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/input_rc.h>
+#include <uORB/topics/irlock_report.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/log_message.h>
 #include <uORB/topics/manual_control_setpoint.h>
@@ -85,6 +86,7 @@
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/telemetry_status.h>
 #include <uORB/topics/transponder_report.h>
+#include <uORB/topics/tune_control.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_command.h>
@@ -127,6 +129,10 @@ private:
 	void handle_message_command_both(mavlink_message_t *msg, const T &cmd_mavlink,
 					 const vehicle_command_s &vehicle_command);
 
+	uint8_t handle_request_message_command(uint16_t message_id, float param2 = 0.0f, float param3 = 0.0f,
+					       float param4 = 0.0f,
+					       float param5 = 0.0f, float param6 = 0.0f, float param7 = 0.0f);
+
 	void handle_message(mavlink_message_t *msg);
 
 	void handle_message_adsb_vehicle(mavlink_message_t *msg);
@@ -158,6 +164,7 @@ private:
 	void handle_message_optical_flow_rad(mavlink_message_t *msg);
 	void handle_message_ping(mavlink_message_t *msg);
 	void handle_message_play_tune(mavlink_message_t *msg);
+	void handle_message_play_tune_v2(mavlink_message_t *msg);
 	void handle_message_radio_status(mavlink_message_t *msg);
 	void handle_message_rc_channels_override(mavlink_message_t *msg);
 	void handle_message_serial_control(mavlink_message_t *msg);
@@ -201,10 +208,9 @@ private:
 
 	bool evaluate_target_ok(int command, int target_system, int target_component);
 
-	void send_flight_information();
-	void send_storage_information(int storage_id);
-
 	void fill_thrust(float *thrust_body_array, uint8_t vehicle_type, float thrust);
+
+	void schedule_tune(const char *tune);
 
 	/**
 	 * @brief Updates the battery, optical flow, and flight ID subscribed parameters.
@@ -231,7 +237,9 @@ private:
 	uORB::Publication<debug_key_value_s>			_debug_key_value_pub{ORB_ID(debug_key_value)};
 	uORB::Publication<debug_value_s>			_debug_value_pub{ORB_ID(debug_value)};
 	uORB::Publication<debug_vect_s>				_debug_vect_pub{ORB_ID(debug_vect)};
+	uORB::Publication<differential_pressure_s>		_differential_pressure_pub{ORB_ID(differential_pressure)};
 	uORB::Publication<follow_target_s>			_follow_target_pub{ORB_ID(follow_target)};
+	uORB::Publication<irlock_report_s>			_irlock_report_pub{ORB_ID(irlock_report)};
 	uORB::Publication<landing_target_pose_s>		_landing_target_pose_pub{ORB_ID(landing_target_pose)};
 	uORB::Publication<log_message_s>			_log_message_pub{ORB_ID(log_message)};
 	uORB::Publication<obstacle_distance_s>			_obstacle_distance_pub{ORB_ID(obstacle_distance)};
@@ -254,12 +262,12 @@ private:
 	uORB::Publication<vehicle_trajectory_waypoint_s>	_trajectory_waypoint_pub{ORB_ID(vehicle_trajectory_waypoint)};
 
 	// ORB publications (multi)
-	uORB::PublicationMulti<distance_sensor_s>		_distance_sensor_pub{ORB_ID(distance_sensor), ORB_PRIO_LOW};
-	uORB::PublicationMulti<distance_sensor_s>		_flow_distance_sensor_pub{ORB_ID(distance_sensor), ORB_PRIO_LOW};
-	uORB::PublicationMulti<input_rc_s>			_rc_pub{ORB_ID(input_rc), ORB_PRIO_LOW};
-	uORB::PublicationMulti<manual_control_setpoint_s>	_manual_pub{ORB_ID(manual_control_setpoint), ORB_PRIO_LOW};
-	uORB::PublicationMulti<ping_s>				_ping_pub{ORB_ID(ping), ORB_PRIO_LOW};
-	uORB::PublicationMulti<radio_status_s>			_radio_status_pub{ORB_ID(radio_status), ORB_PRIO_LOW};
+	uORB::PublicationMulti<distance_sensor_s>		_distance_sensor_pub{ORB_ID(distance_sensor)};
+	uORB::PublicationMulti<distance_sensor_s>		_flow_distance_sensor_pub{ORB_ID(distance_sensor)};
+	uORB::PublicationMulti<input_rc_s>			_rc_pub{ORB_ID(input_rc)};
+	uORB::PublicationMulti<manual_control_setpoint_s>	_manual_control_setpoint_pub{ORB_ID(manual_control_setpoint)};
+	uORB::PublicationMulti<ping_s>				_ping_pub{ORB_ID(ping)};
+	uORB::PublicationMulti<radio_status_s>			_radio_status_pub{ORB_ID(radio_status)};
 
 	// ORB publications (queue length > 1)
 	uORB::PublicationQueued<gps_inject_data_s>	_gps_inject_data_pub{ORB_ID(gps_inject_data)};
@@ -276,6 +284,13 @@ private:
 	uORB::Subscription	_vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	// hil_sensor and hil_state_quaternion
+	enum SensorSource {
+		ACCEL		= 0b111,
+		GYRO		= 0b111000,
+		MAG		= 0b111000000,
+		BARO		= 0b1101000000000,
+		DIFF_PRESS	= 0b10000000000
+	};
 	PX4Accelerometer *_px4_accel{nullptr};
 	PX4Barometer *_px4_baro{nullptr};
 	PX4Gyroscope *_px4_gyro{nullptr};
@@ -292,6 +307,9 @@ private:
 	bool				_hil_local_proj_inited{false};
 
 	hrt_abstime			_last_utm_global_pos_com{0};
+
+	// Allocated if needed.
+	TunePublisher *_tune_publisher{nullptr};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::BAT_CRIT_THR>)     _param_bat_crit_thr,

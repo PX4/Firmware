@@ -129,11 +129,13 @@ parameters:
                     This parameter controls the source of battery data. The value 'Power Module'
                     means that measurements are expected to come from a power module. If the value is set to
                     'External' then the system expects to receive mavlink battery status messages.
+                    If the value is set to 'ESCs', the battery information are taken from the esc_status message.
+                    This requires the ESC to provide both voltage as well as current.
             type: enum
-            unit: mAh
             values:
                 0: Power Module
                 1: External
+                2: ESCs
             reboot_required: true
             num_instances: *max_num_config_instances
             instance_start: 1

@@ -39,6 +39,8 @@
 
 #include "LPS22HB.hpp"
 
+#include <drivers/device/spi.h>
+
 /* SPI protocol address bits */
 #define DIR_READ			(1<<7)
 #define DIR_WRITE			(0<<7)
@@ -49,12 +51,13 @@ class LPS22HB_SPI : public device::SPI
 {
 public:
 	LPS22HB_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode);
-	virtual ~LPS22HB_SPI() = default;
+	~LPS22HB_SPI() override = default;
 
-	virtual int	init();
-	virtual int	read(unsigned address, void *data, unsigned count);
-	virtual int	write(unsigned address, void *data, unsigned count);
+	int	read(unsigned address, void *data, unsigned count) override;
+	int	write(unsigned address, void *data, unsigned count) override;
 
+protected:
+	int	probe() override;
 };
 
 device::Device *
@@ -63,22 +66,13 @@ LPS22HB_SPI_interface(int bus, uint32_t devid, int bus_frequency, spi_mode_e spi
 	return new LPS22HB_SPI(bus, devid, bus_frequency, spi_mode);
 }
 
-LPS22HB_SPI::LPS22HB_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode)
-	: SPI("LPS22HB_SPI", nullptr, bus, device, spi_mode, bus_frequency)
+LPS22HB_SPI::LPS22HB_SPI(int bus, uint32_t device, int bus_frequency, spi_mode_e spi_mode) :
+	SPI(DRV_BARO_DEVTYPE_LPS22HB, MODULE_NAME, bus, device, spi_mode, bus_frequency)
 {
-	_device_id.devid_s.devtype = DRV_BARO_DEVTYPE_LPS22HB;
 }
 
-int
-LPS22HB_SPI::init()
+int LPS22HB_SPI::probe()
 {
-	int ret = SPI::init();
-
-	if (ret != OK) {
-		DEVICE_DEBUG("SPI init failed");
-		return -EIO;
-	}
-
 	// read WHO_AM_I value
 	uint8_t id = 0;
 
@@ -92,11 +86,10 @@ LPS22HB_SPI::init()
 		return -EIO;
 	}
 
-	return OK;
+	return PX4_OK;
 }
 
-int
-LPS22HB_SPI::write(unsigned address, void *data, unsigned count)
+int LPS22HB_SPI::write(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 
@@ -110,8 +103,7 @@ LPS22HB_SPI::write(unsigned address, void *data, unsigned count)
 	return transfer(&buf[0], &buf[0], count + 1);
 }
 
-int
-LPS22HB_SPI::read(unsigned address, void *data, unsigned count)
+int LPS22HB_SPI::read(unsigned address, void *data, unsigned count)
 {
 	uint8_t buf[32];
 

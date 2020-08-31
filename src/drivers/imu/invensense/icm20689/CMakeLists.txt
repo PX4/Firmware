@@ -39,6 +39,7 @@ px4_add_module(
 		ICM20689.cpp
 		ICM20689.hpp
 		icm20689_main.cpp
+		InvenSense_ICM20689_registers.hpp
 	DEPENDS
 		drivers_accelerometer
 		drivers_gyroscope

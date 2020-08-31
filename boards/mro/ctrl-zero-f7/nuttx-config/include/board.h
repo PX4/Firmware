@@ -66,7 +66,7 @@
 
 #define STM32_BOARD_XTAL        24000000ul
 
-#define STM32_HSI_FREQUENCY     24000000ul
+#define STM32_HSI_FREQUENCY     16000000ul
 #define STM32_LSI_FREQUENCY     32000
 #define STM32_HSE_FREQUENCY     STM32_BOARD_XTAL
 #define STM32_LSE_FREQUENCY     0
@@ -329,35 +329,3 @@
  *      SDMMC1_D3                           PC11
  */
 
-/************************************************************************************
- * Public Data
- ************************************************************************************/
-#ifndef __ASSEMBLY__
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
-
-/************************************************************************************
- * Name: stm32_boardinitialize
- *
- * Description:
- *   All STM32 architectures must provide the following entry point.  This entry point
- *   is called early in the initialization -- after all memory has been configured
- *   and mapped but before any devices have been initialized.
- *
- ************************************************************************************/
-
-void stm32_boardinitialize(void);
-
-#undef EXTERN
-#if defined(__cplusplus)
-}
-#endif
-
-#endif /* __ASSEMBLY__ */

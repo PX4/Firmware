@@ -48,29 +48,52 @@
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
 #include <lib/ecl/geo/geo.h>
 #include <lib/perf/perf_counter.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <px4_platform_common/i2c_spi_buses.h>
 
-using ST_ISM330DLC::Register;
+using namespace ST_ISM330DLC;
 
-class ISM330DLC : public device::SPI, public px4::ScheduledWorkItem
+class ISM330DLC : public device::SPI, public I2CSPIDriver<ISM330DLC>
 {
 public:
-	ISM330DLC(int bus, uint32_t device, enum Rotation rotation = ROTATION_NONE);
+	ISM330DLC(I2CSPIBusOption bus_option, int bus, uint32_t device, enum Rotation rotation, int bus_frequency,
+		  spi_mode_e spi_mode, spi_drdy_gpio_t drdy_gpio);
 	~ISM330DLC() override;
 
-	bool Init();
-	void Start();
-	void Stop();
-	bool Reset();
-	void PrintInfo();
+	static I2CSPIDriverBase *instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+					     int runtime_instance);
+	static void print_usage();
 
+	void print_status() override;
+
+	void RunImpl();
+
+	int init() override;
+
+	void Start();
+	bool Reset();
+
+protected:
+	void custom_method(const BusCLIArguments &cli) override;
+	void exit_and_cleanup() override;
 private:
+
+	// Sensor Configuration
+	static constexpr uint32_t GYRO_RATE{ST_ISM330DLC::G_ODR};
+	static constexpr uint32_t ACCEL_RATE{ST_ISM330DLC::LA_ODR};
+	static constexpr uint32_t FIFO_MAX_SAMPLES{ math::min(FIFO::SIZE / sizeof(FIFO::DATA) + 1, sizeof(sensor_gyro_fifo_s::x) / sizeof(sensor_gyro_fifo_s::x[0]))};
+
+	// Transfer data
+	struct FIFOTransferBuffer {
+		uint8_t cmd{static_cast<uint8_t>(Register::FIFO_DATA_OUT_L) | DIR_READ};
+		FIFO::DATA f[FIFO_MAX_SAMPLES] {};
+	};
+	// ensure no struct padding
+	static_assert(sizeof(FIFOTransferBuffer) == (sizeof(uint8_t) + FIFO_MAX_SAMPLES *sizeof(FIFO::DATA)));
+
 	int probe() override;
 
 	static int DataReadyInterruptCallback(int irq, void *context, void *arg);
 	void DataReady();
-
-	void Run() override;
 
 	uint8_t RegisterRead(Register reg);
 	void RegisterWrite(Register reg, uint8_t value);
@@ -79,7 +102,7 @@ private:
 
 	void ResetFIFO();
 
-	uint8_t *_dma_data_buffer{nullptr};
+	const spi_drdy_gpio_t _drdy_gpio;
 
 	PX4Accelerometer _px4_accel;
 	PX4Gyroscope _px4_gyro;

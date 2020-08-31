@@ -45,7 +45,7 @@
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_led.h>
 
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/led_control.h>
 
 static void	usage();

@@ -3,6 +3,8 @@
 # Bitcraze Crazyflie specific board sensors init
 #------------------------------------------------------------------------------
 
+# system_power unavailable
+param set CBRK_SUPPLY_CHK 894281
 
 if param compare SYS_AUTOSTART 0
 then
@@ -12,6 +14,6 @@ fi
 
 if [ $AUTOCNF = yes ]
 then
-
+	# don't probe external I2C
+	param set SENS_EXT_I2C_PRB 0
 fi
-

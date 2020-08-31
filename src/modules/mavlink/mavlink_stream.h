@@ -93,11 +93,13 @@ public:
 	virtual unsigned get_size() = 0;
 
 	/**
-	 * This function is called in response to a MAV_CMD_REQUEST_MESSAGE command. The default implementation is to
-	 * just reset the counter to immediately send one message.
+	 * This function is called in response to a MAV_CMD_REQUEST_MESSAGE command.
 	 */
-	virtual void request_message(float param1 = 0.0, float param2 = 0.0, float param3 = 0.0, float param4 = 0.0,
-				     float param5 = 0.0, float param6 = 0.0, float param7 = 0.0) { reset_last_sent(); }
+	virtual bool request_message(float param2 = 0.0, float param3 = 0.0, float param4 = 0.0,
+				     float param5 = 0.0, float param6 = 0.0, float param7 = 0.0)
+	{
+		return send(hrt_absolute_time());
+	}
 
 	/**
 	 * Get the average message size

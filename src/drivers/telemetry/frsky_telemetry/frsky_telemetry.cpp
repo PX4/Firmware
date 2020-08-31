@@ -76,7 +76,7 @@ using namespace time_literals;
 static volatile bool thread_should_exit = false;
 static volatile bool thread_running = false;
 static int frsky_task;
-typedef enum { SCANNING, SPORT, SPORT_SINGLE_WIRE, DTYPE } frsky_state_t;
+typedef enum { SCANNING, SPORT, SPORT_SINGLE_WIRE, SPORT_SINGLE_WIRE_INVERT, DTYPE } frsky_state_t;
 static frsky_state_t frsky_state = SCANNING;
 
 static unsigned long int sentPackets = 0;
@@ -202,9 +202,16 @@ static int set_uart_speed(int uart, struct termios *uart_config, speed_t speed)
 
 static void set_uart_single_wire(int uart, bool single_wire)
 {
-	if (ioctl(uart, TIOCSSINGLEWIRE, single_wire ? SER_SINGLEWIRE_ENABLED : 0) < 0) {
+	if (ioctl(uart, TIOCSSINGLEWIRE, single_wire ? (SER_SINGLEWIRE_ENABLED | SER_SINGLEWIRE_PUSHPULL |
+			SER_SINGLEWIRE_PULLDOWN) : 0) < 0) {
 		PX4_WARN("setting TIOCSSINGLEWIRE failed");
 	}
+}
+
+static void set_uart_invert(int uart, bool invert)
+{
+	// Not all architectures support this. That's ok as it will just re-test the non-inverted case
+	ioctl(uart, TIOCSINVERT, invert ? (SER_INVERT_ENABLED_RX | SER_INVERT_ENABLED_TX) : 0);
 }
 
 /**
@@ -237,6 +244,9 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 
 			} else if (!strcmp(myoptarg, "sport_single")) {
 				frsky_state = baudRate = SPORT_SINGLE_WIRE;
+
+			} else if (!strcmp(myoptarg, "sport_single_invert")) {
+				frsky_state = baudRate = SPORT_SINGLE_WIRE_INVERT;
 
 			} else if (!strcmp(myoptarg, "dtype")) {
 				frsky_state = baudRate = DTYPE;
@@ -335,12 +345,22 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 			set_uart_speed(uart, &uart_config, B57600);
 			// switch to single-wire (half-duplex) mode, because S.Port uses only a single wire
 			set_uart_single_wire(uart, true);
+			set_uart_invert(uart, false);
 			baudRate = SPORT_SINGLE_WIRE;
 
 		} else if (baudRate == SPORT_SINGLE_WIRE) {
+			PX4_DEBUG("setting baud rate to %d (single wire inverted)", 57600);
+			set_uart_speed(uart, &uart_config, B57600);
+			// switch to single-wire (half-duplex) mode, because S.Port uses only a single wire
+			set_uart_single_wire(uart, true);
+			set_uart_invert(uart, true);
+			baudRate = SPORT_SINGLE_WIRE_INVERT;
+
+		} else if (baudRate == SPORT_SINGLE_WIRE_INVERT) {
 			PX4_DEBUG("setting baud rate to %d", 9600);
 			set_uart_speed(uart, &uart_config, B9600);
 			set_uart_single_wire(uart, false);
+			set_uart_invert(uart, false);
 			baudRate = DTYPE;
 
 		} else {
@@ -348,6 +368,7 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 			set_uart_speed(uart, &uart_config, B57600);
 			// in case S.Port is connected via external inverter (e.g. via Sipex 3232EE), we need to use duplex mode
 			set_uart_single_wire(uart, false);
+			set_uart_invert(uart, false);
 			baudRate = SPORT;
 		}
 
@@ -362,9 +383,10 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 		}
 	}
 
-	if (frsky_state == SPORT || frsky_state == SPORT_SINGLE_WIRE) {
+	if (frsky_state == SPORT || frsky_state == SPORT_SINGLE_WIRE || frsky_state == SPORT_SINGLE_WIRE_INVERT) {
 		set_uart_speed(uart, &uart_config, B57600);
-		set_uart_single_wire(uart, frsky_state == SPORT_SINGLE_WIRE);
+		set_uart_single_wire(uart, frsky_state == SPORT_SINGLE_WIRE || frsky_state == SPORT_SINGLE_WIRE_INVERT);
+		set_uart_invert(uart, frsky_state == SPORT_SINGLE_WIRE_INVERT);
 
 		/* Subscribe to topics */
 		if (!sPort_init()) {
@@ -770,6 +792,12 @@ int frsky_telemetry_main(int argc, char *argv[])
 				PX4_INFO("packets sent: %ld", sentPackets);
 				break;
 
+			case SPORT_SINGLE_WIRE_INVERT:
+				PX4_INFO("running: SPORT (single wire, inverted)");
+				PX4_INFO("port: %s", device_name);
+				PX4_INFO("packets sent: %ld", sentPackets);
+				break;
+
 			case DTYPE:
 				PX4_INFO("running: DTYPE");
 				PX4_INFO("port: %s", device_name);
@@ -801,8 +829,8 @@ static void usage()
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', "/dev/ttyS6", "<file:dev>", "Select Serial Device", true);
 	PRINT_MODULE_USAGE_PARAM_INT('t', 0, 0, 60, "Scanning timeout [s] (default: no timeout)", true);
-	PRINT_MODULE_USAGE_PARAM_STRING('m', "auto", "sport|sport_single|dtype", "Select protocol (default: auto-detect)",
-					true);
+	PRINT_MODULE_USAGE_PARAM_STRING('m', "auto", "sport|sport_single|sport_single_invert|dtype",
+					"Select protocol (default: auto-detect)", true);
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("status");
 }

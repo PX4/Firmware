@@ -239,30 +239,7 @@ perf_end(perf_counter_t handle)
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
 
 			if (pce->time_start != 0) {
-				int64_t elapsed = hrt_absolute_time() - pce->time_start;
-
-				if (elapsed >= 0) {
-
-					pce->event_count++;
-					pce->time_total += elapsed;
-
-					if ((pce->time_least > (uint32_t)elapsed) || (pce->time_least == 0)) {
-						pce->time_least = elapsed;
-					}
-
-					if (pce->time_most < (uint32_t)elapsed) {
-						pce->time_most = elapsed;
-					}
-
-					// maintain mean and variance of the elapsed time in seconds
-					// Knuth/Welford recursive mean and variance of update intervals (via Wikipedia)
-					float dt = elapsed / 1e6f;
-					float delta_intvl = dt - pce->mean;
-					pce->mean += delta_intvl / pce->event_count;
-					pce->M2 += delta_intvl * (dt - pce->mean);
-
-					pce->time_start = 0;
-				}
+				perf_set_elapsed(handle, hrt_elapsed_time(&pce->time_start));
 			}
 		}
 		break;
@@ -284,7 +261,6 @@ perf_set_elapsed(perf_counter_t handle, int64_t elapsed)
 			struct perf_ctr_elapsed *pce = (struct perf_ctr_elapsed *)handle;
 
 			if (elapsed >= 0) {
-
 				pce->event_count++;
 				pce->time_total += elapsed;
 

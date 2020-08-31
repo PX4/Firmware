@@ -48,7 +48,7 @@ public:
 
 	virtual ~FlightTaskOffboard() = default;
 	bool update() override;
-	bool activate(vehicle_local_position_setpoint_s last_setpoint) override;
+	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool updateInitialize() override;
 
 protected:

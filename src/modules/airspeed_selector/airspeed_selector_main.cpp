@@ -176,7 +176,7 @@ private:
 
 AirspeedModule::AirspeedModule():
 	ModuleParams(nullptr),
-	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::att_pos_ctrl)
+	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers)
 {
 	// initialise parameters
 	update_params();
@@ -220,12 +220,12 @@ AirspeedModule::init()
 		_valid_airspeed_index = math::min(_param_airspeed_primary_index.get(), _number_of_airspeed_sensors);
 
 		if (_number_of_airspeed_sensors == 0) {
-			mavlink_and_console_log_info(&_mavlink_log_pub,
-						     "No airspeed sensor detected. Switch to non-airspeed mode.");
+			mavlink_log_info(&_mavlink_log_pub,
+					 "No airspeed sensor detected. Switch to non-airspeed mode.");
 
 		} else {
-			mavlink_and_console_log_info(&_mavlink_log_pub,
-						     "Primary airspeed index bigger than number connected sensors. Take last sensor.");
+			mavlink_log_info(&_mavlink_log_pub,
+					 "Primary airspeed index bigger than number connected sensors. Take last sensor.");
 		}
 
 	} else {
@@ -263,6 +263,14 @@ AirspeedModule::check_for_connected_airspeed_sensors()
 void
 AirspeedModule::Run()
 {
+	_time_now_usec = hrt_absolute_time(); //hrt time of the current cycle
+
+	/* do not run the airspeed selector until 2s after system boot, as data from airspeed sensor
+	and estimator may not be valid yet*/
+	if (_time_now_usec < 2_s) {
+		return;
+	}
+
 	perf_begin(_perf_elapsed);
 
 	if (!_initialized) {
@@ -276,7 +284,7 @@ AirspeedModule::Run()
 		update_params();
 	}
 
-	_time_now_usec = hrt_absolute_time(); //hrt time of the current cycle
+
 
 	bool armed = (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
 
@@ -391,7 +399,7 @@ void AirspeedModule::update_params()
 				-1.0f);  // set it to a negative value to start estimation inside wind estimator
 
 		} else {
-			mavlink_and_console_log_info(&_mavlink_log_pub, "Airspeed: can't estimate scale as no valid sensor.");
+			mavlink_log_info(&_mavlink_log_pub, "Airspeed: can't estimate scale as no valid sensor.");
 			_param_west_scale_estimation_on.set(0); // reset this param to 0 as estimation was not turned on
 			_param_west_scale_estimation_on.commit_no_notification();
 		}
@@ -405,11 +413,11 @@ void AirspeedModule::update_params()
 			_param_west_airspeed_scale.commit_no_notification();
 			_airspeed_validator[_valid_airspeed_index - 1].set_airspeed_scale_manual(_param_west_airspeed_scale.get());
 
-			mavlink_and_console_log_info(&_mavlink_log_pub, "Airspeed: estimated scale (ASPD_ASPD_SCALE): %0.2f",
-						     (double)_airspeed_validator[_valid_airspeed_index - 1].get_EAS_scale());
+			mavlink_log_info(&_mavlink_log_pub, "Airspeed: estimated scale (ASPD_ASPD_SCALE): %0.2f",
+					 (double)_airspeed_validator[_valid_airspeed_index - 1].get_EAS_scale());
 
 		} else {
-			mavlink_and_console_log_info(&_mavlink_log_pub, "Airspeed: can't estimate scale as no valid sensor.");
+			mavlink_log_info(&_mavlink_log_pub, "Airspeed: can't estimate scale as no valid sensor.");
 		}
 	}
 

@@ -78,9 +78,6 @@ public:
 	 */
 	virtual int finish() = 0;
 
-	/** reset all driver-level calibration parameters */
-	virtual void reset_calibration() = 0;
-
 protected:
 
 	/**

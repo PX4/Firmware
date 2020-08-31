@@ -52,4 +52,3 @@ static inline constexpr px4_i2c_bus_t initI2CBusExternal(int bus)
 	ret.is_external = true;
 	return ret;
 }
-

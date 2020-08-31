@@ -59,7 +59,7 @@ public:
 	~Takeoff() = default;
 
 	// initialize parameters
-	void setSpoolupTime(const float seconds) { _spoolup_time_hysteresis.set_hysteresis_time_from(false, (hrt_abstime)(seconds * (float)1_s)); }
+	void setSpoolupTime(const float seconds) { _spoolup_time_hysteresis.set_hysteresis_time_from(false, seconds * 1_s); }
 	void setTakeoffRampTime(const float seconds) { _takeoff_ramp_time = seconds; }
 
 	/**
@@ -68,7 +68,7 @@ public:
 	 * @param hover_thrust normalized thrsut value with which the vehicle hovers
 	 * @param velocity_p_gain proportional gain of the velocity controller to calculate the thrust
 	 */
-	void generateInitialRampValue(const float hover_thrust, const float velocity_p_gain);
+	void generateInitialRampValue(const float velocity_p_gain);
 
 	/**
 	 * Update the state for the takeoff.

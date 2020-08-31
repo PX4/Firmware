@@ -11,39 +11,15 @@ then
 	then
 		# Configure all I2C buses to 100 KHz as they
 		# are all external or slow
-		fmu i2c 1 100000
-		fmu i2c 2 100000
+		# TODO: move this
+		pwm_out i2c 1 100000
+		pwm_out i2c 2 100000
 	fi
 fi
 
 ###############################################################################
 #                           Begin Optional drivers                            #
 ###############################################################################
-
-if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
-then
-	if param compare CBRK_AIRSPD_CHK 0
-	then
-		sdp3x_airspeed start -X
-		sdp3x_airspeed start -X -a 0x22
-
-		# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
-		# detected as MS5525 because the chip manufacturer was so
-		# clever to assign the same I2C address and skip a WHO_AM_I
-		# register.
-		if [ $BOARD_FMUV3 = 21 ]
-		then
-			ms5525_airspeed start -X -b 2
-		else
-			ms5525_airspeed start -X
-		fi
-
-		ms4525_airspeed start -X
-
-		ets_airspeed start -X
-
-	fi
-fi
 
 if param compare -s SENS_EN_BATT 1
 then
@@ -113,10 +89,53 @@ then
 	pmw3901 -S start
 fi
 
+# Possible external paw3902 optical flow sensor
+if param greater -s SENS_EN_PAW3902 0
+then
+	paw3902 -S start
+fi
+
+# probe for optional external I2C devices
+if param compare SENS_EXT_I2C_PRB 1
+then
+	# compasses
+	ak09916 -X -R 6 -q start # external AK09916 (Here2) is rotated 270 degrees yaw
+	hmc5883 -T -X -q start
+	ist8308 -X -q start
+	ist8310 -X -q start
+	lis2mdl -X -q start
+	lis3mdl -X -q start
+	qmc5883 -X -q start
+	rm3100 -X -q start
+
+	# differential pressure sensors
+	if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
+	then
+		if param compare CBRK_AIRSPD_CHK 0
+		then
+			sdp3x_airspeed start -X -q
+			sdp3x_airspeed start -X -a 0x22 -q
+
+			# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
+			# detected as MS5525 because the chip manufacturer was so
+			# clever to assign the same I2C address and skip a WHO_AM_I
+			# register.
+			if [ $BOARD_FMUV3 = 21 ]
+			then
+				ms5525_airspeed start -X -b 2 -q
+			else
+				ms5525_airspeed start -X -q
+			fi
+
+			ms4525_airspeed start -X -q
+
+			ets_airspeed start -X -q
+		fi
+	fi
+fi
+
 ###############################################################################
 #                            End Optional drivers                             #
 ###############################################################################
 
-# Wait 20 ms for sensors (because we need to wait for the HRT and work queue callbacks to fire)
-usleep 20000
 sensors start

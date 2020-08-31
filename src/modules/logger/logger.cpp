@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <uORB/PublicationQueued.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/uORBTopics.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_command_ack.h>
@@ -421,7 +421,19 @@ bool Logger::copy_if_updated(int sub_idx, void *buffer, bool try_to_subscribe)
 	bool updated = false;
 
 	if (sub.valid()) {
-		updated = sub.update(buffer);
+		if (sub.get_interval_us() == 0) {
+			// record gaps in full rate (no interval) messages
+			const unsigned last_generation = sub.get_last_generation();
+			updated = sub.update(buffer);
+
+			if (updated && (sub.get_last_generation() != last_generation + 1)) {
+				// error, missed a message
+				_message_gaps++;
+			}
+
+		} else {
+			updated = sub.update(buffer);
+		}
 
 	} else if (try_to_subscribe) {
 		if (sub.subscribe()) {
@@ -490,6 +502,19 @@ bool Logger::initialize_topics()
 		return false;
 	}
 
+	if ((sdlog_profile & SDLogProfileMask::RAW_IMU_ACCEL_FIFO) || (sdlog_profile & SDLogProfileMask::RAW_IMU_GYRO_FIFO)) {
+		// if we are logging high-rate FIFO, reduce the logging interval & increase process priority to avoid missing samples
+		PX4_INFO("Logging FIFO data: increasing task prio and logging rate");
+		_log_interval = 800;
+		sched_param param{};
+		param.sched_priority = SCHED_PRIORITY_ATTITUDE_CONTROL;
+		int ret = pthread_setschedparam(pthread_self(), SCHED_DEFAULT, &param);
+
+		if (ret != 0) {
+			PX4_ERR("pthread_setschedparam failed (%i)", ret);
+		}
+	}
+
 	delete[](_subscriptions);
 	_subscriptions = nullptr;
 
@@ -503,9 +528,8 @@ bool Logger::initialize_topics()
 
 		for (int i = 0; i < logged_topics.subscriptions().count; ++i) {
 			const LoggedTopics::RequestedSubscription &sub = logged_topics.subscriptions().sub[i];
-			// if we poll on a topic, we don't use the interval and let the polled topic define the maximum interval
-			uint16_t interval_ms = _polling_topic_meta ? 0 : sub.interval_ms;
-			_subscriptions[i] = LoggerSubscription(sub.id, interval_ms, sub.instance);
+			_subscriptions[i] = LoggerSubscription(sub.id, sub.interval_ms, sub.instance);
+			_subscriptions[i].subscribe();
 		}
 	}
 
@@ -629,6 +653,10 @@ void Logger::run()
 	// check for new subscription data
 	hrt_abstime next_subscribe_check = 0;
 	int next_subscribe_topic_index = -1; // this is used to distribute the checks over time
+
+	if (polling_topic_sub >= 0) {
+		_lockstep_component = px4_lockstep_register_component();
+	}
 
 	while (!should_exit()) {
 		// Start/stop logging (depending on logging mode, by default when arming/disarming)
@@ -776,42 +804,7 @@ void Logger::run()
 				}
 			}
 
-
-#ifndef ORB_USE_PUBLISHER_RULES
-
-			// publish logger status
-			//  - this is disabled in replay builds to ensure all data in ekf2 replay logs only contain
-			//    the same time range, otherwise the plots can be unreadable using common tools
-			if (hrt_elapsed_time(&_logger_status_last) >= 1_s) {
-				for (int i = 0; i < (int)LogType::Count; ++i) {
-
-					const LogType log_type = static_cast<LogType>(i);
-
-					if (_writer.is_started(log_type)) {
-
-						const size_t buffer_fill_count_file = _writer.get_buffer_fill_count_file(log_type);
-
-						const float kb_written = _writer.get_total_written_file(log_type) / 1024.0f;
-						const float seconds = hrt_elapsed_time(&_statistics[i].start_time_file) * 1e-6f;
-
-						logger_status_s status;
-						status.type = i;
-						status.backend = _writer.backend();
-						status.total_written_kb = kb_written;
-						status.write_rate_kb_s = kb_written / seconds;
-						status.dropouts = _statistics[i].write_dropouts;
-						status.buffer_used_bytes = buffer_fill_count_file;
-						status.buffer_size_bytes = _writer.get_buffer_size_file(log_type);
-						status.num_messages = _num_subscriptions;
-						status.timestamp = hrt_absolute_time();
-						_logger_status_pub[i].publish(status);
-					}
-				}
-
-				_logger_status_last = hrt_absolute_time();
-			}
-
-#endif // !ORB_USE_PUBLISHER_RULES
+			publish_logger_status();
 
 			/* release the log buffer */
 			_writer.unlock();
@@ -856,10 +849,12 @@ void Logger::run()
 
 		// wait for next loop iteration...
 		if (polling_topic_sub >= 0) {
+			px4_lockstep_progress(_lockstep_component);
+
 			px4_pollfd_struct_t fds[1];
 			fds[0].fd = polling_topic_sub;
 			fds[0].events = POLLIN;
-			int pret = px4_poll(fds, 1, 1000);
+			int pret = px4_poll(fds, 1, 20);
 
 			if (pret < 0) {
 				PX4_ERR("poll failed (%i)", pret);
@@ -882,6 +877,8 @@ void Logger::run()
 			while (px4_sem_wait(&timer_callback_data.semaphore) != 0) {}
 		}
 	}
+
+	px4_lockstep_unregister_component(_lockstep_component);
 
 	stop_log_file(LogType::Full);
 	stop_log_file(LogType::Mission);
@@ -925,6 +922,39 @@ void Logger::debug_print_buffer(uint32_t &total_bytes, hrt_abstime &timer_start)
 #endif /* DBGPRINT */
 }
 
+void Logger::publish_logger_status()
+{
+	if (hrt_elapsed_time(&_logger_status_last) >= 1_s) {
+		for (int i = 0; i < (int)LogType::Count; ++i) {
+
+			const LogType log_type = static_cast<LogType>(i);
+
+			if (_writer.is_started(log_type)) {
+
+				const size_t buffer_fill_count_file = _writer.get_buffer_fill_count_file(log_type);
+
+				const float kb_written = _writer.get_total_written_file(log_type) / 1024.0f;
+				const float seconds = hrt_elapsed_time(&_statistics[i].start_time_file) * 1e-6f;
+
+				logger_status_s status;
+				status.type = i;
+				status.backend = _writer.backend();
+				status.total_written_kb = kb_written;
+				status.write_rate_kb_s = kb_written / seconds;
+				status.dropouts = _statistics[i].write_dropouts;
+				status.message_gaps = _message_gaps;
+				status.buffer_used_bytes = buffer_fill_count_file;
+				status.buffer_size_bytes = _writer.get_buffer_size_file(log_type);
+				status.num_messages = _num_subscriptions;
+				status.timestamp = hrt_absolute_time();
+				_logger_status_pub[i].publish(status);
+			}
+		}
+
+		_logger_status_last = hrt_absolute_time();
+	}
+}
+
 bool Logger::get_disable_boot_logging()
 {
 	if (_param_sdlog_boot_bat.get()) {
@@ -951,11 +981,11 @@ bool Logger::start_stop_logging()
 
 	if (_log_mode == LogMode::rc_aux1) {
 		// aux1-based logging
-		manual_control_setpoint_s manual_sp;
+		manual_control_setpoint_s manual_control_setpoint;
 
-		if (_manual_control_sp_sub.update(&manual_sp)) {
+		if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 
-			desired_state = (manual_sp.aux1 > 0.3f);
+			desired_state = (manual_control_setpoint.aux1 > 0.3f);
 			updated = true;
 		}
 
@@ -1206,7 +1236,7 @@ void Logger::start_log_file(LogType type)
 
 	if (type == LogType::Full) {
 		/* print logging path, important to find log file later */
-		mavlink_log_info(&_mavlink_log_pub, "[logger] file:%s", file_name);
+		mavlink_log_info(&_mavlink_log_pub, "[logger] %s", file_name);
 	}
 
 	_writer.start_log_file(type, file_name);
@@ -1557,15 +1587,22 @@ void Logger::write_all_add_logged_msg(LogType type)
 		sub_count = _num_mission_subs;
 	}
 
+	bool added_subscriptions = false;
+
 	for (int i = 0; i < sub_count; ++i) {
 		LoggerSubscription &sub = _subscriptions[i];
 
 		if (sub.valid()) {
 			write_add_logged_msg(type, sub);
+			added_subscriptions = true;
 		}
 	}
 
 	_writer.unlock();
+
+	if (!added_subscriptions) {
+		PX4_ERR("No subscriptions added"); // this results in invalid log files
+	}
 }
 
 void Logger::write_add_logged_msg(LogType type, LoggerSubscription &subscription)
@@ -1761,6 +1798,10 @@ void Logger::write_version(LogType type)
 		snprintf(mcu_ver, sizeof(mcu_ver), "%s, rev. %c", chip_name, revision);
 		write_info(type, "sys_mcu", mcu_ver);
 	}
+
+	// data versioning: increase this on every larger data change (format/semantic)
+	// 1: switch to FIFO drivers (disabled on-chip DLPF)
+	write_info(type, "ver_data_format", 1);
 
 #ifndef BOARD_HAS_NO_UUID
 

@@ -33,140 +33,66 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/getopt.h>
+#include <px4_platform_common/module.h>
 
 #include "AEROFC_ADC.hpp"
 
-enum AEROFC_ADC_BUS {
-	AEROFC_ADC_BUS_ALL = 0,
-	AEROFC_ADC_BUS_I2C_INTERNAL,
-	AEROFC_ADC_BUS_I2C_EXTERNAL
-};
-
-static constexpr struct aerofc_adc_bus_option {
-	enum AEROFC_ADC_BUS busid;
-	uint8_t busnum;
-} bus_options[] = {
-#ifdef PX4_I2C_BUS_EXPANSION
-	{ AEROFC_ADC_BUS_I2C_EXTERNAL, PX4_I2C_BUS_EXPANSION },
-#endif
-#ifdef PX4_I2C_BUS_EXPANSION1
-	{ AEROFC_ADC_BUS_I2C_EXTERNAL, PX4_I2C_BUS_EXPANSION1 },
-#endif
-#ifdef PX4_I2C_BUS_ONBOARD
-	{ AEROFC_ADC_BUS_I2C_INTERNAL, PX4_I2C_BUS_ONBOARD },
-#endif
-};
-
-extern "C" { __EXPORT int aerofc_adc_main(int argc, char *argv[]); }
-
-static AEROFC_ADC *instance = nullptr;
-
-static int test()
+I2CSPIDriverBase *
+AEROFC_ADC::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator, int runtime_instance)
 {
-	int fd = px4_open(ADC0_DEVICE_PATH, O_RDONLY);
+	AEROFC_ADC *interface = new AEROFC_ADC(iterator.configuredBusOption(), iterator.bus(), cli.bus_frequency);
 
-	if (fd < 0) {
-		PX4_ERR("can't open ADC device");
-		return PX4_ERROR;
+	if (interface == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
 	}
 
-	px4_adc_msg_t data[MAX_CHANNEL];
-	ssize_t count = px4_read(fd, data, sizeof(data));
-
-	if (count < 0) {
-		PX4_ERR("read error");
-		px4_close(fd);
-		return PX4_ERROR;
+	if (interface->init() != OK) {
+		delete interface;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
 	}
 
-	unsigned channels = count / sizeof(data[0]);
-
-	for (unsigned j = 0; j < channels; j++) {
-		printf("%d: %u  ", data[j].am_channel, data[j].am_data);
-	}
-
-	printf("\n");
-	px4_close(fd);
-
-	return 0;
+	return interface;
 }
 
-static void help()
+void
+AEROFC_ADC::print_usage()
 {
-	printf("missing command: try 'start' or 'test'\n");
-	printf("options:\n");
-	printf("    -I only internal I2C bus\n");
-	printf("    -X only external I2C bus\n");
+	PRINT_MODULE_USAGE_NAME("aerofc_adc", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-int aerofc_adc_main(int argc, char *argv[])
+extern "C" int
+aerofc_adc_main(int argc, char *argv[])
 {
-	int ch;
-	enum AEROFC_ADC_BUS busid = AEROFC_ADC_BUS_ALL;
+	using ThisDriver = AEROFC_ADC;
+	BusCLIArguments cli{true, false};
+	cli.default_i2c_frequency = 400000;
 
-	while ((ch = getopt(argc, argv, "XI")) != EOF) {
-		switch (ch) {
-		case 'X':
-			busid = AEROFC_ADC_BUS_I2C_EXTERNAL;
-			break;
+	const char *verb = cli.parseDefaultArguments(argc, argv);
 
-		case 'I':
-			busid = AEROFC_ADC_BUS_I2C_INTERNAL;
-			break;
-
-		default:
-			help();
-			return -1;
-		}
+	if (!verb) {
+		ThisDriver::print_usage();
+		return -1;
 	}
 
-	if (optind >= argc) {
-		help();
-		return PX4_ERROR;
-	}
-
-	const char *verb = argv[optind];
+	BusInstanceIterator iterator(MODULE_NAME, cli, DRV_ADC_DEVTYPE_AEROFC);
 
 	if (!strcmp(verb, "start")) {
-		if (instance) {
-			PX4_WARN("AEROFC_ADC was already started");
-			return PX4_OK;
-		}
-
-		for (uint8_t i = 0; i < (sizeof(bus_options) / sizeof(bus_options[0])); i++) {
-			if (busid != AEROFC_ADC_BUS_ALL && busid != bus_options[i].busid) {
-				continue;
-			}
-
-			instance = new AEROFC_ADC(bus_options[i].busnum);
-
-			if (!instance) {
-				PX4_WARN("No memory to instance AEROFC_ADC");
-				return PX4_ERROR;
-			}
-
-			if (instance->init() == PX4_OK) {
-				break;
-			}
-
-			PX4_WARN("AEROFC_ADC not found on busnum=%u", bus_options[i].busnum);
-			delete instance;
-			instance = nullptr;
-		}
-
-		if (!instance) {
-			PX4_WARN("AEROFC_ADC not found");
-			return PX4_ERROR;
-		}
-
-	} else if (!strcmp(verb, "test")) {
-		return test();
-
-	} else {
-		PX4_WARN("Action not supported");
-		help();
-		return PX4_ERROR;
+		return ThisDriver::module_start(cli, iterator);
 	}
 
-	return PX4_OK;
+	if (!strcmp(verb, "stop")) {
+		return ThisDriver::module_stop(iterator);
+	}
+
+	if (!strcmp(verb, "status")) {
+		return ThisDriver::module_status(iterator);
+	}
+
+	ThisDriver::print_usage();
+	return 1;
 }

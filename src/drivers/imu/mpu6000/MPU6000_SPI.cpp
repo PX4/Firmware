@@ -105,7 +105,7 @@ MPU6000_SPI_interface(int bus, uint32_t devid, int device_type, bool external_bu
 }
 
 MPU6000_SPI::MPU6000_SPI(int bus, uint32_t device, int device_type, int bus_frequency, spi_mode_e spi_mode) :
-	SPI("MPU6000", nullptr, bus, device, spi_mode, bus_frequency),
+	SPI(DRV_IMU_DEVTYPE_MPU6000, MODULE_NAME, bus, device, spi_mode, bus_frequency),
 	_device_type(device_type)
 {
 }
@@ -208,4 +208,3 @@ MPU6000_SPI::probe()
 
 	return (read(MPUREG_WHOAMI, &whoami, 1) > 0 && (whoami == expected)) ? 0 : -EIO;
 }
-

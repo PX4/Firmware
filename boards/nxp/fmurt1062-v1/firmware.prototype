@@ -1,5 +1,5 @@
 {
-    "board_id": 28,
+    "board_id": 31,
     "magic": "PX4FWv1",
     "description": "Firmware for the NXPFMURT1062v1 board",
     "image": "",
@@ -7,7 +7,7 @@
     "summary": "NXPFMURT1062v1",
     "version": "0.1",
     "image_size": 0,
-    "image_maxsize": 8388608,
+    "image_maxsize": 7340032,
     "git_identity": "",
     "board_revision": 0
 }

@@ -57,7 +57,6 @@ WorkItem::WorkItem(const char *name, const WorkItem &work_item) :
 
 	if ((wq != nullptr) && wq->Attach(this)) {
 		_wq = wq;
-		_start_time = hrt_absolute_time();
 	}
 }
 
@@ -66,8 +65,7 @@ WorkItem::~WorkItem()
 	Deinit();
 }
 
-bool
-WorkItem::Init(const wq_config_t &config)
+bool WorkItem::Init(const wq_config_t &config)
 {
 	// clear any existing first
 	Deinit();
@@ -76,7 +74,7 @@ WorkItem::Init(const wq_config_t &config)
 
 	if ((wq != nullptr) && wq->Attach(this)) {
 		_wq = wq;
-		_start_time = hrt_absolute_time();
+		_time_first_run = 0;
 		return true;
 	}
 
@@ -84,8 +82,7 @@ WorkItem::Init(const wq_config_t &config)
 	return false;
 }
 
-void
-WorkItem::Deinit()
+void WorkItem::Deinit()
 {
 	// remove any currently queued work
 	if (_wq != nullptr) {
@@ -100,49 +97,44 @@ WorkItem::Deinit()
 	}
 }
 
-void
-WorkItem::ScheduleClear()
+void WorkItem::ScheduleClear()
 {
 	if (_wq != nullptr) {
 		_wq->Remove(this);
 	}
 }
 
-float
-WorkItem::elapsed_time() const
+float WorkItem::elapsed_time() const
 {
-	return hrt_elapsed_time(&_start_time) / 1e6f;
+	return hrt_elapsed_time(&_time_first_run) / 1e6f;
 }
 
-float
-WorkItem::average_rate() const
+float WorkItem::average_rate() const
 {
 	const float rate = _run_count / elapsed_time();
 
-	if ((_run_count > 0) && PX4_ISFINITE(rate)) {
+	if ((_run_count > 1) && PX4_ISFINITE(rate)) {
 		return rate;
 	}
 
-	return 0.0f;
+	return 0.f;
 }
 
-float
-WorkItem::average_interval() const
+float WorkItem::average_interval() const
 {
 	const float rate = average_rate();
-	const float interval = 1000000.0f / rate;
+	const float interval = 1e6f / rate;
 
-	if ((rate > 0.0f) && PX4_ISFINITE(interval)) {
-		return interval;
+	if ((rate > FLT_EPSILON) && PX4_ISFINITE(interval)) {
+		return roundf(interval);
 	}
 
-	return 0.0f;
+	return 0.f;
 }
 
-void
-WorkItem::print_run_status() const
+void WorkItem::print_run_status() const
 {
-	PX4_INFO_RAW("%-24s %8.1f Hz %12.1f us\n", _item_name, (double)average_rate(), (double)average_interval());
+	PX4_INFO_RAW("%-26s %8.1f Hz %12.0f us\n", _item_name, (double)average_rate(), (double)average_interval());
 }
 
 } // namespace px4

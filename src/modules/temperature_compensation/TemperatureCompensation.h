@@ -84,15 +84,14 @@ public:
 	 * @param sensor_data input sensor data, output sensor data with applied corrections
 	 * @param temperature measured current temperature
 	 * @param offsets returns offsets that were applied (length = 3, except for baro), depending on return value
-	 * @param scales returns scales that were applied (length = 3), depending on return value
 	 * @return -1: error: correction enabled, but no sensor mapping set (@see set_sendor_id_gyro)
 	 *         0: no changes (correction not enabled),
-	 *         1: corrections applied but no changes to offsets & scales,
-	 *         2: corrections applied and offsets & scales updated
+	 *         1: corrections applied but no changes to offsets,
+	 *         2: corrections applied and offsets updated
 	 */
-	int update_scales_and_offsets_gyro(int topic_instance, float temperature, float *offsets, float *scales);
-	int update_scales_and_offsets_accel(int topic_instance, float temperature, float *offsets, float *scales);
-	int update_scales_and_offsets_baro(int topic_instance, float temperature, float *offsets, float *scales);
+	int update_offsets_gyro(int topic_instance, float temperature, float *offsets);
+	int update_offsets_accel(int topic_instance, float temperature, float *offsets);
+	int update_offsets_baro(int topic_instance, float temperature, float *offsets);
 
 	/** output current configuration status to console */
 	void print_status();
@@ -110,7 +109,7 @@ private:
 
 	delta_temp = measured_temp - ref_temp
 	offset = x5 * delta_temp^5 + x4 * delta_temp^4 + x3 * delta_temp^3 + x2 * delta_temp^2 + x1 * delta_temp + x0
-	corrected_value = (raw_value - offset) * scale
+	corrected_value = raw_value - offset
 
 	*/
 	struct SensorCalData1D {
@@ -121,7 +120,6 @@ private:
 		float x2;
 		float x1;
 		float x0;
-		float scale;
 		float ref_temp;
 		float min_temp;
 		float max_temp;
@@ -135,7 +133,6 @@ private:
 		param_t x2;
 		param_t x1;
 		param_t x0;
-		param_t scale;
 		param_t ref_temp;
 		param_t min_temp;
 		param_t max_temp;
@@ -154,7 +151,7 @@ private:
 
 	delta_temp = measured_temp - ref_temp
 	offset = x3 * delta_temp^3 + x2 * delta_temp^2 + x1 * delta_temp + x0
-	corrected_value = (raw_value - offset) * scale
+	corrected_value = raw_value - offset
 
 	 */
 	struct SensorCalData3D {
@@ -163,7 +160,6 @@ private:
 		float x2[3];		/**< x^2 term of polynomial */
 		float x1[3];		/**< x^1 term of polynomial */
 		float x0[3];		/**< x^0 / offset term of polynomial */
-		float scale[3];		/**< scale factor correction */
 		float ref_temp;		/**< reference temperature used by the curve-fit */
 		float min_temp;		/**< minimum temperature with valid compensation data */
 		float max_temp;		/**< maximum temperature with valid compensation data */
@@ -175,7 +171,6 @@ private:
 		param_t x2[3];
 		param_t x1[3];
 		param_t x0[3];
-		param_t scale[3];
 		param_t ref_temp;
 		param_t min_temp;
 		param_t max_temp;

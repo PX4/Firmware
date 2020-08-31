@@ -592,7 +592,7 @@ PARAM_DEFINE_FLOAT(FW_T_INTEG_GAIN, 0.1f);
  * allows for reasonably aggressive pitch changes if required to recover
  * from under-speed conditions.
  *
- * @unit m/s/s
+ * @unit m/s^2
  * @min 1.0
  * @max 10.0
  * @decimal 1

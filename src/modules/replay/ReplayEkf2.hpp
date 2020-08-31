@@ -50,8 +50,6 @@ protected:
 	void onEnterMainLoop() override;
 	void onExitMainLoop() override;
 
-	uint64_t handleTopicDelay(uint64_t next_file_time, uint64_t timestamp_offset) override;
-
 	/**
 	 * handle ekf2 topic publication in ekf2 replay mode
 	 * @param sub
@@ -63,6 +61,11 @@ protected:
 
 	void onSubscriptionAdded(Subscription &sub, uint16_t msg_id) override;
 
+	uint64_t getTimestampOffset() override
+	{
+		// avoid offsetting timestamps as we use them to compare against the log
+		return 0;
+	}
 private:
 
 	bool publishEkf2Topics(const ekf2_timestamps_s &ekf2_timestamps, std::ifstream &replay_file);
@@ -76,8 +79,6 @@ private:
 	 */
 	bool findTimestampAndPublish(uint64_t timestamp, uint16_t msg_id, std::ifstream &replay_file);
 
-	int _vehicle_attitude_sub = -1;
-
 	static constexpr uint16_t msg_id_invalid = 0xffff;
 
 	uint16_t _airspeed_msg_id = msg_id_invalid;
@@ -87,8 +88,6 @@ private:
 	uint16_t _vehicle_air_data_msg_id = msg_id_invalid;
 	uint16_t _vehicle_magnetometer_msg_id = msg_id_invalid;
 	uint16_t _vehicle_visual_odometry_msg_id = msg_id_invalid;
-
-	int _topic_counter = 0;
 };
 
 } //namespace px4

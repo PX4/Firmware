@@ -56,8 +56,6 @@ protected:
 	bool _get_ground_contact_state() override;
 	bool _get_landed_state() override;
 
-private:
-
 };
 
 } // namespace land_detector

@@ -38,5 +38,7 @@ px4_add_module(
 	SRCS
 		FXAS21002C.cpp
 		FXAS21002C.hpp
+		fxas21002c_i2c.cpp
+		fxas21002c_spi.cpp
 		fxas21002c_main.cpp
 	)

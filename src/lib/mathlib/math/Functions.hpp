@@ -147,4 +147,29 @@ const T gradual(const T &value, const T &x_low, const T &x_high, const T &y_low,
 	}
 }
 
+/*
+ * Constant, linear, linear, constant function with the three corner points as parameters
+ *  y_high               -------
+ *                      /
+ *                    /
+ *  y_middle        /
+ *                /
+ *               /
+ *              /
+ * y_low -------
+ *         x_low x_middle x_high
+ */
+template<typename T>
+const T gradual3(const T &value,
+		 const T &x_low, const T &x_middle, const T &x_high,
+		 const T &y_low, const T &y_middle, const T &y_high)
+{
+	if (value < x_middle) {
+		return gradual(value, x_low, x_middle, y_low, y_middle);
+
+	} else {
+		return gradual(value, x_middle, x_high, y_middle, y_high);
+	}
+}
+
 } /* namespace math */

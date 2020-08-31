@@ -16,17 +16,17 @@ fi
 
 if param compare SDLOG_MODE 1
 then
-	set LOGGER_ARGS "-e"
+	set LOGGER_ARGS "${LOGGER_ARGS} -e"
 fi
 
 if param compare SDLOG_MODE 2
 then
-	set LOGGER_ARGS "-f"
+	set LOGGER_ARGS "${LOGGER_ARGS} -f"
 fi
 
 if param compare SDLOG_MODE 3
 then
-	set LOGGER_ARGS "-x"
+	set LOGGER_ARGS "${LOGGER_ARGS} -x"
 fi
 
 if ! param compare SDLOG_MODE -1

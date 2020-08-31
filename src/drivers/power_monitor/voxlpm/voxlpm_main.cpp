@@ -47,7 +47,13 @@ I2CSPIDriverBase *VOXLPM::instantiate(const BusCLIArguments &cli, const BusInsta
 		return nullptr;
 	}
 
-	if (OK != instance->init()) {
+	if (cli.custom1 == 1) {
+		if (OK != instance->force_init()) {
+			PX4_INFO("Failed to init voxlpm type: %d on bus: %d, but will try again periodically.", (VOXLPM_CH_TYPE)cli.type,
+				 iterator.bus());
+		}
+
+	} else if (OK != instance->init()) {
 		delete instance;
 		return nullptr;
 	}
@@ -62,7 +68,8 @@ VOXLPM::print_usage()
 
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
-	PRINT_MODULE_USAGE_PARAM_STRING('T', "VBATT", "VBATT|P5VDC", "Type", true);
+	PRINT_MODULE_USAGE_PARAM_STRING('T', "VBATT", "VBATT|P5VDC|P12VDC", "Type", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('K', "if initialization (probing) fails, keep retrying periodically", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
@@ -75,7 +82,7 @@ voxlpm_main(int argc, char *argv[])
 	cli.default_i2c_frequency = 400000;
 	cli.type = VOXLPM_CH_TYPE_VBATT;
 
-	while ((ch = cli.getopt(argc, argv, "T:")) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "KT:")) != EOF) {
 		switch (ch) {
 		case 'T':
 			if (strcmp(cli.optarg(), "VBATT") == 0) {
@@ -84,11 +91,18 @@ voxlpm_main(int argc, char *argv[])
 			} else if (strcmp(cli.optarg(), "P5VDC") == 0) {
 				cli.type = VOXLPM_CH_TYPE_P5VDC;
 
+			} else if (strcmp(cli.optarg(), "P12VDC") == 0) {
+				cli.type = VOXLPM_CH_TYPE_P12VDC; //  same as P5VDC
+
 			} else {
 				PX4_ERR("unknown type");
 				return -1;
 			}
 
+			break;
+
+		case 'K': // keep retrying
+			cli.custom1 = 1;
 			break;
 		}
 	}

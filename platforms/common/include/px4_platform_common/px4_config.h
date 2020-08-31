@@ -47,5 +47,8 @@
 #include <board_config.h>
 
 #elif defined (__PX4_POSIX)
-# include <board_config.h>
+
+#include "micro_hal.h"
+#include <board_config.h>
+
 #endif

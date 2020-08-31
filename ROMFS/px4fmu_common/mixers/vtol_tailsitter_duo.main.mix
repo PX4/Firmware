@@ -13,7 +13,7 @@ Motor mixer
 Channel 1 connects to the right (starboard) motor.
 Channel 2 connects to the left (port) motor.
 
-R: 2- 10000 10000 10000 0
+R: 2-
 
 Zero mixer (2x)
 ---------------

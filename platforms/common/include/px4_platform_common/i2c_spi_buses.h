@@ -109,6 +109,7 @@ public:
 	int bus_frequency{0};
 	spi_mode_e spi_mode{SPIDEV_MODE3};
 	uint8_t i2c_address{0}; ///< optional I2C address: a driver can set this to allow configuring the I2C address
+	bool quiet_start{false}; ///< do not print a message when startup fails
 
 	uint8_t orientation{0}; ///< distance_sensor_s::ROTATION_*
 
@@ -153,6 +154,7 @@ public:
 	uint32_t devid() const;
 	spi_drdy_gpio_t DRDYGPIO() const;
 	bool external() const;
+	int externalBusIndex() const;
 
 	void addInstance(I2CSPIInstance *instance);
 
@@ -235,15 +237,15 @@ protected:
 
 	virtual ~I2CSPIDriver() = default;
 
-	void Run() final {
+	// *INDENT-OFF* remove once there's astyle >3.1 in CI
+	void Run() final
+	{
 		static_cast<T *>(this)->RunImpl();
 
-		if (should_exit())
-		{
+		if (should_exit()) {
 			exit_and_cleanup();
 		}
 	}
+	// *INDENT-ON*
 private:
 };
-
-

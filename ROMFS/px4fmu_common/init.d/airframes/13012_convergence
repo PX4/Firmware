@@ -26,7 +26,7 @@ if [ $AUTOCNF = yes ]
 then
 	param set CBRK_AIRSPD_CHK 162128
 
-	param set FW_ARSP_MODE 2
+	param set FW_ARSP_MODE 1
 
 	param set FW_L1_PERIOD 17
 	param set FW_MAN_R_MAX 50

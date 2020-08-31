@@ -45,7 +45,6 @@ __BEGIN_DECLS
 
 extern int test_adc(int argc, char *argv[]);
 extern int test_atomic_bitset(int argc, char *argv[]);
-extern int test_autodeclination(int argc, char *argv[]);
 extern int test_bezierQuad(int argc, char *argv[]);
 extern int test_bitset(int argc, char *argv[]);
 extern int test_bson(int argc, char *argv[]);
@@ -61,9 +60,11 @@ extern int test_i2c_spi_cli(int argc, char *argv[]);
 extern int test_IntrusiveQueue(int argc, char *argv[]);
 extern int test_jig_voltages(int argc, char *argv[]);
 extern int test_led(int argc, char *argv[]);
+extern int test_IntrusiveSortedList(int argc, char *argv[]);
 extern int test_List(int argc, char *argv[]);
 extern int test_mathlib(int argc, char *argv[]);
 extern int test_matrix(int argc, char *argv[]);
+extern int test_microbench_atomic(int argc, char *argv[]);
 extern int test_microbench_hrt(int argc, char *argv[]);
 extern int test_microbench_math(int argc, char *argv[]);
 extern int test_microbench_matrix(int argc, char *argv[]);

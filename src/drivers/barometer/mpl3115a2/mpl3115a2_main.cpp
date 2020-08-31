@@ -93,4 +93,3 @@ extern "C" int mpl3115a2_main(int argc, char *argv[])
 	ThisDriver::print_usage();
 	return -1;
 }
-

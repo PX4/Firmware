@@ -877,7 +877,7 @@ bool MavlinkFtpTest::_receive_message_handler_burst(const mavlink_file_transfer_
 		BurstInfo *burst_info)
 {
 	hrt_abstime t = 0;
-	const MavlinkFTP::PayloadHeader *reply;
+	const MavlinkFTP::PayloadHeader *reply{nullptr};
 	uint32_t full_packet_bytes = MAVLINK_MSG_FILE_TRANSFER_PROTOCOL_FIELD_PAYLOAD_LEN - sizeof(MavlinkFTP::PayloadHeader);
 	uint32_t expected_bytes;
 

@@ -38,4 +38,3 @@ constexpr bool validateSPIConfig(const px4_spi_bus_t spi_busses_conf[SPI_BUS_MAX
 {
 	return true;
 }
-

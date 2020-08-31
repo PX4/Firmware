@@ -63,21 +63,6 @@ typedef const struct orb_metadata *orb_id_t;
 #define ORB_MULTI_MAX_INSTANCES	4 // This must be < 10 (because it's the last char of the node path)
 
 /**
- * Topic priority.
- * Relevant for multi-topics / topic groups
- */
-enum ORB_PRIO {
-	ORB_PRIO_UNINITIALIZED = 0,
-	ORB_PRIO_MIN = 1,
-	ORB_PRIO_VERY_LOW = 25,
-	ORB_PRIO_LOW = 50,
-	ORB_PRIO_DEFAULT = 75,
-	ORB_PRIO_HIGH = 100,
-	ORB_PRIO_VERY_HIGH = 125,
-	ORB_PRIO_MAX = 255
-};
-
-/**
  * Generates a pointer to the uORB metadata structure for
  * a given topic.
  *
@@ -151,14 +136,13 @@ extern orb_advert_t orb_advertise_queue(const struct orb_metadata *meta, const v
 /**
  * @see uORB::Manager::orb_advertise_multi()
  */
-extern orb_advert_t orb_advertise_multi(const struct orb_metadata *meta, const void *data, int *instance,
-					int priority) __EXPORT;
+extern orb_advert_t orb_advertise_multi(const struct orb_metadata *meta, const void *data, int *instance) __EXPORT;
 
 /**
  * @see uORB::Manager::orb_advertise_multi()
  */
 extern orb_advert_t orb_advertise_multi_queue(const struct orb_metadata *meta, const void *data, int *instance,
-		int priority, unsigned int queue_size) __EXPORT;
+		unsigned int queue_size) __EXPORT;
 
 /**
  * @see uORB::Manager::orb_unadvertise()
@@ -179,11 +163,10 @@ extern int	orb_publish(const struct orb_metadata *meta, orb_advert_t handle, con
  * @see uORB::Manager::orb_advertise_multi() for meaning of the individual parameters
  */
 static inline int orb_publish_auto(const struct orb_metadata *meta, orb_advert_t *handle, const void *data,
-				   int *instance,
-				   int priority)
+				   int *instance)
 {
 	if (!*handle) {
-		*handle = orb_advertise_multi(meta, data, instance, priority);
+		*handle = orb_advertise_multi(meta, data, instance);
 
 		if (*handle) {
 			return 0;
@@ -233,11 +216,6 @@ extern int	orb_exists(const struct orb_metadata *meta, int instance) __EXPORT;
  * @return    The number of published instances of this topic
  */
 extern int	orb_group_count(const struct orb_metadata *meta) __EXPORT;
-
-/**
- * @see uORB::Manager::orb_priority()
- */
-extern int	orb_priority(int handle, int32_t *priority) __EXPORT;
 
 /**
  * @see uORB::Manager::orb_set_interval()

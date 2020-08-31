@@ -86,12 +86,6 @@ public:
 	 */
 	virtual int	ioctl(file_t *filep, int cmd, unsigned long arg);
 
-protected:
-
-	bool		_pub_blocked{false};		/**< true if publishing should be blocked */
-
-private:
-
 };
 
 } // namespace device

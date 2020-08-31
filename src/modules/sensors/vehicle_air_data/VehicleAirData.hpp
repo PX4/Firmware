@@ -33,7 +33,8 @@
 
 #pragma once
 
-#include <lib/ecl/validation/data_validator_group.h>
+#include "data_validator/DataValidatorGroup.hpp"
+
 #include <lib/mathlib/math/Limits.hpp>
 #include <lib/matrix/matrix/math.hpp>
 #include <lib/perf/perf_counter.h>
@@ -50,6 +51,8 @@
 #include <uORB/topics/sensor_correction.h>
 #include <uORB/topics/vehicle_air_data.h>
 
+namespace sensors
+{
 class VehicleAirData : public ModuleParams, public px4::ScheduledWorkItem
 {
 public:
@@ -66,13 +69,9 @@ private:
 	void Run() override;
 
 	void ParametersUpdate();
-	void SensorCorrectionsUpdate();
+	void SensorCorrectionsUpdate(bool force = false);
 
 	static constexpr int MAX_SENSOR_COUNT = 3;
-
-	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::SENS_BARO_QNH>) _param_sens_baro_qnh
-	)
 
 	uORB::Publication<vehicle_air_data_s> _vehicle_air_data_pub{ORB_ID(vehicle_air_data)};
 
@@ -87,19 +86,29 @@ private:
 
 	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};
 
+	hrt_abstime _last_publication_timestamp{0};
+	hrt_abstime _last_error_message{0};
 	orb_advert_t _mavlink_log_pub{nullptr};
 
 	DataValidatorGroup _voter{1};
 	unsigned _last_failover_count{0};
 
+	uint64_t _baro_timestamp_sum{0};
+	float _baro_sum{0.f};
+	int _baro_sum_count{0};
+
 	sensor_baro_s _last_data[MAX_SENSOR_COUNT] {};
 	bool _advertised[MAX_SENSOR_COUNT] {};
 
-	float _offset[MAX_SENSOR_COUNT] {0.f, 0.f, 0.f};
-	float _scale[MAX_SENSOR_COUNT] {1.f, 1.f, 1.f};
+	float _thermal_offset[MAX_SENSOR_COUNT] {0.f, 0.f, 0.f};
 
-	int8_t _sensor_correction_index[MAX_SENSOR_COUNT] {-1, -1, -1};
 	uint8_t _priority[MAX_SENSOR_COUNT] {};
 
 	int8_t _selected_sensor_sub_index{-1};
+
+	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::SENS_BARO_QNH>) _param_sens_baro_qnh,
+		(ParamFloat<px4::params::SENS_BARO_RATE>) _param_sens_baro_rate
+	)
 };
+}; // namespace sensors

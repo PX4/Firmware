@@ -62,7 +62,7 @@ DPS310_I2C_interface(uint8_t bus, uint32_t address, int bus_frequency)
 }
 
 DPS310_I2C::DPS310_I2C(uint8_t bus, uint32_t address, int bus_frequency) :
-	I2C("DPS310_I2C", nullptr, bus, address, bus_frequency)
+	I2C(DRV_BARO_DEVTYPE_DPS310, MODULE_NAME, bus, address, bus_frequency)
 {
 }
 

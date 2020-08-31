@@ -3,6 +3,9 @@
 # KakuteF7 specific board defaults
 #------------------------------------------------------------------------------
 
+# system_power unavailable
+param set CBRK_SUPPLY_CHK 894281
+
 if param compare SYS_AUTOSTART 0
 then
 	# Select the Generic 250 Racer by default

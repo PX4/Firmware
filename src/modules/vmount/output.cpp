@@ -132,12 +132,18 @@ void OutputBase::_handle_position_update(bool force_update)
 	}
 
 	vehicle_global_position_s vehicle_global_position{};
+	vehicle_local_position_s vehicle_local_position{};
 
 	if (force_update) {
 		_vehicle_global_position_sub.copy(&vehicle_global_position);
+		_vehicle_local_position_sub.copy(&vehicle_local_position);
 
 	} else {
 		if (!_vehicle_global_position_sub.update(&vehicle_global_position)) {
+			return;
+		}
+
+		if (!_vehicle_local_position_sub.update(&vehicle_local_position)) {
 			return;
 		}
 	}
@@ -159,7 +165,7 @@ void OutputBase::_handle_position_update(bool force_update)
 		_angle_setpoints[1] = _calculate_pitch(lon, lat, alt, vehicle_global_position);
 	}
 
-	_angle_setpoints[2] = get_bearing_to_next_waypoint(vlat, vlon, lat, lon) - vehicle_global_position.yaw;
+	_angle_setpoints[2] = get_bearing_to_next_waypoint(vlat, vlon, lat, lon) - vehicle_local_position.heading;
 
 	// add offsets from VEHICLE_CMD_DO_SET_ROI_WPNEXT_OFFSET
 	_angle_setpoints[1] += _cur_control_data->type_data.lonlat.pitch_angle_offset;

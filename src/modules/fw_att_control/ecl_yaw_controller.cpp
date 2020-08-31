@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 Estimation and Control Library (ECL). All rights reserved.
+ *   Copyright (c) 2013-2020 Estimation and Control Library (ECL). All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,28 +43,7 @@
 #include <lib/ecl/geo/geo.h>
 #include <mathlib/mathlib.h>
 
-float ECL_YawController::control_attitude(const struct ECL_ControlData &ctl_data)
-{
-	switch (_coordinated_method) {
-	case COORD_METHOD_OPEN:
-		return control_attitude_impl_openloop(ctl_data);
-
-	case COORD_METHOD_CLOSEACC:
-		return control_attitude_impl_accclosedloop(ctl_data);
-
-	default:
-		static hrt_abstime last_print = 0;
-
-		if (hrt_elapsed_time(&last_print) > 5e6) {
-			PX4_WARN("invalid param setting FW_YCO_METHOD");
-			last_print = hrt_absolute_time();
-		}
-	}
-
-	return _rate_setpoint;
-}
-
-float ECL_YawController::control_attitude_impl_openloop(const struct ECL_ControlData &ctl_data)
+float ECL_YawController::control_attitude(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Do not calculate control signal with bad inputs */
 	if (!(PX4_ISFINITE(ctl_data.roll) &&
@@ -115,52 +94,28 @@ float ECL_YawController::control_attitude_impl_openloop(const struct ECL_Control
 	return _rate_setpoint;
 }
 
-float ECL_YawController::control_bodyrate(const struct ECL_ControlData &ctl_data)
+float ECL_YawController::control_bodyrate(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Do not calculate control signal with bad inputs */
-	if (!(PX4_ISFINITE(ctl_data.roll) && PX4_ISFINITE(ctl_data.pitch) && PX4_ISFINITE(ctl_data.body_y_rate) &&
-	      PX4_ISFINITE(ctl_data.body_z_rate) && PX4_ISFINITE(ctl_data.pitch_rate_setpoint) &&
-	      PX4_ISFINITE(ctl_data.airspeed_min) && PX4_ISFINITE(ctl_data.airspeed_max) &&
+	if (!(PX4_ISFINITE(ctl_data.roll) &&
+	      PX4_ISFINITE(ctl_data.pitch) &&
+	      PX4_ISFINITE(ctl_data.body_y_rate) &&
+	      PX4_ISFINITE(ctl_data.body_z_rate) &&
+	      PX4_ISFINITE(ctl_data.pitch_rate_setpoint) &&
+	      PX4_ISFINITE(ctl_data.airspeed_min) &&
+	      PX4_ISFINITE(ctl_data.airspeed_max) &&
 	      PX4_ISFINITE(ctl_data.scaler))) {
 
 		return math::constrain(_last_output, -1.0f, 1.0f);
 	}
 
-	/* get the usual dt estimate */
-	uint64_t dt_micros = hrt_elapsed_time(&_last_run);
-	_last_run = hrt_absolute_time();
-	float dt = (float)dt_micros * 1e-6f;
-
-	/* lock integral for long intervals */
-	bool lock_integrator = ctl_data.lock_integrator;
-
-	if (dt_micros > 500000) {
-		lock_integrator = true;
-	}
-
-	/* input conditioning */
-	float airspeed = ctl_data.airspeed;
-
-	if (!PX4_ISFINITE(airspeed)) {
-		/* airspeed is NaN, +- INF or not available, pick center of band */
-		airspeed = 0.5f * (ctl_data.airspeed_min + ctl_data.airspeed_max);
-
-	} else if (airspeed < ctl_data.airspeed_min) {
-		airspeed = ctl_data.airspeed_min;
-	}
-
-	/* Close the acceleration loop if _coordinated_method wants this: change body_rate setpoint */
-	if (_coordinated_method == COORD_METHOD_CLOSEACC) {
-		// XXX lateral acceleration needs to go into integrator with a gain
-		//_bodyrate_setpoint -= (ctl_data.acc_body_y / (airspeed * cosf(ctl_data.pitch)));
-	}
-
 	/* Calculate body angular rate error */
-	_rate_error = _bodyrate_setpoint - ctl_data.body_z_rate; // body angular rate error
+	_rate_error = _bodyrate_setpoint - ctl_data.body_z_rate;
 
-	if (!lock_integrator && _k_i > 0.0f && airspeed > 0.5f * ctl_data.airspeed_min) {
+	if (!ctl_data.lock_integrator && _k_i > 0.0f) {
 
-		float id = _rate_error * dt;
+		/* Integral term scales with 1/IAS^2 */
+		float id = _rate_error * dt * ctl_data.scaler * ctl_data.scaler;
 
 		/*
 		 * anti-windup: do not allow integrator to increase if actuator is at limit
@@ -179,22 +134,15 @@ float ECL_YawController::control_bodyrate(const struct ECL_ControlData &ctl_data
 	}
 
 	/* Apply PI rate controller and store non-limited output */
-	_last_output = (_bodyrate_setpoint * _k_ff + _rate_error * _k_p + _integrator) * ctl_data.scaler *
-		       ctl_data.scaler;  //scaler is proportional to 1/airspeed
-
+	/* FF terms scales with 1/TAS and P,I with 1/IAS^2 */
+	_last_output = _bodyrate_setpoint * _k_ff * ctl_data.scaler +
+		       _rate_error * _k_p * ctl_data.scaler * ctl_data.scaler
+		       + _integrator;
 
 	return math::constrain(_last_output, -1.0f, 1.0f);
 }
 
-float ECL_YawController::control_attitude_impl_accclosedloop(const struct ECL_ControlData &ctl_data)
-{
-	(void)ctl_data; // unused
-
-	/* dont set a rate setpoint */
-	return 0.0f;
-}
-
-float ECL_YawController::control_euler_rate(const struct ECL_ControlData &ctl_data)
+float ECL_YawController::control_euler_rate(const float dt, const ECL_ControlData &ctl_data)
 {
 	/* Transform setpoint to body angular rates (jacobian) */
 	_bodyrate_setpoint = -sinf(ctl_data.roll) * ctl_data.pitch_rate_setpoint +
@@ -202,6 +150,5 @@ float ECL_YawController::control_euler_rate(const struct ECL_ControlData &ctl_da
 
 	set_bodyrate_setpoint(_bodyrate_setpoint);
 
-	return control_bodyrate(ctl_data);
-
+	return control_bodyrate(dt, ctl_data);
 }

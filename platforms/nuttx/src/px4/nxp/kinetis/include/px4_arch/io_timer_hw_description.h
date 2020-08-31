@@ -163,5 +163,3 @@ static inline constexpr io_timers_t initIOTimer(Timer::Timer timer)
 
 	return ret;
 }
-
-

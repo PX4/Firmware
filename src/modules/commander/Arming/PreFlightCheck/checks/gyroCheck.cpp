@@ -36,7 +36,8 @@
 #include <drivers/drv_hrt.h>
 #include <HealthFlags.h>
 #include <px4_defines.h>
-#include <systemlib/mavlink_log.h>
+#include <lib/sensor_calibration/Utilities.hpp>
+#include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/subsystem_info.h>
@@ -64,7 +65,7 @@ bool PreFlightCheck::gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 
 		device_id = gyro.get().device_id;
 
-		calibration_valid = check_calibration("CAL_GYRO%u_ID", device_id);
+		calibration_valid = (calibration::FindCalibrationIndex("GYRO", device_id) >= 0);
 
 		if (!calibration_valid) {
 			if (report_fail) {

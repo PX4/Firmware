@@ -1,7 +1,80 @@
 * text=auto eol=lf
+
+*.cmake  text eol=lf
+*.c      text eol=lf
+*.cc     text eol=lf
+*.cpp    text eol=lf
+*.h      text eol=lf
+*.hh     text eol=lf
+*.hpp    text eol=lf
+*.hxx    text eol=lf
+*.S      text eol=lf
+
+*.ipynb  text eol=lf
+*.m      text eol=lf
+*.mat    binary
+*.py     text eol=lf
+
+*.java   text eol=lf
+*.jar    binary
+*.xml    text eol=lf
+
+# PX4 mixers, msgs, etc
+*.bin    binary
+*.mix    text eol=lf
+*.msg    text eol=lf
+*.config text eol=lf
+*.sdf    text eol=lf
+*.uavcan text eol=lf
+
+# NuttX
+Makefile.* text eol=lf
+*.defs   text eol=lf
+*.ld     text eol=lf
+
+*.csv    text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+
+# Scripts
+*.bash   text eol=lf
+*.sh     text eol=lf
+*.zsh    text eol=lf
+# These are explicitly windows files and should use crlf
+*.ps1    text eol=crlf
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
 
-*.bin binary
-*.pdf binary
-*.png binary
+# Serialisation
+*.json   text eol=lf
+*.toml   text eol=lf
+*.xml    text eol=lf
+*.yaml   text eol=lf
+*.yml    text eol=lf
+
+# Graphics
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.tif    binary
+*.tiff   binary
+*.ico    binary
+*.pdf    binary
+# SVG treated as an asset (binary) by default.
+*.svg    text eol=lf
+
+# Text files where line endings should be preserved
+*.patch  -text
+
+# Archives
+*.7z     binary
+*.gz     binary
+*.tar    binary
+*.tgz    binary
+*.zip    binary
+
+# everything else
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+Makefile       text eol=lf

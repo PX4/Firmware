@@ -37,6 +37,7 @@
 @#
 @################################################################################
 @{
+from packaging import version
 import genmsg.msgs
 
 from px_generate_uorb_topic_helper import *  # this is in Tools/
@@ -57,7 +58,7 @@ def get_include_directives(spec):
         if genmsg.msgs.is_valid_constant_type(genmsg.msgs.bare_msg_type(field.type)):
             continue
         builtin_type = str(field.base_type).replace('px4/', '')
-        if fastrtps_version <= 1.7:
+        if version.parse(fastrtps_version) <= version.parse('1.7.2'):
             include_directive = '#include "%s_.idl"' % builtin_type
         else:
             include_directive = '#include "%s.idl"' % builtin_type
@@ -77,12 +78,12 @@ def get_idl_type_name(field_type):
 def add_msg_field(field):
     if (not field.is_header):
         if field.is_array:
-            if fastrtps_version <= 1.7:
+            if version.parse(fastrtps_version) <= version.parse('1.7.2'):
                 print('    {0}__{1}_array_{2} {3}_;'.format(topic, str(get_idl_type_name(field.base_type)).replace(" ", "_"), str(field.array_len), field.name))
             else:
                 print('    {0}__{1}_array_{2} {3};'.format(topic, str(get_idl_type_name(field.base_type)).replace(" ", "_"), str(field.array_len), field.name))
         else:
-            if fastrtps_version <= 1.7:
+            if version.parse(fastrtps_version) <= version.parse('1.7.2'):
                 base_type = get_idl_type_name(field.base_type) + "_" if get_idl_type_name(field.base_type) in builtin_types else get_idl_type_name(field.base_type)
             else:
                 base_type = get_idl_type_name(field.base_type) if get_idl_type_name(field.base_type) in builtin_types else get_idl_type_name(field.base_type)
@@ -96,7 +97,7 @@ def add_msg_fields():
 def add_array_typedefs():
     for field in spec.parsed_fields():
         if not field.is_header and field.is_array:
-            if fastrtps_version <= 1.7:
+            if version.parse(fastrtps_version) <= version.parse('1.7.2'):
                 base_type = get_idl_type_name(field.base_type) + "_" if get_idl_type_name(field.base_type) in builtin_types else get_idl_type_name(field.base_type)
             else:
                 base_type = get_idl_type_name(field.base_type) if get_idl_type_name(field.base_type) in builtin_types else get_idl_type_name(field.base_type)
@@ -123,18 +124,20 @@ def add_msg_constants():
 @[for line in get_include_directives(spec)]@
 @(line)@
 @[end for]@
+
+
 @# Constants
 @add_msg_constants()
 @# Array types
 @add_array_typedefs()
-@[if fastrtps_version <= 1.7]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 struct @(topic)_
 @[else]@
 struct @(topic)
 @[end if]@
 {
 @add_msg_fields()
-@[if fastrtps_version <= 1.7]@
+@[if version.parse(fastrtps_version) <= version.parse('1.7.2')]@
 }; // struct @(topic)_
 
 #pragma keylist @(topic)_

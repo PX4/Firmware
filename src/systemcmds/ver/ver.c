@@ -250,7 +250,7 @@ int ver_main(int argc, char *argv[])
 						printf("\nWARNING   WARNING   WARNING!\n"
 						       "Revision %c has a silicon errata:\n"
 						       "%s"
-						       "\nhttps://docs.px4.io/en/flight_controller/silicon_errata.html\n\n", rev, errata);
+						       "\nhttps://docs.px4.io/master/en/flight_controller/silicon_errata.html\n\n", rev, errata);
 					}
 				}
 

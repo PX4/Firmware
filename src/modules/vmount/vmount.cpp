@@ -601,7 +601,7 @@ static void usage()
 Mount (Gimbal) control driver. It maps several different input methods (eg. RC or MAVLink) to a configured
 output (eg. AUX channels or MAVLink).
 
-Documentation how to use it is on the [gimbal_control](https://dev.px4.io/en/advanced/gimbal_control.html) page.
+Documentation how to use it is on the [gimbal_control](https://dev.px4.io/master/en/advanced/gimbal_control.html) page.
 
 ### Implementation
 Each method is implemented in its own class, and there is a common base class for inputs and outputs.

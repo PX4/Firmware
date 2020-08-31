@@ -64,6 +64,16 @@ except ImportError as e:
     print("")
     sys.exit(1)
 
+try:
+    from packaging import version
+except ImportError as e:
+    print("Failed to import packaging: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user packaging")
+    print("")
+    sys.exit(1)
+
 
 __author__ = "Sergey Belash, Thomas Gubler, Beat Kueng"
 __copyright__ = "Copyright (C) 2013-2016 PX4 Development Team."
@@ -187,7 +197,7 @@ def generate_idl_file(filename_msg, msg_dir, alias, outputdir, templatedir, pack
         os.makedirs(outputdir)
 
     template_file = os.path.join(templatedir, IDL_TEMPLATE_FILE)
-    if 1.5 <= fastrtps_version <= 1.7:
+    if version.parse(fastrtps_version) <= version.parse('1.7.2'):
         output_file = os.path.join(outputdir, IDL_TEMPLATE_FILE.replace(
             "msg.idl.em", str(spec_short_name + "_.idl")))
     else:

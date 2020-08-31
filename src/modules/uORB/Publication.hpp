@@ -40,16 +40,47 @@
 
 #include <px4_platform_common/defines.h>
 #include <systemlib/err.h>
+
 #include <uORB/uORB.h>
+#include "uORBDeviceNode.hpp"
+#include <uORB/topics/uORBTopics.hpp>
 
 namespace uORB
 {
 
+class PublicationBase
+{
+public:
+
+	bool advertised() const { return _handle != nullptr; }
+
+	bool unadvertise() { return (DeviceNode::unadvertise(_handle) == PX4_OK); }
+
+	orb_id_t get_topic() const { return get_orb_meta(_orb_id); }
+
+protected:
+
+	PublicationBase(ORB_ID id) : _orb_id(id) {}
+
+	~PublicationBase()
+	{
+		if (_handle != nullptr) {
+			// don't automatically unadvertise queued publications (eg vehicle_command)
+			if (static_cast<DeviceNode *>(_handle)->get_queue_size() == 1) {
+				unadvertise();
+			}
+		}
+	}
+
+	orb_advert_t _handle{nullptr};
+	const ORB_ID _orb_id;
+};
+
 /**
- * Base publication wrapper class
+ * uORB publication wrapper class
  */
-template<typename T>
-class Publication
+template<typename T, uint8_t ORB_QSIZE = 1>
+class Publication : public PublicationBase
 {
 public:
 
@@ -58,8 +89,17 @@ public:
 	 *
 	 * @param meta The uORB metadata (usually from the ORB_ID() macro) for the topic.
 	 */
-	Publication(const orb_metadata *meta) : _meta(meta) {}
-	~Publication() { orb_unadvertise(_handle); }
+	Publication(ORB_ID id) : PublicationBase(id) {}
+	Publication(const orb_metadata *meta) : PublicationBase(static_cast<ORB_ID>(meta->o_id)) {}
+
+	bool advertise()
+	{
+		if (!advertised()) {
+			_handle = orb_advertise_queue(get_topic(), nullptr, ORB_QSIZE);
+		}
+
+		return advertised();
+	}
 
 	/**
 	 * Publish the struct
@@ -67,25 +107,12 @@ public:
 	 */
 	bool publish(const T &data)
 	{
-		if (_handle != nullptr) {
-			return (orb_publish(_meta, _handle, &data) == PX4_OK);
-
-		} else {
-			orb_advert_t handle = orb_advertise(_meta, &data);
-
-			if (handle != nullptr) {
-				_handle = handle;
-				return true;
-			}
+		if (!advertised()) {
+			advertise();
 		}
 
-		return false;
+		return (DeviceNode::publish(get_topic(), _handle, &data) == PX4_OK);
 	}
-
-protected:
-	const orb_metadata *_meta;
-
-	orb_advert_t _handle{nullptr};
 };
 
 /**
@@ -100,8 +127,8 @@ public:
 	 *
 	 * @param meta The uORB metadata (usually from the ORB_ID() macro) for the topic.
 	 */
+	PublicationData(ORB_ID id) : Publication<T>(id) {}
 	PublicationData(const orb_metadata *meta) : Publication<T>(meta) {}
-	~PublicationData() = default;
 
 	T	&get() { return _data; }
 	void	set(const T &data) { _data = data; }
@@ -117,5 +144,11 @@ public:
 private:
 	T _data{};
 };
+
+
+template<class T>
+using PublicationQueued = Publication<T, T::ORB_QUEUE_LENGTH>;
+
+
 
 } // namespace uORB

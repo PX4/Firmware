@@ -42,8 +42,6 @@
 #include "tailsitter.h"
 #include "vtol_att_control_main.h"
 
-#define ARSP_YAW_CTRL_DISABLE 4.0f	// airspeed at which we stop controlling yaw during a front transition
-#define THROTTLE_TRANSITION_MAX 0.25f	// maximum added thrust above last value in transition
 #define PITCH_TRANSITION_FRONT_P1 -1.1f	// pitch angle to switch to TRANSITION_P2
 #define PITCH_TRANSITION_BACK -0.25f	// pitch angle to switch to MC
 
@@ -60,8 +58,6 @@ Tailsitter::Tailsitter(VtolAttitudeControl *attc) :
 	_mc_yaw_weight = 1.0f;
 
 	_flag_was_in_trans_mode = false;
-
-	_params_handles_tailsitter.front_trans_dur_p2 = param_find("VT_TRANS_P2_DUR");
 	_params_handles_tailsitter.fw_pitch_sp_offset = param_find("FW_PSP_OFF");
 }
 
@@ -69,10 +65,6 @@ void
 Tailsitter::parameters_update()
 {
 	float v;
-
-	/* vtol front transition phase 2 duration */
-	param_get(_params_handles_tailsitter.front_trans_dur_p2, &v);
-	_params_tailsitter.front_trans_dur_p2 = v;
 
 	param_get(_params_handles_tailsitter.fw_pitch_sp_offset, &v);
 	_params_tailsitter.fw_pitch_sp_offset = math::radians(v);
@@ -188,7 +180,7 @@ void Tailsitter::update_vtol_state()
 
 void Tailsitter::update_transition_state()
 {
-	float time_since_trans_start = (float)(hrt_absolute_time() - _vtol_schedule.transition_start) * 1e-6f;
+	const float time_since_trans_start = (float)(hrt_absolute_time() - _vtol_schedule.transition_start) * 1e-6f;
 
 	if (!_flag_was_in_trans_mode) {
 		_flag_was_in_trans_mode = true;
@@ -220,9 +212,12 @@ void Tailsitter::update_transition_state()
 		_q_trans_sp = _q_trans_start;
 	}
 
+	// ensure input quaternions are exactly normalized because acosf(1.00001) == NaN
+	_q_trans_sp.normalize();
+
 	// tilt angle (zero if vehicle nose points up (hover))
-	float tilt = acosf(_q_trans_sp(0) * _q_trans_sp(0) - _q_trans_sp(1) * _q_trans_sp(1) - _q_trans_sp(2) * _q_trans_sp(
-				   2) + _q_trans_sp(3) * _q_trans_sp(3));
+	const float tilt = acosf(_q_trans_sp(0) * _q_trans_sp(0) - _q_trans_sp(1) * _q_trans_sp(1) - _q_trans_sp(2) *
+				 _q_trans_sp(2) + _q_trans_sp(3) * _q_trans_sp(3));
 
 	if (_vtol_schedule.flight_mode == vtol_mode::TRANSITION_FRONT_P1) {
 

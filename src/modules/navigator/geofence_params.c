@@ -53,12 +53,13 @@
  * to be reset to 0 to really shut down the system.
  *
  * @min 0
- * @max 4
+ * @max 5
  * @value 0 None
  * @value 1 Warning
  * @value 2 Hold mode
  * @value 3 Return mode
  * @value 4 Terminate
+ * @value 5 Land mode
  * @group Geofence
  */
 PARAM_DEFINE_INT32(GF_ACTION, 1);

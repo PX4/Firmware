@@ -53,8 +53,8 @@ then
 	param set MPC_THR_HOVER 0.7
 	param set MPC_THR_MAX 1
 	param set MPC_Z_P 1.5
-	param set MPC_Z_VEL_I 0.3
-	param set MPC_Z_VEL_P 0.4
+	param set MPC_Z_VEL_P_ACC 8
+	param set MPC_Z_VEL_I_ACC 6
 	param set MPC_HOLD_MAX_XY 0.1
 	param set MPC_MAX_FLOW_HGT 3
 

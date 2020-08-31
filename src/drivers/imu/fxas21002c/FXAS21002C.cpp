@@ -33,127 +33,6 @@
 
 #include "FXAS21002C.hpp"
 
-/* SPI protocol address bits */
-#define DIR_READ(a)                     ((a) | (1 << 7))
-#define DIR_WRITE(a)                    ((a) & 0x7f)
-#define swap16(w)                       __builtin_bswap16((w))
-
-#define FXAS21002C_STATUS                0x00
-#define FXAS21002C_OUT_X_MSB             0x01
-#define FXAS21002C_OUT_X_LSB             0x02
-#define FXAS21002C_OUT_Y_MSB             0x03
-#define FXAS21002C_OUT_Y_LSB             0x04
-#define FXAS21002C_OUT_Z_MSB             0x05
-#define FXAS21002C_OUT_Z_LSB             0x06
-
-#define FXAS21002C_DR_STATUS             0x07
-#  define DR_STATUS_ZYXOW                (1 << 7)
-#  define DR_STATUS_ZOW                  (1 << 6)
-#  define DR_STATUS_YOW                  (1 << 5)
-#  define DR_STATUS_XOW                  (1 << 4)
-#  define DR_STATUS_ZYXDR                (1 << 3)
-#  define DR_STATUS_ZDR                  (1 << 2)
-#  define DR_STATUS_YDR                  (1 << 1)
-#  define DR_STATUS_XDR                  (1 << 0)
-
-#define FXAS21002C_F_STATUS              0x08
-#  define F_STATUS_F_OVF                 (1 << 7)
-#  define F_STATUS_F_WMKF                (1 << 6)
-#  define F_STATUS_F_CNT_SHIFTS          0
-#  define F_STATUS_F_CNT_MASK            (0x3f << F_STATUS_F_CNT_SHIFTS)
-
-#define FXAS21002C_F_SETUP               0x09
-#  define F_SETUP_F_MODE_SHIFTS          6
-#  define F_SETUP_F_MODE_MASK            (0x3 << F_SETUP_F_MODE_SHIFTS)
-#  define F_SETUP_F_WMRK_SHIFTS          0
-#  define F_SETUP_F_WMRK_MASK            (0x3f << F_SETUP_F_WMRK_SHIFTS)
-
-#define FXAS21002C_F_EVENT               0x0a
-#  define F_EVENT_F_EVENT                (1 << 5)
-#  define F_EVENT_FE_TIME_SHIFTS         0
-#  define F_EVENT_FE_TIME_MASK           (0x1f << F_EVENT_FE_TIME_SHIFTS)
-
-#define FXAS21002C_INT_SRC_FLAG          0x0b
-#  define INT_SRC_FLAG_BOOTEND           (1 << 3)
-#  define INT_SRC_FLAG_SRC_FIFO          (1 << 2)
-#  define INT_SRC_FLAG_SRC_RT            (1 << 1)
-#  define INT_SRC_FLAG_SRC_DRDY          (1 << 0)
-
-#define FXAS21002C_WHO_AM_I              0x0c
-#define   WHO_AM_I                       0xd7
-
-#define FXAS21002C_CTRL_REG0             0x0d
-#  define CTRL_REG0_BW_SHIFTS            6
-#  define CTRL_REG0_BW_MASK              (0x3 << CTRL_REG0_BW_SHIFTS)
-#  define CTRL_REG0_BW(n)                (((n) & 0x3) << CTRL_REG0_BW_SHIFTS)
-#    define CTRL_REG0_BW_HIGH             CTRL_REG0_BW(0)
-#    define CTRL_REG0_BW_MED              CTRL_REG0_BW(1)
-#    define CTRL_REG0_BW_LOW              CTRL_REG0_BW(2)
-#  define CTRL_REG0_SPIW                 (1 << 6)
-#  define CTRL_REG0_SEL_SHIFTS           3
-#  define CTRL_REG0_SEL_MASK             (0x2 << CTRL_REG0_SEL_SHIFTS)
-#  define CTRL_REG0_HPF_EN               (1 << 2)
-#  define CTRL_REG0_FS_SHIFTS            0
-#  define CTRL_REG0_FS_MASK              (0x3 << CTRL_REG0_FS_SHIFTS)
-#  define CTRL_REG0_FS_2000_DPS          (0 << CTRL_REG0_FS_SHIFTS)
-#  define CTRL_REG0_FS_1000_DPS          (1 << CTRL_REG0_FS_SHIFTS)
-#  define CTRL_REG0_FS_500_DPS           (2 << CTRL_REG0_FS_SHIFTS)
-#  define CTRL_REG0_FS_250_DPS           (3 << CTRL_REG0_FS_SHIFTS)
-
-#define FXAS21002C_RT_CFG                0x0e
-#  define RT_CFG_ELE                     (1 << 3)
-#  define RT_CFG_ZTEFE                   (1 << 2)
-#  define RT_CFG_YTEFE                   (1 << 1)
-#  define RT_CFG_XTEFE                   (1 << 0)
-
-#define FXAS21002C_RT_SRC                0x0f
-#  define RT_SRC_EA                      (1 << 6)
-#  define RT_SRC_ZRT                     (1 << 5)
-#  define RT_SRC_Z_RT_POL                (1 << 4)
-#  define RT_SRC_YRT                     (1 << 3)
-#  define RT_SRC_Y_RT_POL                (1 << 2)
-#  define RT_SRC_XRT                     (1 << 1)
-#  define RT_SRC_X_RT_POL                (1 << 0)
-
-#define FXAS21002C_RT_THS                0x10
-#  define RT_THS_DBCNTM                  (1 << 7)
-#  define RT_THS_THS_SHIFTS              0
-#  define RT_THS_THS_MASK                (0x7f << RT_THS_THS_SHIFTS)
-
-#define FXAS21002C_RT_COUNT              0x11
-#define FXAS21002C_TEMP                  0x12
-
-#define FXAS21002C_CTRL_REG1             0x13
-#  define CTRL_REG1_RST                  (1 << 6)
-#  define CTRL_REG1_ST                   (1 << 5)
-#  define CTRL_REG1_DR_SHIFTS             2
-#  define CTRL_REG1_DR_MASK               (0x07 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_12_5               (7 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_12_5_1             (6 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_25HZ               (5 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_50HZ               (4 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_100HZ              (3 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_200HZ              (2 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_400HZ              (1 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_DR_800HZ              (0 << CTRL_REG1_DR_SHIFTS)
-#  define CTRL_REG1_ACTIVE               (1 << 1)
-#  define CTRL_REG1_READY                (1 << 0)
-
-#define FXAS21002C_CTRL_REG2             0x14
-#  define CTRL_REG2_INT_CFG_FIFO         (1 << 7)
-#  define CTRL_REG2_INT_EN_FIFO          (1 << 6)
-#  define CTRL_REG2_INT_CFG_RT           (1 << 5)
-#  define CTRL_REG2_INT_EN_RT            (1 << 4)
-#  define CTRL_REG2_INT_CFG_DRDY         (1 << 3)
-#  define CTRL_REG2_INT_EN_DRDY          (1 << 2)
-#  define CTRL_REG2_IPOL                 (1 << 1)
-#  define CTRL_REG2_PP_OD                (1 << 0)
-
-#define FXAS21002C_CTRL_REG3             0x15
-#  define CTRL_REG3_WRAPTOONE            (1 << 3)
-#  define CTRL_REG3_EXTCTRLEN            (1 << 2)
-#  define CTRL_REG3_FS_DOUBLE            (1 << 0)
-
 #define DEF_REG(r)   {r, #r}
 
 /* default values for this device */
@@ -186,24 +65,20 @@ static constexpr uint8_t _checked_registers[] {
 
 using namespace time_literals;
 
-FXAS21002C::FXAS21002C(int bus, uint32_t device, enum Rotation rotation) :
-	SPI("FXAS21002C", nullptr, bus, device, SPIDEV_MODE0, 2 * 1000 * 1000),
-	ScheduledWorkItem(MODULE_NAME, px4::device_bus_to_wq(this->get_device_id())),
-	_px4_gyro(get_device_id(), (external() ? ORB_PRIO_VERY_HIGH : ORB_PRIO_DEFAULT), rotation),
+FXAS21002C::FXAS21002C(device::Device *interface, I2CSPIBusOption bus_option, int bus, enum Rotation rotation,
+		       int i2c_address) :
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus, i2c_address),
+	_interface(interface),
+	_px4_gyro(_interface->get_device_id(), rotation),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
 	_errors(perf_alloc(PC_COUNT, MODULE_NAME": err")),
 	_bad_registers(perf_alloc(PC_COUNT, MODULE_NAME": bad register")),
 	_duplicates(perf_alloc(PC_COUNT, MODULE_NAME": duplicate reading"))
 {
-	_px4_gyro.set_device_type(DRV_GYR_DEVTYPE_FXAS2100C);
 }
 
 FXAS21002C::~FXAS21002C()
 {
-	/* make sure we are truly inactive */
-	stop();
-
-	/* delete the perf counter */
 	perf_free(_sample_perf);
 	perf_free(_errors);
 	perf_free(_bad_registers);
@@ -213,11 +88,15 @@ FXAS21002C::~FXAS21002C()
 int
 FXAS21002C::init()
 {
-	/* do SPI init (and probe) first */
-	if (SPI::init() != OK) {
-		PX4_ERR("SPI init failed");
+	/* do SPI/I2C init (and probe) first */
+	if (_interface->init() != OK) {
+		PX4_ERR("SPI/I2C interface init failed");
 		return PX4_ERROR;
 	}
+
+	// passed SPI::probe or I2C::probe, which checked WHO_AM_I
+	// measurements will not start before registers are checked OK
+	_checked_values[0] = WHO_AM_I;
 
 	reset();
 
@@ -226,8 +105,7 @@ FXAS21002C::init()
 	return PX4_OK;
 }
 
-void
-FXAS21002C::reset()
+void FXAS21002C::reset()
 {
 	/* write 0 0 0 000 00 = 0x00 to CTRL_REG1 to place FXOS21002 in Standby
 	 * [6]: RST=0
@@ -253,50 +131,9 @@ FXAS21002C::reset()
 	set_samplerate(FXAS21002C_DEFAULT_RATE);
 	set_range(FXAS21002C_DEFAULT_RANGE_DPS);
 	set_onchip_lowpass_filter(FXAS21002C_DEFAULT_ONCHIP_FILTER_FREQ);
-
-	_read = 0;
 }
 
-int
-FXAS21002C::probe()
-{
-	/* verify that the device is attached and functioning */
-	bool success = (read_reg(FXAS21002C_WHO_AM_I) == WHO_AM_I);
-
-	if (success) {
-		_checked_values[0] = WHO_AM_I;
-		return OK;
-	}
-
-	return -EIO;
-}
-
-uint8_t
-FXAS21002C::read_reg(unsigned reg)
-{
-	uint8_t cmd[2];
-
-	cmd[0] = DIR_READ(reg);
-	cmd[1] = 0;
-
-	transfer(cmd, cmd, sizeof(cmd));
-
-	return cmd[1];
-}
-
-void
-FXAS21002C::write_reg(unsigned reg, uint8_t value)
-{
-	uint8_t cmd[2];
-
-	cmd[0] = DIR_WRITE(reg);
-	cmd[1] = value;
-
-	transfer(cmd, nullptr, sizeof(cmd));
-}
-
-void
-FXAS21002C::write_checked_reg(unsigned reg, uint8_t value)
+void FXAS21002C::write_checked_reg(unsigned reg, uint8_t value)
 {
 	write_reg(reg, value);
 
@@ -307,8 +144,7 @@ FXAS21002C::write_checked_reg(unsigned reg, uint8_t value)
 	}
 }
 
-void
-FXAS21002C::modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits)
+void FXAS21002C::modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits)
 {
 	uint8_t	val = read_reg(reg);
 	val &= ~clearbits;
@@ -316,8 +152,7 @@ FXAS21002C::modify_reg(unsigned reg, uint8_t clearbits, uint8_t setbits)
 	write_checked_reg(reg, val);
 }
 
-int
-FXAS21002C::set_range(unsigned max_dps)
+int FXAS21002C::set_range(unsigned max_dps)
 {
 	uint8_t bits = CTRL_REG0_FS_250_DPS;
 	float new_range_scale_dps_digit;
@@ -360,8 +195,7 @@ FXAS21002C::set_range(unsigned max_dps)
 	return OK;
 }
 
-void
-FXAS21002C::set_standby(int rate, bool standby_true)
+void FXAS21002C::set_standby(int rate, bool standby_true)
 {
 	uint8_t c = 0;
 	uint8_t s = 0;
@@ -382,8 +216,7 @@ FXAS21002C::set_standby(int rate, bool standby_true)
 	usleep(wait_ms * 1000);
 }
 
-int
-FXAS21002C::set_samplerate(unsigned frequency)
+int FXAS21002C::set_samplerate(unsigned frequency)
 {
 	uint8_t bits = 0;
 
@@ -432,8 +265,7 @@ FXAS21002C::set_samplerate(unsigned frequency)
 	return OK;
 }
 
-void
-FXAS21002C::set_onchip_lowpass_filter(int frequency_hz)
+void FXAS21002C::set_onchip_lowpass_filter(int frequency_hz)
 {
 	int high = 256 / (800 / _current_rate);
 	int med = high / 2 ;
@@ -468,31 +300,13 @@ FXAS21002C::set_onchip_lowpass_filter(int frequency_hz)
 	set_standby(_current_rate, false);
 }
 
-void
-FXAS21002C::start()
+void FXAS21002C::start()
 {
-	/* make sure we are stopped first */
-	stop();
-
 	/* start polling at the specified rate */
-	ScheduleOnInterval((1_s / FXAS21002C_DEFAULT_RATE) - FXAS21002C_TIMER_REDUCTION, 10000);
+	ScheduleOnInterval((1_s / FXAS21002C_DEFAULT_RATE) - FXAS21002C_TIMER_REDUCTION);
 }
 
-void
-FXAS21002C::stop()
-{
-	ScheduleClear();
-}
-
-void
-FXAS21002C::Run()
-{
-	/* make another measurement */
-	measure();
-}
-
-void
-FXAS21002C::check_registers(void)
+void FXAS21002C::check_registers()
 {
 	uint8_t v;
 
@@ -521,22 +335,10 @@ FXAS21002C::check_registers(void)
 	_checked_next = (_checked_next + 1) % FXAS21002C_NUM_CHECKED_REGISTERS;
 }
 
-void
-FXAS21002C::measure()
+void FXAS21002C::RunImpl()
 {
 	// start the performance counter
 	perf_begin(_sample_perf);
-
-	/* status register and data as read back from the device */
-#pragma pack(push, 1)
-	struct {
-		uint8_t		cmd;
-		uint8_t		status;
-		int16_t		x;
-		int16_t		y;
-		int16_t		z;
-	} raw_gyro_report{};
-#pragma pack(pop)
 
 	check_registers();
 
@@ -549,9 +351,10 @@ FXAS21002C::measure()
 	}
 
 	/* fetch data from the sensor */
-	raw_gyro_report.cmd = DIR_READ(FXAS21002C_STATUS);
+	RawGyroReport raw_gyro_report{};
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
-	transfer((uint8_t *)&raw_gyro_report, (uint8_t *)&raw_gyro_report, sizeof(raw_gyro_report));
+
+	_interface->read(FXAS21002C_STATUS, (uint8_t *)&raw_gyro_report, sizeof(raw_gyro_report));
 
 	if (!(raw_gyro_report.status & DR_STATUS_ZYXDR)) {
 		perf_end(_sample_perf);
@@ -559,39 +362,45 @@ FXAS21002C::measure()
 		return;
 	}
 
-	/*
-	 * The TEMP register contains an 8-bit 2's complement temperature value with a range
-	 * of –128 °C to +127 °C and a scaling of 1 °C/LSB. The temperature data is only
-	 * compensated (factory trim values applied) when the device is operating in the Active
-	 * mode and actively measuring the angular rate.
-	 */
-	if ((_read % _current_rate) == 0) {
-		const float temperature = read_reg(FXAS21002C_TEMP) * 1.0f;
-		_px4_gyro.set_temperature(temperature);
-	}
-
-	// report the error count as the number of bad
-	// register reads. This allows the higher level
-	// code to decide if it should use this sensor based on
-	// whether it has had failures
-	_px4_gyro.set_error_count(perf_event_count(_bad_registers));
-
 	int16_t x_raw = swap16(raw_gyro_report.x);
 	int16_t y_raw = swap16(raw_gyro_report.y);
 	int16_t z_raw = swap16(raw_gyro_report.z);
 
+	// don't publish duplicated reads
+	if ((x_raw == _gyro_prev[0]) && (y_raw == _gyro_prev[1]) && (z_raw == _gyro_prev[2])) {
+		perf_count(_duplicates);
+		perf_end(_sample_perf);
+		return;
+
+	} else {
+		_gyro_prev[0] = x_raw;
+		_gyro_prev[1] = y_raw;
+		_gyro_prev[2] = z_raw;
+	}
+
+	// report the error count as the number of bad register reads. This allows the higher level
+	_px4_gyro.set_error_count(perf_event_count(_bad_registers));
 	_px4_gyro.update(timestamp_sample, x_raw, y_raw, z_raw);
 
-	_read++;
+	if (hrt_elapsed_time(&_last_temperature_update) > 100_ms) {
+		/*
+		 * The TEMP register contains an 8-bit 2's complement temperature value with a range
+		 * of –128 °C to +127 °C and a scaling of 1 °C/LSB. The temperature data is only
+		 * compensated (factory trim values applied) when the device is operating in the Active
+		 * mode and actively measuring the angular rate.
+		 */
+		const float temperature = read_reg(FXAS21002C_TEMP) * 1.0f;
+		_px4_gyro.set_temperature(temperature);
+		_last_temperature_update = timestamp_sample;
+	}
 
 	/* stop the perf counter */
 	perf_end(_sample_perf);
 }
 
-void
-FXAS21002C::print_info()
+void FXAS21002C::print_status()
 {
-	printf("gyro reads:          %u\n", _read);
+	I2CSPIDriverBase::print_status();
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_errors);
 	perf_print_counter(_bad_registers);
@@ -609,7 +418,6 @@ FXAS21002C::print_info()
 		}
 	}
 
-	_px4_gyro.print_status();
 }
 
 void

@@ -8,7 +8,7 @@
 if param compare SYS_AUTOSTART 4071
 then
 	# Change rate to 400 Khz for fast barometer
-	#fmu i2c 1 400000
+	#pwm_out i2c 1 400000
 
 	# IFO has only external i2c barometer.
 	# It does not start EKF2 in the beginning which is strange behaviour. but 3 seconds hack.

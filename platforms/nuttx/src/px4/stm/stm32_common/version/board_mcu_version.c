@@ -84,8 +84,9 @@ int board_mcu_version(char *rev, const char **revstr, const char **errata)
 
 	switch (chip_version) {
 
+
 	case STM32H74xx_75xx:
-		*revstr = "STM32H74xxx";
+		*revstr = "STM32H7[4|5]xxx";
 		break;
 
 	case STM32F74xxx_75xxx:

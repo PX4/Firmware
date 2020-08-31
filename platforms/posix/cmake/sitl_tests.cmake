@@ -5,7 +5,6 @@
 # TODO: find a way to keep this in sync with tests_main
 set(tests
 	atomic_bitset
-	autodeclination
 	bezier
 	bitset
 	bson
@@ -18,9 +17,11 @@ set(tests
 	hrt
 	int
 	IntrusiveQueue
+	IntrusiveSortedList
 	List
 	mathlib
 	matrix
+	microbench_atomic
 	microbench_hrt
 	microbench_math
 	microbench_matrix
@@ -61,6 +62,7 @@ foreach(test_name ${tests})
 			none
 			none
 			test_${test_name}_generated
+			none
 			${PX4_SOURCE_DIR}
 			${PX4_BINARY_DIR}
 		WORKING_DIRECTORY ${SITL_WORKING_DIR})
@@ -79,6 +81,7 @@ add_test(NAME mavlink
 		none
 		none
 		test_mavlink
+		none
 		${PX4_SOURCE_DIR}
 		${PX4_BINARY_DIR}
 	WORKING_DIRECTORY ${SITL_WORKING_DIR})
@@ -96,12 +99,13 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "CYGWIN")
 			none
 			none
 			test_shutdown
+			none
 			${PX4_SOURCE_DIR}
 			${PX4_BINARY_DIR}
 		WORKING_DIRECTORY ${SITL_WORKING_DIR})
 
 	#set_tests_properties(shutdown PROPERTIES FAIL_REGULAR_EXPRESSION "shutdown FAILED")
-	set_tests_properties(shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Shutting down")
+	set_tests_properties(shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
 	sanitizer_fail_test_on_error(shutdown)
 endif()
 
@@ -112,6 +116,7 @@ add_test(NAME dyn
 		none
 		none
 		test_dyn_hello
+		none
 		${PX4_SOURCE_DIR}
 		${PX4_BINARY_DIR}
 		$<TARGET_FILE:examples__dyn_hello>
@@ -135,12 +140,13 @@ foreach(cmd_name ${test_cmds})
 			none
 			none
 			cmd_${cmd_name}_generated
+			none
 			${PX4_SOURCE_DIR}
 			${PX4_BINARY_DIR}
 		WORKING_DIRECTORY ${SITL_WORKING_DIR})
 
 	sanitizer_fail_test_on_error(posix_${cmd_name})
-	set_tests_properties(posix_${cmd_name} PROPERTIES PASS_REGULAR_EXPRESSION "Shutting down")
+	set_tests_properties(posix_${cmd_name} PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
 endforeach()
 
 if(CMAKE_BUILD_TYPE STREQUAL Coverage)

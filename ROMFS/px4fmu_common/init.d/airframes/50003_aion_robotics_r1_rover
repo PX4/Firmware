@@ -34,8 +34,8 @@ then
 	param set FW_AIRSPD_MAX 3
 
 	param set GND_SP_CTRL_MODE 1
-	param set GND_L1_DIST 5.0
-	param set GND_L1_PERIOD 3.0
+	param set GND_L1_DIST 5
+	param set GND_L1_PERIOD 3
 	param set GND_THR_IDLE 0
 	param set GND_THR_CRUISE 0.7
 	param set GND_THR_MAX 0.5
@@ -48,10 +48,10 @@ then
 
 	# TODO: Set to -1.0, to allow reversing. This will require many changes in the codebase
 	# to support negative throttle.
-	param set GND_THR_MIN 0.0
+	param set GND_THR_MIN 0
 	param set GND_SPEED_P 0.25
-	param set GND_SPEED_I 0.001
-	param set GND_SPEED_D 3
+	param set GND_SPEED_I 3
+	param set GND_SPEED_D 0.001
 	param set GND_SPEED_IMAX 0.125
 	param set GND_SPEED_THR_SC 1
 

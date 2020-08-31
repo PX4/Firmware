@@ -47,10 +47,16 @@ FailureDetector::FailureDetector(ModuleParams *parent) :
 {
 }
 
-bool FailureDetector::resetStatus()
+bool FailureDetector::resetAttitudeStatus()
 {
-	bool status_changed = _status != FAILURE_NONE;
-	_status = FAILURE_NONE;
+
+	int attitude_fields_bitmask = _status & (FAILURE_ROLL | FAILURE_PITCH | FAILURE_ALT | FAILURE_EXT);
+	bool status_changed(false);
+
+	if (attitude_fields_bitmask > FAILURE_NONE) {
+		_status &= ~attitude_fields_bitmask;
+		status_changed = true;
+	}
 
 	return status_changed;
 }
@@ -58,17 +64,26 @@ bool FailureDetector::resetStatus()
 bool
 FailureDetector::update(const vehicle_status_s &vehicle_status)
 {
+
 	bool updated(false);
 
 	if (isAttitudeStabilized(vehicle_status)) {
-		updated = updateAttitudeStatus();
+		updated |= updateAttitudeStatus();
 
 		if (_param_fd_ext_ats_en.get()) {
 			updated |= updateExternalAtsStatus();
 		}
 
 	} else {
-		updated = resetStatus();
+		updated |= resetAttitudeStatus();
+	}
+
+	if (_sub_esc_status.updated()) {
+
+		if (_param_escs_en.get()) {
+			updated |= updateEscsStatus(vehicle_status);
+		}
+
 	}
 
 	return updated;
@@ -143,9 +158,9 @@ bool
 FailureDetector::updateExternalAtsStatus()
 {
 	pwm_input_s pwm_input;
-	bool updated = _sub_pwm_input.update(&pwm_input);
+	bool updated(false);
 
-	if (updated) {
+	if (_sub_pwm_input.update(&pwm_input)) {
 
 		uint32_t pulse_width = pwm_input.pulse_width;
 		bool ats_trigger_status = (pulse_width >= (uint32_t)_param_fd_ext_ats_trig.get()) && (pulse_width < 3_ms);
@@ -160,6 +175,43 @@ FailureDetector::updateExternalAtsStatus()
 
 		if (_ext_ats_failure_hysteresis.get_state()) {
 			_status |= FAILURE_EXT;
+		}
+
+		updated = true;
+	}
+
+	return updated;
+}
+
+bool
+FailureDetector::updateEscsStatus(const vehicle_status_s &vehicle_status)
+{
+	hrt_abstime time_now = hrt_absolute_time();
+	bool updated(false);
+
+	if (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+
+		esc_status_s esc_status{};
+		_sub_esc_status.copy(&esc_status);
+
+		int all_escs_armed = (1 << esc_status.esc_count) - 1;
+
+
+		_esc_failure_hysteresis.set_hysteresis_time_from(false, 300_ms);
+		_esc_failure_hysteresis.set_state_and_update(all_escs_armed != esc_status.esc_armed_flags, time_now);
+
+		if (_esc_failure_hysteresis.get_state() && !(_status & FAILURE_ARM_ESCS)) {
+			_status |= FAILURE_ARM_ESCS;
+			updated = true;
+		}
+
+	} else {
+		// reset ESC bitfield
+		_esc_failure_hysteresis.set_state_and_update(false, time_now);
+
+		if (_status & FAILURE_ARM_ESCS) {
+			_status &= ~FAILURE_ARM_ESCS;
+			updated = true;
 		}
 	}
 

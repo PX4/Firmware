@@ -28,7 +28,7 @@ PARAM_DEFINE_FLOAT(LPE_FLW_SCALE, 1.3f);
  * Optical flow rotation (roll/pitch) noise gain
  *
  * @group Local Position Estimator
- * @unit m/s / (rad)
+ * @unit m/s/rad
  * @min 0.1
  * @max 10.0
  * @decimal 3
@@ -39,7 +39,7 @@ PARAM_DEFINE_FLOAT(LPE_FLW_R, 7.0f);
  * Optical flow angular velocity noise gain
  *
  * @group Local Position Estimator
- * @unit m/s / (rad/s)
+ * @unit m/rad
  * @min 0.0
  * @max 10.0
  * @decimal 3
@@ -143,7 +143,7 @@ PARAM_DEFINE_FLOAT(LPE_BAR_Z, 3.0f);
  * GPS delay compensaton
  *
  * @group Local Position Estimator
- * @unit sec
+ * @unit s
  * @min 0
  * @max 0.4
  * @decimal 2
@@ -224,7 +224,7 @@ PARAM_DEFINE_FLOAT(LPE_EPV_MAX, 5.0f);
  * Set to zero to enable automatic compensation from measurement timestamps
  *
  * @group Local Position Estimator
- * @unit sec
+ * @unit s
  * @min 0
  * @max 0.1
  * @decimal 2
@@ -285,7 +285,7 @@ PARAM_DEFINE_FLOAT(LPE_PN_P, 0.1f);
  * Decrease to trust model more.
  *
  * @group Local Position Estimator
- * @unit (m/s)/s/sqrt(Hz)
+ * @unit m/s^2/sqrt(Hz)
  * @min 0
  * @max 1
  * @decimal 8
@@ -296,7 +296,7 @@ PARAM_DEFINE_FLOAT(LPE_PN_V, 0.1f);
  * Accel bias propagation noise density
  *
  * @group Local Position Estimator
- * @unit (m/s^2)/s/sqrt(Hz)
+ * @unit m/s^3/sqrt(Hz)
  * @min 0
  * @max 1
  * @decimal 8
@@ -307,7 +307,7 @@ PARAM_DEFINE_FLOAT(LPE_PN_B, 1e-3f);
  * Terrain random walk noise density, hilly/outdoor (0.1), flat/Indoor (0.001)
  *
  * @group Local Position Estimator
- * @unit (m/s)/(sqrt(hz))
+ * @unit m/s/sqrt(Hz)
  * @min 0
  * @max 1
  * @decimal 3

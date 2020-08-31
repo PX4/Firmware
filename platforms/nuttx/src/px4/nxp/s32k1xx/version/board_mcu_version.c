@@ -1,7 +1,8 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017 PX4 Development Team. All rights reserved.
- *   Author: @author David Sidrane <david_s5@nscdg.com>
+ *   Copyright (C) 2019 PX4 Development Team. All rights reserved.
+ *   Author: @author Peter van der Perk <peter.vanderperk@nxp.com>
+ *                   David Sidrane <david_s5@nscdg.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +35,7 @@
 
 /**
  * @file board_mcu_version.c
- * Implementation of Kinetis based SoC version API
+ * Implementation of S32K1xx based SoC version API
  */
 
 #include <px4_platform_common/px4_config.h>
@@ -43,20 +44,18 @@
 #include "up_arch.h"
 #include "hardware/s32k1xx_sim.h"
 
-//todo upstrem chip id defs
-#define CHIP_TAG     "S32K1??"
+#define CHIP_TAG     "S32K1XX"
 #define CHIP_TAG_LEN sizeof(CHIP_TAG)-1
 
 int board_mcu_version(char *rev, const char **revstr, const char **errata)
 {
 	uint32_t sim_sdid = getreg32(S32K1XX_SIM_SDID);
-	UNUSED(sim_sdid);
 	static char chip[sizeof(CHIP_TAG)] = CHIP_TAG;
 
-	chip[CHIP_TAG_LEN - 2] = '0' /*+ ((sim_sdid & SIM_SDID_FAMILYID_MASK) >> SIM_SDID_FAMILYID_SHIFT) */;
-	chip[CHIP_TAG_LEN - 1] = '0' /*+ ((sim_sdid & SIM_SDID_SUBFAMID_MASK) >> SIM_SDID_SUBFAMID_SHIFT)*/;
+	chip[CHIP_TAG_LEN - 2] = '0' + ((sim_sdid & SIM_SDID_GENERATION_MASK) >> SIM_SDID_GENERATION_SHIFT);
+	chip[CHIP_TAG_LEN - 1] = '0' + ((sim_sdid & SIM_SDID_SUBSERIES_MASK) >> SIM_SDID_SUBSERIES_SHIFT);
 	*revstr = chip;
-	*rev = '0' /*+ ((sim_sdid & SIM_SDID_REVID_MASK) >> SIM_SDID_REVID_SHIFT)*/;
+	*rev = '0' + ((sim_sdid & SIM_SDID_REVID_MASK) >> SIM_SDID_REVID_SHIFT);
 
 	if (errata) {
 		*errata = NULL;

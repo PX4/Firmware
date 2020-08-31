@@ -71,8 +71,7 @@ then
 	param set MPC_ACC_HOR_MAX	2
 	param set MPC_ACC_UP_MAX	3
 	param set MC_AIRMODE 1
-	param set MPC_JERK_AUTO	8
-	param set MPC_JERK_AUTO	15
+	param set MPC_JERK_AUTO	4
 	param set MPC_LAND_SPEED 1
 	param set MPC_MAN_TILT_MAX 25
 	param set MPC_MAN_Y_MAX 40

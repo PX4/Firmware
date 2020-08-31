@@ -82,11 +82,18 @@ MavlinkStream::update(const hrt_abstime &t)
 	}
 
 	int64_t dt = t - _last_sent;
-	int interval = (_interval > 0) ? _interval : 0;
+	int interval = _interval;
 
 	if (!const_rate()) {
 		interval /= _mavlink->get_rate_mult();
 	}
+
+	// We don't need to send anything if the inverval is 0. send() will be called manually.
+	if (interval == 0) {
+		return 0;
+	}
+
+	const bool unlimited_rate = interval < 0;
 
 	// Send the message if it is due or
 	// if it will overrun the next scheduled send interval
@@ -98,7 +105,7 @@ MavlinkStream::update(const hrt_abstime &t)
 	// This method is not theoretically optimal but a suitable
 	// stopgap as it hits its deadlines well (0.5 Hz, 50 Hz and 250 Hz)
 
-	if (interval == 0 || (dt > (interval - (_mavlink->get_main_loop_delay() / 10) * 3))) {
+	if (unlimited_rate || (dt > (interval - (_mavlink->get_main_loop_delay() / 10) * 3))) {
 		// interval expired, send message
 
 		// If the interval is non-zero and dt is smaller than 1.5 times the interval

@@ -22,9 +22,6 @@ then
 
 	param set CBRK_IO_SAFETY 22027
 
-	param set MC_TPA_BREAK_P 0.5
-	param set MC_TPA_RATE_P 0.5
-
 	param set MPC_MANTHR_MIN 0.06
 	param set MC_ROLL_P 6
 	param set MC_ROLLRATE_P 0.14

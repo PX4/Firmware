@@ -233,6 +233,7 @@ void
 ETSAirspeed::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("ets_airspeed", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("airspeed_sensor");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();

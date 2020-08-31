@@ -54,8 +54,9 @@
 #include "flashfs.h"
 #include <nuttx/compiler.h>
 #include <nuttx/progmem.h>
+#include <board_config.h>
 
-#if defined(CONFIG_ARCH_HAVE_PROGMEM)
+#if defined(CONFIG_ARCH_HAVE_PROGMEM) || defined(BOARD_USE_EXTERNAL_FLASH)
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -647,11 +648,19 @@ static sector_descriptor_t *get_sector_info(flash_entry_header_t *current)
 static int erase_sector(sector_descriptor_t *sm, flash_entry_header_t *pf)
 {
 	int rv = 0;
+#if defined(BOARD_USE_EXTERNAL_FLASH)
+	ssize_t block = up_progmem_ext_getpage((size_t)pf);
+#else
 	ssize_t block = up_progmem_getpage((size_t)pf);
+#endif
 
 	if (block > 0 && block == sm->page) {
 		last_erased = sm->page;
+#if defined(BOARD_USE_EXTERNAL_FLASH)
+		ssize_t size = up_progmem_ext_eraseblock(block);
+#else
 		ssize_t size = up_progmem_eraseblock(block);
+#endif
 
 		if (size < 0 || size != (ssize_t)sm->size) {
 			rv = size;
@@ -681,7 +690,11 @@ static int erase_entry(flash_entry_header_t *pf)
 {
 	h_flag_t data = ErasedEntry;
 	size_t size = sizeof(h_flag_t);
+#if defined(BOARD_USE_EXTERNAL_FLASH)
+	int rv = up_progmem_ext_write((size_t) &pf->flag, &data, size);
+#else
 	int rv = up_progmem_write((size_t) &pf->flag, &data, size);
+#endif
 	return rv;
 }
 
@@ -881,7 +894,11 @@ parameter_flashfs_write(flash_file_token_t token, uint8_t *buffer, size_t buf_si
 		}
 
 		pn->crc = crc32(entry_crc_start(pn), entry_crc_length(pn));
+#if defined(BOARD_USE_EXTERNAL_FLASH)
+		rv = up_progmem_ext_write((size_t) pf, pn, pn->size);
+#else
 		rv = up_progmem_write((size_t) pf, pn, pn->size);
+#endif
 		int system_bytes = (sizeof(flash_entry_header_t) + size_adjust);
 
 		if (rv >= system_bytes) {

@@ -59,7 +59,7 @@ class LaunchMethod
 public:
 	virtual ~LaunchMethod() = default;
 
-	virtual void update(float accel_x) = 0;
+	virtual void update(const float dt, float accel_x) = 0;
 	virtual LaunchDetectionResult getLaunchDetected() const = 0;
 	virtual void reset() = 0;
 

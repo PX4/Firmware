@@ -97,11 +97,28 @@ enum class position_nav_loss_actions_t {
 
 extern const char *const arming_state_names[];
 
+enum class arm_disarm_reason_t {
+	TRANSITION_TO_STANDBY = 0,
+	RC_STICK = 1,
+	RC_SWITCH = 2,
+	COMMAND_INTERNAL = 3,
+	COMMAND_EXTERNAL = 4,
+	MISSION_START = 5,
+	SAFETY_BUTTON = 6,
+	AUTO_DISARM_LAND = 7,
+	AUTO_DISARM_PREFLIGHT = 8,
+	KILL_SWITCH = 9,
+	LOCKDOWN = 10,
+	FAILURE_DETECTOR = 11,
+	SHUTDOWN = 12,
+	UNIT_TEST = 13
+};
+
 transition_result_t
 arming_state_transition(vehicle_status_s *status, const safety_s &safety, const arming_state_t new_arming_state,
 			actuator_armed_s *armed, const bool fRunPreArmChecks, orb_advert_t *mavlink_log_pub,
 			vehicle_status_flags_s *status_flags, const PreFlightCheck::arm_requirements_t &arm_requirements,
-			const hrt_abstime &time_since_boot);
+			const hrt_abstime &time_since_boot, arm_disarm_reason_t calling_reason);
 
 transition_result_t
 main_state_transition(const vehicle_status_s &status, const main_state_t new_main_state,

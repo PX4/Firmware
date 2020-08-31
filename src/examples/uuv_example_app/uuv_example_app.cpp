@@ -62,7 +62,7 @@
 
 // Include uORB and the required topics for this app
 #include <uORB/uORB.h>
-#include <uORB/topics/sensor_combined.h>                // this topics hold the acceleration data
+#include <uORB/topics/vehicle_acceleration.h>                // this topics hold the acceleration data
 #include <uORB/topics/actuator_controls.h>              // this topic gives the actuators control input
 #include <uORB/topics/vehicle_attitude.h>                  // this topic holds the orientation of the hippocampus
 
@@ -72,8 +72,8 @@ int uuv_example_app_main(int argc, char *argv[])
 {
 	PX4_INFO("auv_hippocampus_example_app has been started!");
 
-	/* subscribe to sensor_combined topic */
-	int sensor_sub_fd = orb_subscribe(ORB_ID(sensor_combined));
+	/* subscribe to vehicle_acceleration topic */
+	int sensor_sub_fd = orb_subscribe(ORB_ID(vehicle_acceleration));
 	/* limit the update rate to 5 Hz */
 	orb_set_interval(sensor_sub_fd, 200);
 
@@ -118,17 +118,17 @@ int uuv_example_app_main(int argc, char *argv[])
 
 			if (fds[0].revents & POLLIN) {
 				/* obtained data for the first file descriptor */
-				struct sensor_combined_s raw_sensor;
+				vehicle_acceleration_s sensor{};
 				/* copy sensors raw data into local buffer */
-				orb_copy(ORB_ID(sensor_combined), sensor_sub_fd, &raw_sensor);
+				orb_copy(ORB_ID(vehicle_acceleration), sensor_sub_fd, &sensor);
 				// printing the sensor data into the terminal
 				PX4_INFO("Acc:\t%8.4f\t%8.4f\t%8.4f",
-					 (double)raw_sensor.accelerometer_m_s2[0],
-					 (double)raw_sensor.accelerometer_m_s2[1],
-					 (double)raw_sensor.accelerometer_m_s2[2]);
+					 (double)sensor.xyz[0],
+					 (double)sensor.xyz[1],
+					 (double)sensor.xyz[2]);
 
 				/* obtained data for the third file descriptor */
-				struct vehicle_attitude_s raw_ctrl_state;
+				vehicle_attitude_s raw_ctrl_state{};
 				/* copy sensors raw data into local buffer */
 				orb_copy(ORB_ID(vehicle_attitude), vehicle_attitude_sub_fd, &raw_ctrl_state);
 

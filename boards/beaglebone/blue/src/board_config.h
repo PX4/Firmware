@@ -44,15 +44,10 @@
 
 #define BOARD_BATTERY1_V_DIV   (11.0f)
 
-#define BOARD_HAS_NO_BOOTLOADER
-
 #define BOARD_MAX_LEDS 4 // Number external of LED's this board has
 
 
 // I2C
-#define PX4_I2C_BUS_EXPANSION   1 // i2c-1: pins P9 17,18
-#define PX4_I2C_BUS_ONBOARD     2 // i2c-2: pins P9 19,20 - bmp280, mpu9250
-
 #define PX4_NUMBER_I2C_BUSES    2
 
 #define PX4_I2C_OBDEV_MPU9250 0x68
@@ -94,4 +89,3 @@ void rc_cleaning(void);
 #define rc_filter_butterworth_lowpass	rc_butterworth_lowpass
 
 #endif
-

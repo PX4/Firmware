@@ -62,14 +62,14 @@ protected:
 	/**
 	 * Constructor
 	 *
+	 * @param device_type	The device type (see drv_sensor.h)
 	 * @param name		Driver name
-	 * @param devname	Device node name
 	 * @param bus		SPI bus on which the device lives
 	 * @param device	Device handle (used by SPI_SELECT)
 	 * @param mode		SPI clock/data mode
 	 * @param frequency	SPI clock frequency
 	 */
-	SPI(const char *name, const char *devname, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency);
+	SPI(uint8_t device_type, const char *name, int bus, uint32_t device, enum spi_mode_e mode, uint32_t frequency);
 	virtual ~SPI();
 
 	/**
@@ -140,7 +140,7 @@ protected:
 	 * @param frequency	Frequency to set (Hz)
 	 */
 	void		set_frequency(uint32_t frequency) { _frequency = frequency; }
-	uint32_t		get_frequency() { return _frequency; }
+	uint32_t	get_frequency() { return _frequency; }
 
 	/**
 	 * Set the SPI bus locking mode
@@ -158,10 +158,6 @@ private:
 	uint32_t		_device;
 	enum spi_mode_e		_mode;
 	uint32_t		_frequency;
-
-	/* this class does not allow copying */
-	SPI(const SPI &);
-	SPI operator=(const SPI &);
 
 protected:
 

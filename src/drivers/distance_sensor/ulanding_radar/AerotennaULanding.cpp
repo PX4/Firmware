@@ -35,7 +35,7 @@
 
 AerotennaULanding::AerotennaULanding(const char *port, uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
-	_px4_rangefinder(0 /* TODO: device ids */, ORB_PRIO_DEFAULT, rotation)
+	_px4_rangefinder(0 /* TODO: device ids */, rotation)
 {
 	/* store port name */
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -221,6 +221,4 @@ void AerotennaULanding::print_info()
 {
 	perf_print_counter(_sample_perf);
 	perf_print_counter(_comms_errors);
-
-	_px4_rangefinder.print_status();
 }

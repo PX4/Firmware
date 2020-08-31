@@ -47,6 +47,7 @@ from uorb_rtps_classifier import Classifier
 import subprocess
 import glob
 import errno
+import re
 
 try:
     from six.moves import input
@@ -55,6 +56,16 @@ except ImportError as e:
     print("")
     print("You may need to install it using:")
     print("    pip3 install --user six")
+    print("")
+    sys.exit(1)
+
+try:
+    from packaging import version
+except ImportError as e:
+    print("Failed to import packaging: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user packaging")
     print("")
     sys.exit(1)
 
@@ -227,27 +238,49 @@ if fastrtpsgen_include is not None and fastrtpsgen_include != '':
         os.path.abspath(
             args.fastrtpsgen_include) + " "
 
-# get FastRTPS version (major.minor, since patch is not relevant at this stage)
-fastrtps_version = ""
-try:
-    fastrtps_version = float(subprocess.check_output(
-        "ldconfig -v | grep libfastrtps | tail -c 6", shell=True).decode("utf-8").strip()[-5:-2])
-except ValueError:
-    print("No valid version found to FasRTPS. Make sure it is installed.")
+# get FastRTPSGen version
+# .. note:: since Fast-RTPS 1.8.0 release, FastRTPSGen is a separated repository
+# and not included in the Fast-RTPS project.
+# The starting version since this separation is 1.0.0, which follows its own
+# versioning
+fastrtpsgen_version = version.Version("1.0.0")
+if(os.path.exists(fastrtpsgen_path)):
+    try:
+        fastrtpsgen_version_out = subprocess.check_output(
+            [fastrtpsgen_path, "-version"]).decode("utf-8").strip()[-5:]
+    except OSError:
+        raise
+
+    try:
+        fastrtpsgen_version = version.parse(fastrtpsgen_version_out)
+    except version.InvalidVersion:
+        raise Exception(
+            "'fastrtpsgen -version' returned None or an invalid version")
+else:
+    raise Exception(
+        "FastRTPSGen not found. Specify the location of fastrtpsgen with the -f flag")
+
 
 # get ROS 2 version, if exists
-ros2_distro = ""
-try:
-    rosversion_out = subprocess.check_output(["rosversion", "-d"])
-    rosversion_out = rosversion_out.rstrip().decode('utf-8')
-    if rosversion_out not in ["<unknown>", "kinetic", "lunar", "melodic"]:
-        ros2_distro = rosversion_out
-except OSError as e:
-    if e.errno == errno.ENOENT:
-        if args.ros2_distro != None:
-            ros2_distro = args.ros2_distro
+ros2_distro = ''
+ros_version = os.environ.get('ROS_VERSION')
+if ros_version == '2':
+    if args.ros2_distro != '':
+        ros2_distro = args.ros2_distro
     else:
-        raise
+        ros2_distro = os.environ.get('ROS_DISTRO')
+
+# get FastRTPS version
+fastrtps_version = ''
+if not ros2_distro:
+    # grab the version installed system wise
+    fastrtps_version = subprocess.check_output(
+        "ldconfig -v 2>/dev/null | grep libfastrtps", shell=True).decode("utf-8").strip().split('so.')[-1]
+else:
+    # grab the version of the ros-<ros_distro>-fastrtps package
+    fastrtps_version = re.search(r'Version:\s*([\dd.]+)', subprocess.check_output(
+        "dpkg -s ros-" + ros2_distro + "-fastrtps 2>/dev/null | grep -i version", shell=True).decode("utf-8").strip()).group(1)
+
 
 # If nothing specified it's generated both
 if agent == False and client == False:
@@ -381,7 +414,7 @@ def generate_agent(out_dir):
     px_generate_uorb_topic_files.generate_uRTPS_general(classifier.msgs_to_send, classifier.alias_msgs_to_send, classifier.msgs_to_receive, classifier.alias_msgs_to_receive, msg_dir, out_dir,
                                                         urtps_templates_dir, package, px_generate_uorb_topic_files.INCL_DEFAULT, classifier.msg_id_map, fastrtps_version, ros2_distro, uRTPS_AGENT_TOPICS_SRC_TEMPL_FILE)
     if cmakelists:
-        px_generate_uorb_topic_files.generate_uRTPS_general(classifier.msgs_to_send, classifier.alias_msgs_to_send, classifier.msgs_to_receive, classifier.alias_msgs_to_receive, msg_dir, out_dir,
+        px_generate_uorb_topic_files.generate_uRTPS_general(classifier.msgs_to_send, classifier.alias_msgs_to_send, classifier.msgs_to_receive, classifier.alias_msgs_to_receive, msg_dir, os.path.dirname(out_dir),
                                                             urtps_templates_dir, package, px_generate_uorb_topic_files.INCL_DEFAULT, classifier.msg_id_map, fastrtps_version, ros2_distro, uRTPS_AGENT_CMAKELISTS_TEMPL_FILE)
 
     # Final steps to install agent
@@ -390,10 +423,18 @@ def generate_agent(out_dir):
     os.chdir(os.path.join(out_dir, "fastrtpsgen"))
     if not glob.glob(os.path.join(idl_dir, "*.idl")):
         raise Exception("No IDL files found in %s" % idl_dir)
+
+    # If it is generating the bridge code for interfacing with ROS2, then set
+    # the '-typeros2' option in fastrtpsgen.
+    # .. note:: This is only available in FastRTPSGen 1.0.4 and above
+    gen_ros2_typename = ""
+    if ros2_distro and ros2_distro in ['dashing', 'eloquent', 'foxy'] and fastrtpsgen_version >= version.Version("1.0.4"):
+        gen_ros2_typename = "-typeros2 "
+
     for idl_file in glob.glob(os.path.join(idl_dir, "*.idl")):
         try:
             ret = subprocess.check_call(fastrtpsgen_path + " -d " + out_dir +
-                                        "/fastrtpsgen -example x64Linux2.6gcc " + fastrtpsgen_include + idl_file, shell=True)
+                                        "/fastrtpsgen -example x64Linux2.6gcc " + gen_ros2_typename + fastrtpsgen_include + idl_file, shell=True)
         except OSError:
             raise
 
@@ -409,10 +450,10 @@ def generate_agent(out_dir):
     cp_wildcard(os.path.join(urtps_templates_dir,
                              "microRTPS_transport.*"), agent_out_dir)
     if cmakelists:
-        os.rename(os.path.join(out_dir, "microRTPS_agent_CMakeLists.txt"),
-                  os.path.join(out_dir, "CMakeLists.txt"))
+        os.rename(os.path.join(os.path.dirname(out_dir), "microRTPS_agent_CMakeLists.txt"),
+                  os.path.join(os.path.dirname(out_dir), "CMakeLists.txt"))
     if (mkdir_build):
-        mkdir_p(os.path.join(out_dir, "build"))
+        mkdir_p(os.path.join(os.path.dirname(out_dir), "build"))
     os.chdir(prev_cwd_path)
     return 0
 

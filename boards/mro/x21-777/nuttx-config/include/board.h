@@ -32,12 +32,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ************************************************************************************/
-
 #pragma once
 
-/************************************************************************************
- * Included Files
- ************************************************************************************/
 #include "board_dma_map.h"
 
 #include <nuttx/config.h>
@@ -49,21 +45,16 @@
 #include "stm32_rcc.h"
 #include "stm32_sdmmc.h"
 
-/************************************************************************************
- * Pre-processor Definitions
- ************************************************************************************/
-
 /* Clocking *************************************************************************/
-/* The mRo x2.1 777  board provides the following clock sources:
+/* The board provides the following clock sources:
  *
- *   X301: 16 MHz crystal for HSE
+ *   X1: 24 MHz crystal for HSE
  *
  * So we have these clock source available within the STM32
  *
- *   HSI: 16 MHz RC factory-trimmed
- *   HSE: 16 MHz crystal for HSE
+ *   HSI: 16 MHz RC factory-trimmed internal oscillator
+ *   HSE: 24 MHz crystal for HSE
  */
-
 #define STM32_BOARD_XTAL        24000000ul
 
 #define STM32_HSI_FREQUENCY     16000000ul
@@ -99,22 +90,21 @@
 
 /* Highest SYSCLK with USB OTG FS clock = 48 MHz
  *
- * PLL_VCO = (16,000,000 / 8) * 216 = 432 MHz
+ * PLL_VCO = (24,000,000 / 12) * 216 = 432 MHz
  * SYSCLK  = 432 MHz / 2 = 216 MHz
  * USB OTG FS, SDMMC and RNG Clock = 432 MHz / 9 = 48 MHz
  */
 
-#define STM32_PLLCFG_PLLM       RCC_PLLCFG_PLLM(24)
-#define STM32_PLLCFG_PLLN       RCC_PLLCFG_PLLN(432)
+#define STM32_PLLCFG_PLLM       RCC_PLLCFG_PLLM(12)
+#define STM32_PLLCFG_PLLN       RCC_PLLCFG_PLLN(216)
 #define STM32_PLLCFG_PLLP       RCC_PLLCFG_PLLP_2
 #define STM32_PLLCFG_PLLQ       RCC_PLLCFG_PLLQ(9)
 
-#define STM32_VCO_FREQUENCY     ((STM32_HSE_FREQUENCY / 8) * 216)
+#define STM32_VCO_FREQUENCY     ((STM32_HSE_FREQUENCY / 12) * 216)
 #define STM32_SYSCLK_FREQUENCY  (STM32_VCO_FREQUENCY / 2)
 #define STM32_OTGFS_FREQUENCY   (STM32_VCO_FREQUENCY / 9)
 
 /* Configure factors for  PLLSAI clock */
-
 #define CONFIG_STM32F7_PLLSAI 1
 #define STM32_RCC_PLLSAICFGR_PLLSAIN    RCC_PLLSAICFGR_PLLSAIN(192)
 #define STM32_RCC_PLLSAICFGR_PLLSAIP    RCC_PLLSAICFGR_PLLSAIP(8)
@@ -122,7 +112,6 @@
 #define STM32_RCC_PLLSAICFGR_PLLSAIR    RCC_PLLSAICFGR_PLLSAIR(2)
 
 /* Configure Dedicated Clock Configuration Register */
-
 #define STM32_RCC_DCKCFGR1_PLLI2SDIVQ  RCC_DCKCFGR1_PLLI2SDIVQ(1)
 #define STM32_RCC_DCKCFGR1_PLLSAIDIVQ  RCC_DCKCFGR1_PLLSAIDIVQ(1)
 #define STM32_RCC_DCKCFGR1_PLLSAIDIVR  RCC_DCKCFGR1_PLLSAIDIVR(0)
@@ -132,10 +121,7 @@
 #define STM32_RCC_DCKCFGR1_DFSDM1SRC   0
 #define STM32_RCC_DCKCFGR1_ADFSDM1SRC  0
 
-
-
 /* Configure factors for  PLLI2S clock */
-
 #define CONFIG_STM32F7_PLLI2S 1
 #define STM32_RCC_PLLI2SCFGR_PLLI2SN   RCC_PLLI2SCFGR_PLLI2SN(192)
 #define STM32_RCC_PLLI2SCFGR_PLLI2SP   RCC_PLLI2SCFGR_PLLI2SP(2)
@@ -143,7 +129,6 @@
 #define STM32_RCC_PLLI2SCFGR_PLLI2SR   RCC_PLLI2SCFGR_PLLI2SR(2)
 
 /* Configure Dedicated Clock Configuration Register 2 */
-
 #define STM32_RCC_DCKCFGR2_USART1SRC  RCC_DCKCFGR2_USART1SEL_APB
 #define STM32_RCC_DCKCFGR2_USART2SRC  RCC_DCKCFGR2_USART2SEL_APB
 #define STM32_RCC_DCKCFGR2_UART4SRC   RCC_DCKCFGR2_UART4SEL_APB
@@ -171,18 +156,15 @@
  */
 
 /* AHB clock (HCLK) is SYSCLK (216 MHz) */
-
 #define STM32_RCC_CFGR_HPRE     RCC_CFGR_HPRE_SYSCLK  /* HCLK  = SYSCLK / 1 */
 #define STM32_HCLK_FREQUENCY    STM32_SYSCLK_FREQUENCY
 #define STM32_BOARD_HCLK        STM32_HCLK_FREQUENCY  /* same as above, to satisfy compiler */
 
 /* APB1 clock (PCLK1) is HCLK/4 (54 MHz) */
-
 #define STM32_RCC_CFGR_PPRE1    RCC_CFGR_PPRE1_HCLKd4     /* PCLK1 = HCLK / 4 */
 #define STM32_PCLK1_FREQUENCY   (STM32_HCLK_FREQUENCY/4)
 
 /* Timers driven from APB1 will be twice PCLK1 */
-
 #define STM32_APB1_TIM2_CLKIN   (2*STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM3_CLKIN   (2*STM32_PCLK1_FREQUENCY)
 #define STM32_APB1_TIM4_CLKIN   (2*STM32_PCLK1_FREQUENCY)
@@ -194,12 +176,10 @@
 #define STM32_APB1_TIM14_CLKIN  (2*STM32_PCLK1_FREQUENCY)
 
 /* APB2 clock (PCLK2) is HCLK/2 (108MHz) */
-
 #define STM32_RCC_CFGR_PPRE2    RCC_CFGR_PPRE2_HCLKd2     /* PCLK2 = HCLK / 2 */
 #define STM32_PCLK2_FREQUENCY   (STM32_HCLK_FREQUENCY/2)
 
 /* Timers driven from APB2 will be twice PCLK2 */
-
 #define STM32_APB2_TIM1_CLKIN   (2*STM32_PCLK2_FREQUENCY)
 #define STM32_APB2_TIM8_CLKIN   (2*STM32_PCLK2_FREQUENCY)
 #define STM32_APB2_TIM9_CLKIN   (2*STM32_PCLK2_FREQUENCY)
@@ -283,31 +263,18 @@
 
 /* UART8 has no alternate pin config */
 
-/*
- * CAN
- *
- * CAN1 is routed to the onboard transceiver.
- */
+
+/* CAN */
 #define GPIO_CAN1_RX	GPIO_CAN1_RX_3
 #define GPIO_CAN1_TX	GPIO_CAN1_TX_3
 
-/*
- * I2C
- *
- * The optional _GPIO configurations allow the I2C driver to manually
- * reset the bus to clear stuck slaves.  They match the pin configuration,
- * but are normally-high GPIOs.
- */
+
+/* I2C */
 #define GPIO_I2C1_SCL		GPIO_I2C1_SCL_2
 #define GPIO_I2C1_SDA		GPIO_I2C1_SDA_2
-#define GPIO_I2C1_SCL_GPIO	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN8)
-#define GPIO_I2C1_SDA_GPIO	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN9)
 
-/*
- * SPI
- *
- * There are sensors on SPI1, and SPI2 is connected to the FRAM.
- */
+
+/* SPI */
 #define GPIO_SPI1_MISO   GPIO_SPI1_MISO_1
 #define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_1
 #define GPIO_SPI1_SCK    GPIO_SPI1_SCK_1
@@ -316,39 +283,3 @@
 #define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_1
 #define GPIO_SPI2_SCK    GPIO_SPI2_SCK_2
 
-#define GPIO_SPI4_MISO	GPIO_SPI4_MISO_1
-#define GPIO_SPI4_MOSI	GPIO_SPI4_MOSI_1
-#define GPIO_SPI4_SCK	GPIO_SPI4_SCK_1
-
-/************************************************************************************
- * Public Data
- ************************************************************************************/
-#ifndef __ASSEMBLY__
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C"
-{
-#else
-#define EXTERN extern
-#endif
-
-/************************************************************************************
- * Name: stm32_boardinitialize
- *
- * Description:
- *   All STM32 architectures must provide the following entry point.  This entry point
- *   is called early in the initialization -- after all memory has been configured
- *   and mapped but before any devices have been initialized.
- *
- ************************************************************************************/
-
-void stm32_boardinitialize(void);
-
-#undef EXTERN
-#if defined(__cplusplus)
-}
-#endif
-
-#endif /* __ASSEMBLY__ */

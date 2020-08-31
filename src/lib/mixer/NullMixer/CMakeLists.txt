@@ -35,5 +35,5 @@ add_library(NullMixer
 	NullMixer.cpp
 	NullMixer.hpp
 )
-target_link_libraries(NullMixer PRIVATE Mixer)
+target_link_libraries(NullMixer PRIVATE MixerBase)
 add_dependencies(NullMixer prebuild_targets)

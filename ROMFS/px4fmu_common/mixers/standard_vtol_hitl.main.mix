@@ -3,7 +3,7 @@ Mixer for Standard VTOL (QuadPlane) with motor x configuration (Gazebo HITL)
 
 # @board px4_fmu-v2 exclude
 
-R: 4x 10000 10000 10000 0
+R: 4x
 
 # mixer for the pusher/puller throttle
 M: 1

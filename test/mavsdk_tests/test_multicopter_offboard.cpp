@@ -42,34 +42,36 @@
 TEST_CASE("Offboard takeoff and land", "[multicopter][offboard][nogps]")
 {
 	AutopilotTester tester;
-	Offboard::PositionNEDYaw takeoff_position {0.0f, 0.0f, -2.0f, 0.0f};
+	Offboard::PositionNedYaw takeoff_position {0.0f, 0.0f, -2.0f, 0.0f};
 	tester.connect(connection_url);
 	tester.wait_until_ready_local_position_only();
 	tester.store_home();
 	tester.arm();
-	tester.offboard_goto(takeoff_position, 0.5f);
+	std::chrono::seconds goto_timeout = std::chrono::seconds(20);
+	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
 	tester.offboard_land();
-	tester.wait_until_disarmed();
-	tester.check_home_within(0.5f);
+	tester.wait_until_disarmed(goto_timeout);
+	tester.check_home_within(1.0f);
 }
 
 TEST_CASE("Offboard position control", "[multicopter][offboard][nogps]")
 {
 	AutopilotTester tester;
-	Offboard::PositionNEDYaw takeoff_position {0.0f, 0.0f, -2.0f, 0.0f};
-	Offboard::PositionNEDYaw setpoint_1 {0.0f, 5.0f, -2.0f, 180.0f};
-	Offboard::PositionNEDYaw setpoint_2 {5.0f, 5.0f, -4.0f, 180.0f};
-	Offboard::PositionNEDYaw setpoint_3 {5.0f, 0.0f, -4.0f, 90.0f};
+	Offboard::PositionNedYaw takeoff_position {0.0f, 0.0f, -2.0f, 0.0f};
+	Offboard::PositionNedYaw setpoint_1 {0.0f, 5.0f, -2.0f, 180.0f};
+	Offboard::PositionNedYaw setpoint_2 {5.0f, 5.0f, -4.0f, 180.0f};
+	Offboard::PositionNedYaw setpoint_3 {5.0f, 0.0f, -4.0f, 90.0f};
 	tester.connect(connection_url);
 	tester.wait_until_ready_local_position_only();
 	tester.store_home();
 	tester.arm();
-	tester.offboard_goto(takeoff_position, 0.5f);
-	tester.offboard_goto(setpoint_1, 1.0f);
-	tester.offboard_goto(setpoint_2, 1.0f);
-	tester.offboard_goto(setpoint_3, 1.0f);
-	tester.offboard_goto(takeoff_position, 0.2f);
+	std::chrono::seconds goto_timeout = std::chrono::seconds(20);
+	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
+	tester.offboard_goto(setpoint_1, 0.1f, goto_timeout);
+	tester.offboard_goto(setpoint_2, 0.1f, goto_timeout);
+	tester.offboard_goto(setpoint_3, 0.1f, goto_timeout);
+	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
 	tester.offboard_land();
-	tester.wait_until_disarmed();
+	tester.wait_until_disarmed(goto_timeout);
 	tester.check_home_within(1.0f);
 }

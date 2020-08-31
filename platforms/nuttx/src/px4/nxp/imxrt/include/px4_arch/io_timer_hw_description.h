@@ -610,5 +610,3 @@ static inline constexpr io_timers_t initIOPWM(PWM::FlexPWM pwm)
 
 	return ret;
 }
-
-

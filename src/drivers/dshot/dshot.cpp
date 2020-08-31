@@ -403,7 +403,7 @@ DShotOutput::set_mode(Mode mode)
 		/* default output rates */
 		_output_mask = 0x1f;
 		_outputs_initialized = false;
-		_num_outputs = 4;
+		_num_outputs = 5;
 
 		break;
 
@@ -604,6 +604,7 @@ void DShotOutput::handleNewTelemetryData(int motor_index, const DShotTelemetry::
 		++esc_status.counter;
 		// FIXME: mark all ESC's as online, otherwise commander complains even for a single dropout
 		esc_status.esc_online_flags = (1 << esc_status.esc_count) - 1;
+		esc_status.esc_armed_flags = (1 << esc_status.esc_count) - 1;
 
 		_telemetry->esc_status_pub.update();
 
@@ -1288,6 +1289,9 @@ DShotOutput::module_new_mode(PortMode new_mode)
 		/* select 6-pin PWM mode */
 		mode = DShotOutput::MODE_6PWM;
 		break;
+#endif
+
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 5
 
 	case PORT_PWM5:
 		/* select 5-pin PWM mode */
@@ -1303,6 +1307,9 @@ DShotOutput::module_new_mode(PortMode new_mode)
 		break;
 
 #  endif
+#endif
+
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 4
 
 	case PORT_PWM4:
 		/* select 4-pin PWM mode */

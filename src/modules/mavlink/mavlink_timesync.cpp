@@ -130,7 +130,7 @@ MavlinkTimesync::handle_message(const mavlink_message_t *msg)
 					_high_rtt_count++;
 
 					if (_high_rtt_count > MAX_CONSECUTIVE_HIGH_RTT) {
-						PX4_WARN("[timesync] RTT too high for timesync: %llu ms", rtt_us / 1000ULL);
+						PX4_WARN("[timesync] RTT too high for timesync: %llu ms (sender: %i)", rtt_us / 1000ULL, msg->compid);
 						// Reset counter to rate-limit warnings
 						_high_rtt_count = 0;
 					}

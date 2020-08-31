@@ -61,6 +61,7 @@ __BEGIN_DECLS
  */
 #define PWM_OUTPUT_BASE_DEVICE_PATH "/dev/pwm_output"
 #define PWM_OUTPUT0_DEVICE_PATH	"/dev/pwm_output0"
+#define PWM_OUTPUT1_DEVICE_PATH	"/dev/pwm_output1"
 
 #define PWM_OUTPUT_MAX_CHANNELS 16
 

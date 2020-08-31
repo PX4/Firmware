@@ -12,6 +12,7 @@ then
 	param set FW_AIRSPD_MAX 25
 	param set FW_AIRSPD_MIN 14
 	param set FW_AIRSPD_TRIM 16
+	param set FW_L1_PERIOD 12
 
 	param set MC_ROLLRATE_P 0.3
 
@@ -24,9 +25,9 @@ then
 	param set MPC_THR_MIN 0.1
 	param set MPC_TKO_SPEED 1
 	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_D 0.005
-	param set MPC_XY_VEL_I 0.2
-	param set MPC_XY_VEL_P 0.15
+	param set MPC_XY_VEL_P_ACC 3
+	param set MPC_XY_VEL_I_ACC 4
+	param set MPC_XY_VEL_D_ACC 0.1
 	param set MPC_Z_VEL_MAX_DN 1.5
 
 	param set NAV_ACC_RAD 5
@@ -38,6 +39,7 @@ then
 	param set VT_MOT_ID 1234
 	param set VT_FW_MOT_OFFID 1234
 	param set VT_TYPE 2
+	param set VT_B_TRANS_DUR 8
 
 fi
 

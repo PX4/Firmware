@@ -45,6 +45,11 @@
 #include "mavlink_simple_analyzer.h"
 #include "mavlink_high_latency2.h"
 
+#include "streams/autopilot_version.h"
+#include "streams/flight_information.h"
+#include "streams/protocol_version.h"
+#include "streams/storage_information.h"
+
 #include <commander/px4_custom_mode.h>
 #include <drivers/drv_pwm_output.h>
 #include <lib/conversion/rotation.h>
@@ -84,12 +89,8 @@
 #include <uORB/topics/orbit_status.h>
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/position_setpoint_triplet.h>
-#include <uORB/topics/sensor_accel_integrated.h>
-#include <uORB/topics/sensor_accel_status.h>
+#include <uORB/topics/rpm.h>
 #include <uORB/topics/sensor_baro.h>
-#include <uORB/topics/sensor_combined.h>
-#include <uORB/topics/sensor_gyro_integrated.h>
-#include <uORB/topics/sensor_gyro_status.h>
 #include <uORB/topics/sensor_mag.h>
 #include <uORB/topics/sensor_selection.h>
 #include <uORB/topics/tecs_status.h>
@@ -106,6 +107,8 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/vehicle_imu.h>
+#include <uORB/topics/vehicle_imu_status.h>
 #include <uORB/topics/vehicle_magnetometer.h>
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
@@ -399,6 +402,8 @@ private:
 	MavlinkStreamStatustext &operator = (const MavlinkStreamStatustext &) = delete;
 
 protected:
+	int _id{0};
+
 	explicit MavlinkStreamStatustext(Mavlink *mavlink) : MavlinkStream(mavlink)
 	{}
 
@@ -411,11 +416,36 @@ protected:
 			if (_mavlink->get_logbuffer()->get(&mavlink_log)) {
 
 				mavlink_statustext_t msg{};
+				const char *text = mavlink_log.text;
+				constexpr unsigned max_chunk_size = sizeof(msg.text);
 				msg.severity = mavlink_log.severity;
-				strncpy(msg.text, (const char *)mavlink_log.text, sizeof(msg.text));
-				msg.text[sizeof(msg.text) - 1] = '\0';
+				msg.chunk_seq = 0;
+				msg.id = _id++;
+				unsigned text_size;
 
-				mavlink_msg_statustext_send_struct(_mavlink->get_channel(), &msg);
+				while ((text_size = strlen(text)) > 0) {
+					unsigned chunk_size = math::min(text_size, max_chunk_size);
+
+					if (chunk_size < max_chunk_size) {
+						memcpy(&msg.text[0], &text[0], chunk_size);
+						// pad with zeros
+						memset(&msg.text[0] + chunk_size, 0, max_chunk_size - chunk_size);
+
+					} else {
+						memcpy(&msg.text[0], &text[0], chunk_size);
+					}
+
+					mavlink_msg_statustext_send_struct(_mavlink->get_channel(), &msg);
+
+					if (text_size <= max_chunk_size) {
+						break;
+
+					} else {
+						text += max_chunk_size;
+					}
+
+					msg.chunk_seq += 1;
+				}
 
 				return true;
 			}
@@ -681,6 +711,7 @@ protected:
 				bat_msg.energy_consumed = -1;
 				bat_msg.current_battery = (battery_status.connected) ? battery_status.current_filtered_a * 100 : -1;
 				bat_msg.battery_remaining = (battery_status.connected) ? ceilf(battery_status.remaining * 100.0f) : -1;
+				bat_msg.time_remaining = (battery_status.connected) ? battery_status.run_time_to_empty * 60 : 0;
 
 				switch (battery_status.warning) {
 				case (battery_status_s::BATTERY_WARNING_NONE):
@@ -740,6 +771,100 @@ protected:
 	}
 };
 
+
+class MavlinkStreamSmartBatteryInfo : public MavlinkStream
+{
+public:
+	const char *get_name() const override
+	{
+		return MavlinkStreamSmartBatteryInfo::get_name_static();
+	}
+
+	static constexpr const char *get_name_static()
+	{
+		return "SMART_BATTERY_INFO";
+	}
+
+	static constexpr uint16_t get_id_static()
+	{
+		return MAVLINK_MSG_ID_SMART_BATTERY_INFO;
+	}
+
+	uint16_t get_id() override
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamSmartBatteryInfo(mavlink);
+	}
+
+	unsigned get_size() override
+	{
+		unsigned total_size = 0;
+
+		for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+			if (_battery_status_sub[i].advertised()) {
+				total_size += MAVLINK_MSG_ID_BATTERY_STATUS_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
+			}
+		}
+
+		return total_size;
+	}
+
+private:
+	uORB::Subscription _battery_status_sub[ORB_MULTI_MAX_INSTANCES] {
+		{ORB_ID(battery_status), 0}, {ORB_ID(battery_status), 1}, {ORB_ID(battery_status), 2}, {ORB_ID(battery_status), 3}
+	};
+
+	/* do not allow top copying this class */
+	MavlinkStreamSmartBatteryInfo(MavlinkStreamSysStatus &) = delete;
+	MavlinkStreamSmartBatteryInfo &operator = (const MavlinkStreamSysStatus &) = delete;
+
+protected:
+	explicit MavlinkStreamSmartBatteryInfo(Mavlink *mavlink) : MavlinkStream(mavlink)
+	{
+	}
+
+	bool send(const hrt_abstime t) override
+	{
+		bool updated = false;
+
+		for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+			battery_status_s battery_status;
+
+			if (_battery_status_sub[i].update(&battery_status)) {
+				if (battery_status.serial_number == 0) {
+					//This is not smart battery
+					continue;
+				}
+
+				mavlink_smart_battery_info_t msg = {};
+
+				msg.id = battery_status.id - 1;
+				msg.capacity_full_specification = battery_status.capacity;
+				msg.capacity_full = (int32_t)((float)(battery_status.state_of_health * battery_status.capacity) / 100.f);
+				msg.cycle_count = battery_status.cycle_count;
+				msg.serial_number = battery_status.serial_number + (battery_status.manufacture_date << 16);
+				//msg.device_name = ??
+				msg.weight = -1;
+				msg.discharge_minimum_voltage = -1;
+				msg.charging_minimum_voltage = -1;
+				msg.resting_minimum_voltage = -1;
+
+
+				mavlink_msg_smart_battery_info_send_struct(_mavlink->get_channel(), &msg);
+
+				updated = true;
+			}
+
+		}
+
+		return updated;
+	}
+};
+
 class MavlinkStreamHighresIMU : public MavlinkStream
 {
 public:
@@ -774,7 +899,8 @@ public:
 	}
 
 private:
-	uORB::Subscription _sensor_sub{ORB_ID(sensor_combined)};
+	uORB::Subscription _vehicle_imu_sub[ORB_MULTI_MAX_INSTANCES] {{ORB_ID(vehicle_imu), 0}, {ORB_ID(vehicle_imu), 1}, {ORB_ID(vehicle_imu), 2}, {ORB_ID(vehicle_imu), 3}};
+	uORB::Subscription _sensor_selection_sub{ORB_ID(sensor_selection)};
 	uORB::Subscription _bias_sub{ORB_ID(estimator_sensor_bias)};
 	uORB::Subscription _differential_pressure_sub{ORB_ID(differential_pressure)};
 	uORB::Subscription _magnetometer_sub{ORB_ID(vehicle_magnetometer)};
@@ -790,9 +916,23 @@ protected:
 
 	bool send(const hrt_abstime t) override
 	{
-		sensor_combined_s sensor;
+		bool updated = false;
 
-		if (_sensor_sub.update(&sensor)) {
+		sensor_selection_s sensor_selection{};
+		_sensor_selection_sub.copy(&sensor_selection);
+
+		vehicle_imu_s imu;
+
+		for (auto &imu_sub : _vehicle_imu_sub) {
+			if (imu_sub.update(&imu)) {
+				if (imu.accel_device_id == sensor_selection.accel_device_id) {
+					updated = true;
+					break;
+				}
+			}
+		}
+
+		if (updated) {
 			uint16_t fields_updated = 0;
 
 			fields_updated |= (1 << 0) | (1 << 1) | (1 << 2); // accel
@@ -831,15 +971,21 @@ protected:
 			estimator_sensor_bias_s bias{};
 			_bias_sub.copy(&bias);
 
+			const float accel_dt_inv = 1.e6f / (float)imu.delta_velocity_dt;
+			Vector3f accel = (Vector3f{imu.delta_velocity} * accel_dt_inv) - Vector3f{bias.accel_bias};
+
+			const float gyro_dt_inv = 1.e6f / (float)imu.delta_angle_dt;
+			Vector3f gyro = (Vector3f{imu.delta_angle} * gyro_dt_inv) - Vector3f{bias.gyro_bias};
+
 			mavlink_highres_imu_t msg{};
 
-			msg.time_usec = sensor.timestamp;
-			msg.xacc = sensor.accelerometer_m_s2[0] - bias.accel_bias[0];
-			msg.yacc = sensor.accelerometer_m_s2[1] - bias.accel_bias[1];
-			msg.zacc = sensor.accelerometer_m_s2[2] - bias.accel_bias[2];
-			msg.xgyro = sensor.gyro_rad[0] - bias.gyro_bias[0];
-			msg.ygyro = sensor.gyro_rad[1] - bias.gyro_bias[1];
-			msg.zgyro = sensor.gyro_rad[2] - bias.gyro_bias[2];
+			msg.time_usec = imu.timestamp_sample;
+			msg.xacc = accel(0);
+			msg.yacc = accel(1);
+			msg.zacc = accel(2);
+			msg.xgyro = gyro(0);
+			msg.ygyro = gyro(1);
+			msg.zgyro = gyro(2);
 			msg.xmag = magnetometer.magnetometer_ga[0] - bias.mag_bias[0];
 			msg.ymag = magnetometer.magnetometer_ga[1] - bias.mag_bias[1];
 			msg.zmag = magnetometer.magnetometer_ga[2] - bias.mag_bias[2];
@@ -1034,12 +1180,11 @@ public:
 
 	unsigned get_size() override
 	{
-		return _raw_accel_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
+		return _raw_imu_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
-	uORB::Subscription _raw_accel_sub{ORB_ID(sensor_accel_integrated), 0};
-	uORB::Subscription _raw_gyro_sub{ORB_ID(sensor_gyro_integrated), 0};
+	uORB::Subscription _raw_imu_sub{ORB_ID(vehicle_imu), 0};
 	uORB::Subscription _raw_mag_sub{ORB_ID(sensor_mag), 0};
 
 	// do not allow top copy this class
@@ -1052,28 +1197,25 @@ protected:
 
 	bool send(const hrt_abstime t) override
 	{
-		if (_raw_accel_sub.updated() || _raw_gyro_sub.updated() || _raw_mag_sub.updated()) {
+		if (_raw_imu_sub.updated() || _raw_mag_sub.updated()) {
 
-			sensor_accel_integrated_s sensor_accel{};
-			_raw_accel_sub.copy(&sensor_accel);
-
-			sensor_gyro_integrated_s sensor_gyro{};
-			_raw_gyro_sub.copy(&sensor_gyro);
+			vehicle_imu_s imu{};
+			_raw_imu_sub.copy(&imu);
 
 			sensor_mag_s sensor_mag{};
 			_raw_mag_sub.copy(&sensor_mag);
 
 			mavlink_scaled_imu_t msg{};
 
-			msg.time_boot_ms = sensor_accel.timestamp / 1000;
+			msg.time_boot_ms = imu.timestamp / 1000;
 
 			// Accelerometer in mG
-			const float accel_dt_inv = 1.e6f / (float)sensor_accel.dt;
-			const Vector3f accel = Vector3f{sensor_accel.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
+			const float accel_dt_inv = 1.e6f / (float)imu.delta_velocity_dt;
+			const Vector3f accel = Vector3f{imu.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
 
 			// Gyroscope in mrad/s
-			const float gyro_dt_inv = 1.e6f / (float)sensor_gyro.dt;
-			const Vector3f gyro = Vector3f{sensor_gyro.delta_angle} * gyro_dt_inv * 1000.0f;
+			const float gyro_dt_inv = 1.e6f / (float)imu.delta_angle_dt;
+			const Vector3f gyro = Vector3f{imu.delta_angle} * gyro_dt_inv * 1000.0f;
 
 			msg.xacc = (int16_t)accel(0);
 			msg.yacc = (int16_t)accel(1);
@@ -1124,12 +1266,11 @@ public:
 
 	unsigned get_size() override
 	{
-		return _raw_accel_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU2_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
+		return _raw_imu_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU2_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
-	uORB::Subscription _raw_accel_sub{ORB_ID(sensor_accel_integrated), 1};
-	uORB::Subscription _raw_gyro_sub{ORB_ID(sensor_gyro_integrated), 1};
+	uORB::Subscription _raw_imu_sub{ORB_ID(vehicle_imu), 1};
 	uORB::Subscription _raw_mag_sub{ORB_ID(sensor_mag), 1};
 
 	// do not allow top copy this class
@@ -1142,28 +1283,25 @@ protected:
 
 	bool send(const hrt_abstime t) override
 	{
-		if (_raw_accel_sub.updated() || _raw_gyro_sub.updated() || _raw_mag_sub.updated()) {
+		if (_raw_imu_sub.updated() || _raw_mag_sub.updated()) {
 
-			sensor_accel_integrated_s sensor_accel{};
-			_raw_accel_sub.copy(&sensor_accel);
-
-			sensor_gyro_integrated_s sensor_gyro{};
-			_raw_gyro_sub.copy(&sensor_gyro);
+			vehicle_imu_s imu{};
+			_raw_imu_sub.copy(&imu);
 
 			sensor_mag_s sensor_mag{};
 			_raw_mag_sub.copy(&sensor_mag);
 
 			mavlink_scaled_imu2_t msg{};
 
-			msg.time_boot_ms = sensor_accel.timestamp / 1000;
+			msg.time_boot_ms = imu.timestamp / 1000;
 
 			// Accelerometer in mG
-			const float accel_dt_inv = 1.e6f / (float)sensor_accel.dt;
-			const Vector3f accel = Vector3f{sensor_accel.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
+			const float accel_dt_inv = 1.e6f / (float)imu.delta_velocity_dt;
+			const Vector3f accel = Vector3f{imu.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
 
 			// Gyroscope in mrad/s
-			const float gyro_dt_inv = 1.e6f / (float)sensor_gyro.dt;
-			const Vector3f gyro = Vector3f{sensor_gyro.delta_angle} * gyro_dt_inv * 1000.0f;
+			const float gyro_dt_inv = 1.e6f / (float)imu.delta_angle_dt;
+			const Vector3f gyro = Vector3f{imu.delta_angle} * gyro_dt_inv * 1000.0f;
 
 			msg.xacc = (int16_t)accel(0);
 			msg.yacc = (int16_t)accel(1);
@@ -1213,12 +1351,11 @@ public:
 
 	unsigned get_size() override
 	{
-		return _raw_accel_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU3_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
+		return _raw_imu_sub.advertised() ? (MAVLINK_MSG_ID_SCALED_IMU3_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
-	uORB::Subscription _raw_accel_sub{ORB_ID(sensor_accel_integrated), 2};
-	uORB::Subscription _raw_gyro_sub{ORB_ID(sensor_gyro_integrated), 2};
+	uORB::Subscription _raw_imu_sub{ORB_ID(vehicle_imu), 2};
 	uORB::Subscription _raw_mag_sub{ORB_ID(sensor_mag), 2};
 
 	// do not allow top copy this class
@@ -1231,28 +1368,25 @@ protected:
 
 	bool send(const hrt_abstime t) override
 	{
-		if (_raw_accel_sub.updated() || _raw_gyro_sub.updated() || _raw_mag_sub.updated()) {
+		if (_raw_imu_sub.updated() || _raw_mag_sub.updated()) {
 
-			sensor_accel_integrated_s sensor_accel{};
-			_raw_accel_sub.copy(&sensor_accel);
-
-			sensor_gyro_integrated_s sensor_gyro{};
-			_raw_gyro_sub.copy(&sensor_gyro);
+			vehicle_imu_s imu{};
+			_raw_imu_sub.copy(&imu);
 
 			sensor_mag_s sensor_mag{};
 			_raw_mag_sub.copy(&sensor_mag);
 
 			mavlink_scaled_imu3_t msg{};
 
-			msg.time_boot_ms = sensor_accel.timestamp / 1000;
+			msg.time_boot_ms = imu.timestamp / 1000;
 
 			// Accelerometer in mG
-			const float accel_dt_inv = 1.e6f / (float)sensor_accel.dt;
-			const Vector3f accel = Vector3f{sensor_accel.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
+			const float accel_dt_inv = 1.e6f / (float)imu.delta_velocity_dt;
+			const Vector3f accel = Vector3f{imu.delta_velocity} * accel_dt_inv * 1000.0f / CONSTANTS_ONE_G;
 
 			// Gyroscope in mrad/s
-			const float gyro_dt_inv = 1.e6f / (float)sensor_gyro.dt;
-			const Vector3f gyro = Vector3f{sensor_gyro.delta_angle} * gyro_dt_inv * 1000.0f;
+			const float gyro_dt_inv = 1.e6f / (float)imu.delta_angle_dt;
+			const Vector3f gyro = Vector3f{imu.delta_angle} * gyro_dt_inv * 1000.0f;
 
 			msg.xacc = (int16_t)accel(0);
 			msg.yacc = (int16_t)accel(1);
@@ -1512,9 +1646,9 @@ protected:
 			_airspeed_validated_sub.copy(&airspeed_validated);
 
 			mavlink_vfr_hud_t msg{};
-			msg.airspeed = airspeed_validated.indicated_airspeed_m_s;
+			msg.airspeed = airspeed_validated.equivalent_airspeed_m_s;
 			msg.groundspeed = sqrtf(lpos.vx * lpos.vx + lpos.vy * lpos.vy);
-			msg.heading = math::degrees(wrap_2pi(lpos.yaw));
+			msg.heading = math::degrees(wrap_2pi(lpos.heading));
 
 			if (armed.armed) {
 				actuator_controls_s act0{};
@@ -2449,7 +2583,7 @@ protected:
 			msg.vy = lpos.vy * 100.0f;
 			msg.vz = lpos.vz * 100.0f;
 
-			msg.hdg = math::degrees(wrap_2pi(lpos.yaw)) * 100.0f;
+			msg.hdg = math::degrees(wrap_2pi(lpos.heading)) * 100.0f;
 
 			mavlink_msg_global_position_int_send_struct(_mavlink->get_channel(), &msg);
 
@@ -2520,17 +2654,29 @@ protected:
 
 		if (_mavlink->odometry_loopback_enabled()) {
 			odom_updated = _vodom_sub.update(&odom);
-			// frame matches the external vision system
-			msg.frame_id = MAV_FRAME_VISION_NED;
+
+			// set the frame_id according to the local frame of the data
+			if (odom.local_frame == vehicle_odometry_s::LOCAL_FRAME_NED) {
+				msg.frame_id = MAV_FRAME_LOCAL_NED;
+
+			} else {
+				msg.frame_id = MAV_FRAME_LOCAL_FRD;
+			}
+
+			// source: external vision system
+			msg.estimator_type = MAV_ESTIMATOR_TYPE_VISION;
 
 		} else {
 			odom_updated = _odom_sub.update(&odom);
-			// frame matches the PX4 local NED frame
-			msg.frame_id = MAV_FRAME_ESTIM_NED;
+
+			msg.frame_id = MAV_FRAME_LOCAL_NED;
+
+			// source: PX4 estimator
+			msg.estimator_type = MAV_ESTIMATOR_TYPE_AUTOPILOT;
 		}
 
 		if (odom_updated) {
-			msg.time_usec = odom.timestamp;
+			msg.time_usec = odom.timestamp_sample;
 			msg.child_frame_id = MAV_FRAME_BODY_FRD;
 
 			// Current position
@@ -2544,16 +2690,27 @@ protected:
 			msg.q[2] = odom.q[2];
 			msg.q[3] = odom.q[3];
 
-			// Body-FRD frame to local NED frame Dcm matrix
-			matrix::Dcmf R_body_to_local(matrix::Quatf(odom.q));
+			switch (odom.velocity_frame) {
+			case vehicle_odometry_s::BODY_FRAME_FRD:
+				msg.vx = odom.vx;
+				msg.vy = odom.vy;
+				msg.vz = odom.vz;
+				break;
 
-			// Rotate linear and angular velocity from local NED to body-NED frame
-			matrix::Vector3f linvel_body(R_body_to_local.transpose() * matrix::Vector3f(odom.vx, odom.vy, odom.vz));
+			case vehicle_odometry_s::LOCAL_FRAME_FRD:
+			case vehicle_odometry_s::LOCAL_FRAME_NED:
+				// Body frame to local frame
+				const matrix::Dcmf R_body_to_local(matrix::Quatf(odom.q));
 
-			// Current linear velocity
-			msg.vx = linvel_body(0);
-			msg.vy = linvel_body(1);
-			msg.vz = linvel_body(2);
+				// Rotate linear velocity from local to body frame
+				const matrix::Vector3f linvel_body(R_body_to_local.transpose() *
+								   matrix::Vector3f(odom.vx, odom.vy, odom.vz));
+
+				msg.vx = linvel_body(0);
+				msg.vy = linvel_body(1);
+				msg.vz = linvel_body(2);
+				break;
+			}
 
 			// Current body rates
 			msg.rollspeed = odom.rollspeed;
@@ -2766,13 +2923,7 @@ public:
 			return size;
 		}
 
-		for (auto &x : _sensor_accel_status_sub) {
-			if (x.advertised()) {
-				return size;
-			}
-		}
-
-		for (auto &x : _sensor_gyro_status_sub) {
+		for (auto &x : _vehicle_imu_status_sub) {
 			if (x.advertised()) {
 				return size;
 			}
@@ -2784,16 +2935,11 @@ public:
 private:
 	uORB::Subscription _sensor_selection_sub{ORB_ID(sensor_selection)};
 
-	uORB::Subscription _sensor_accel_status_sub[3] {
-		{ORB_ID(sensor_accel_status), 0},
-		{ORB_ID(sensor_accel_status), 1},
-		{ORB_ID(sensor_accel_status), 2},
-	};
-
-	uORB::Subscription _sensor_gyro_status_sub[3] {
-		{ORB_ID(sensor_gyro_status), 0},
-		{ORB_ID(sensor_gyro_status), 1},
-		{ORB_ID(sensor_gyro_status), 2},
+	uORB::Subscription _vehicle_imu_status_sub[ORB_MULTI_MAX_INSTANCES] {
+		{ORB_ID(vehicle_imu_status), 0},
+		{ORB_ID(vehicle_imu_status), 1},
+		{ORB_ID(vehicle_imu_status), 2},
+		{ORB_ID(vehicle_imu_status), 3},
 	};
 
 	/* do not allow top copying this class */
@@ -2808,10 +2954,10 @@ protected:
 	{
 		bool updated = _sensor_selection_sub.updated();
 
-		// check for sensor_accel_status update
+		// check for vehicle_imu_status update
 		if (!updated) {
-			for (int i = 0; i < 3; i++) {
-				if (_sensor_accel_status_sub[i].updated() || _sensor_gyro_status_sub[i].updated()) {
+			for (auto &sub : _vehicle_imu_status_sub) {
+				if (sub.updated()) {
 					updated = true;
 					break;
 				}
@@ -2831,29 +2977,16 @@ protected:
 			sensor_selection_s sensor_selection{};
 			_sensor_selection_sub.copy(&sensor_selection);
 
-			// primary gyro coning and high frequency vibration metrics
-			if (sensor_selection.gyro_device_id != 0) {
-				for (auto &x : _sensor_gyro_status_sub) {
-					sensor_gyro_status_s status;
-
-					if (x.copy(&status)) {
-						if (status.device_id == sensor_selection.gyro_device_id) {
-							msg.vibration_x = status.coning_vibration;
-							msg.vibration_y = status.vibration_metric;
-							break;
-						}
-					}
-				}
-			}
-
 			// primary accel high frequency vibration metric
 			if (sensor_selection.accel_device_id != 0) {
-				for (auto &x : _sensor_accel_status_sub) {
-					sensor_accel_status_s status;
+				for (auto &x : _vehicle_imu_status_sub) {
+					vehicle_imu_status_s status;
 
 					if (x.copy(&status)) {
-						if (status.device_id == sensor_selection.accel_device_id) {
-							msg.vibration_z = status.vibration_metric;
+						if (status.accel_device_id == sensor_selection.accel_device_id) {
+							msg.vibration_x = status.gyro_coning_vibration;
+							msg.vibration_y = status.gyro_vibration_metric;
+							msg.vibration_z = status.accel_vibration_metric;
 							break;
 						}
 					}
@@ -2861,12 +2994,12 @@ protected:
 			}
 
 			// accel 0, 1, 2 cumulative clipping
-			for (int i = 0; i < 3; i++) {
-				sensor_accel_status_s acc_status;
+			for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+				vehicle_imu_status_s status;
 
-				if (_sensor_accel_status_sub[i].copy(&acc_status)) {
+				if (_vehicle_imu_status_sub[i].copy(&status)) {
 
-					const uint32_t clipping = acc_status.clipping[0] + acc_status.clipping[1] + acc_status.clipping[2];
+					const uint32_t clipping = status.accel_clipping[0] + status.accel_clipping[1] + status.accel_clipping[2];
 
 					switch (i) {
 					case 0:
@@ -2944,7 +3077,7 @@ protected:
 		if (_mocap_sub.update(&mocap)) {
 			mavlink_att_pos_mocap_t msg{};
 
-			msg.time_usec = mocap.timestamp;
+			msg.time_usec = mocap.timestamp_sample;
 			msg.q[0] = mocap.q[0];
 			msg.q[1] = mocap.q[1];
 			msg.q[2] = mocap.q[2];
@@ -3759,11 +3892,12 @@ public:
 
 	unsigned get_size() override
 	{
-		return _manual_sub.advertised() ? (MAVLINK_MSG_ID_MANUAL_CONTROL_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
+		return _manual_control_setpoint_sub.advertised() ?
+		       (MAVLINK_MSG_ID_MANUAL_CONTROL_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
-	uORB::Subscription _manual_sub{ORB_ID(manual_control_setpoint)};
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
 	/* do not allow top copying this class */
 	MavlinkStreamManualControl(MavlinkStreamManualControl &) = delete;
@@ -3775,24 +3909,24 @@ protected:
 
 	bool send(const hrt_abstime t) override
 	{
-		manual_control_setpoint_s manual;
+		manual_control_setpoint_s manual_control_setpoint;
 
-		if (_manual_sub.update(&manual)) {
+		if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 			mavlink_manual_control_t msg{};
 
 			msg.target = mavlink_system.sysid;
-			msg.x = manual.x * 1000;
-			msg.y = manual.y * 1000;
-			msg.z = manual.z * 1000;
-			msg.r = manual.r * 1000;
+			msg.x = manual_control_setpoint.x * 1000;
+			msg.y = manual_control_setpoint.y * 1000;
+			msg.z = manual_control_setpoint.z * 1000;
+			msg.r = manual_control_setpoint.r * 1000;
 			unsigned shift = 2;
 			msg.buttons = 0;
-			msg.buttons |= (manual.mode_switch << (shift * 0));
-			msg.buttons |= (manual.return_switch << (shift * 1));
-			msg.buttons |= (manual.posctl_switch << (shift * 2));
-			msg.buttons |= (manual.loiter_switch << (shift * 3));
-			msg.buttons |= (manual.acro_switch << (shift * 4));
-			msg.buttons |= (manual.offboard_switch << (shift * 5));
+			msg.buttons |= (manual_control_setpoint.mode_switch << (shift * 0));
+			msg.buttons |= (manual_control_setpoint.return_switch << (shift * 1));
+			msg.buttons |= (manual_control_setpoint.posctl_switch << (shift * 2));
+			msg.buttons |= (manual_control_setpoint.loiter_switch << (shift * 3));
+			msg.buttons |= (manual_control_setpoint.acro_switch << (shift * 4));
+			msg.buttons |= (manual_control_setpoint.offboard_switch << (shift * 5));
 
 			mavlink_msg_manual_control_send_struct(_mavlink->get_channel(), &msg);
 
@@ -4851,7 +4985,7 @@ protected:
 
 			vehicle_local_position_s lpos{};
 			_lpos_sub.copy(&lpos);
-			msg.yaw_absolute = math::degrees(matrix::wrap_2pi(lpos.yaw + mount_orientation.attitude_euler_angle[2]));
+			msg.yaw_absolute = math::degrees(matrix::wrap_2pi(lpos.heading + mount_orientation.attitude_euler_angle[2]));
 
 			mavlink_msg_mount_orientation_send_struct(_mavlink->get_channel(), &msg);
 
@@ -4897,10 +5031,10 @@ public:
 	}
 
 private:
-	uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
-	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
-	uORB::Subscription _gpos_sub{ORB_ID(vehicle_global_position)};
-	uORB::Subscription _lpos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity_groundtruth)};
+	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude_groundtruth)};
+	uORB::Subscription _gpos_sub{ORB_ID(vehicle_global_position_groundtruth)};
+	uORB::Subscription _lpos_sub{ORB_ID(vehicle_local_position_groundtruth)};
 
 	/* do not allow top copying this class */
 	MavlinkStreamGroundTruth(MavlinkStreamGroundTruth &) = delete;
@@ -5160,12 +5294,77 @@ protected:
 	}
 };
 
+
+
+class MavlinkStreamRawRpm : public MavlinkStream
+{
+public:
+	const char *get_name() const override
+	{
+		return MavlinkStreamRawRpm::get_name_static();
+	}
+
+	static constexpr const char *get_name_static()
+	{
+		return "RAW_RPM";
+	}
+
+	static constexpr uint16_t get_id_static()
+	{
+		return MAVLINK_MSG_ID_RAW_RPM;
+	}
+
+	uint16_t get_id() override
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamRawRpm(mavlink);
+	}
+
+	unsigned get_size() override
+	{
+		return _rpm_sub.advertised() ? MAVLINK_MSG_ID_RAW_RPM + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+	}
+
+private:
+	uORB::Subscription _rpm_sub{ORB_ID(rpm)};
+
+	/* do not allow top copying this class */
+	MavlinkStreamRawRpm(MavlinkStreamRawRpm &) = delete;
+	MavlinkStreamRawRpm &operator = (const MavlinkStreamRawRpm &) = delete;
+
+protected:
+	explicit MavlinkStreamRawRpm(Mavlink *mavlink) : MavlinkStream(mavlink)
+	{}
+
+	bool send(const hrt_abstime t) override
+	{
+		rpm_s rpm;
+
+		if (_rpm_sub.update(&rpm)) {
+			mavlink_raw_rpm_t msg{};
+
+			msg.frequency = rpm.indicated_frequency_rpm;
+
+			mavlink_msg_raw_rpm_send_struct(_mavlink->get_channel(), &msg);
+
+			return true;
+		}
+
+		return false;
+	}
+};
+
 static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamHeartbeat>(),
 	create_stream_list_item<MavlinkStreamStatustext>(),
 	create_stream_list_item<MavlinkStreamCommandLong>(),
 	create_stream_list_item<MavlinkStreamSysStatus>(),
 	create_stream_list_item<MavlinkStreamBatteryStatus>(),
+	create_stream_list_item<MavlinkStreamSmartBatteryInfo>(),
 	create_stream_list_item<MavlinkStreamHighresIMU>(),
 	create_stream_list_item<MavlinkStreamScaledIMU>(),
 	create_stream_list_item<MavlinkStreamScaledIMU2>(),
@@ -5198,6 +5397,7 @@ static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamTrajectoryRepresentationWaypoints>(),
 	create_stream_list_item<MavlinkStreamOpticalFlowRad>(),
 	create_stream_list_item<MavlinkStreamActuatorControlTarget<0> >(),
+	create_stream_list_item<MavlinkStreamActuatorControlTarget<1> >(),
 	create_stream_list_item<MavlinkStreamNamedValueFloat>(),
 	create_stream_list_item<MavlinkStreamDebug>(),
 	create_stream_list_item<MavlinkStreamDebugVect>(),
@@ -5218,7 +5418,12 @@ static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamGroundTruth>(),
 	create_stream_list_item<MavlinkStreamPing>(),
 	create_stream_list_item<MavlinkStreamOrbitStatus>(),
-	create_stream_list_item<MavlinkStreamObstacleDistance>()
+	create_stream_list_item<MavlinkStreamObstacleDistance>(),
+	create_stream_list_item<MavlinkStreamAutopilotVersion>(),
+	create_stream_list_item<MavlinkStreamProtocolVersion>(),
+	create_stream_list_item<MavlinkStreamFlightInformation>(),
+	create_stream_list_item<MavlinkStreamStorageInformation>(),
+	create_stream_list_item<MavlinkStreamRawRpm>()
 };
 
 const char *get_stream_name(const uint16_t msg_id)
@@ -5241,6 +5446,18 @@ MavlinkStream *create_mavlink_stream(const char *stream_name, Mavlink *mavlink)
 			if (strcmp(stream_name, stream.get_name()) == 0) {
 				return stream.new_instance(mavlink);
 			}
+		}
+	}
+
+	return nullptr;
+}
+
+MavlinkStream *create_mavlink_stream(const uint16_t msg_id, Mavlink *mavlink)
+{
+	// search for stream with specified name in supported streams list
+	for (const auto &stream : streams_list) {
+		if (msg_id == stream.get_id()) {
+			return stream.new_instance(mavlink);
 		}
 	}
 

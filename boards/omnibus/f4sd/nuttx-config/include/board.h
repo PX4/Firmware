@@ -43,6 +43,7 @@
 /************************************************************************************
  * Included Files
  ************************************************************************************/
+#include "board_dma_map.h"
 
 #include <nuttx/config.h>
 
@@ -202,23 +203,6 @@
 #  define SDIO_SDXFR_CLKDIV     (2 << SDIO_CLKCR_CLKDIV_SHIFT)
 #endif
 
-/* DMA Channl/Stream Selections *****************************************************/
-/* Stream selections are arbitrary for now but might become important in the future
- * is we set aside more DMA channels/streams.
- *
- * SDIO DMA
- *   DMAMAP_SDIO_1 = Channel 4, Stream 3
- *   DMAMAP_SDIO_2 = Channel 4, Stream 6
- */
-
-#define DMAMAP_SDIO DMAMAP_SDIO_1
-
-#define DMACHAN_SPI1_RX DMAMAP_SPI1_RX_1
-#define DMACHAN_SPI1_TX DMAMAP_SPI1_TX_2
-
-#define DMACHAN_SPI2_RX DMAMAP_SPI2_RX
-#define DMACHAN_SPI2_TX DMAMAP_SPI2_TX
-
 /* LED definitions ******************************************************************/
 /* If CONFIG_ARCH_LEDS is not defined, then the user can control the LEDs in any
  * way.  The following definitions are used to access individual LEDs.
@@ -261,9 +245,6 @@
 #define GPIO_USART1_RX GPIO_USART1_RX_1
 #define GPIO_USART1_TX GPIO_USART1_TX_1
 
-/* USART1 require a RX DMA configuration */
-#define DMAMAP_USART1_RX DMAMAP_USART1_RX_1
-
 /* USART3:
  *
  * PC10 (TX) and PC11 (RX) are broken out on J4
@@ -292,9 +273,6 @@
 
 #define GPIO_USART6_RX GPIO_USART6_RX_1
 #define GPIO_USART6_TX GPIO_USART6_TX_1
-
-/* USART6 require a RX DMA configuration */
-#define DMAMAP_USART6_RX DMAMAP_USART6_RX_1
 
 /* SPI1:
  *  MPU6000
@@ -346,59 +324,4 @@
 #define GPIO_I2C2_SCL		GPIO_I2C2_SCL_1
 #define GPIO_I2C2_SDA		GPIO_I2C2_SDA_1
 
-// TODO:
-//#define GPIO_I2C1_SCL_GPIO	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN6)
-//#define GPIO_I2C1_SDA_GPIO	(GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN9)
-
-/************************************************************************************
- * Public Data
- ************************************************************************************/
-
-#ifndef __ASSEMBLY__
-
-#undef EXTERN
-#if defined(__cplusplus)
-#define EXTERN extern "C"
-extern "C" {
-#else
-#define EXTERN extern
-#endif
-
-/************************************************************************************
- * Public Function Prototypes
- ************************************************************************************/
-/************************************************************************************
- * Name: stm32_boardinitialize
- *
- * Description:
- *   All STM32 architectures must provide the following entry point.  This entry point
- *   is called early in the intitialization -- after all memory has been configured
- *   and mapped but before any devices have been initialized.
- *
- ************************************************************************************/
-
-EXTERN void stm32_boardinitialize(void);
-
-/************************************************************************************
- * Name:  stm32_ledinit, stm32_setled, and stm32_setleds
- *
- * Description:
- *   If CONFIG_ARCH_LEDS is defined, then NuttX will control the on-board LEDs.  If
- *   CONFIG_ARCH_LEDS is not defined, then the following interfacesare available to
- *   control the LEDs from user applications.
- *
- ************************************************************************************/
-
-#ifndef CONFIG_ARCH_LEDS
-EXTERN void stm32_ledinit(void);
-EXTERN void stm32_setled(int led, bool ledon);
-EXTERN void stm32_setleds(uint8_t ledset);
-#endif
-
-#undef EXTERN
-#if defined(__cplusplus)
-}
-#endif
-
-#endif /* __ASSEMBLY__ */
 #endif  /* __CONFIG_OMNIBUSF4SD_INCLUDE_BOARD_H */

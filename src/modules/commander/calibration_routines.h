@@ -36,6 +36,8 @@
 
 #pragma once
 
+#include <drivers/drv_hrt.h>
+
 /**
  * Least-squares fit of a sphere to a set of points.
  *
@@ -46,7 +48,6 @@
  * @param z point coordinates on the Z axis
  * @param size number of points
  * @param max_iterations abort if maximum number of iterations have been reached. If unsure, set to 100.
- * @param delta abort if error is below delta. If unsure, set to 0 to run max_iterations times.
  * @param sphere_x coordinate of the sphere center on the X axis
  * @param sphere_y coordinate of the sphere center on the Y axis
  * @param sphere_z coordinate of the sphere center on the Z axis
@@ -54,46 +55,37 @@
  *
  * @return 0 on success, 1 on failure
  */
-int sphere_fit_least_squares(const float x[], const float y[], const float z[],
-			     unsigned int size, unsigned int max_iterations, float delta, float *sphere_x, float *sphere_y, float *sphere_z,
-			     float *sphere_radius);
-int ellipsoid_fit_least_squares(const float x[], const float y[], const float z[],
-				unsigned int size, int max_iterations, float *offset_x, float *offset_y, float *offset_z,
-				float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
-				float *offdiag_z, bool sphere_fit_only);
-int run_lm_sphere_fit(const float x[], const float y[], const float z[], float &_fitness, float &_sphere_lambda,
-		      unsigned int size, float *offset_x, float *offset_y, float *offset_z,
-		      float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
-		      float *offdiag_z);
-int run_lm_ellipsoid_fit(const float x[], const float y[], const float z[], float &_fitness, float &_sphere_lambda,
-			 unsigned int size, float *offset_x, float *offset_y, float *offset_z,
-			 float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
-			 float *offdiag_z);
-bool inverse4x4(float m[], float invOut[]);
-bool mat_inverse(float *A, float *inv, uint8_t n);
+int run_lm_sphere_fit(const float x[], const float y[], const float z[],
+		      float &fitness, float &sphere_lambda, unsigned int size,
+		      float *offset_x, float *offset_y, float *offset_z,
+		      float *sphere_radius,
+		      float *diag_x, float *diag_y, float *diag_z,
+		      float *offdiag_x, float *offdiag_y, float *offdiag_z);
 
-// FIXME: Change the name
-static const unsigned max_accel_sens = 3;
+int run_lm_ellipsoid_fit(const float x[], const float y[], const float z[],
+			 float &fitness, float &sphere_lambda, unsigned int size,
+			 float *offset_x, float *offset_y, float *offset_z,
+			 float *sphere_radius,
+			 float *diag_x, float *diag_y, float *diag_z,
+			 float *offdiag_x, float *offdiag_y, float *offdiag_z);
 
 // The order of these cannot change since the calibration calculations depend on them in this order
 enum detect_orientation_return {
-	DETECT_ORIENTATION_TAIL_DOWN,
-	DETECT_ORIENTATION_NOSE_DOWN,
-	DETECT_ORIENTATION_LEFT,
-	DETECT_ORIENTATION_RIGHT,
-	DETECT_ORIENTATION_UPSIDE_DOWN,
-	DETECT_ORIENTATION_RIGHTSIDE_UP,
-	DETECT_ORIENTATION_ERROR
+	ORIENTATION_TAIL_DOWN,
+	ORIENTATION_NOSE_DOWN,
+	ORIENTATION_LEFT,
+	ORIENTATION_RIGHT,
+	ORIENTATION_UPSIDE_DOWN,
+	ORIENTATION_RIGHTSIDE_UP,
+	ORIENTATION_ERROR
 };
-static const unsigned detect_orientation_side_count = 6;
+static constexpr unsigned detect_orientation_side_count = 6;
 
 /// Wait for vehicle to become still and detect it's orientation
 ///	@return Returns detect_orientation_return according to orientation when vehicle
 ///		and ready for measurements
 enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,	///< uORB handle to write output to
-		int	cancel_sub,			///< Cancel subscription from calibration_cancel_subscribe
-		int	accel_sub,			///< Orb subcription to accel sensor
-		bool	lenient_still_detection);	///< true: Use more lenient still position detection
+		bool lenient_still_detection);	///< true: Use more lenient still position detection
 
 /// Returns the human readable string representation of the orientation
 ///	@param orientation Orientation to return string for, "error" if buffer is too small
@@ -107,29 +99,18 @@ enum calibrate_return {
 
 typedef calibrate_return(*calibration_from_orientation_worker_t)(detect_orientation_return
 		orientation,	///< Orientation which was detected
-		int				cancel_sub,	///< Cancel subscription from calibration_cancel_subscribe
-		void				*worker_data);	///< Opaque worker data
+		void *worker_data);	///< Opaque worker data
 
 /// Perform calibration sequence which require a rest orientation detection prior to calibration.
 ///	@return OK: Calibration succeeded, ERROR: Calibration failed
-calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,		///< uORB handle to write output to
-		int		cancel_sub,						///< Cancel subscription from calibration_cancel_subscribe
-		bool	side_data_collected[detect_orientation_side_count],	///< Sides for which data still needs calibration
-		calibration_from_orientation_worker_t calibration_worker,		///< Worker routine which performs the actual calibration
-		void	*worker_data,						///< Opaque data passed to worker routine
-		bool	lenient_still_detection);				///< true: Use more lenient still position detection
-
-/// Called at the beginning of calibration in order to subscribe to the cancel command
-///	@return Handle to vehicle_command subscription
-int calibrate_cancel_subscribe(void);
-
-/// Called to cancel the subscription to the cancel command
-///	@param cancel_sub Cancel subcription from calibration_cancel_subscribe
-void calibrate_cancel_unsubscribe(int cancel_sub);
+calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,	///< uORB handle to write output to
+		bool side_data_collected[detect_orientation_side_count],	///< Sides for which data still needs calibration
+		calibration_from_orientation_worker_t calibration_worker,	///< Worker routine which performs the actual calibration
+		void *worker_data,						///< Opaque data passed to worker routine
+		bool lenient_still_detection);					///< true: Use more lenient still position detection
 
 /// Used to periodically check for a cancel command
-bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub,	///< uORB handle to write output to
-			    int cancel_sub);	///< Cancel subcription fromcalibration_cancel_subscribe
+bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub, const hrt_abstime &calibration_started);
 
 
 // TODO FIXME: below are workarounds for QGC. The issue is that sometimes
@@ -139,7 +120,7 @@ bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub,	///< uORB handle to w
 
 #define calibration_log_info(_pub, _text, ...)			\
 	do { \
-		mavlink_and_console_log_info(_pub, _text, ##__VA_ARGS__); \
+		mavlink_log_info(_pub, _text, ##__VA_ARGS__); \
 		px4_usleep(10000); \
 	} while(0);
 

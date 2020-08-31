@@ -28,6 +28,8 @@ then
 	param set FW_RR_I 0.02
 	param set FW_RR_P 0.22
 
+	param set FW_L1_PERIOD 12
+
 	param set FW_W_EN 1
 
 	param set MIS_LTRMIN_ALT 30
