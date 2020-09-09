@@ -1,0 +1,92 @@
+#!/bin/sh
+#
+# @name JIYIRobot Batman
+#
+# @type VTOL Tiltrotor
+# @class VTOL
+#
+# @maintainer Stone White <stone@thone.io>
+#
+# @output MAIN1 Motor right
+# @output MAIN2 Motor left
+# @output MAIN3 Motor back
+# @output MAIN4 empty
+# @output MAIN5 Tilt servo right
+# @output MAIN6 Tilt servo left
+# @output MAIN7 Elevon right
+# @output MAIN8 Elevon left
+#
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+sh /etc/init.d/rc.vtol_defaults
+
+if [ $AUTOCNF = yes ]
+then
+	param set CBRK_AIRSPD_CHK 162128
+
+	param set BAT_N_CELLS 4
+	param set BAT_A_PER_V 36.36
+	param set BAT_V_DIV  18.18
+
+	param set FW_ARSP_MODE 2
+	param set FW_L1_PERIOD 17
+	param set FW_MAN_R_MAX 50
+	param set FW_ACRO_X_MAX   270
+	param set FW_ACRO_Y_MAX   270
+	param set FW_ACRO_Z_MAX   180
+	param set FW_PR_FF    0.5
+	param set FW_PR_P 0.08
+	param set FW_P_LIM_MAX    30
+	param set FW_P_LIM_MIN    -30
+	param set FW_P_RMAX_NEG   60
+	param set FW_P_RMAX_POS   60
+	param set FW_RR_FF    0.33
+	param set FW_RR_P 0.11
+	param set FW_YR_FF    0.3
+	param set FW_YR_P 0.05
+
+	param set MC_PITCHRATE_D 0.002
+	param set MC_PITCHRATE_I 0.05
+	param set MC_PITCHRATE_P 0.1
+	param set MC_PITCH_P 6
+	param set MC_ROLLRATE_D 0.0015
+	param set MC_ROLLRATE_I 0.05
+	param set MC_ROLLRATE_P 0.14
+	param set MC_ROLL_P 6
+	param set MC_YAWRATE_D 0.03
+	param set MC_YAWRATE_FF 0.15
+	param set MC_YAWRATE_MAX 120
+	param set MC_YAWRATE_P 0.4
+	param set MC_YAW_P 2
+
+	param set MPC_LAND_SPEED 1.2
+	param set MPC_TKO_SPEED 2.5
+	param set MPC_Z_VEL_MAX_UP 3
+
+	param set VT_B_TRANS_DUR  2
+	param set VT_DWN_PITCH_MAX 3
+	param set VT_FWD_THRUST_SC 1.2
+	param set VT_F_TRANS_DUR  2
+	param set VT_F_TR_OL_TM   3
+	param set VT_FW_DIFTHR_EN 1
+	param set VT_FW_DIFTHR_SC 0.17
+	param set VT_FW_MOT_OFFID 3
+	param set VT_FW_PERM_STAB 1
+	param set VT_IDLE_PWM_MC 1200
+	param set VT_MOT_ID 123
+	param set VT_TILT_FW  1
+	param set VT_TILT_MC  0
+	param set VT_TILT_TRANS   0.65
+	param set VT_TRANS_MIN_TM 1
+	param set VT_TRANS_P2_DUR 1
+	param set VT_ELEV_MC_LOCK 1
+	param set VT_TYPE 1
+fi
+
+set MAV_TYPE 21
+
+set MIXER vtol_convergence
+
+set PWM_OUT 1234
