@@ -415,6 +415,7 @@ private:
 
 	// Publications
 	uORB::Publication<actuator_armed_s>			_armed_pub{ORB_ID(actuator_armed)};
+	uORB::Publication<actuator_controls_s>			_actuator_controls_2_pub{ORB_ID(actuator_controls_2)};
 	uORB::Publication<commander_state_s>			_commander_state_pub{ORB_ID(commander_state)};
 	uORB::Publication<test_motor_s>				_test_motor_pub{ORB_ID(test_motor)};
 	uORB::Publication<vehicle_control_mode_s>		_control_mode_pub{ORB_ID(vehicle_control_mode)};

@@ -1083,6 +1083,54 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 
 		break;
 
+	case vehicle_command_s::VEHICLE_CMD_DO_SET_SERVO: {
+
+			struct actuator_controls_s actuator_controls = {};
+			actuator_controls.timestamp = hrt_absolute_time();
+
+			for (size_t i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROLS; i++) {
+				actuator_controls.control[i] = NAN;
+			}
+
+			// scale 0 to 2000 to -1 to 1
+			if ((int)cmd.param1 >= 0 && (int)cmd.param1 < actuator_controls_s::NUM_ACTUATOR_CONTROLS) {
+				actuator_controls.control[(int)cmd.param1] = 1.0f / 1000 * cmd.param2 - 1.0f;
+				_actuator_controls_2_pub.publish(actuator_controls);
+
+			} else {
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_DENIED;
+			}
+		}
+
+		break;
+
+	case vehicle_command_s::VEHICLE_CMD_SET_CAMERA_ZOOM: {
+
+			struct actuator_controls_s actuator_controls = {};
+			actuator_controls.timestamp = hrt_absolute_time();
+
+			for (size_t i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROLS; i++) {
+				actuator_controls.control[i] = NAN;
+			}
+
+			switch ((int)(cmd.param1 + 0.5f)) {
+			case vehicle_command_s::VEHICLE_CAMERA_ZOOM_TYPE_RANGE:
+				actuator_controls.control[actuator_controls_s::INDEX_CAMERA_ZOOM] = cmd.param2 / 50.0f - 1.0f;
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+				_actuator_controls_2_pub.publish(actuator_controls);
+				break;
+
+			case vehicle_command_s::VEHICLE_CAMERA_ZOOM_TYPE_STEP:
+			case vehicle_command_s::VEHICLE_CAMERA_ZOOM_TYPE_CONTINUOUS:
+			case vehicle_command_s::VEHICLE_CAMERA_ZOOM_TYPE_FOCAL_LENGTH:
+			default:
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_DENIED;
+			}
+
+		}
+
+		break;
+
 	case vehicle_command_s::VEHICLE_CMD_CUSTOM_0:
 	case vehicle_command_s::VEHICLE_CMD_CUSTOM_1:
 	case vehicle_command_s::VEHICLE_CMD_CUSTOM_2:
@@ -1101,7 +1149,6 @@ Commander::handle_command(vehicle_status_s *status_local, const vehicle_command_
 	case vehicle_command_s::VEHICLE_CMD_DO_SET_CAM_TRIGG_DIST:
 	case vehicle_command_s::VEHICLE_CMD_DO_SET_CAM_TRIGG_INTERVAL:
 	case vehicle_command_s::VEHICLE_CMD_SET_CAMERA_MODE:
-	case vehicle_command_s::VEHICLE_CMD_SET_CAMERA_ZOOM:
 	case vehicle_command_s::VEHICLE_CMD_DO_CHANGE_SPEED:
 	case vehicle_command_s::VEHICLE_CMD_DO_LAND_START:
 	case vehicle_command_s::VEHICLE_CMD_DO_GO_AROUND:

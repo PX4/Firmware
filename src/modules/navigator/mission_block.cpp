@@ -50,7 +50,6 @@
 #include <systemlib/mavlink_log.h>
 #include <mathlib/mathlib.h>
 #include <uORB/uORB.h>
-#include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vtol_vehicle_status.h>
 
@@ -473,46 +472,31 @@ MissionBlock::issue_command(const mission_item_s &item)
 		return;
 	}
 
-	if (item.nav_cmd == NAV_CMD_DO_SET_SERVO) {
-		PX4_INFO("DO_SET_SERVO command");
+	_action_start = hrt_absolute_time();
 
-		// XXX: we should issue a vehicle command and handle this somewhere else
-		actuator_controls_s actuators = {};
-		actuators.timestamp = hrt_absolute_time();
+	// mission_item -> vehicle_command
 
-		// params[0] actuator number to be set 0..5 (corresponds to AUX outputs 1..6)
-		// params[1] new value for selected actuator in ms 900...2000
-		actuators.control[(int)item.params[0]] = 1.0f / 2000 * -item.params[1];
+	// we're expecting a mission command item here so assign the "raw" inputs to the command
+	// (MAV_FRAME_MISSION mission item)
+	vehicle_command_s vcmd = {};
+	vcmd.command = item.nav_cmd;
+	vcmd.param1 = item.params[0];
+	vcmd.param2 = item.params[1];
+	vcmd.param3 = item.params[2];
+	vcmd.param4 = item.params[3];
 
-		_actuator_pub.publish(actuators);
+	if (item.nav_cmd == NAV_CMD_DO_SET_ROI_LOCATION && item.altitude_is_relative) {
+		vcmd.param5 = item.lat;
+		vcmd.param6 = item.lon;
+		vcmd.param7 = item.altitude + _navigator->get_home_position()->alt;
 
 	} else {
-		_action_start = hrt_absolute_time();
-
-		// mission_item -> vehicle_command
-
-		// we're expecting a mission command item here so assign the "raw" inputs to the command
-		// (MAV_FRAME_MISSION mission item)
-		vehicle_command_s vcmd = {};
-		vcmd.command = item.nav_cmd;
-		vcmd.param1 = item.params[0];
-		vcmd.param2 = item.params[1];
-		vcmd.param3 = item.params[2];
-		vcmd.param4 = item.params[3];
-
-		if (item.nav_cmd == NAV_CMD_DO_SET_ROI_LOCATION && item.altitude_is_relative) {
-			vcmd.param5 = item.lat;
-			vcmd.param6 = item.lon;
-			vcmd.param7 = item.altitude + _navigator->get_home_position()->alt;
-
-		} else {
-			vcmd.param5 = (double)item.params[4];
-			vcmd.param6 = (double)item.params[5];
-			vcmd.param7 = item.params[6];
-		}
-
-		_navigator->publish_vehicle_cmd(&vcmd);
+		vcmd.param5 = (double)item.params[4];
+		vcmd.param6 = (double)item.params[5];
+		vcmd.param7 = item.params[6];
 	}
+
+	_navigator->publish_vehicle_cmd(&vcmd);
 }
 
 float
