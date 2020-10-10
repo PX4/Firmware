@@ -65,7 +65,11 @@ void LoggedTopics::add_default_topics()
 	add_topic("home_position");
 	add_topic("hover_thrust_estimate", 100);
 	add_topic("input_rc", 500);
+<<<<<<< HEAD
 	add_topic("mag_worker_data");
+=======
+	add_topic("internal_resistance", 200);
+>>>>>>> add internal_resistance module
 	add_topic("manual_control_setpoint", 200);
 	add_topic("manual_control_switches");
 	add_topic("mission");
@@ -226,6 +230,7 @@ void LoggedTopics::add_estimator_replay_topics()
 	add_topic("vehicle_status");
 	add_topic("vehicle_visual_odometry");
 	add_topic_multi("distance_sensor");
+	add_topic_multi("battery_status");
 }
 
 void LoggedTopics::add_thermal_calibration_topics()
