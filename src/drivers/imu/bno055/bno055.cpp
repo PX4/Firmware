@@ -68,6 +68,7 @@ int BNO055::init()
 
 	// init the bosch lib
 	ret = bno055_init(&bno055_struct);
+
 	if (ret != OK) {
 		PX4_ERR("Bosch lib init failed");
 		return ret;
@@ -80,12 +81,13 @@ int BNO055::init()
 	}
 
 	// reset sensor first
-	// TODO doesn't work yet
 	ret = reset();
-	if (ret != PX4_OK) {
-		PX4_ERR("Can't reset sensor, is it connected?");
+
+	if (ret != OK) {
+		PX4_ERR("Can't reset sensor");
 		return ret;
 	}
+
 	// wait some time for the sensor to reset
 	bno_msleep(700);
 
@@ -94,15 +96,21 @@ int BNO055::init()
 	ret += bno055_set_operation_mode(BNO055_OPERATION_MODE_CONFIG);
 	uint8_t operation_mode = 255;
 	ret += bno055_get_operation_mode(&operation_mode);
-	if (ret != OK || operation_mode != BNO055_OPERATION_MODE_CONFIG) {
-		PX4_ERR("Can't enter Config Mode, mode is %x, ret is %x", operation_mode, ret);
+
+	if (ret != OK) {
+		PX4_ERR("Can't enter Config Mode, communication failed");
+		return ret;
+
+	} else if (operation_mode != BNO055_OPERATION_MODE_CONFIG) {
+		PX4_ERR("Can't enter Config Mode, mode should be %x, but is %x", BNO055_OPERATION_MODE_CONFIG, operation_mode);
 		return -1;
 	}
 
-	// TODO check (and update) those values, set scaling
+	// configure the sensor
 	ret += bno055_set_accel_bw(ACCEL_BW_REGVAL);
 	ret += bno055_set_gyro_bw(GYRO_BW_REGVAL);
 	ret += bno055_set_mag_data_output_rate(MAG_RATE_REGVAL);
+
 	if (ret != OK) {
 		PX4_ERR("Can't set parameters");
 		return ret;
@@ -112,9 +120,14 @@ int BNO055::init()
 	ret += bno055_set_operation_mode(BNO055_OPERATION_MODE_AMG);
 	operation_mode = 255;
 	ret += bno055_get_operation_mode(&operation_mode);
-	if (ret != OK || operation_mode != BNO055_OPERATION_MODE_AMG) {
-		PX4_ERR("Can't switch to running mode, current mode is %x", operation_mode);
+
+	if (ret != OK) {
+		PX4_ERR("Can't enter running Mode, communication failed");
 		return ret;
+
+	} else if (operation_mode != BNO055_OPERATION_MODE_AMG) {
+		PX4_ERR("Can't switch to running mode, mode should be %x, but is %x", BNO055_OPERATION_MODE_AMG, operation_mode);
+		return -1;
 	}
 
 	// schedule sensor polling
@@ -139,7 +152,7 @@ int8_t BNO055::write_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, 
 	uint8_t buffer[cnt + 1];
 	buffer[0] = reg_addr;
 	memcpy(buffer + 1, reg_data, cnt);
-	return transfer(buffer, cnt+1, nullptr, 0);
+	return transfer(buffer, cnt + 1, nullptr, 0);
 }
 
 void BNO055::start()
@@ -175,7 +188,7 @@ void BNO055::RunImpl()
 			_px4_mag.increase_error_count();
 
 		} else {
-			_px4_mag.update(current_time, mag_xyz.x/100, mag_xyz.y/100, mag_xyz.z/100);
+			_px4_mag.update(current_time, mag_xyz.x / 100, mag_xyz.y / 100, mag_xyz.z / 100);
 		}
 
 		mag_last_read = current_time;

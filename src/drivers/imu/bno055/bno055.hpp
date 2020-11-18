@@ -66,15 +66,6 @@ public:
 	int init() override;
 
 	/**
-	 * Completely resets chip
-	 *
-	 * @note init() must have been called before, and since the chip is now reset, init() should be called again
-	 *
-	 * @todo not used
-	 */
-	int reset();
-
-	/**
 	 * Starts polling the sensor
 	 *
 	 * @todo why is this a separate function?
@@ -99,6 +90,7 @@ private:
 	struct bno055_gyro_double_t gyro_xyz;
 	struct bno055_mag_double_t mag_xyz;
 
+	// TODO check (and tweak) those values
 	// cutoff freqs for the internal low pass filters
 	const uint8_t ACCEL_BW_REGVAL = BNO055_ACCEL_BW_125HZ;
 	const uint8_t GYRO_BW_REGVAL = BNO055_GYRO_BW_116HZ;
@@ -111,6 +103,15 @@ private:
 	// save the last time the magnetometer was read
 	uint32_t mag_last_read = 0;
 
+	/**
+	 * Completely resets chip
+	 *
+	 * @note init() must have been called before, and since the chip is now reset, init() should be called again
+	 */
+	int reset();
+
+
+
 	////////////////////////////////////////////////////////////////////////////////
 	// Support code for the Bosch library
 	////////////////////////////////////////////////////////////////////////////////
@@ -120,14 +121,15 @@ private:
 	 * Read a register from the BNO055, this is used by the Bosch lib
 	 *
 	 * @param dev_addr this is <b>not used</b>, it is only there because the library needs it in its signature
-	 * @param reg_addr the (starting) register to from
+	 * @param reg_addr the (starting) register to read from
 	 * @param reg_data returned data
 	 * @param count amount of bytes to read
 	 * @return 0 on success
 	 */
 	int8_t read_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt);
-	static int8_t read_reg_trampoline(void * obj, uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt) {
-		return ((BNO055*)obj)->read_reg(dev_addr, reg_addr, reg_data, cnt);
+	static int8_t read_reg_trampoline(void *obj, uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt)
+	{
+		return ((BNO055 *)obj)->read_reg(dev_addr, reg_addr, reg_data, cnt);
 	}
 
 	/**
@@ -140,8 +142,9 @@ private:
 	 * @return 0 on success
 	 */
 	int8_t write_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt);
-	static int8_t write_reg_trampoline(void * obj, uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt) {
-		return ((BNO055*)obj)->write_reg(dev_addr, reg_addr, reg_data, cnt);
+	static int8_t write_reg_trampoline(void *obj, uint8_t dev_addr, uint8_t reg_addr, uint8_t *reg_data, uint8_t cnt)
+	{
+		return ((BNO055 *)obj)->write_reg(dev_addr, reg_addr, reg_data, cnt);
 	}
 
 	/** Bosch lib main data struct */

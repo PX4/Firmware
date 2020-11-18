@@ -45,14 +45,12 @@
  * TODOs:
  *  - i2c only for now
  *  - read temperature as well
- *  - init is currently semi-broken, sensor needs to be already initialized when starting the driver
- *  - this module can call usleep, although it uses WorkItem!
+ *  - this module can call usleep, although it uses WorkItem
  *  - the chip has an accel, gyro and mag; all are implemented here, which means that
  *    this fits neither in imu/ nor compass/
  *  - this is based on the bmi160 driver, not sure if this is a good thing
  *  - the default BNO055_I2C_ADDR1 will always be used, regardless of input
  *  - maybe move away from Bosch library?
- *  - probably a lot that I forgot
  *
  */
 
