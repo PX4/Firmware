@@ -71,6 +71,7 @@
 #define DRV_IMU_DEVTYPE_SIM 0x14
 #define DRV_ACC_DEVTYPE_MPU9250_LEGACY  0x16
 #define DRV_IMU_DEVTYPE_BMI160   0x17
+#define DRV_IMU_DEVTYPE_BNO055   0x18 //< @todo I have no idea if this is right or wrong
 
 #define DRV_IMU_DEVTYPE_MPU6000  0x21
 #define DRV_GYR_DEVTYPE_L3GD20   0x22
