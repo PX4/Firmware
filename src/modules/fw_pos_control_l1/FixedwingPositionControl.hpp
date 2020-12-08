@@ -266,6 +266,7 @@ private:
 	TECS			_tecs;
 
 	uint8_t _type{0};
+
 	enum FW_POSCTRL_MODE {
 		FW_POSCTRL_MODE_AUTO,
 		FW_POSCTRL_MODE_POSITION,
@@ -426,8 +427,8 @@ private:
 		(ParamFloat<px4::params::FW_MAN_P_MAX>) _param_fw_man_p_max,
 		(ParamFloat<px4::params::FW_MAN_R_MAX>) _param_fw_man_r_max,
 
-		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad
-
+		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad,
+		(ParamFloat<px4::params::NAV_FW_ALTL_RAD>) _param_nav_fw_altl_rad
 	)
 
 };
