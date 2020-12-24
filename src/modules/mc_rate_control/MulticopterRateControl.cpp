@@ -177,8 +177,8 @@ MulticopterRateControl::Run()
 			//  if true then use published rate setpoint, otherwise generate from manual_control_setpoint (like acro)
 			if (_v_control_mode.flag_control_rattitude_enabled) {
 				manual_rate_sp =
-					(fabsf(_manual_control_setpoint.y) > _param_mc_ratt_th.get()) ||
-					(fabsf(_manual_control_setpoint.x) > _param_mc_ratt_th.get());
+					(fabsf(_manual_control_setpoint.xyzr[1]) > _param_mc_ratt_th.get()) ||
+					(fabsf(_manual_control_setpoint.xyzr[0]) > _param_mc_ratt_th.get());
 			}
 		}
 
@@ -187,12 +187,12 @@ MulticopterRateControl::Run()
 
 				// manual rates control - ACRO mode
 				const Vector3f man_rate_sp{
-					math::superexpo(_manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(-_manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(_manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
+					math::superexpo(_manual_control_setpoint.xyzr[1], _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(-_manual_control_setpoint.xyzr[0], _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(_manual_control_setpoint.xyzr[3], _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
 
 				_rates_sp = man_rate_sp.emult(_acro_rate_max);
-				_thrust_sp = _manual_control_setpoint.z;
+				_thrust_sp = (_manual_control_setpoint.xyzr[2] + 1.f) * .5f;
 
 				// publish rate setpoint
 				vehicle_rates_setpoint_s v_rates_sp{};

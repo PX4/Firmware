@@ -705,8 +705,8 @@ Commander::handle_command(const vehicle_command_s &cmd)
 							break;
 						}
 
-						const bool throttle_above_low = (_manual_control_setpoint.z > 0.1f);
-						const bool throttle_above_center = (_manual_control_setpoint.z > 0.6f);
+						const bool throttle_above_low = (_manual_control_setpoint.xyzr[2] > -.8f);
+						const bool throttle_above_center = (_manual_control_setpoint.xyzr[2] > .2f);
 
 						if (cmd_arms && throttle_above_center &&
 						    (_status.nav_state == vehicle_status_s::NAVIGATION_STATE_POSCTL ||
@@ -2093,8 +2093,8 @@ Commander::run()
 
 			// transition to previous state if sticks are touched
 			if (!_status.rc_signal_lost &&
-			    ((fabsf(_manual_control_setpoint.x) > minimum_stick_deflection) ||
-			     (fabsf(_manual_control_setpoint.y) > minimum_stick_deflection))) {
+			    ((fabsf(_manual_control_setpoint.xyzr[0]) > minimum_stick_deflection) ||
+			     (fabsf(_manual_control_setpoint.xyzr[1]) > minimum_stick_deflection))) {
 				// revert to position control in any case
 				main_state_transition(_status, commander_state_s::MAIN_STATE_POSCTL, _status_flags, &_internal_state);
 				mavlink_log_info(&_mavlink_log_pub, "Pilot took over control using sticks");
@@ -2153,8 +2153,8 @@ Commander::run()
 			 * and we are in MANUAL, Rattitude, or AUTO_READY mode or (ASSIST mode and landed)
 			 * do it only for rotary wings in manual mode or fixed wing if landed.
 			 * Disable stick-disarming if arming switch or button is mapped */
-			const bool stick_in_lower_left = _manual_control_setpoint.r < -STICK_ON_OFF_LIMIT
-							 && (_manual_control_setpoint.z < 0.1f)
+			const bool stick_in_lower_left = _manual_control_setpoint.xyzr[3] < -STICK_ON_OFF_LIMIT
+							 && (_manual_control_setpoint.xyzr[2] < -.8f)
 							 && !arm_switch_or_button_mapped;
 			const bool arm_switch_to_disarm_transition = !_param_arm_switch_is_button.get() &&
 					(_last_manual_control_switches_arm_switch == manual_control_switches_s::SWITCH_POS_ON) &&
@@ -2191,7 +2191,8 @@ Commander::run()
 			 * check if left stick is in lower right position or arm button is pushed or arm switch has transition from disarm to arm
 			 * and we're in MANUAL mode.
 			 * Disable stick-arming if arming switch or button is mapped */
-			const bool stick_in_lower_right = _manual_control_setpoint.r > STICK_ON_OFF_LIMIT && _manual_control_setpoint.z < 0.1f
+			const bool stick_in_lower_right = _manual_control_setpoint.xyzr[3] > STICK_ON_OFF_LIMIT
+							  && _manual_control_setpoint.xyzr[2] < -.8f
 							  && !arm_switch_or_button_mapped;
 			/* allow a grace period for re-arming: preflight checks don't need to pass during that time,
 			 * for example for accidental in-air disarming */
@@ -2201,7 +2202,7 @@ Commander::run()
 			const bool arm_switch_to_arm_transition = !_param_arm_switch_is_button.get() &&
 					(_last_manual_control_switches_arm_switch == manual_control_switches_s::SWITCH_POS_OFF) &&
 					(_manual_control_switches.arm_switch == manual_control_switches_s::SWITCH_POS_ON) &&
-					(_manual_control_setpoint.z < 0.1f || in_rearming_grace_period);
+					(_manual_control_setpoint.xyzr[2] < -.8f || in_rearming_grace_period);
 
 			if (!in_armed_state &&
 			    (_status.rc_input_mode != vehicle_status_s::RC_IN_MODE_OFF) &&

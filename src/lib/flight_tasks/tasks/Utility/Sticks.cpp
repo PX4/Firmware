@@ -51,10 +51,8 @@ bool Sticks::checkAndSetStickInputs()
 
 	if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 		// Linear scale
-		_positions(0) = manual_control_setpoint.x; // NED x, pitch [-1,1]
-		_positions(1) = manual_control_setpoint.y; // NED y, roll [-1,1]
-		_positions(2) = -(manual_control_setpoint.z - 0.5f) * 2.f; // NED z, thrust resacaled from [0,1] to [-1,1]
-		_positions(3) = manual_control_setpoint.r; // yaw [-1,1]
+		_positions = matrix::Vector<float, 4>(manual_control_setpoint.xyzr);
+		_positions(2) = -_positions(2); // NED z direction is down not up
 
 		// Exponential scale
 		_positions_expo(0) = math::expo_deadzone(_positions(0), _param_mpc_xy_man_expo.get(), _param_mpc_hold_dz.get());

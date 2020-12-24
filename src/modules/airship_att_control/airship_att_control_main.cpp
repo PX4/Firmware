@@ -91,9 +91,9 @@ AirshipAttitudeControl::publish_actuator_controls()
 
 	} else {
 		_actuators.control[0] = 0.0f;
-		_actuators.control[1] = _manual_control_sp.x;
-		_actuators.control[2] = _manual_control_sp.r;
-		_actuators.control[3] = _manual_control_sp.z;
+		_actuators.control[1] = _manual_control_setpoint.xyzr[0];
+		_actuators.control[2] = _manual_control_setpoint.xyzr[3];
+		_actuators.control[3] = (_manual_control_setpoint.xyzr[2] + 1.f) * .5f;
 	}
 
 	// note: _actuators.timestamp_sample is set in AirshipAttitudeControl::Run()
@@ -126,8 +126,8 @@ AirshipAttitudeControl::Run()
 		publish_actuator_controls();
 
 		/* check for updates in manual control topic */
-		if (_manual_control_sp_sub.updated()) {
-			_manual_control_sp_sub.update(&_manual_control_sp);
+		if (_manual_control_setpoint_sub.updated()) {
+			_manual_control_setpoint_sub.update(&_manual_control_setpoint);
 		}
 
 		/* check for updates in vehicle status topic */

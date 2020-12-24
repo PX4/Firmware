@@ -3621,10 +3621,10 @@ protected:
 			mavlink_manual_control_t msg{};
 
 			msg.target = mavlink_system.sysid;
-			msg.x = manual_control_setpoint.x * 1000;
-			msg.y = manual_control_setpoint.y * 1000;
-			msg.z = manual_control_setpoint.z * 1000;
-			msg.r = manual_control_setpoint.r * 1000;
+			msg.x = manual_control_setpoint.xyzr[0] * 1e3f;
+			msg.y = manual_control_setpoint.xyzr[1] * 1e3f;
+			msg.z = manual_control_setpoint.xyzr[2] * 1e3f;
+			msg.r = manual_control_setpoint.xyzr[3] * 1e3f;
 
 			manual_control_switches_s manual_control_switches{};
 

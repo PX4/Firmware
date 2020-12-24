@@ -82,15 +82,15 @@ int do_trim_calibration(orb_advert_t *mavlink_log_pub)
 	/* set parameters: the new trim values are the combination of active trim values
 	   and the values coming from the remote control of the user
 	*/
-	float p = manual_control_setpoint.y * roll_scale + roll_trim_active;
+	float p = manual_control_setpoint.xyzr[1] * roll_scale + roll_trim_active;
 	int p1r = param_set(param_find("TRIM_ROLL"), &p);
 	/*
 	 we explicitly swap sign here because the trim is added to the actuator controls
 	 which are moving in an inverse sense to manual pitch inputs
 	*/
-	p = -manual_control_setpoint.x * pitch_scale + pitch_trim_active;
+	p = -manual_control_setpoint.xyzr[0] * pitch_scale + pitch_trim_active;
 	int p2r = param_set(param_find("TRIM_PITCH"), &p);
-	p = manual_control_setpoint.r * yaw_scale + yaw_trim_active;
+	p = manual_control_setpoint.xyzr[3] * yaw_scale + yaw_trim_active;
 	int p3r = param_set(param_find("TRIM_YAW"), &p);
 
 	if (p1r != 0 || p2r != 0 || p3r != 0) {

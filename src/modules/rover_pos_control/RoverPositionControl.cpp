@@ -499,10 +499,10 @@ RoverPositionControl::run()
 			if (manual_mode) {
 				/* manual/direct control */
 				//PX4_INFO("Manual mode!");
-				_act_controls.control[actuator_controls_s::INDEX_ROLL] = _manual_control_setpoint.y;
-				_act_controls.control[actuator_controls_s::INDEX_PITCH] = -_manual_control_setpoint.x;
-				_act_controls.control[actuator_controls_s::INDEX_YAW] = _manual_control_setpoint.r; //TODO: Readd yaw scale param
-				_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
+				_act_controls.control[actuator_controls_s::INDEX_ROLL] = _manual_control_setpoint.xyzr[1];
+				_act_controls.control[actuator_controls_s::INDEX_PITCH] = -_manual_control_setpoint.xyzr[0];
+				_act_controls.control[actuator_controls_s::INDEX_YAW] = _manual_control_setpoint.xyzr[3]; //TODO: Readd yaw scale param
+				_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = (_manual_control_setpoint.xyzr[2] + 1.f) * .5f;
 			}
 		}
 

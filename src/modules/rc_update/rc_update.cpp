@@ -584,10 +584,10 @@ void RCUpdate::UpdateManualSetpoint(const hrt_abstime &timestamp_sample)
 	manual_control_setpoint.data_source = manual_control_setpoint_s::SOURCE_RC;
 
 	// limit controls
-	manual_control_setpoint.y     = get_rc_value(rc_channels_s::FUNCTION_ROLL,    -1.f, 1.f);
-	manual_control_setpoint.x     = get_rc_value(rc_channels_s::FUNCTION_PITCH,   -1.f, 1.f);
-	manual_control_setpoint.r     = get_rc_value(rc_channels_s::FUNCTION_YAW,     -1.f, 1.f);
-	manual_control_setpoint.z     = get_rc_value(rc_channels_s::FUNCTION_THROTTLE, 0.f, 1.f);
+	manual_control_setpoint.xyzr[1] = get_rc_value(rc_channels_s::FUNCTION_ROLL,    -1.f, 1.f);
+	manual_control_setpoint.xyzr[0] = get_rc_value(rc_channels_s::FUNCTION_PITCH,   -1.f, 1.f);
+	manual_control_setpoint.xyzr[3] = get_rc_value(rc_channels_s::FUNCTION_YAW,     -1.f, 1.f);
+	manual_control_setpoint.xyzr[2] = get_rc_value(rc_channels_s::FUNCTION_THROTTLE, -1.f, 1.f);
 	manual_control_setpoint.flaps = get_rc_value(rc_channels_s::FUNCTION_FLAPS,   -1.f, 1.f);
 	manual_control_setpoint.aux1  = get_rc_value(rc_channels_s::FUNCTION_AUX_1,   -1.f, 1.f);
 	manual_control_setpoint.aux2  = get_rc_value(rc_channels_s::FUNCTION_AUX_2,   -1.f, 1.f);
@@ -604,10 +604,11 @@ void RCUpdate::UpdateManualSetpoint(const hrt_abstime &timestamp_sample)
 
 	// populate and publish actuator_controls_3 copied from mapped manual_control_setpoint
 	actuator_controls_s actuator_group_3{};
-	actuator_group_3.control[0] = manual_control_setpoint.y;
-	actuator_group_3.control[1] = manual_control_setpoint.x;
-	actuator_group_3.control[2] = manual_control_setpoint.r;
-	actuator_group_3.control[3] = manual_control_setpoint.z;
+	actuator_group_3.control[0] = manual_control_setpoint.xyzr[1];
+	actuator_group_3.control[1] = manual_control_setpoint.xyzr[0];
+	actuator_group_3.control[2] = manual_control_setpoint.xyzr[3];
+	// for backwards compatibility of the mixers z is sent [0,1]
+	actuator_group_3.control[3] = (manual_control_setpoint.xyzr[2] + 1.f) * .5f;
 	actuator_group_3.control[4] = manual_control_setpoint.flaps;
 	actuator_group_3.control[5] = manual_control_setpoint.aux1;
 	actuator_group_3.control[6] = manual_control_setpoint.aux2;
