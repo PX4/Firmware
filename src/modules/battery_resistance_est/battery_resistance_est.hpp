@@ -1,3 +1,48 @@
+/****************************************************************************
+ *
+ *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAfieldES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAfieldE.
+ *
+ ****************************************************************************/
+
+/**
+ * @file BatteryResistanceEstimator.hpp
+ *
+ * Estimator for the battery internal resistance parameter to run online using only the current and voltage data​.
+ *
+ * @author Mohamad Akkawi	<akkawi@protonmail.ch>
+ *
+ * Implementation based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
+ * batteries in electric vehicles' by Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
+ *
+ */
+
 #pragma once
 
 #include <px4_platform_common/module.h>
@@ -85,7 +130,7 @@ private:
 
 	DEFINE_PARAMETERS(
         (ParamFloat<px4::params::BAT1_R_INTERNAL>) _bat1_r_internal,
-	(ParamInt<px4::params::INTER_RES_EN>) _inter_res_en,
+	(ParamInt<px4::params::RIN_ENABLED>) _inter_res_en,
 	(ParamFloat<px4::params::RIN_UPDATE_TIME>) _inter_res_update_period
     	)
 

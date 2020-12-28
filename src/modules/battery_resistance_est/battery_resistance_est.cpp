@@ -1,8 +1,41 @@
-#include "internal_resistance.hpp"
+/****************************************************************************
+ *
+ *   Copyright (C) 2020 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+#include "battery_resistance_est.hpp"
 
 InternalRes::InternalRes() :
 	ModuleParams(nullptr),
-	WorkItem(MODULE_NAME, px4::wq_configurations::test1)
+	WorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
 }
 
@@ -114,7 +147,7 @@ float InternalRes::compute_voltage_estimation_error(float battery_sampling_perio
 
 	float voltage_estimation = v_dot_estimate_prev*battery_sampling_period + voltage_estimation_prev;
 
-    float voltage_estimation_error = battery_status.voltage_filtered_v - voltage_estimation;
+   	float voltage_estimation_error = battery_status.voltage_filtered_v - voltage_estimation;
 
 	inter_res.voltage_estimation = voltage_estimation;
 	inter_res.voltage_estimation_error = abs(voltage_estimation_error);
@@ -211,14 +244,14 @@ parameter. Implementation based on 'Online estimation of internal resistance and
 batteries in electric vehicles' by Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("internal_resistance", "custom_module");
+	PRINT_MODULE_USAGE_NAME("battery_resistance_est", "custom_module");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
 }
 
-extern "C" __EXPORT int internal_resistance_main(int argc, char *argv[])
+extern "C" __EXPORT int battery_resistance_est_main(int argc, char *argv[])
 {
 	return InternalRes::main(argc, argv);
 }

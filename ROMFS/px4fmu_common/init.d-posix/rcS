@@ -220,9 +220,9 @@ sensors start
 commander start
 navigator start
 
-if param greater -s INTER_RES_EN 0
+if param greater -s RIN_ENABLED 0
 then
-	internal_resistance start
+	battery_resistance_est start
 fi
 
 if param greater -s MNT_MODE_IN -1

@@ -51,7 +51,6 @@
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/battery_status.h>
 
-
 #include "ReplayEkf2.hpp"
 
 namespace px4
