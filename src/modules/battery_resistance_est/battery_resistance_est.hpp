@@ -88,6 +88,8 @@ private:
 
 	hrt_abstime battery_time_prev;
 
+	hrt_abstime battery_time;
+
 	hrt_abstime last_param_write_time;
 
 	float r_s = 0.1f;
@@ -114,6 +116,8 @@ private:
 	float signal_2 = -voltage_estimation_prev;
 
 	float v_dot_estimate_prev = param_0*signal_0 + param_1*signal_1 + param_2*signal_2 + param_3;
+	float current_filtered_a = 0;
+	float voltage_filtered_v;
 	float current_filtered_a_prev;
 
 	float best_prediction_error;

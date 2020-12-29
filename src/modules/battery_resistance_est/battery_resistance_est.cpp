@@ -56,7 +56,7 @@ float InternalRes::extract_parameters() {
 	float voltage_open_circuit = param_3/param_2;
 
 	//calculate bat1_r_internal
-	float internal_resistance = (battery_status.voltage_filtered_v - voltage_open_circuit) / (-battery_status.current_filtered_a);
+	float internal_resistance = (voltage_filtered_v - voltage_open_circuit) / (-current_filtered_a);
 
 	//logging
 	inter_res.r_transient = r_transient;
@@ -91,8 +91,8 @@ void InternalRes::write_internal_resistance(float voltage_estimation_error, floa
 		best_prediction = round(best_prediction*100)/100;
 
 		//clamp BAT${i}_R_INTERNAL min: -1.0  max: 0.2
-		if (best_prediction > 0.1f){
-	    		best_prediction = 0.1f;
+		if (best_prediction > 0.2f){
+	    		best_prediction = 0.2f;
 		}
 		if (best_prediction < -1.0f){
 	    		best_prediction = -1.0f;
@@ -107,6 +107,7 @@ void InternalRes::write_internal_resistance(float voltage_estimation_error, floa
 
 	bat1_r_internal_prev = internal_resistance;
 
+	//logging
 	inter_res.bat1_r_internal = internal_resistance;
 
 }
@@ -114,8 +115,8 @@ void InternalRes::write_internal_resistance(float voltage_estimation_error, floa
 void InternalRes::estimate_v_dot(float voltage_estimation_error, float battery_sampling_period){
 
 	//process signal
-	signal_0 = -(battery_status.current_filtered_a - current_filtered_a_prev)/(battery_sampling_period);
-	signal_1 = -battery_status.current_filtered_a;
+	signal_0 = -(battery_status.current_filtered_a - current_filtered_a_prev)/((battery_status.timestamp - battery_time_prev)/ 1e6f); //central difference method
+	signal_1 = -current_filtered_a;
 	signal_2 = -voltage_estimation_prev;
 
 	//update parameter vector estimate
@@ -147,7 +148,7 @@ float InternalRes::compute_voltage_estimation_error(float battery_sampling_perio
 
 	float voltage_estimation = v_dot_estimate_prev*battery_sampling_period + voltage_estimation_prev;
 
-   	float voltage_estimation_error = battery_status.voltage_filtered_v - voltage_estimation;
+   	float voltage_estimation_error = voltage_filtered_v - voltage_estimation;
 
 	inter_res.voltage_estimation = voltage_estimation;
 	inter_res.voltage_estimation_error = abs(voltage_estimation_error);
@@ -168,9 +169,9 @@ void InternalRes::Run()
 
 	if (_battery_sub.update(&battery_status)) {
 
-		if (battery_time_prev != 0 && battery_status.timestamp != battery_time_prev) {
+		if (battery_time_prev != 0 && battery_time != battery_time_prev) {
 
-		float battery_sampling_period = (battery_status.timestamp - battery_time_prev)/ 1e6f;
+		float battery_sampling_period = (battery_time - battery_time_prev)/ 1e6f;
 
 		float voltage_estimation_error = compute_voltage_estimation_error(battery_sampling_period);
 
@@ -182,14 +183,16 @@ void InternalRes::Run()
 
 		//logging for debugging
 		inter_res.timestamp = hrt_absolute_time();
-		inter_res.voltage = battery_status.voltage_filtered_v; //for sync with replay
+		inter_res.voltage = voltage_filtered_v; //for sync with replay
 		_internal_res_pub.publish(inter_res);
 
 		}
-
-		battery_time_prev = battery_status.timestamp;
-		current_filtered_a_prev = battery_status.current_filtered_a;
-
+		//save for central difference approximation of current derivative
+		battery_time_prev = battery_time;
+		battery_time = battery_status.timestamp;
+		current_filtered_a_prev = current_filtered_a;
+		current_filtered_a = battery_status.current_filtered_a;
+		voltage_filtered_v = battery_status.voltage_filtered_v;
 	}
 
 }
