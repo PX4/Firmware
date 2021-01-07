@@ -276,7 +276,7 @@ void TECS::_update_throttle_setpoint(const float throttle_cruise, const matrix::
 	// Calculate the throttle demand
 	if (_underspeed_detected) {
 		// always use full throttle to recover from an underspeed condition
-		_throttle_setpoint = 1.0f;
+		_throttle_setpoint = _throttle_setpoint_max;
 
 	} else {
 		// Adjust the demanded total energy rate to compensate for induced drag rise in turns.
