@@ -220,6 +220,14 @@ void RTL::on_activation()
 	_deny_mission_landing = _navigator->get_vstatus()->is_vtol
 				&& _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
 
+	// Disable camera trigger
+	vehicle_command_s cmd = {};
+	cmd.command = vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL;
+	// Pause trigger
+	cmd.param1 = -1.0f;
+	cmd.param3 = 1.0f;
+	_navigator->publish_vehicle_cmd(&cmd);
+	
 	// output the correct message, depending on where the RTL destination is
 	switch (_destination.type) {
 	case RTL_DESTINATION_HOME:
