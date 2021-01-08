@@ -46,43 +46,53 @@ bool InternalRes::init()
 		return false;
 	}
 
+	_param_est(0) = r_s;
+	_param_est(1) = (r_t + r_s)/(r_t*c_t);
+	_param_est(2) = 1.0f/(r_t*c_t);
+	_param_est(3) = v_oc/(r_t*c_t);
+
+	_adaptation_gain(0) = 0.0001f;
+	_adaptation_gain(1) = 0.0001f;
+	_adaptation_gain(2) = 0.0001f;
+	_adaptation_gain(3) = 0.0001f;
+
 	return true;
 }
 
 float InternalRes::extract_parameters() {
 
-	float r_steady_state = param_0;
-	float r_transient = (param_1/param_2) - param_0;
-	float voltage_open_circuit = param_3/param_2;
+	const float _r_steady_state = _param_est(0);
+	const float _r_transient = (_param_est(1)/_param_est(2)) - _param_est(0);
+	const float _voltage_open_circuit = _param_est(3)/_param_est(2);
 
 	//calculate bat1_r_internal
-	float internal_resistance = (voltage_filtered_v - voltage_open_circuit) / (-current_filtered_a);
+	const float _internal_resistance = (_voltage_filtered_v - _voltage_open_circuit) / (-_current_filtered_a);
 
 	//logging
-	inter_res.r_transient = r_transient;
-	inter_res.r_steady_state = r_steady_state;
-	inter_res.voltage_open_circuit = voltage_open_circuit;
+	inter_res.r_transient = _r_transient;
+	inter_res.r_steady_state = _r_steady_state;
+	inter_res.voltage_open_circuit = _voltage_open_circuit;
+	inter_res.bat1_r_internal = _internal_resistance;
 
-	return internal_resistance;
+	return _internal_resistance;
 
 }
 
 
-void InternalRes::write_internal_resistance(float voltage_estimation_error, float internal_resistance){
-
+void InternalRes::write_internal_resistance(const float _voltage_estimation_error, const float _internal_resistance){
 
 	//store best esimate
-	if((abs(voltage_estimation_error)) <= abs(best_prediction_error))
+	if((abs(_voltage_estimation_error)) <= abs(best_prediction_error))
 	{
-		best_prediction = bat1_r_internal_prev;
-		best_prediction_error = voltage_estimation_error;
+		best_prediction = _internal_resistance;
+		best_prediction_error = _voltage_estimation_error;
 	} else if (best_prediction_error_reset){
-		best_prediction = bat1_r_internal_prev;
-		best_prediction_error = voltage_estimation_error;
+		best_prediction = _internal_resistance;
+		best_prediction_error = _voltage_estimation_error;
 		best_prediction_error_reset = false;
 	}
 
-	float time_since_param_write = (hrt_absolute_time()- last_param_write_time)/ 1e6f;
+	const float time_since_param_write = (hrt_absolute_time()- last_param_write_time)/ 1e6f;
 
 	// save bat1_r_internal only periodically
 	if (time_since_param_write >= _inter_res_update_period.get()){
@@ -93,8 +103,7 @@ void InternalRes::write_internal_resistance(float voltage_estimation_error, floa
 		//clamp BAT${i}_R_INTERNAL min: -1.0  max: 0.2
 		if (best_prediction > 0.2f){
 	    		best_prediction = 0.2f;
-		}
-		if (best_prediction < -1.0f){
+		} else if (best_prediction < -1.0f){
 	    		best_prediction = -1.0f;
 		}
 
@@ -105,57 +114,39 @@ void InternalRes::write_internal_resistance(float voltage_estimation_error, floa
 		best_prediction_error_reset = true;
 	}
 
-	bat1_r_internal_prev = internal_resistance;
-
-	//logging
-	inter_res.bat1_r_internal = internal_resistance;
-
 }
 
-void InternalRes::estimate_v_dot(float voltage_estimation_error, float battery_sampling_period){
+float InternalRes::predict_voltage(const float dt){
 
 	//process signal
-	signal_0 = -(battery_status.current_filtered_a - current_filtered_a_prev)/((battery_status.timestamp - battery_time_prev)/ 1e6f); //central difference method
-	signal_1 = -current_filtered_a;
-	signal_2 = -voltage_estimation_prev;
+	signal(0) = -(battery_status.current_filtered_a - _current_filtered_a_prev)
+		/ ((battery_status.timestamp - _battery_time_prev) / 1e6f); //central difference method
+	signal(1) = -_current_filtered_a;
+	signal(2) = -_voltage_estimation;
+	signal(3) = 1.f;
 
-	//update parameter vector estimate
-	param_0 += adaptation_gain_0*voltage_estimation_error*signal_0*battery_sampling_period;
-	param_1 += adaptation_gain_1*voltage_estimation_error*signal_1*battery_sampling_period;
-	param_2 += adaptation_gain_2*voltage_estimation_error*signal_2*battery_sampling_period;
-	param_3 += adaptation_gain_3*voltage_estimation_error*battery_sampling_period;
+	// Predict the voltage using the learned adaptive model
+	_voltage_estimation += (_param_est.transpose() * signal* dt) (0,0);
 
-	//Apply thevenin battery model (first order system)
-	float v_dot_estimate = param_0*signal_0 + param_1*signal_1 + param_2*signal_2 + param_3 + lambda*voltage_estimation_error;
+	const float _voltage_estimation_error = _voltage_filtered_v - _voltage_estimation;
 
-	//store current values for next iteration
-	v_dot_estimate_prev = v_dot_estimate;
+	_voltage_estimation += _lambda * dt * _voltage_estimation_error;
 
 	//logging
-	inter_res.param_0 = param_0;
-	inter_res.param_1 = param_1;
-	inter_res.param_2 = param_2;
-	inter_res.param_3 = param_3;
+	inter_res.voltage_estimation = _voltage_estimation;
+	inter_res.voltage_estimation_error = abs(_voltage_estimation_error);
 
-	inter_res.signal_0 = signal_0;
-	inter_res.signal_1 = signal_1;
-	inter_res.signal_2 = signal_2;
+	inter_res.param_est[0] = _param_est(0);
+	inter_res.param_est[1] = _param_est(1);
+	inter_res.param_est[2] = _param_est(2);
+	inter_res.param_est[3] = _param_est(3);
 
-}
+	inter_res.signal[0] = signal(0);
+	inter_res.signal[1] = signal(1);
+	inter_res.signal[2] = signal(2);
+	inter_res.signal[3] = signal(3);
 
-
-float InternalRes::compute_voltage_estimation_error(float battery_sampling_period){
-
-	float voltage_estimation = v_dot_estimate_prev*battery_sampling_period + voltage_estimation_prev;
-
-   	float voltage_estimation_error = voltage_filtered_v - voltage_estimation;
-
-	inter_res.voltage_estimation = voltage_estimation;
-	inter_res.voltage_estimation_error = abs(voltage_estimation_error);
-
-	voltage_estimation_prev = voltage_estimation;
-
-	return voltage_estimation_error;
+	return _voltage_estimation_error;
 }
 
 void InternalRes::Run()
@@ -169,30 +160,34 @@ void InternalRes::Run()
 
 	if (_battery_sub.update(&battery_status)) {
 
-		if (battery_time_prev != 0 && battery_time != battery_time_prev) {
+		if (_battery_time_prev != 0 && _battery_time != _battery_time_prev) {
 
-		float battery_sampling_period = (battery_time - battery_time_prev)/ 1e6f;
+		const float dt = (_battery_time - _battery_time_prev)/ 1e6f;
 
-		float voltage_estimation_error = compute_voltage_estimation_error(battery_sampling_period);
+		const float _voltage_estimation_error = predict_voltage(dt);
 
-		float internal_resistance = extract_parameters();
+		const float _internal_resistance = extract_parameters();
 
-		write_internal_resistance(voltage_estimation_error, internal_resistance);
+		write_internal_resistance(_voltage_estimation_error, _internal_resistance);
 
-		estimate_v_dot(voltage_estimation_error,battery_sampling_period);
+		//update the vector of parameters using the adaptive law
+		for (int i = 0; i < 4; i++) {
+			_param_est(i) += _adaptation_gain(i) * _voltage_estimation_error * signal(i) * dt;
+		}
 
 		//logging for debugging
 		inter_res.timestamp = hrt_absolute_time();
-		inter_res.voltage = voltage_filtered_v; //for sync with replay
+		inter_res.voltage = _voltage_filtered_v; //for sync with ekfreplay
 		_internal_res_pub.publish(inter_res);
 
 		}
+
 		//save for central difference approximation of current derivative
-		battery_time_prev = battery_time;
-		battery_time = battery_status.timestamp;
-		current_filtered_a_prev = current_filtered_a;
-		current_filtered_a = battery_status.current_filtered_a;
-		voltage_filtered_v = battery_status.voltage_filtered_v;
+		_battery_time_prev = _battery_time;
+		_battery_time = battery_status.timestamp;
+		_current_filtered_a_prev = _current_filtered_a;
+		_current_filtered_a = battery_status.current_filtered_a;
+		_voltage_filtered_v = battery_status.voltage_filtered_v;
 	}
 
 }

@@ -9,10 +9,5 @@ float32 voltage
 float32 voltage_estimation
 float32 voltage_estimation_error
 
-float32 param_0
-float32 param_1
-float32 param_2
-float32 param_3
-float32 signal_0
-float32 signal_1
-float32 signal_2
+float32[4] param_est
+float32[4] signal
