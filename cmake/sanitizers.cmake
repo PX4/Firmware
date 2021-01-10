@@ -130,6 +130,23 @@ elseif (CMAKE_BUILD_TYPE STREQUAL UndefinedBehaviorSanitizer)
 	function(sanitizer_fail_test_on_error test_name)
 		set_tests_properties(${test_name} PROPERTIES FAIL_REGULAR_EXPRESSION "runtime error:")
 	endfunction(sanitizer_fail_test_on_error)
+
+elseif (CMAKE_BUILD_TYPE STREQUAL FuzzTesting)
+	message(STATUS "FuzzTesting enabled")
+
+	add_compile_options(
+		-g3
+		-fsanitize=fuzzer,address,undefined
+		-DFUZZTESTING
+	)
+
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=fuzzer,address,undefined" CACHE INTERNAL "" FORCE)
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=fuzzer,address,undefined" CACHE INTERNAL "" FORCE)
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fsanitize=fuzzer,address,undefined" CACHE INTERNAL "" FORCE)
+
+	function(sanitizer_fail_test_on_error test_name)
+		# Not sure what to do here
+	endfunction(sanitizer_fail_test_on_error)
 else()
 
 	function(sanitizer_fail_test_on_error test_name)

@@ -79,9 +79,14 @@
 #include "px4_daemon/server.h"
 #include "px4_daemon/pxh.h"
 
+#if defined(FUZZTESTING)
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <v2.0/common/mavlink.h>
+#endif
+
 #define MODULE_NAME "px4"
 
-static const char *LOCK_FILE_PATH = "/tmp/px4_lock";
 
 #ifndef PATH_MAX
 #define PATH_MAX 1024
@@ -97,30 +102,32 @@ void init_once();
 }
 
 static void sig_int_handler(int sig_num);
-
 static void register_sig_handler();
+
+#if !defined(FUZZTESTING)
+static const char *LOCK_FILE_PATH = "/tmp/px4_lock";
 static void set_cpu_scaling();
-static int create_symlinks_if_needed(std::string &data_path);
-static int create_dirs();
 static int run_startup_script(const std::string &commands_file, const std::string &absolute_binary_path, int instance);
 static std::string get_absolute_binary_path(const std::string &argv0);
 static void wait_to_exit();
 static bool is_server_running(int instance, bool server);
 static void print_usage();
-static bool dir_exists(const std::string &path);
 static bool file_exists(const std::string &name);
 static std::string file_basename(std::string const &pathname);
-static std::string pwd();
 static int change_directory(const std::string &directory);
-
-
-#ifdef __PX4_SITL_MAIN_OVERRIDE
-int SITL_MAIN(int argc, char **argv);
-
-int SITL_MAIN(int argc, char **argv)
+static std::string pwd();
+static int create_symlinks_if_needed(std::string &data_path);
+static int create_dirs();
+static bool dir_exists(const std::string &path);
 #else
-int main(int argc, char **argv)
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, const size_t size);
+void initialize_fake_px4_once();
+void send_mavlink(const uint8_t *data, const size_t size);
 #endif
+
+
+#if !defined(FUZZTESTING)
+int main(int argc, char **argv)
 {
 	bool is_client = false;
 	bool pxh_off = false;
@@ -387,34 +394,7 @@ int create_symlinks_if_needed(std::string &data_path)
 	return PX4_OK;
 }
 
-int create_dirs()
-{
-	std::string current_path = pwd();
-
-	std::vector<std::string> dirs{"log", "eeprom"};
-
-	for (const auto &dir : dirs) {
-		PX4_DEBUG("mkdir: %s", dir.c_str());;
-		std::string dir_path = current_path + "/" + dir;
-
-		if (dir_exists(dir_path)) {
-			continue;
-		}
-
-		// create dirs
-		int ret = mkdir(dir_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-
-		if (ret != OK) {
-			PX4_WARN("failed creating new dir: %s", dir_path.c_str());
-			return ret;
-
-		} else {
-			PX4_DEBUG("Successfully created dir %s", dir_path.c_str());
-		}
-	}
-
-	return PX4_OK;
-}
+#endif // FUZZTESTING
 
 void register_sig_handler()
 {
@@ -447,6 +427,37 @@ void sig_int_handler(int sig_num)
 	fflush(stdout);
 	px4_daemon::Pxh::stop();
 	_exit_requested = true;
+}
+
+
+#if !defined(FUZZTESTING)
+int create_dirs()
+{
+	std::string current_path = pwd();
+
+	std::vector<std::string> dirs{"log", "eeprom"};
+
+	for (const auto &dir : dirs) {
+		PX4_DEBUG("mkdir: %s", dir.c_str());;
+		std::string dir_path = current_path + "/" + dir;
+
+		if (dir_exists(dir_path)) {
+			continue;
+		}
+
+		// create dirs
+		int ret = mkdir(dir_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+
+		if (ret != OK) {
+			PX4_WARN("failed creating new dir: %s", dir_path.c_str());
+			return ret;
+
+		} else {
+			PX4_DEBUG("Successfully created dir %s", dir_path.c_str());
+		}
+	}
+
+	return PX4_OK;
 }
 
 void set_cpu_scaling()
@@ -674,3 +685,100 @@ int change_directory(const std::string &directory)
 
 	return PX4_OK;
 }
+
+#else
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, const size_t size)
+{
+	register_sig_handler();
+
+	initialize_fake_px4_once();
+
+	send_mavlink(data, size);
+
+	return 0;
+}
+
+void initialize_fake_px4_once()
+{
+	static bool first_time = true;
+
+	if (!first_time) {
+		return;
+	}
+
+	first_time = false;
+
+	px4::init_once();
+	px4::init(0, nullptr, "px4");
+
+	px4_daemon::Pxh pxh;
+	pxh.process_line("uorb start", true);
+	pxh.process_line("param load", true);
+	pxh.process_line("dataman start", true);
+	pxh.process_line("load_mon start", true);
+	pxh.process_line("battery_simulator start", true);
+	pxh.process_line("tone_alarm start", true);
+	pxh.process_line("rc_update start", true);
+	pxh.process_line("sensors start", true);
+	pxh.process_line("commander start", true);
+	pxh.process_line("navigator start", true);
+	pxh.process_line("ekf2 start", true);
+	pxh.process_line("mc_att_control start", true);
+	pxh.process_line("mc_pos_control start", true);
+	pxh.process_line("land_detector start multicopter", true);
+	pxh.process_line("logger start", true);
+	pxh.process_line("mavlink start -x -o 14540 -r 4000000", true);
+	pxh.process_line("mavlink boot_complete", true);
+}
+
+void send_mavlink(const uint8_t *data, const size_t size)
+{
+	int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (socket_fd < 0) {
+		PX4_ERR("socket error: %s", strerror(errno));
+		return;
+	}
+
+	struct sockaddr_in addr {};
+
+	addr.sin_family = AF_INET;
+
+	inet_pton(AF_INET, "0.0.0.0", &(addr.sin_addr));
+
+	addr.sin_port = htons(14540);
+
+	if (bind(socket_fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) {
+		PX4_ERR("bind error: %s", strerror(errno));
+		close(socket_fd);
+		return;
+	}
+
+	mavlink_message_t message {};
+	uint8_t buffer[MAVLINK_MAX_PACKET_LEN] {};
+
+	for (size_t i = 0; i < size; i += sizeof(message)) {
+
+		const size_t copy_len = std::min(sizeof(message), size - i);
+		//printf("copy_len: %zu, %zu (%zu)\n", i, copy_len, size);
+		memcpy(reinterpret_cast<void *>(&message), data + i, copy_len);
+
+		const ssize_t buffer_len = mavlink_msg_to_send_buffer(buffer, &message);
+
+		struct sockaddr_in dest_addr {};
+		dest_addr.sin_family = AF_INET;
+
+		inet_pton(AF_INET, "127.0.0.1", &dest_addr.sin_addr.s_addr);
+		dest_addr.sin_port = htons(14556);
+
+		if (sendto(socket_fd, buffer, buffer_len, 0, reinterpret_cast<sockaddr *>(&dest_addr),
+			   sizeof(dest_addr)) != buffer_len) {
+			PX4_ERR("sendto error: %s", strerror(errno));
+		}
+	}
+
+
+	close(socket_fd);
+}
+
+#endif
