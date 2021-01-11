@@ -76,6 +76,7 @@ void FlightTaskManualAltitudeSmoothVel::_ekfResetHandlerPositionZ()
 
 void FlightTaskManualAltitudeSmoothVel::_ekfResetHandlerVelocityZ()
 {
+	FlightTaskManualAltitude::_ekfResetHandlerVelocityZ();
 	_smoothing.setCurrentVelocity(_velocity(2));
 }
 

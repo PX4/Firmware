@@ -95,6 +95,7 @@ void FlightTaskAutoLineSmoothVel::_ekfResetHandlerPositionXY()
 
 void FlightTaskAutoLineSmoothVel::_ekfResetHandlerVelocityXY()
 {
+	FlightTaskAutoMapper::_ekfResetHandlerVelocityXY();
 	_trajectory[0].setCurrentVelocity(_velocity(0));
 	_trajectory[1].setCurrentVelocity(_velocity(1));
 }
@@ -106,6 +107,7 @@ void FlightTaskAutoLineSmoothVel::_ekfResetHandlerPositionZ()
 
 void FlightTaskAutoLineSmoothVel::_ekfResetHandlerVelocityZ()
 {
+	FlightTaskAutoMapper::_ekfResetHandlerVelocityZ();
 	_trajectory[2].setCurrentVelocity(_velocity(2));
 }
 

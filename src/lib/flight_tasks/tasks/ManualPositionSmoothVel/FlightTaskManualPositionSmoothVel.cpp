@@ -80,6 +80,7 @@ void FlightTaskManualPositionSmoothVel::_ekfResetHandlerPositionXY()
 
 void FlightTaskManualPositionSmoothVel::_ekfResetHandlerVelocityXY()
 {
+	FlightTaskManualPosition::_ekfResetHandlerVelocityXY();
 	_smoothing_xy.setCurrentVelocity(_velocity.xy());
 }
 
@@ -90,6 +91,7 @@ void FlightTaskManualPositionSmoothVel::_ekfResetHandlerPositionZ()
 
 void FlightTaskManualPositionSmoothVel::_ekfResetHandlerVelocityZ()
 {
+	FlightTaskManualPosition::_ekfResetHandlerVelocityZ();
 	_smoothing_z.setCurrentVelocity(_velocity(2));
 }
 

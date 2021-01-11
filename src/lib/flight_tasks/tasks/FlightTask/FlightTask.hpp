@@ -212,9 +212,9 @@ protected:
 	 */
 	void _checkEkfResetCounters();
 	virtual void _ekfResetHandlerPositionXY() {};
-	virtual void _ekfResetHandlerVelocityXY() {};
+	virtual void _ekfResetHandlerVelocityXY() { _velocity_setpoint_feedback.xy() = matrix::Vector2f(_velocity); }
 	virtual void _ekfResetHandlerPositionZ() {};
-	virtual void _ekfResetHandlerVelocityZ() {};
+	virtual void _ekfResetHandlerVelocityZ() { _velocity_setpoint_feedback(2) = _velocity(2); }
 	virtual void _ekfResetHandlerHeading(float delta_psi) {};
 
 	/* Time abstraction */
