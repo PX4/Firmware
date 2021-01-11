@@ -123,8 +123,8 @@ private:
 	/**
 	 * Collects the most recent sensor measurement data from the i2c bus.
 	 */
-	int collect();
-
+	//int collect();
+	int collect(struct distance_sensor_s *range);
 	/* ST */
 	int8_t VL53L1_RdByte(uint16_t index, uint8_t *data);
 	int8_t VL53L1_RdWord(uint16_t index, uint16_t *data);
