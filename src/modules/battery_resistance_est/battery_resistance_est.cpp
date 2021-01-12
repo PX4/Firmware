@@ -46,71 +46,74 @@ bool InternalRes::init()
 		return false;
 	}
 
-	_param_est(0) = r_s;
-	_param_est(1) = (r_t + r_s)/(r_t*c_t);
-	_param_est(2) = 1.0f/(r_t*c_t);
-	_param_est(3) = v_oc/(r_t*c_t);
+	_param_est(0) = _param_r_s_init.get();
+	_param_est(1) = (_param_r_t_init.get() + _param_r_s_init.get())/(_param_r_t_init.get()*_param_c_t_init.get());
+	_param_est(2) = 1.0f/(_param_r_t_init.get()*_param_c_t_init.get());
+	_param_est(3) = _param_v_oc_init.get()/(_param_r_t_init.get()*_param_c_t_init.get());
+
+	_voltage_estimation = _param_bat1_v_charged.get()*_param_bat1_n_cells.get(); //assume fully charged?
 
 	_adaptation_gain(0) = 0.0001f;
 	_adaptation_gain(1) = 0.0001f;
 	_adaptation_gain(2) = 0.0001f;
 	_adaptation_gain(3) = 0.0001f;
 
-	inter_res.best_r_internal_est = _best_internal_resistance_est;
+	inter_res.best_r_internal_est = 0.f;
 
 	return true;
 }
 
-float InternalRes::extract_parameters() {
+Vector<float,4> InternalRes::extract_ecm_parameters() {
 
-	const float _r_steady_state = _param_est(0);
-	const float _r_transient = (_param_est(1)/_param_est(2)) - _param_est(0);
-	const float _voltage_open_circuit = _param_est(3)/_param_est(2);
+	Vector<float,4> _ecm_params;
+
+	_ecm_params(0) = _param_est(0); //_r_steady_state
+	_ecm_params(1) = (_param_est(1)/_param_est(2)) - _param_est(0); //_r_transient
+	_ecm_params(2) = _param_est(3)/_param_est(2); //_voltage_open_circuit
 
 	//calculate bat1_r_internal
-	const float _internal_resistance_est = (_voltage_filtered_v - _voltage_open_circuit) / (-_current_filtered_a);
+	_ecm_params(3) = (_voltage_filtered_v - _ecm_params(2)) / (-_current_filtered_a); //_internal_resistance_est
 
 	//logging
-	inter_res.r_transient = _r_transient;
-	inter_res.r_steady_state = _r_steady_state;
-	inter_res.voltage_open_circuit = _voltage_open_circuit;
-	inter_res.r_internal_est = _internal_resistance_est;
+	inter_res.r_steady_state = _ecm_params(0);
+	inter_res.r_transient = _ecm_params(1);
+	inter_res.voltage_open_circuit = _ecm_params(2);
+	inter_res.r_internal_est = _ecm_params(3);
 
-	return _internal_resistance_est;
-
+	return _ecm_params;
 }
 
 
-void InternalRes::update_internal_resistance(const float _voltage_estimation_error, const float _internal_resistance_est){
+void InternalRes::update_internal_resistance(const float _voltage_estimation_error, const Vector<float,4> _esm_params_est){
 
 	//store best esimate
 	if((abs(_voltage_estimation_error)) <= abs(best_prediction_error))
 	{
-		_best_internal_resistance_est = _internal_resistance_est;
+		_best_ecm_params_est = _esm_params_est;
 		best_prediction_error = _voltage_estimation_error;
 	} else if (best_prediction_error_reset){
-		_best_internal_resistance_est = _internal_resistance_est;
+		_best_ecm_params_est = _esm_params_est;
 		best_prediction_error = _voltage_estimation_error;
 		best_prediction_error_reset = false;
+	}
+
+	//clamp BAT1_R_INTERNAL
+	if (_best_ecm_params_est(3) > 1.f){ //TODO change to a generalizable upper bound
+	  	_best_ecm_params_est(3) = 0.2f;
+	} else if (_best_ecm_params_est(3) < 0.01f){
+		_best_ecm_params_est(3) = 0.0001f;
 	}
 
 	const float time_since_param_update = (hrt_absolute_time()- last_param_update_time)/ 1e6f;
 
 	// publish new bat1_r_internal only periodically
-	if (time_since_param_update >= _inter_res_update_period.get()){
+	if (time_since_param_update >= _param_inter_res_update_period.get()){
 
 		//BAT${i}_R_INTERNAL  increment: 0.01
-		_best_internal_resistance_est = round(_best_internal_resistance_est*100)/100;
-
-		//clamp BAT1_R_INTERNAL
-		if (_best_internal_resistance_est > 0.2f){
-	    		_best_internal_resistance_est = 0.2f;
-		} else if (_best_internal_resistance_est < 0.01f){
-	    		_best_internal_resistance_est = 0.01f;
-		}
+		_best_ecm_params_est(3) = round(_best_ecm_params_est(3)*100)/100;
 
 		//Set px4 Internal resistance using simplified Rint Model
-		inter_res.best_r_internal_est = _best_internal_resistance_est;
+		inter_res.best_r_internal_est = _best_ecm_params_est(3);
 		last_param_update_time = hrt_absolute_time();
 		best_prediction_error_reset = true;
 	}
@@ -158,27 +161,34 @@ void InternalRes::Run()
 		return;
 	}
 
-	if (_battery_sub.update(&battery_status)) {
+	if (_vehicle_status_sub.update(&vehicle_status)) {
+		_armed = (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
+		_on_standby = (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY);
+	}
+
+	if (_battery_sub.update(&battery_status) && _armed) { //note: ekf replay won't work with armed in the if statement since vehicle_status is not being published
 
 		if (_battery_time_prev != 0 && _battery_time != _battery_time_prev) {
 
-		const float dt = (_battery_time - _battery_time_prev)/ 1e6f;
+			const float dt = (_battery_time - _battery_time_prev)/ 1e6f;
 
-		const float _voltage_estimation_error = predict_voltage(dt);
+			const float _voltage_estimation_error = predict_voltage(dt);
 
-		const float _internal_resistance = extract_parameters();
+			const Vector<float, 4> _ecm_params_est = extract_ecm_parameters();
 
-		update_internal_resistance(_voltage_estimation_error, _internal_resistance);
+			update_internal_resistance(_voltage_estimation_error, _ecm_params_est);
 
-		//update the vector of parameters using the adaptive law
-		for (int i = 0; i < 4; i++) {
-			_param_est(i) += _adaptation_gain(i) * _voltage_estimation_error * signal(i) * dt;
-		}
+			//update the vector of parameters using the adaptive law
+			for (int i = 0; i < 4; i++) {
+				_param_est(i) += _adaptation_gain(i) * _voltage_estimation_error * signal(i) * dt;
+			}
 
-		//logging for debugging
-		inter_res.timestamp = hrt_absolute_time();
-		inter_res.voltage = _voltage_filtered_v; //for sync with ekfreplay
-		_internal_res_pub.publish(inter_res);
+			//logging for debugging
+			inter_res.timestamp = hrt_absolute_time();
+			inter_res.voltage = _voltage_filtered_v; //for sync with ekfreplay //TODO remove
+			_internal_res_pub.publish(inter_res);
+
+			_was_armed = true;
 
 		}
 
@@ -190,8 +200,25 @@ void InternalRes::Run()
 		_voltage_filtered_v = battery_status.voltage_filtered_v;
 	}
 
-}
+	//save ecm params on disarm after flight
+	if (!_param_bat_saved && _on_standby && _was_armed) {
 
+		_param_r_s_init.set(_best_ecm_params_est(0));
+		_param_r_s_init.commit_no_notification();
+
+		_param_r_t_init.set(_best_ecm_params_est(1));
+		_param_r_t_init.commit_no_notification();
+
+		_param_v_oc_init.set(_best_ecm_params_est(2));
+		_param_v_oc_init.commit_no_notification();
+
+		_param_bat1_r_internal.set(_best_ecm_params_est(3));
+		_param_bat1_r_internal.commit_no_notification();
+
+		_param_bat_saved = true;
+	}
+
+}
 
 int InternalRes::task_spawn(int argc, char *argv[])
 {

@@ -41,4 +41,51 @@
  * @min 0
  * @unit s
  */
-PARAM_DEFINE_FLOAT(RIN_UPDATE_TIME, 10.0);
+PARAM_DEFINE_FLOAT(BAT_RIN_UPDATE, 10.f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial estimate of voltage open circuit in battery equivalent circuit model.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @unit V
+ */
+PARAM_DEFINE_FLOAT(BAT_VOC_INIT, 22.1f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial estimate of series ohmic resistor in battery equivalent circuit model.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_R_S_INIT, 0.1f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial estimate of ohmic resistor in RC network of battery equivalent circuit model.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_R_T_INIT, 0.05f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial estimate of capacitance in RC network of battery equivalent circuit model.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @unit F
+ */
+PARAM_DEFINE_FLOAT(BAT_C_T_INIT, 500.0f);
+
+
+//******TODO change to per cell estimates*****//

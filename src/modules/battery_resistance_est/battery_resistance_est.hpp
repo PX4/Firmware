@@ -36,7 +36,7 @@
  *
  * Estimator for the battery internal resistance parameter to run online using only the current and voltage data​.
  *
- * @author Mohamad Akkawi	<akkawi@protonmail.ch>
+ * @author Mohamad Akkawi	<akkawi@protonmail.com>
  *
  * Implementation based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
  * batteries in electric vehicles' by Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
@@ -58,6 +58,8 @@
 
 #include <matrix/math.hpp>
 
+#include <uORB/topics/vehicle_status.h>
+
 using namespace matrix;
 
 class InternalRes : public ModuleBase<InternalRes>, public ModuleParams, public px4::WorkItem
@@ -76,9 +78,9 @@ public:
 
 	int print_status() override;
 
-	void update_internal_resistance(const float _voltage_estimation_error, const float internal_resistance);
+	void update_internal_resistance(const float _voltage_estimation_error, const Vector<float,4> _esm_params_est);
 
-	float extract_parameters();
+	Vector<float,4> extract_ecm_parameters();
 
 	float predict_voltage(const float dt);
 
@@ -87,39 +89,49 @@ private:
 
 	internal_resistance_s inter_res;
 	battery_status_s battery_status;
+	vehicle_status_s vehicle_status;
 
 	hrt_abstime _battery_time_prev;
 	hrt_abstime _battery_time;
 
 	hrt_abstime last_param_update_time;
 
-	const float r_s = 0.1f;
-	const float r_t = 0.05f;
-	const float c_t = 500.0f;
-	const float v_oc = 22.1f;
-
 	Vector<float, 4> _param_est;
 	Vector<float, 4> _adaptation_gain;
 	Vector<float, 4> signal;
+	Vector<float,4> _best_ecm_params_est;
 
 	float _lambda = 0.8f;
-	float _voltage_estimation = 22.0f;
+	float _voltage_estimation;
 
 	float _current_filtered_a = 0.f;
 	float _voltage_filtered_v;
 	float _current_filtered_a_prev;
 
-	float _best_internal_resistance_est = 0.f;
 	float best_prediction_error;
 	bool best_prediction_error_reset = true;
 
+	//used to save estimated ecm params on disarm
+	bool _armed = false;
+	bool _was_armed = false;
+	bool _on_standby = false;
+	bool _param_bat_saved = false;
+
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::SubscriptionCallbackWorkItem _battery_sub{this, ORB_ID(battery_status)};
 
 	uORB::Publication<internal_resistance_s> _internal_res_pub{ORB_ID(internal_resistance)};
 
 	DEFINE_PARAMETERS(
-	(ParamFloat<px4::params::RIN_UPDATE_TIME>) _inter_res_update_period
+	(ParamFloat<px4::params::BAT1_R_INTERNAL>) _param_bat1_r_internal,
+	(ParamFloat<px4::params::BAT1_V_CHARGED>) _param_bat1_v_charged,
+	(ParamInt<px4::params::BAT1_N_CELLS>) _param_bat1_n_cells,
+	(ParamFloat<px4::params::BAT_VOC_INIT>) _param_v_oc_init,
+	(ParamFloat<px4::params::BAT_R_S_INIT>) _param_r_s_init,
+	(ParamFloat<px4::params::BAT_R_T_INIT>) _param_r_t_init,
+	(ParamFloat<px4::params::BAT_C_T_INIT>) _param_c_t_init,
+	(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period
     	)
 
 };
