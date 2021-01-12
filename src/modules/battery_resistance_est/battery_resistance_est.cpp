@@ -56,6 +56,8 @@ bool InternalRes::init()
 	_adaptation_gain(2) = 0.0001f;
 	_adaptation_gain(3) = 0.0001f;
 
+	inter_res.best_r_internal_est = _best_internal_resistance_est;
+
 	return true;
 }
 
@@ -66,54 +68,52 @@ float InternalRes::extract_parameters() {
 	const float _voltage_open_circuit = _param_est(3)/_param_est(2);
 
 	//calculate bat1_r_internal
-	const float _internal_resistance = (_voltage_filtered_v - _voltage_open_circuit) / (-_current_filtered_a);
+	const float _internal_resistance_est = (_voltage_filtered_v - _voltage_open_circuit) / (-_current_filtered_a);
 
 	//logging
 	inter_res.r_transient = _r_transient;
 	inter_res.r_steady_state = _r_steady_state;
 	inter_res.voltage_open_circuit = _voltage_open_circuit;
-	inter_res.bat1_r_internal = _internal_resistance;
+	inter_res.r_internal_est = _internal_resistance_est;
 
-	return _internal_resistance;
+	return _internal_resistance_est;
 
 }
 
 
-void InternalRes::write_internal_resistance(const float _voltage_estimation_error, const float _internal_resistance){
+void InternalRes::update_internal_resistance(const float _voltage_estimation_error, const float _internal_resistance_est){
 
 	//store best esimate
 	if((abs(_voltage_estimation_error)) <= abs(best_prediction_error))
 	{
-		best_prediction = _internal_resistance;
+		_best_internal_resistance_est = _internal_resistance_est;
 		best_prediction_error = _voltage_estimation_error;
 	} else if (best_prediction_error_reset){
-		best_prediction = _internal_resistance;
+		_best_internal_resistance_est = _internal_resistance_est;
 		best_prediction_error = _voltage_estimation_error;
 		best_prediction_error_reset = false;
 	}
 
-	const float time_since_param_write = (hrt_absolute_time()- last_param_write_time)/ 1e6f;
+	const float time_since_param_update = (hrt_absolute_time()- last_param_update_time)/ 1e6f;
 
-	// save bat1_r_internal only periodically
-	if (time_since_param_write >= _inter_res_update_period.get()){
+	// publish new bat1_r_internal only periodically
+	if (time_since_param_update >= _inter_res_update_period.get()){
 
 		//BAT${i}_R_INTERNAL  increment: 0.01
-		best_prediction = round(best_prediction*100)/100;
+		_best_internal_resistance_est = round(_best_internal_resistance_est*100)/100;
 
-		//clamp BAT${i}_R_INTERNAL min: -1.0  max: 0.2
-		if (best_prediction > 0.2f){
-	    		best_prediction = 0.2f;
-		} else if (best_prediction < -1.0f){
-	    		best_prediction = -1.0f;
+		//clamp BAT1_R_INTERNAL
+		if (_best_internal_resistance_est > 0.2f){
+	    		_best_internal_resistance_est = 0.2f;
+		} else if (_best_internal_resistance_est < 0.01f){
+	    		_best_internal_resistance_est = 0.01f;
 		}
 
 		//Set px4 Internal resistance using simplified Rint Model
-		_bat1_r_internal.set(best_prediction);
-		_bat1_r_internal.commit();
-		last_param_write_time = hrt_absolute_time();
+		inter_res.best_r_internal_est = _best_internal_resistance_est;
+		last_param_update_time = hrt_absolute_time();
 		best_prediction_error_reset = true;
 	}
-
 }
 
 float InternalRes::predict_voltage(const float dt){
@@ -168,7 +168,7 @@ void InternalRes::Run()
 
 		const float _internal_resistance = extract_parameters();
 
-		write_internal_resistance(_voltage_estimation_error, _internal_resistance);
+		update_internal_resistance(_voltage_estimation_error, _internal_resistance);
 
 		//update the vector of parameters using the adaptive law
 		for (int i = 0; i < 4; i++) {
@@ -236,9 +236,8 @@ int InternalRes::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-module to PX4 which uses ​only the current and voltage data​ to periodically re-estimate the
-battery internal resistance. The estimate should then be written to the BAT1_R_INTERNAL
-parameter. Implementation based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
+module uses current and voltage data​ to online estimate the
+battery internal resistance. Implementation based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
 batteries in electric vehicles' by Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
 )DESCR_STR");
 

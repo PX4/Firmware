@@ -26,9 +26,9 @@ param set SDLOG_DIRS_MAX 7
 # apply all params before ekf starts, as some params cannot be changed after startup
 replay tryapplyparams
 ekf2 start -r
-if param greater -s RIN_ENABLED 0
-then
+#if param greater -s RIN_ENABLED 0
+#then
 	battery_resistance_est start
-fi
+#fi
 logger start -f -t -b 1000 -p vehicle_attitude
 replay start

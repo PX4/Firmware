@@ -34,17 +34,6 @@
 /**
  * Battery internal resistance online estimator
  *
- * Enables battery_resistance_est module. Set 0 to disable.
- *
- * @group Battery Calibration
- * @reboot_required true
- * @min 0
- * @max 1
- */
-PARAM_DEFINE_INT32(RIN_ENABLED, 1);
-/**
- * Battery internal resistance online estimator
- *
  * Update period of BAT1_R_INTERNAL.
  *
  * @group Battery Calibration

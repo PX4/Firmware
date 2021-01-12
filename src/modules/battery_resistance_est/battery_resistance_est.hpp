@@ -76,7 +76,7 @@ public:
 
 	int print_status() override;
 
-	void write_internal_resistance(const float _voltage_estimation_error, const float internal_resistance);
+	void update_internal_resistance(const float _voltage_estimation_error, const float internal_resistance);
 
 	float extract_parameters();
 
@@ -89,10 +89,9 @@ private:
 	battery_status_s battery_status;
 
 	hrt_abstime _battery_time_prev;
-
 	hrt_abstime _battery_time;
 
-	hrt_abstime last_param_write_time;
+	hrt_abstime last_param_update_time;
 
 	const float r_s = 0.1f;
 	const float r_t = 0.05f;
@@ -106,11 +105,11 @@ private:
 	float _lambda = 0.8f;
 	float _voltage_estimation = 22.0f;
 
-	float _current_filtered_a = 0;
+	float _current_filtered_a = 0.f;
 	float _voltage_filtered_v;
 	float _current_filtered_a_prev;
 
-	float best_prediction;
+	float _best_internal_resistance_est = 0.f;
 	float best_prediction_error;
 	bool best_prediction_error_reset = true;
 
@@ -120,8 +119,6 @@ private:
 	uORB::Publication<internal_resistance_s> _internal_res_pub{ORB_ID(internal_resistance)};
 
 	DEFINE_PARAMETERS(
-        (ParamFloat<px4::params::BAT1_R_INTERNAL>) _bat1_r_internal,
-	(ParamInt<px4::params::RIN_ENABLED>) _inter_res_en,
 	(ParamFloat<px4::params::RIN_UPDATE_TIME>) _inter_res_update_period
     	)
 
