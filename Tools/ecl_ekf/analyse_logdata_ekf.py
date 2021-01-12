@@ -14,13 +14,14 @@ from analysis.checks import perform_ecl_ekf_checks
 from analysis.post_processing import get_estimator_check_flags
 
 def analyse_ekf(
-        ulog: ULog, check_levels: Dict[str, float], red_thresh: float = 1.0,
-        amb_thresh: float = 0.5, min_flight_duration_seconds: float = 5.0,
+        ulog: ULog, check_levels: Dict[str, float], multi_instance: int = 0,
+        red_thresh: float = 1.0, amb_thresh: float = 0.5, min_flight_duration_seconds: float = 5.0,
         in_air_margin_seconds: float = 5.0, pos_checks_when_sensors_not_fused: bool = False) -> \
         Tuple[str, Dict[str, str], Dict[str, float], Dict[str, float]]:
     """
     :param ulog:
     :param check_levels:
+    :param multi_instance:
     :param red_thresh:
     :param amb_thresh:
     :param min_flight_duration_seconds:
@@ -30,16 +31,19 @@ def analyse_ekf(
     """
 
     try:
-        estimator_status = ulog.get_dataset('estimator_status').data
-        print('found estimator_status data')
+        estimator_states = ulog.get_dataset('estimator_states', multi_instance).data
     except:
-        raise PreconditionError('could not find estimator_status data')
+        raise PreconditionError('could not find estimator_states instance', multi_instance)
 
     try:
-        _ = ulog.get_dataset('estimator_innovations').data
-        print('found estimator_innovations data')
+        estimator_status = ulog.get_dataset('estimator_status', multi_instance).data
     except:
-        raise PreconditionError('could not find estimator_innovations data')
+        raise PreconditionError('could not find estimator_status instance', multi_instance)
+
+    try:
+        _ = ulog.get_dataset('estimator_innovations', multi_instance).data
+    except:
+        raise PreconditionError('could not find estimator_innovations instance', multi_instance)
 
     try:
         in_air = InAirDetector(
@@ -65,7 +69,7 @@ def analyse_ekf(
 
     metrics = calculate_ecl_ekf_metrics(
         ulog, innov_flags, innov_fail_checks, sensor_checks, in_air, in_air_no_ground_effects,
-        red_thresh=red_thresh, amb_thresh=amb_thresh)
+        multi_instance, red_thresh=red_thresh, amb_thresh=amb_thresh)
 
     check_status, master_status = perform_ecl_ekf_checks(
         metrics, sensor_checks, innov_fail_checks, check_levels)

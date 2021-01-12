@@ -58,8 +58,8 @@
 #include <nuttx/semaphore.h>
 #include <nuttx/spi/qspi.h>
 
-#include "up_internal.h"
-#include "up_arch.h"
+#include "arm_internal.h"
+#include "arm_arch.h"
 #include "barriers.h"
 
 #include "stm32_gpio.h"
@@ -377,12 +377,12 @@ static const struct qspi_ops_s g_qspi0ops = { .lock = qspi_lock, .setfrequency =
 static struct stm32h7_qspidev_s g_qspi0dev = { .qspi = { .ops = &g_qspi0ops, },
 	       .base = STM32_QUADSPI_BASE,
 #ifdef CONFIG_STM32H7_QSPI_INTERRUPTS
-		handler = qspi0_interrupt,
-		.irq = STM32_IRQ_QUADSPI,
+	       handler = qspi0_interrupt,
+	       .irq = STM32_IRQ_QUADSPI,
 #endif
-		 .intf = 0,
+	       .intf = 0,
 #ifdef CONFIG_STM32H7_QSPI_DMA
-		  .candma = true,
+	       .candma = true,
 #endif
 };
 

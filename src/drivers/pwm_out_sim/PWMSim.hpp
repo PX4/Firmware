@@ -44,6 +44,8 @@
 #include <px4_platform_common/time.h>
 #include <uORB/topics/parameter_update.h>
 
+using namespace time_literals;
+
 class PWMSim : public cdev::CDev, public ModuleBase<PWMSim>, public OutputModuleInterface
 {
 public:
@@ -76,7 +78,6 @@ private:
 	static constexpr uint16_t PWM_SIM_PWM_MAX_MAGIC = 2000;
 
 	MixingOutput _mixing_output{MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, false, false};
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
-
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 };
 

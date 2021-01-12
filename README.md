@@ -1,20 +1,20 @@
 # PX4 Drone Autopilot
 
-[![Releases](https://img.shields.io/github/release/PX4/Firmware.svg)](https://github.com/PX4/Firmware/releases) [![DOI](https://zenodo.org/badge/22634/PX4/Firmware.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/Firmware)
+[![Releases](https://img.shields.io/github/release/PX4/PX4-Autopilot.svg)](https://github.com/PX4/PX4-Autopilot/releases) [![DOI](https://zenodo.org/badge/22634/PX4/PX4-Autopilot.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/PX4-Autopilot)
 
-[![Nuttx Targets](https://github.com/PX4/Firmware/workflows/Nuttx%20Targets/badge.svg)](https://github.com/PX4/Firmware/actions?query=workflow%3A%22Nuttx+Targets%22?branch=master) [![SITL Tests](https://github.com/PX4/Firmware/workflows/SITL%20Tests/badge.svg?branch=master)](https://github.com/PX4/Firmware/actions?query=workflow%3A%22SITL+Tests%22)
+[![Nuttx Targets](https://github.com/PX4/PX4-Autopilot/workflows/Nuttx%20Targets/badge.svg)](https://github.com/PX4/PX4-Autopilot/actions?query=workflow%3A%22Nuttx+Targets%22?branch=master) [![SITL Tests](https://github.com/PX4/PX4-Autopilot/workflows/SITL%20Tests/badge.svg?branch=master)](https://github.com/PX4/PX4-Autopilot/actions?query=workflow%3A%22SITL+Tests%22)
 
 [![Slack](https://px4-slack.herokuapp.com/badge.svg)](http://slack.px4.io)
 
-This repository holds the [PX4](http://px4.io) flight control solution for drones, with the main applications located in the [src/modules](https://github.com/PX4/Firmware/tree/master/src/modules) directory. It also contains the PX4 Drone Middleware Platform, which provides drivers and middleware to run drones.
+This repository holds the [PX4](http://px4.io) flight control solution for drones, with the main applications located in the [src/modules](https://github.com/PX4/PX4-Autopilot/tree/master/src/modules) directory. It also contains the PX4 Drone Middleware Platform, which provides drivers and middleware to run drones.
 
-* Official Website: http://px4.io (License: BSD 3-clause, [LICENSE](https://github.com/PX4/Firmware/blob/master/LICENSE))
+* Official Website: http://px4.io (License: BSD 3-clause, [LICENSE](https://github.com/PX4/PX4-Autopilot/blob/master/LICENSE))
 * [Supported airframes](https://docs.px4.io/master/en/airframes/airframe_reference.html) ([portfolio](http://px4.io/#airframes)):
   * [Multicopters](https://docs.px4.io/master/en/airframes/airframe_reference.html#copter)
   * [Fixed wing](https://docs.px4.io/master/en/airframes/airframe_reference.html#plane)
   * [VTOL](https://docs.px4.io/master/en/airframes/airframe_reference.html#vtol)
   * many more experimental types (Rovers, Blimps, Boats, Submarines, Autogyros, etc)
-* Releases: [Downloads](https://github.com/PX4/Firmware/releases)
+* Releases: [Downloads](https://github.com/PX4/PX4-Autopilot/releases)
 
 
 ## PX4 Users
@@ -40,32 +40,43 @@ The PX4 Dev Team syncs up on a [weekly dev call](https://dev.px4.io/master/en/co
 
 ## Maintenance Team
 
-  * Project: Founder - [Lorenz Meier](https://github.com/LorenzMeier), Architecture: [Daniel Agar](https://github.com/dagar)
-    * [Dev Call](https://github.com/PX4/Firmware/labels/devcall) - [Ramon Roche](https://github.com/mrpollo)
+  * Project: Founder
+    * [Lorenz Meier](https://github.com/LorenzMeier)
+  * Architecture
+    * [Daniel Agar](https://github.com/dagar)
+  * [Dev Call](https://github.com/PX4/PX4-Autopilot/labels/devcall)
+    * [Ramon Roche](https://github.com/mrpollo)
   * Communication Architecture
     * [Beat Kueng](https://github.com/bkueng)
     * [Julian Oes](https://github.com/JulianOes)
   * UI in QGroundControl
     * [Gus Grubba](https://github.com/dogmaphobic)
-  * [Multicopter Flight Control](https://github.com/PX4/Firmware/labels/multicopter)
+  * [Multicopter Flight Control](https://github.com/PX4/PX4-Autopilot/labels/multicopter)
     * [Mathieu Bresciani](https://github.com/bresch)
-  * [Multicopter Software Architecture](https://github.com/PX4/Firmware/labels/multicopter)
+  * [Multicopter Software Architecture](https://github.com/PX4/PX4-Autopilot/labels/multicopter)
     * [Matthias Grob](https://github.com/MaEtUgR)
-  * [VTOL Flight Control](https://github.com/PX4/Firmware/labels/vtol)
+  * [VTOL Flight Control](https://github.com/PX4/PX4-Autopilot/labels/vtol)
     * [Roman Bapst](https://github.com/RomanBapst)
-  * [Fixed Wing Flight Control](https://github.com/PX4/Firmware/labels/fixedwing)
+  * [Fixed Wing Flight Control](https://github.com/PX4/PX4-Autopilot/labels/fixedwing)
     * [Roman Bapst](https://github.com/RomanBapst)
-  * OS / NuttX [David Sidrane](https://github.com/davids5)
-  * Driver Architecture [Daniel Agar](https://github.com/dagar)
-  * Commander Architecture [Julian Oes](https://github.com/julianoes)
-  * [UAVCAN](https://github.com/PX4/Firmware/labels/uavcan) [Daniel Agar](https://github.com/dagar)
-  * [State Estimation](https://github.com/PX4/Firmware/issues?q=is%3Aopen+is%3Aissue+label%3A%22state+estimation%22) - [Paul Riseborough](https://github.com/priseborough)
+  * OS / NuttX
+    * [David Sidrane](https://github.com/davids5)
+  * Driver Architecture
+    * [Daniel Agar](https://github.com/dagar)
+  * Commander Architecture
+    * [Julian Oes](https://github.com/julianoes)
+  * [UAVCAN](https://github.com/PX4/PX4-Autopilot/labels/uavcan)
+    * [Daniel Agar](https://github.com/dagar)
+  * [State Estimation](https://github.com/PX4/PX4-Autopilot/issues?q=is%3Aopen+is%3Aissue+label%3A%22state+estimation%22)
+    * [Paul Riseborough](https://github.com/priseborough)
   * Vision based navigation
     * [Julian Kent](https://github.com/jkflying)
-  * Obstacle Avoidance - [Martina Rivizzigno](https://github.com/mrivi)
-  * RTPS/ROS2 Interface - [Nuno Marques](https://github.com/TSC21)
+  * Obstacle Avoidance
+    * [Martina Rivizzigno](https://github.com/mrivi)
+  * RTPS/ROS2 Interface
+    * [Nuno Marques](https://github.com/TSC21)
 
-See also [maintainers list](https://px4.io/community/maintainers/) (px4.io) and the [contributors list](https://github.com/PX4/Firmware/graphs/contributors) (Github).
+See also [maintainers list](https://px4.io/community/maintainers/) (px4.io) and the [contributors list](https://github.com/PX4/PX4-Autopilot/graphs/contributors) (Github).
 
 ## Supported Hardware
 

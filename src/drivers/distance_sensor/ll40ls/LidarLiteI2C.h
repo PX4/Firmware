@@ -94,7 +94,7 @@ static constexpr uint32_t LL40LS_CONVERSION_TIMEOUT{100_ms};
 class LidarLiteI2C : public device::I2C, public I2CSPIDriver<LidarLiteI2C>
 {
 public:
-	LidarLiteI2C(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency,
+	LidarLiteI2C(I2CSPIBusOption bus_option, const int bus, const uint8_t orientation, int bus_frequency,
 		     const int address = LL40LS_BASEADDR);
 	virtual ~LidarLiteI2C();
 

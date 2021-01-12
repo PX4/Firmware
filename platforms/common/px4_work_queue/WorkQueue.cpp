@@ -106,6 +106,15 @@ void WorkQueue::Detach(WorkItem *item)
 void WorkQueue::Add(WorkItem *item)
 {
 	work_lock();
+
+#if defined(ENABLE_LOCKSTEP_SCHEDULER)
+
+	if (_lockstep_component == -1) {
+		_lockstep_component = px4_lockstep_register_component();
+	}
+
+#endif // ENABLE_LOCKSTEP_SCHEDULER
+
 	_q.push(item);
 	work_unlock();
 
@@ -157,6 +166,15 @@ void WorkQueue::Run()
 			// Note: after Run() we cannot access work anymore, as it might have been deleted
 			work_lock(); // re-lock
 		}
+
+#if defined(ENABLE_LOCKSTEP_SCHEDULER)
+
+		if (_q.empty()) {
+			px4_lockstep_unregister_component(_lockstep_component);
+			_lockstep_component = -1;
+		}
+
+#endif // ENABLE_LOCKSTEP_SCHEDULER
 
 		work_unlock();
 	}

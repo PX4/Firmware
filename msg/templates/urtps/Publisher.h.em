@@ -101,7 +101,7 @@ class @(topic)_Publisher
 public:
     @(topic)_Publisher();
     virtual ~@(topic)_Publisher();
-    bool init();
+    bool init(const std::string& ns);
     void run();
     void publish(@(topic)_msg_t* st);
 private:

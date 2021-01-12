@@ -159,7 +159,7 @@ void init()
 	rMOD      = 0;  // Default the timer to a modulo value of 1; playing notes will change this.
 }
 
-void start_note(unsigned frequency)
+hrt_abstime start_note(unsigned frequency)
 {
 	// Calculate the signal switching period.
 	// (Signal switching period is one half of the frequency period).
@@ -173,7 +173,12 @@ void start_note(unsigned frequency)
 	rSC |= (TPM_SC_CMOD_LPTPM_CLK);
 
 	// Configure the GPIO to enable timer output.
+	irqstate_t flags = enter_critical_section();
+	hrt_abstime time_started = hrt_absolute_time();
 	px4_arch_configgpio(GPIO_TONE_ALARM);
+	leave_critical_section(flags);
+
+	return time_started;
 }
 
 void stop_note()

@@ -92,7 +92,7 @@ using @(topic)_msg_t = @(topic);
 
 class RtpsTopics {
 public:
-    bool init(std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue);
+    bool init(std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue, const std::string& ns);
     void set_timesync(const std::shared_ptr<TimeSync>& timesync) { _timesync = timesync; };
 @[if send_topics]@
     void publish(uint8_t topic_ID, char data_buffer[], size_t len);

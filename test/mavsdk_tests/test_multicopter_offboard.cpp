@@ -31,12 +31,8 @@
  *
  ****************************************************************************/
 
-#include <mavsdk/mavsdk.h>
-#include <mavsdk/plugins/action/action.h>
-#include <mavsdk/plugins/telemetry/telemetry.h>
-#include <iostream>
-#include <string>
 #include "autopilot_tester.h"
+#include <chrono>
 
 
 TEST_CASE("Offboard takeoff and land", "[multicopter][offboard][nogps]")
@@ -47,10 +43,10 @@ TEST_CASE("Offboard takeoff and land", "[multicopter][offboard][nogps]")
 	tester.wait_until_ready_local_position_only();
 	tester.store_home();
 	tester.arm();
-	std::chrono::seconds goto_timeout = std::chrono::seconds(20);
+	std::chrono::seconds goto_timeout = std::chrono::seconds(90);
 	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
 	tester.offboard_land();
-	tester.wait_until_disarmed(goto_timeout);
+	tester.wait_until_disarmed(std::chrono::seconds(120));
 	tester.check_home_within(1.0f);
 }
 
@@ -65,13 +61,13 @@ TEST_CASE("Offboard position control", "[multicopter][offboard][nogps]")
 	tester.wait_until_ready_local_position_only();
 	tester.store_home();
 	tester.arm();
-	std::chrono::seconds goto_timeout = std::chrono::seconds(20);
+	std::chrono::seconds goto_timeout = std::chrono::seconds(90);
 	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
 	tester.offboard_goto(setpoint_1, 0.1f, goto_timeout);
 	tester.offboard_goto(setpoint_2, 0.1f, goto_timeout);
 	tester.offboard_goto(setpoint_3, 0.1f, goto_timeout);
 	tester.offboard_goto(takeoff_position, 0.1f, goto_timeout);
 	tester.offboard_land();
-	tester.wait_until_disarmed(goto_timeout);
+	tester.wait_until_disarmed(std::chrono::seconds(120));
 	tester.check_home_within(1.0f);
 }

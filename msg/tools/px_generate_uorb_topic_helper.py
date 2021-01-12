@@ -150,9 +150,7 @@ def get_children_fields(base_type, search_path):
     tmp_msg_context = genmsg.msg_loader.MsgContext.create_default()
     spec_temp = genmsg.msg_loader.load_msg_by_type(
         tmp_msg_context, '%s/%s' % (package, name), search_path)
-    sorted_fields = sorted(spec_temp.parsed_fields(),
-                           key=sizeof_field_type, reverse=True)
-    return sorted_fields
+    return spec_temp.parsed_fields()
 
 
 def add_padding_bytes(fields, search_path):
@@ -317,6 +315,17 @@ def print_field(field):
         print("char baro_device_id_buffer[80];")
         print("device::Device::device_id_print_buffer(baro_device_id_buffer, sizeof(baro_device_id_buffer), message.baro_device_id);")
         print("PX4_INFO_RAW(\"\\tbaro_device_id: %d (%s) \\n\", message.baro_device_id, baro_device_id_buffer);")
+    elif field.name == 'mag_device_id':
+        print("char mag_device_id_buffer[80];")
+        print("device::Device::device_id_print_buffer(mag_device_id_buffer, sizeof(mag_device_id_buffer), message.mag_device_id);")
+        print("PX4_INFO_RAW(\"\\tmag_device_id: %d (%s) \\n\", message.mag_device_id, mag_device_id_buffer);")
+    elif (field.name == 'q' or 'q_' in field.name) and field.type == 'float32[4]':
+        # float32[4] q/q_d/q_reset/delta_q_reset
+        print("{")
+        print("\t\tmatrix::Eulerf euler{matrix::Quatf{message." + field.name + "}};")
+        print("\t\tPX4_INFO_RAW(\"\\t" + field.name + ": " + c_type + "  (Roll: %.1f deg, Pitch: %.1f deg, Yaw: %.1f deg" ")\\n\", " + field_name + ", (double)math::degrees(euler(0)), (double)math::degrees(euler(1)), (double)math::degrees(euler(2)));\n\t")
+        print("\t}")
+
     elif ("flags" in field.name or "bits" in field.name) and "uint" in field.type:
         # print bits of fixed width unsigned integers (uint8, uint16, uint32) if name contains flags or bits
         print("PX4_INFO_RAW(\"\\t" + field.name + ": " + c_type + " (0b\", " + field_name + ");")

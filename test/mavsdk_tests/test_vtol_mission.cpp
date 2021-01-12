@@ -31,11 +31,6 @@
  *
  ****************************************************************************/
 
-#include <mavsdk/mavsdk.h>
-#include <mavsdk/plugins/action/action.h>
-#include <mavsdk/plugins/telemetry/telemetry.h>
-#include <iostream>
-#include <string>
 #include "autopilot_tester.h"
 
 

@@ -33,8 +33,46 @@
 #
 ############################################################################
 
+# Set flags for the NuttX build system for Cygwin
+# They are already used by Config.mk
+ifneq (, $(findstring CYGWIN, $(shell uname)))
+  CONFIG_HOST_CYGWIN := y
+  CONFIG_WINDOWS_CYGWIN := y
+  CONFIG_CYGWIN_WINTOOL := y
+endif
+
 include $(TOPDIR)/.config
 include $(TOPDIR)/tools/Config.mk
+
+# Replace each space separated word in the string that contains "cygdrive"
+# with the windows path and escaped backslashes
+# e.g. [hello -I /cygdrive/c -I/cygdrive/c] -> [hello -I C:\\ ]
+define cygwin_to_windows_paths
+$(subst \,\\,$(foreach word,$(1),$(shell \
+if [[ "$(word)" == *"cygdrive"* ]]; then \
+  cygpath -w "$(word)"; \
+else \
+  echo $(word); \
+fi \
+)))
+endef
+
+CINCPATH := $(shell $(INCDIR) -s "$(CC)" $(TOPDIR)$(DELIM)include)
+CXXINCPATH := $(shell $(INCDIR) -s "$(CC)" $(TOPDIR)$(DELIM)include$(DELIM)cxx)
+
+ARCHINCLUDES += $(CINCPATH)
+ARCHXXINCLUDES += $(CINCPATH) $(CXXINCPATH)
+ARCHSCRIPT = -T$(BOARD_DIR)$(DELIM)scripts$(DELIM)flash.ld
+
+ifeq ($(CONFIG_BOARD_USE_PROBES),y)
+   ARCHINCLUDES += -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP) -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/common
+   ARCHXXINCLUDES += -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP) -I $(TOPDIR)/arch/$(CONFIG_ARCH)/src/common
+endif
+
+ifneq (, $(findstring CYGWIN, $(shell uname)))
+  ARCHINCLUDES := $(call cygwin_to_windows_paths,$(ARCHINCLUDES))
+  ARCHXXINCLUDES := $(call cygwin_to_windows_paths,$(ARCHXXINCLUDES))
+endif
 
 CC = ${CMAKE_C_COMPILER}
 CXX = ${CMAKE_CXX_COMPILER}
@@ -46,28 +84,8 @@ NM = ${CMAKE_NM}
 OBJCOPY = ${CMAKE_OBJCOPY}
 OBJDUMP = ${CMAKE_OBJDUMP}
 
-# Include paths with Cygwin path conversion
-ifneq (, $(findstring CYGWIN, $(shell uname)))
-  WINTOOL = y
-  ARCHINCLUDES = -I. -isystem "$(shell cygpath -w $(TOPDIR)/include)"
-  ARCHXXINCLUDES = $(ARCHINCLUDES) -isystem "$(shell cygpath -w $(TOPDIR)/include/cxx)"
-else
-  MKDEP = $(TOPDIR)/tools/mkdeps$(HOSTEXEEXT)
-  ARCHINCLUDES = -I. -isystem $(TOPDIR)/include
-  ARCHXXINCLUDES = $(ARCHINCLUDES) -isystem $(TOPDIR)/include/cxx
-endif
-
-# Windows toolchain (MSYS & Cygwin) symbolic link handling
-ifeq ($(WINTOOL),y)
-  DIRLINK = $(TOPDIR)/tools/copydir.sh
-  DIRUNLINK = $(TOPDIR)/tools/unlink.sh
-  MKDEP = $(TOPDIR)/tools/mknulldeps.sh
-endif
-
-ifeq ($(CONFIG_BOARD_USE_PROBES),y)
-   ARCHINCLUDES += -I$(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP)
-   ARCHXXINCLUDES += -I$(TOPDIR)/arch/$(CONFIG_ARCH)/src/$(CONFIG_ARCH_CHIP)
-endif
+ARCHCCVERSION = $(shell $(CC) -v 2>&1 | sed -n '/^gcc version/p' | sed -e 's/^gcc version \([0-9\.]\)/\1/g' -e 's/[-\ ].*//g' -e '1q')
+ARCHCCMAJOR = $(shell echo $(ARCHCCVERSION) | cut -d'.' -f1)
 
 ifeq ($(CONFIG_DEBUG_CUSTOMOPT),y)
    MAXOPTIMIZATION = $(CONFIG_DEBUG_OPTLEVEL)
@@ -96,6 +114,8 @@ FLAGS = $(MAXOPTIMIZATION) -g2 \
 	-Wno-unused-parameter \
 	-Wpointer-arith
 
+FLAGS += $(EXTRAFLAGS)
+
 # enable precise stack overflow tracking
 ifeq ($(CONFIG_ARMV7M_STACKCHECK),y)
 	FLAGS += -finstrument-functions -ffixed-r10
@@ -117,7 +137,8 @@ CFLAGS = $(ARCHINCLUDES) \
 	-Wno-nonnull-compare \
 	-Wno-old-style-declaration \
 	-Wno-sign-compare \
-	-Wno-type-limits
+	-Wno-type-limits \
+	${CMAKE_C_COMP_DEP_FLAGS}
 
 CXXFLAGS = $(ARCHXXINCLUDES) \
 	-std=c++14 \
@@ -133,7 +154,7 @@ CXXFLAGS = $(ARCHXXINCLUDES) \
 	-Wno-double-promotion \
 	-Wno-missing-declarations
 
-CPPFLAGS = $(ARCHINCLUDES) $(ARCHDEFINES) $(EXTRADEFINES)
+CPPFLAGS = $(ARCHINCLUDES) $(ARCHDEFINES) $(EXTRAFLAGS)
 AFLAGS = $(CFLAGS) -D__ASSEMBLY__
 
 ASMEXT = .S
@@ -154,5 +175,5 @@ define ASSEMBLE
 endef
 
 define ARCHIVE
-	$(Q) $(AR) $1 $(2)
+    $(AR) $1 $(2)
 endef

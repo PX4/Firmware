@@ -39,7 +39,6 @@
 #include <systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_baro.h>
-#include <uORB/topics/subsystem_info.h>
 
 using namespace time_literals;
 
@@ -47,29 +46,28 @@ bool PreFlightCheck::baroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 			       const bool optional, int32_t &device_id, const bool report_fail)
 {
 	const bool exists = (orb_exists(ORB_ID(sensor_baro), instance) == PX4_OK);
-	bool baro_valid = false;
+	bool valid = false;
 
 	if (exists) {
 		uORB::SubscriptionData<sensor_baro_s> baro{ORB_ID(sensor_baro), instance};
 
-		baro_valid = (hrt_elapsed_time(&baro.get().timestamp) < 1_s);
+		valid = (baro.get().device_id != 0) && (baro.get().timestamp != 0);
 
-		if (!baro_valid) {
+		if (!valid) {
 			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Baro #%u", instance);
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Baro %u", instance);
 			}
 		}
 
-
 	} else {
 		if (!optional && report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Baro Sensor #%u missing", instance);
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Baro Sensor %u missing", instance);
 		}
 	}
 
 	if (instance == 0) {
-		set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_ABSPRESSURE, exists, !optional, baro_valid, status);
+		set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_ABSPRESSURE, exists, !optional, valid, status);
 	}
 
-	return baro_valid;
+	return valid;
 }

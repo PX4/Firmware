@@ -159,6 +159,9 @@ bool VersioningTest::run_tests()
 	ut_assert_true(_test_tag_to_version_number("v1.8.2dev4-dirty", 					0x01080200, 0x00000000));
 	ut_assert_true(_test_tag_to_version_number("v1.8.2dev4-67-g1d5e979-dirty", 		0x01080200, 0x00000000));
 
+	//TODO: fix me, this is unexpected behavior
+	ut_assert_true(_test_tag_to_version_number("v1.6.2-rc2-1.2.3-rc3", 				0x01060200, 0x00000000));
+
 	return (_tests_failed == 0);
 }
 

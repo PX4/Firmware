@@ -11,12 +11,12 @@
             "servertype": "jlink",
             "interface": "swd",
             //"ipAddress": "server:19020",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceFolder}",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchCommands": [
-                "source ${workspaceRoot}/platforms/nuttx/Debug/PX4",
-                "source ${workspaceRoot}/platforms/nuttx/Debug/NuttX",
-                "source ${workspaceRoot}/platforms/nuttx/Debug/ARMv7M",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/PX4",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/NuttX",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/ARMv7M",
                 "set mem inaccessible-by-default off",
                 "set print pretty",
             ]
@@ -31,12 +31,12 @@
             "servertype": "bmp",
             "BMPGDBSerialPort": "/dev/ttyACM0",
             "interface": "swd",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceFolder}",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchCommands": [
-                "source ${workspaceRoot}/platforms/nuttx/Debug/PX4",
-                "source ${workspaceRoot}/platforms/nuttx/Debug/NuttX",
-                "source ${workspaceRoot}/platforms/nuttx/Debug/ARMv7M",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/PX4",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/NuttX",
+                "source ${workspaceFolder}/platforms/nuttx/Debug/ARMv7M",
                 "set mem inaccessible-by-default off",
                 "set print pretty",
             ]

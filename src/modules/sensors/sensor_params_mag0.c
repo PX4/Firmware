@@ -42,6 +42,7 @@ PARAM_DEFINE_INT32(CAL_MAG0_ID, 0);
 /**
  * Mag 0 priority.
  *
+ * @value -1  Uninitialized
  * @value 0   Disabled
  * @value 1   Min
  * @value 25  Low
@@ -52,16 +53,16 @@ PARAM_DEFINE_INT32(CAL_MAG0_ID, 0);
  * @category system
  * @group Sensor Calibration
  */
-PARAM_DEFINE_INT32(CAL_MAG0_PRIO, 50);
+PARAM_DEFINE_INT32(CAL_MAG0_PRIO, -1);
 
 /**
  * Rotation of magnetometer 0 relative to airframe.
  *
- * An internal magnetometer will force a value of -1, so a GCS
+ * An internal sensor will force a value of -1, so a GCS
  * should only attempt to configure the rotation if the value is
  * greater than or equal to zero.
  *
- * @value -1 Internal mag
+ * @value -1 Internal
  * @value 0 No rotation
  * @value 1 Yaw 45°
  * @value 2 Yaw 90°
@@ -103,14 +104,9 @@ PARAM_DEFINE_INT32(CAL_MAG0_PRIO, 50);
  * @value 38 Roll 90°, Pitch 68°, Yaw 293°
  * @value 39 Pitch 315°
  * @value 40 Roll 90°, Pitch 315°
- * @value 41 Roll 270°, Yaw 180°
- * @value 42 Roll 270°, Yaw 270°
- * @value 43 Pitch 90°, Yaw 180°
- * @value 44 Pitch 9°, Yaw 180°
- * @value 45 Pitch 45°
  *
  * @min -1
- * @max 45
+ * @max 40
  * @reboot_required true
  * @category system
  * @group Sensor Calibration

@@ -54,43 +54,39 @@
 
 using namespace time_literals;
 
-int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *armed)
+bool check_battery_disconnected(orb_advert_t *mavlink_log_pub)
 {
-	int	return_code = PX4_OK;
-	int	fd = -1;
-	bool	batt_connected = true;	// for safety reasons assume battery is connected, will be cleared below if not the case
-	hrt_abstime timeout_start = 0;
-
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
-
 	uORB::SubscriptionData<battery_status_s> batt_sub{ORB_ID(battery_status)};
 	const battery_status_s &battery = batt_sub.get();
-
 	batt_sub.update();
 
 	if (battery.timestamp == 0) {
 		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "battery unavailable");
-		return_code = PX4_ERROR;
-		goto Out;
+		return false;
 	}
 
 	// Make sure battery is disconnected
 	// battery is not connected if the connected flag is not set and we have a recent battery measurement
-	batt_sub.update();
-
 	if (!battery.connected && (hrt_elapsed_time(&battery.timestamp) < 500_ms)) {
-		batt_connected = false;
+		return true;
 	}
 
-	if (batt_connected) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
-		return_code = PX4_ERROR;
-		goto Out;
-	}
+	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
+	return false;
+}
 
-	armed->in_esc_calibration_mode = true;
+int do_esc_calibration(orb_advert_t *mavlink_log_pub)
+{
+	int	return_code = PX4_OK;
+	hrt_abstime timeout_start = 0;
+	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
 
-	fd = px4_open(PWM_OUTPUT0_DEVICE_PATH, 0);
+	uORB::SubscriptionData<battery_status_s> batt_sub{ORB_ID(battery_status)};
+	const battery_status_s &battery = batt_sub.get();
+	batt_sub.update();
+	bool batt_connected = battery.connected;
+
+	int fd = px4_open(PWM_OUTPUT0_DEVICE_PATH, 0);
 
 	if (fd < 0) {
 		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Can't open PWM device");
@@ -152,7 +148,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s *a
 			}
 		}
 
-		px4_usleep(50_ms);
+		px4_usleep(50000);
 	}
 
 Out:
@@ -172,8 +168,6 @@ Out:
 
 		px4_close(fd);
 	}
-
-	armed->in_esc_calibration_mode = false;
 
 	if (return_code == PX4_OK) {
 		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");

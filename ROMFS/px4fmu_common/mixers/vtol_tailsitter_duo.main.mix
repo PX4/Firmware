@@ -29,11 +29,9 @@ Channel 5 connects to the right (starboard) elevon.
 Channel 6 connects to the left (port) elevon.
 
 M: 2
-O:        7500    7500    0 -10000  10000
 S: 1 0   10000   10000    0 -10000  10000
 S: 1 1   10000   10000    0 -10000  10000
 
 M: 2
-O:        7500    7500    0 -10000  10000
 S: 1 0   10000   10000    0 -10000  10000
 S: 1 1  -10000  -10000    0 -10000  10000

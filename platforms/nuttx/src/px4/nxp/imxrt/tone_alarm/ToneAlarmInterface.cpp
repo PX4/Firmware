@@ -163,8 +163,9 @@ void init()
 #endif /* TONE_ALARM_TIMER */
 }
 
-void start_note(unsigned frequency)
+hrt_abstime start_note(unsigned frequency)
 {
+	hrt_abstime time_started = 0;
 #if defined(TONE_ALARM_TIMER)
 	float period = 0.5f / frequency;
 
@@ -182,8 +183,13 @@ void start_note(unsigned frequency)
 	rCR  |= GPT_CR_EN;
 
 	// configure the GPIO to enable timer output
+	irqstate_t flags = enter_critical_section();
+	time_started = hrt_absolute_time();
 	px4_arch_configgpio(GPIO_TONE_ALARM);
+	leave_critical_section(flags);
 #endif /* TONE_ALARM_TIMER */
+
+	return time_started;
 }
 
 void stop_note()

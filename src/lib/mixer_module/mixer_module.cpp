@@ -72,7 +72,7 @@ _control_latency_perf(perf_alloc(PC_ELAPSED, "control latency"))
 
 	// Enforce the existence of the test_motor topic, so we won't miss initial publications
 	test_motor_s test{};
-	uORB::PublicationQueued<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
+	uORB::Publication<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
 	test_motor_pub.publish(test);
 	_motor_test.test_motor_sub.subscribe();
 }
@@ -239,16 +239,26 @@ void MixingOutput::unregister()
 	}
 }
 
-void MixingOutput::updateOutputSlewrate()
+void MixingOutput::updateOutputSlewrateMultirotorMixer()
 {
 	const hrt_abstime now = hrt_absolute_time();
-	const float dt = math::constrain((now - _time_last_mix) / 1e6f, 0.0001f, 0.02f);
-	_time_last_mix = now;
+	const float dt = math::constrain((now - _time_last_dt_update_multicopter) / 1e6f, 0.0001f, 0.02f);
+	_time_last_dt_update_multicopter = now;
 
 	// maximum value the outputs of the multirotor mixer are allowed to change in this cycle
 	// factor 2 is needed because actuator outputs are in the range [-1,1]
 	const float delta_out_max = 2.0f * 1000.0f * dt / (_max_value[0] - _min_value[0]) / _param_mot_slew_max.get();
 	_mixers->set_max_delta_out_once(delta_out_max);
+}
+
+void MixingOutput::updateOutputSlewrateSimplemixer()
+{
+	const hrt_abstime now = hrt_absolute_time();
+	const float dt = math::constrain((now - _time_last_dt_update_simple_mixer) / 1e6f, 0.0001f, 0.02f);
+	_time_last_dt_update_simple_mixer = now;
+
+	// set dt for slew rate limiter in SimpleMixer (is reset internally after usig it, so needs to be set on every update)
+	_mixers->set_dt_once(dt);
 }
 
 
@@ -355,8 +365,10 @@ bool MixingOutput::update()
 	}
 
 	if (_param_mot_slew_max.get() > FLT_EPSILON) {
-		updateOutputSlewrate();
+		updateOutputSlewrateMultirotorMixer();
 	}
+
+	updateOutputSlewrateSimplemixer(); // update dt for output slew rate in simple mixer
 
 	unsigned n_updates = 0;
 

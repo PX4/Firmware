@@ -21,7 +21,7 @@
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.mc_defaults
 
 set MIXER quad_x
 set PWM_OUT 1234
@@ -77,7 +77,6 @@ then
 
 	param set BAT_SOURCE 0
 	param set CBRK_IO_SAFETY 22027
-	#param set COM_ARM_EKF_AB 0.005
 	#param set COM_DISARM_LAND 3
 
 	# Filter settings

@@ -10,13 +10,14 @@ px4_add_board(
 	IO px4_io-v2_default
 	TESTING
 	#UAVCAN_INTERFACES 2
+	CONSTRAINED_FLASH
 	SERIAL_PORTS
 		GPS1:/dev/ttyS0
 		TEL1:/dev/ttyS1
 		TEL2:/dev/ttyS2
 		TEL4:/dev/ttyS3
 	DRIVERS
-		adc
+		adc/board_adc
 		#barometer # all available barometer drivers
 		barometer/ms5611
 		#batt_smbus
@@ -70,6 +71,7 @@ px4_add_board(
 		ekf2
 		#esc_battery
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
@@ -100,6 +102,7 @@ px4_add_board(
 		hardfault_log
 		i2cdetect
 		led_control
+		mft
 		mixer
 		motor_ramp
 		motor_test
@@ -111,6 +114,7 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
+		system_time
 		tests # tests and test runner
 		top
 		topic_listener

@@ -48,8 +48,8 @@
 
 /* XXX might be able to prune these */
 #include <chip.h>
-#include <up_internal.h>
-#include <up_arch.h>
+#include <arm_internal.h>
+#include <arm_arch.h>
 #include <stm32.h>
 
 //#define DEBUG

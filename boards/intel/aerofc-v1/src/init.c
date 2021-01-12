@@ -80,7 +80,7 @@
  ****************************************************************************/
 
 /*
- * Ideally we'd be able to get these from up_internal.h,
+ * Ideally we'd be able to get these from arm_internal.h,
  * but since we want to be able to disable the NuttX use
  * of leds for system indication at will and there is no
  * separate switch, we need to build independent of the
@@ -218,6 +218,10 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	static dm_sector_descriptor_t dm_sector_map = {23, 128 * 1024, 0x081E0000};
 	dm_flash_sector_description_set(&dm_sector_map);
 #endif
+
+	/* Configure the HW based on the manifest */
+
+	px4_platform_configure();
 
 	return OK;
 }

@@ -36,13 +36,23 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 
+void LSM9DS1::print_usage()
+{
+	PRINT_MODULE_USAGE_NAME("lsm9ds1", "driver");
+	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
+	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+}
+
 I2CSPIDriverBase *LSM9DS1::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
 				       int runtime_instance)
 {
 	LSM9DS1 *instance = new LSM9DS1(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
 					cli.bus_frequency, cli.spi_mode);
 
-	if (instance == nullptr) {
+	if (!instance) {
 		PX4_ERR("alloc failed");
 		return nullptr;
 	}
@@ -55,23 +65,12 @@ I2CSPIDriverBase *LSM9DS1::instantiate(const BusCLIArguments &cli, const BusInst
 	return instance;
 }
 
-void
-LSM9DS1::print_usage()
-{
-	PRINT_MODULE_USAGE_NAME("lsm9ds1", "driver");
-	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
-	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
-	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
-}
-
-extern "C" __EXPORT int lsm9ds1_main(int argc, char *argv[])
+extern "C" int lsm9ds1_main(int argc, char *argv[])
 {
 	int ch;
 	using ThisDriver = LSM9DS1;
 	BusCLIArguments cli{false, true};
-	cli.default_spi_frequency = ST_LSM9DS1::SPI_SPEED;
+	cli.default_spi_frequency = SPI_SPEED;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {

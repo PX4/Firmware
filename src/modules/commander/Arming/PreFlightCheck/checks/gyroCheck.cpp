@@ -40,7 +40,6 @@
 #include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/sensor_gyro.h>
-#include <uORB/topics/subsystem_info.h>
 
 using namespace time_literals;
 
@@ -49,17 +48,17 @@ bool PreFlightCheck::gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 {
 	const bool exists = (orb_exists(ORB_ID(sensor_gyro), instance) == PX4_OK);
 	bool calibration_valid = false;
-	bool gyro_valid = false;
+	bool valid = false;
 
 	if (exists) {
 
 		uORB::SubscriptionData<sensor_gyro_s> gyro{ORB_ID(sensor_gyro), instance};
 
-		gyro_valid = (hrt_elapsed_time(&gyro.get().timestamp) < 1_s);
+		valid = (gyro.get().device_id != 0) && (gyro.get().timestamp != 0);
 
-		if (!gyro_valid) {
+		if (!valid) {
 			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Gyro #%u", instance);
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: no valid data from Gyro %u", instance);
 			}
 		}
 
@@ -69,22 +68,15 @@ bool PreFlightCheck::gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &
 
 		if (!calibration_valid) {
 			if (report_fail) {
-				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Gyro #%u uncalibrated", instance);
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Gyro %u uncalibrated", instance);
 			}
 		}
 
 	} else {
 		if (!optional && report_fail) {
-			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Gyro Sensor #%u missing", instance);
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Gyro Sensor %u missing", instance);
 		}
 	}
 
-	if (instance == 0) {
-		set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_GYRO, exists, !optional, calibration_valid && gyro_valid, status);
-
-	} else if (instance == 1) {
-		set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_GYRO2, exists, !optional, calibration_valid && gyro_valid, status);
-	}
-
-	return calibration_valid && gyro_valid;
+	return calibration_valid && valid;
 }

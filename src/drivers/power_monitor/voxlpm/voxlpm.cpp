@@ -316,9 +316,11 @@ VOXLPM::measure()
 		}
 	}
 
-	parameter_update_s update;
+	if (_parameter_update_sub.updated()) {
+		// Read from topic to clear updated flag
+		parameter_update_s parameter_update;
+		_parameter_update_sub.copy(&parameter_update);
 
-	if (_parameter_sub.update(&update)) {
 		updateParams();
 	}
 

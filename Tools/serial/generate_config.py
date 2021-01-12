@@ -130,6 +130,14 @@ serial_ports = {
         "default_baudrate": 0,
         },
 
+    # WIFI Port (PixRacer)
+    "WIFI": {
+        "label": "Wifi Port",
+        "index": 301,
+        "default_baudrate": 1, # set default to an unusable value to detect that this serial port has not been configured
+        },
+
+
     }
 
 parser = argparse.ArgumentParser(description='Generate Serial params & startup script')

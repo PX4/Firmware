@@ -11,6 +11,8 @@ pandas>=0.21
 pkgconfig
 psutil
 pygments
+wheel>=0.31.1
+pymavlink
 pyros-genmsg
 pyserial>=3.0
 pyulog>=0.5.0
@@ -19,4 +21,3 @@ requests
 setuptools>=39.2.0
 six>=1.12.0
 toml>=0.9
-wheel>=0.31.1

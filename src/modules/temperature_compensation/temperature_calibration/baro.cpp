@@ -87,6 +87,13 @@ int TemperatureCalibrationBaro::update_sensor_instance(PerSensorData &data, int 
 		return 0;
 	}
 
+	if (PX4_ISFINITE(baro_data.temperature)) {
+		data.has_valid_temperature = true;
+
+	} else {
+		return 0;
+	}
+
 	data.device_id = baro_data.device_id;
 
 	data.sensor_sample_filt[0] = 100.0f * baro_data.pressure; // convert from hPA to Pa
@@ -163,6 +170,14 @@ int TemperatureCalibrationBaro::finish()
 
 int TemperatureCalibrationBaro::finish_sensor_instance(PerSensorData &data, int sensor_index)
 {
+	if (!data.has_valid_temperature) {
+		PX4_WARN("Result baro %d does not have a valid temperature sensor", sensor_index);
+
+		uint32_t param = 0;
+		set_parameter("TC_B%d_ID", sensor_index, &param);
+		return 0;
+	}
+
 	if (!data.hot_soaked || data.tempcal_complete) {
 		return 0;
 	}

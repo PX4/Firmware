@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# @name BlueROV2 (Heavy Configuration)
+#
+# @type Vectored 6 DOF UUV
+# @class Underwater Robot
+#
+# @output MAIN1 motor 1 CCW, bow starboard horizontal, , propeller CCW
+# @output MAIN2 motor 2 CCW, bow port horizontal, propeller CCW
+# @output MAIN3 motor 3 CCW, stern starboard horizontal, propeller CW
+# @output MAIN4 motor 4 CCW, stern port horizontal, propeller CW
+# @output MAIN5 motor 5 CCW, bow starboard vertical, propeller CCW
+# @output MAIN6 motor 6 CCW, bow port vertical, propeller CW
+# @output MAIN7 motor 7 CCW, stern starboard vertical, propeller CW
+# @output MAIN8 motor 8 CCW, stern port vertical, propeller CCW
+#
+# @maintainer Thies Lennart Alff <thies.lennart.alff@tuhh.de>
+#
+# @board px4_fmu-v2 exclude
+# @board intel_aerofc-v1 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.uuv_defaults
+
+if [ $AUTOCNF = yes ]
+then
+	#Set data link loss failsafe mode (0: disabled)
+	param set NAV_DLL_ACT 0
+
+	# disable circuit breaker for airspeed sensor
+	param set CBRK_AIRSPD_CHK 162128
+	# companion computer is connected via USB permanently
+	param set CBRK_USB_CHK 197848
+	param set CBRK_IO_SAFETY 22027
+
+	param set COM_PREARM_MODE 0
+
+	param set MAV_1_CONFIG 102
+
+	param set BAT1_A_PER_V 37.8798
+	param set BAT1_CAPACITY 18000
+	param set BAT1_V_DIV 11.0
+	param set BAT1_N_CELLS 4
+	param set BAT_V_OFFS_CURR 0.33
+fi
+
+set PWM_OUT 12345678
+# set MIXER IO_pass
+set MIXER vectored6dof
+

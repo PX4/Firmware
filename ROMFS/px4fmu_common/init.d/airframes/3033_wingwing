@@ -2,7 +2,7 @@
 #
 # @name Wing Wing (aka Z-84) Flying Wing
 #
-# @url https://docs.px4.io/master/en/framebuild_plane/wing_wing_z84.html
+# @url https://docs.px4.io/master/en/frames_plane/wing_wing_z84.html
 #
 # @type Flying Wing
 # @class Plane
@@ -17,11 +17,12 @@
 #
 # @maintainer Lorenz Meier <lorenz@px4.io>
 #
+# @board px4_fmu-v2 exclude
 # @board intel_aerofc-v1 exclude
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.fw_defaults
+. ${R}etc/init.d/rc.fw_defaults
 
 if [ $AUTOCNF = yes ]
 then

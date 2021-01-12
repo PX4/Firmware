@@ -72,17 +72,13 @@ void TunePublisher::publish_next_tune(const hrt_abstime now)
 	unsigned silence;
 	uint8_t volume;
 
-	if (_tunes.get_next_note(frequency, duration, silence, volume) > 0) {
-		tune_control_s tune_control {};
-		tune_control.tune_id = 0;
-		tune_control.volume = tune_control_s::VOLUME_LEVEL_DEFAULT;
-
-		tune_control.tune_id = 0;
+	if (_tunes.get_next_note(frequency, duration, silence, volume) == Tunes::Status::Continue) {
+		tune_control_s tune_control{};
 		tune_control.frequency = static_cast<uint16_t>(frequency);
 		tune_control.duration = static_cast<uint32_t>(duration);
 		tune_control.silence = static_cast<uint32_t>(silence);
 		tune_control.volume = static_cast<uint8_t>(volume);
-		tune_control.timestamp = now;
+		tune_control.timestamp = hrt_absolute_time();
 		_tune_control_pub.publish(tune_control);
 
 		_next_publish_time = now + duration + silence;

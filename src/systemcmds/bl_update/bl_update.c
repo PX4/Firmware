@@ -56,6 +56,7 @@
 #if defined(CONFIG_ARCH_CHIP_STM32H7)
 #  define BL_FILE_SIZE_LIMIT	128*1024
 #  define STM_RAM_BASE        STM32_AXISRAM_BASE
+#  define PAGE_SIZE_MATTERS   1
 #else
 #  define BL_FILE_SIZE_LIMIT  16384
 #  define STM_RAM_BASE        STM32_SRAM_BASE
@@ -131,16 +132,25 @@ bl_update_main(int argc, char *argv[])
 		return 1;
 	}
 
-	uint8_t *buf = malloc(s.st_size);
+	off_t file_size = s.st_size;
+	off_t image_size = file_size;
+
+#if defined(PAGE_SIZE_MATTERS)
+	size_t page_size =  up_progmem_pagesize(0) - 1;
+	image_size = (file_size + page_size) & ~page_size;
+#endif
+
+	uint8_t *buf = malloc(image_size);
+	memset(buf, 0xff, image_size);
 
 	if (buf == NULL)
 	{
-		PX4_ERR("failed to allocate %u bytes for firmware buffer", s.st_size);
+		PX4_ERR("failed to allocate %u bytes for firmware buffer", file_size);
 		close(fd);
 		return 1;
 	}
 
-	if (read(fd, buf, s.st_size) != s.st_size)
+	if (read(fd, buf, file_size) != file_size)
 	{
 		PX4_ERR("firmware read error");
 		close(fd);
@@ -182,9 +192,9 @@ bl_update_main(int argc, char *argv[])
 
 	/* now program the bootloader - speed is not critical so use x8 mode */
 
-	size = up_progmem_write((size_t) base, buf, s.st_size);
+	size = up_progmem_write((size_t) base, buf, image_size);
 
-	if (size != s.st_size)
+	if (size != image_size)
 	{
 		PX4_ERR("program error at %p",  &base[size]);
 		goto flash_end;
@@ -197,7 +207,7 @@ bl_update_main(int argc, char *argv[])
 	PX4_INFO("verifying...");
 
 	/* now run a verify pass */
-	for (int i = 0; i < s.st_size; i++)
+	for (int i = 0; i < image_size; i++)
 	{
 		if (base[i] != buf[i]) {
 			PX4_WARN("verify failed at %i - retry update, DO NOT reboot", i);

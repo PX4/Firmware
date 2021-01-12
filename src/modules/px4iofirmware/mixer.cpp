@@ -304,6 +304,9 @@ mixer_tick()
 			mixer_group.set_max_delta_out_once(delta_out_max);
 		}
 
+		/*  set dt to be used in simple mixer for slew rate limiting */
+		mixer_group.set_dt_once(dt);
+
 		/* update parameter for mc thrust model if it updated */
 		if (update_mc_thrust_param) {
 			mixer_group.set_thrust_factor(REG_TO_FLOAT(r_setup_thr_fac));
@@ -656,6 +659,9 @@ mixer_set_failsafe()
 					      r_setup_slew_max);
 		mixer_group.set_max_delta_out_once(delta_out_max);
 	}
+
+	/*  set dt to be used in simple mixer for slew rate limiting */
+	mixer_group.set_dt_once(dt);
 
 	/* update parameter for mc thrust model if it updated */
 	if (update_mc_thrust_param) {

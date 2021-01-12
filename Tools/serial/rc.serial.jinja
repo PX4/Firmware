@@ -3,7 +3,7 @@
 # serial autostart script generated with generate_serial_config.py
 
 
-set PRT_F /etc/init.d/rc.serial_port
+set PRT_F ${R}etc/init.d/rc.serial_port
 
 {% for command in commands -%}
 set PRT {{ command.port_param_name }}
@@ -11,7 +11,7 @@ set PRT {{ command.port_param_name }}
 set i {{ command.instance }}
 {% endif -%}
 # get the device & baudrate
-sh $PRT_F
+. $PRT_F
 if [ $SERIAL_DEV != none ]; then
 {% if not constrained_flash -%}
 	echo "Starting {{ command.label }} on $SERIAL_DEV"

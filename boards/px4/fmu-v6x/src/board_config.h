@@ -47,11 +47,14 @@
 #include <nuttx/compiler.h>
 #include <stdint.h>
 
+
 #include <stm32_gpio.h>
 
 /****************************************************************************************************
  * Definitions
  ****************************************************************************************************/
+
+#undef TRACE_PINS
 
 /* PX4IO connection configuration */
 
@@ -83,10 +86,9 @@
  * TRACED0  PE3  - nLED_RED        - Trace Connector Pin 3
  * TRACED1  PE4  - nLED_GREEN      - Trace Connector Pin 5
  * TRACED2  PE5  - nLED_BLUE       - Trace Connector Pin 7
- * TRACED3  PC12 - UART5_TX_TELEM2 - Trace Connector Pin 8
+ * TRACED3  PE6  - nARMED          - Trace Connector Pin 8
 
  */
-#undef TRACE_PINS
 
 /* LEDs are driven with push open drain to support Anode to 5V or 3.3V or used as TRACE0-2 */
 
@@ -100,9 +102,23 @@
 #  define BOARD_ARMED_STATE_LED  LED_BLUE
 
 #else
-#  if defined(CONFIG_STM32H7_UART5) && (GPIO_UART5_TX == GPIO_UART5_TX_3)
-#    error Need to disable CONFIG_STM32H7_UART5 for Trace 3 (Retarget to CAN2 if need be)
-#  endif
+
+#  define GPIO_TRACECLK1 (GPIO_TRACECLK |GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL)  //(GPIO_ALT|GPIO_AF0|GPIO_PORTE|GPIO_PIN2)
+#  define GPIO_TRACED0   (GPIO_TRACED0_2|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL)  //(GPIO_ALT|GPIO_AF0|GPIO_PORTE|GPIO_PIN3)
+#  define GPIO_TRACED1   (GPIO_TRACED1_2|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL)  //(GPIO_ALT|GPIO_AF0|GPIO_PORTE|GPIO_PIN4)
+#  define GPIO_TRACED2   (GPIO_TRACED2_2|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL)  //(GPIO_ALT|GPIO_AF0|GPIO_PORTE|GPIO_PIN5)
+#  define GPIO_TRACED3   (GPIO_TRACED3_2|GPIO_PULLUP|GPIO_SPEED_100MHz|GPIO_PUSHPULL)  //(GPIO_ALT|GPIO_AF0|GPIO_PORTE|GPIO_PIN6)
+//#define GPIO_TRACESWO                        //(GPIO_ALT|GPIO_AF0|GPIO_PORTB|GPIO_PIN3)
+
+#  undef  BOARD_HAS_CONTROL_STATUS_LEDS
+#  undef  BOARD_OVERLOAD_LED
+#  undef  BOARD_ARMED_STATE_LED
+
+#  define GPIO_nLED_RED    GPIO_TRACED0
+#  define GPIO_nLED_GREEN  GPIO_TRACED1
+#  define GPIO_nLED_BLUE   GPIO_TRACED2
+#  define GPIO_nARMED      GPIO_TRACED3
+#  define GPIO_nARMED_INIT GPIO_TRACED3
 #endif
 
 
@@ -230,10 +246,12 @@
  *  The GPIO will be set as input while not armed HW will have external HW Pull UP.
  *  While armed it shall be configured at a GPIO OUT set LOW
  */
+#if !defined(TRACE_PINS)
 #define GPIO_nARMED_INIT     /* PE6 */  (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTE|GPIO_PIN6)
 #define GPIO_nARMED          /* PE6 */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN6)
+#define BOARD_INDICATE_EXTERNAL_LOCKOUT_STATE(enabled)  px4_arch_configgpio((enabled) ? GPIO_nARMED : GPIO_nARMED_INIT)
+#endif
 
-#define BOARD_INDICATE_ARMED_STATE(on_armed)  px4_arch_configgpio((on_armed) ? GPIO_nARMED : GPIO_nARMED_INIT)
 
 /* PWM
  */
@@ -417,7 +435,19 @@
 
 #define BOARD_HAS_ON_RESET 1
 
+#if defined(TRACE_PINS)
+#define GPIO_TRACE                          \
+	GPIO_TRACECLK1,                           \
+	GPIO_TRACED0,                             \
+	GPIO_TRACED1,                             \
+	GPIO_TRACED2,                             \
+	GPIO_TRACED3
+#else
+#define GPIO_TRACE (GPIO_OUTPUT|GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN2)
+#endif
+
 #define PX4_GPIO_INIT_LIST { \
+		GPIO_TRACE,                       \
 		PX4_ADC_GPIO,                     \
 		GPIO_HW_VER_REV_DRIVE,            \
 		GPIO_CAN1_TX,                     \
@@ -448,6 +478,9 @@
 	}
 
 #define BOARD_ENABLE_CONSOLE_BUFFER
+
+#define PX4_I2C_BUS_MTD      4,5
+
 
 #define BOARD_NUM_IO_TIMERS 5
 

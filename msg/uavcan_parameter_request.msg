@@ -20,4 +20,4 @@ uint8 param_type		# MAVLink parameter type
 int64 int_value			# current value if param_type is int-like
 float32 real_value		# current value if param_type is float-like
 
-uint8 ORB_QUEUE_LENGTH = 3
+uint8 ORB_QUEUE_LENGTH = 4

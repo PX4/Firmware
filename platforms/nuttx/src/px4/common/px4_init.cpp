@@ -33,34 +33,18 @@
 
 #include <px4_platform_common/init.h>
 #include <px4_platform_common/px4_config.h>
+#include <px4_platform_common/px4_manifest.h>
 #include <px4_platform_common/console_buffer.h>
 #include <px4_platform_common/defines.h>
 #include <drivers/drv_hrt.h>
 #include <lib/parameters/param.h>
 #include <px4_platform_common/px4_work_queue/WorkQueueManager.hpp>
-#include <systemlib/cpuload.h>
+#include <px4_platform/cpuload.h>
 
 #include <fcntl.h>
 
-
-#include "platform/cxxinitialize.h"
-
-int px4_platform_init(void)
+int px4_platform_console_init(void)
 {
-
-#if defined(CONFIG_HAVE_CXX) && defined(CONFIG_HAVE_CXXINITIALIZE)
-	/* run C++ ctors before we go any further */
-	up_cxxinitialize();
-
-#	if defined(CONFIG_SYSTEM_NSH_CXXINITIALIZE)
-#  		error CONFIG_SYSTEM_NSH_CXXINITIALIZE Must not be defined! Use CONFIG_HAVE_CXX and CONFIG_HAVE_CXXINITIALIZE.
-#	endif
-
-#else
-#  error platform is dependent on c++ both CONFIG_HAVE_CXX and CONFIG_HAVE_CXXINITIALIZE must be defined.
-#endif
-
-
 #if !defined(CONFIG_DEV_CONSOLE) && defined(CONFIG_DEV_NULL)
 
 	/* Support running nsh on a board with out a console
@@ -78,9 +62,9 @@ int px4_platform_init(void)
 
 		(void)fs_dupfd2(0, 1);
 		(void)fs_dupfd2(0, 2);
-		(void)fs_fdopen(0, O_RDONLY,         NULL);
-		(void)fs_fdopen(1, O_WROK | O_CREAT, NULL);
-		(void)fs_fdopen(2, O_WROK | O_CREAT, NULL);
+		(void)fs_fdopen(0, O_RDONLY,         NULL, NULL);
+		(void)fs_fdopen(1, O_WROK | O_CREAT, NULL, NULL);
+		(void)fs_fdopen(2, O_WROK | O_CREAT, NULL, NULL);
 
 	} else {
 		/* We failed to open /dev/null OR for some reason, we opened
@@ -92,11 +76,23 @@ int px4_platform_init(void)
 		}
 
 		return -ENFILE;
+
 	}
 
 #endif
+	return OK;
+}
 
-	int ret = px4_console_buffer_init();
+int px4_platform_init(void)
+{
+
+	int ret = px4_platform_console_init();
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = px4_console_buffer_init();
 
 	if (ret < 0) {
 		return ret;
@@ -123,4 +119,10 @@ int px4_platform_init(void)
 	px4::WorkQueueManagerStart();
 
 	return PX4_OK;
+}
+
+int px4_platform_configure(void)
+{
+	return px4_mft_configure(board_get_manifest());
+
 }

@@ -299,7 +299,7 @@ void init()
 	rCR1 = GTIM_CR1_CEN;	// Ensure the timer is running.
 }
 
-void start_note(unsigned frequency)
+hrt_abstime start_note(unsigned frequency)
 {
 	// Calculate the signal switching period.
 	// (Signal switching period is one half of the frequency period).
@@ -321,7 +321,12 @@ void start_note(unsigned frequency)
 	rCCER |= TONE_CCER; 	// Enable the output.
 
 	// Configure the GPIO to enable timer output.
+	hrt_abstime time_started = hrt_absolute_time();
+	irqstate_t flags = enter_critical_section();
 	px4_arch_configgpio(GPIO_TONE_ALARM);
+	leave_critical_section(flags);
+
+	return time_started;
 }
 
 void stop_note()

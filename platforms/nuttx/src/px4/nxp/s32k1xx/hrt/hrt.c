@@ -69,7 +69,7 @@
 #include "hardware/s32k1xx_ftm.h"
 
 #undef PPM_DEBUG
-//#define CONFIG_DEBUG_HRT
+
 #ifdef CONFIG_DEBUG_HRT
 #  define hrtinfo _info
 #else
@@ -85,17 +85,44 @@
 
 /* HRT configuration */
 
-#define HRT_TIMER_CLOCK        BOARD_FTM_FREQ                 /* The input clock frequency to the FTM block */
-#define HRT_TIMER_BASE         S32K1XX_FTM0_BASE              /* The Base address of the FTM */
-#define HRT_TIMER_VECTOR       S32K1XX_IRQ_FTM0_CH0_1         /* The FTM Interrupt vector */
+#define HRT_TIMER_CLOCK        BOARD_FTM_FREQ                                /* The input clock frequency to the FTM block */
+#define HRT_TIMER_BASE         CAT(CAT(S32K1XX_FTM, HRT_TIMER), _BASE)       /* The Base address of the FTM */
+
+/* The FTM Interrupt vector */
+
+#if defined(CONFIG_ARCH_CHIP_S32K14X)
+#  if (HRT_TIMER_CHANNEL == 0) || (HRT_TIMER_CHANNEL == 1)
+#    define HRT_TIMER_VECTOR   CAT(CAT(S32K1XX_IRQ_FTM, HRT_TIMER), _CH0_1)
+#  elif (HRT_TIMER_CHANNEL == 2) || (HRT_TIMER_CHANNEL == 3)
+#    define HRT_TIMER_VECTOR   CAT(CAT(S32K1XX_IRQ_FTM, HRT_TIMER), _CH2_3)
+#  elif (HRT_TIMER_CHANNEL == 4) || (HRT_TIMER_CHANNEL == 5)
+#    define HRT_TIMER_VECTOR   CAT(CAT(S32K1XX_IRQ_FTM, HRT_TIMER), _CH4_5)
+#  elif (HRT_TIMER_CHANNEL == 6) || (HRT_TIMER_CHANNEL == 7)
+#    define HRT_TIMER_VECTOR   CAT(CAT(S32K1XX_IRQ_FTM, HRT_TIMER), _CH6_7)
+#  endif
+#elif defined(CONFIG_ARCH_CHIP_S32K11X)
+#  define HRT_TIMER_VECTOR     CAT(CAT(S32K1XX_IRQ_FTM, HRT_TIMER), _CH0_7)
+#endif
 
 #define LOG_1(n) (((n) >= 2) ? 1 : 0)
 #define LOG_2(n) (((n) >= 1<<2) ? (2 + LOG_1((n)>>2)) : LOG_1(n))
 
-#if HRT_TIMER == 1 && defined(CONFIG_KINETIS_TPM1)
-#  error must not set CONFIG_KINETIS_TPM1=y and HRT_TIMER=1
-#elif   HRT_TIMER == 2 && defined(CONFIG_KINETIS_TPM2)
-#  error must not set CONFIG_STM32_TIM2=y and HRT_TIMER=2
+#if HRT_TIMER == 0 && defined(CONFIG_S32K1XX_FTM0)
+#  error must not set CONFIG_S32K1XX_FTM0=y and HRT_TIMER=0
+#elif HRT_TIMER == 1 && defined(CONFIG_S32K1XX_FTM1)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=1
+#elif HRT_TIMER == 2 && defined(CONFIG_S32K1XX_FTM2)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=2
+#elif HRT_TIMER == 3 && defined(CONFIG_S32K1XX_FTM3)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=3
+#elif HRT_TIMER == 4 && defined(CONFIG_S32K1XX_FTM4)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=4
+#elif HRT_TIMER == 5 && defined(CONFIG_S32K1XX_FTM5)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=5
+#elif HRT_TIMER == 6 && defined(CONFIG_S32K1XX_FTM6)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=6
+#elif HRT_TIMER == 7 && defined(CONFIG_S32K1XX_FTM7)
+#  error must not set CONFIG_S32K1XX_FTM1=y and HRT_TIMER=7
 #endif
 
 /*
@@ -149,12 +176,25 @@
 #define rC0V        REG(S32K1XX_FTM_C0V_OFFSET)
 #define rC1SC       REG(S32K1XX_FTM_C1SC_OFFSET)
 #define rC1V        REG(S32K1XX_FTM_C1V_OFFSET)
+#define rC2SC       REG(S32K1XX_FTM_C2SC_OFFSET)
+#define rC2V        REG(S32K1XX_FTM_C2V_OFFSET)
+#define rC3SC       REG(S32K1XX_FTM_C3SC_OFFSET)
+#define rC3V        REG(S32K1XX_FTM_C3V_OFFSET)
+#define rC4SC       REG(S32K1XX_FTM_C4SC_OFFSET)
+#define rC4V        REG(S32K1XX_FTM_C4V_OFFSET)
+#define rC5SC       REG(S32K1XX_FTM_C5SC_OFFSET)
+#define rC5V        REG(S32K1XX_FTM_C5V_OFFSET)
+#define rC6SC       REG(S32K1XX_FTM_C6SC_OFFSET)
+#define rC6V        REG(S32K1XX_FTM_C6V_OFFSET)
+#define rC7SC       REG(S32K1XX_FTM_C7SC_OFFSET)
+#define rC7V        REG(S32K1XX_FTM_C7V_OFFSET)
 #define rSTATUS     REG(S32K1XX_FTM_STATUS_OFFSET)
 #define rCOMBINE    REG(S32K1XX_FTM_COMBINE_OFFSET)
 #define rPOL        REG(S32K1XX_FTM_POL_OFFSET)
 #define rFILTER     REG(S32K1XX_FTM_FILTER_OFFSET)
 #define rQDCTRL     REG(S32K1XX_FTM_QDCTRL_OFFSET)
 #define rCONF       REG(S32K1XX_FTM_CONF_OFFSET)
+
 /*
 * Specific registers and bits used by HRT sub-functions
 */
@@ -163,8 +203,8 @@
 # define rCNSC_HRT       CAT3(rC, HRT_TIMER_CHANNEL, SC)           /* Channel Status and Control Register used by HRT */
 # define STATUS_HRT      CAT3(FTM_STATUS_CH, HRT_TIMER_CHANNEL, F) /* Capture and Compare Status Register used by HRT */
 
-#if (HRT_TIMER_CHANNEL != 0) && (HRT_TIMER_CHANNEL != 1)
-# error HRT_TIMER_CHANNEL must be a value between 0 and 1
+#if HRT_TIMER_CHANNEL > 7
+# error HRT_TIMER_CHANNEL must be a value between 0 and 7
 #endif
 
 /*
@@ -207,15 +247,15 @@ static void hrt_call_invoke(void);
 
 /* Specific registers and bits used by PPM sub-functions */
 
-#define rCNV_PPM       CAT3(rC,HRT_PPM_CHANNEL,V)                     /* Channel Value Register used by PPM */
-#define rCNSC_PPM      CAT3(rC,HRT_PPM_CHANNEL,SC)                    /* Channel Status and Control Register used by PPM */
-#define STATUS_PPM     CAT3(FTM_STATUS_CH, HRT_PPM_CHANNEL ,F)        /* Capture and Compare Status Register used by PPM */
+#define rCNV_PPM       CAT3(rC, HRT_PPM_CHANNEL, V)                   /* Channel Value Register used by PPM */
+#define rCNSC_PPM      CAT3(rC, HRT_PPM_CHANNEL, SC)                  /* Channel Status and Control Register used by PPM */
+#define STATUS_PPM     CAT3(FTM_STATUS_CH, HRT_PPM_CHANNEL, F)        /* Capture and Compare Status Register used by PPM */
 #define CNSC_PPM      (FTM_CNSC_CHIE | FTM_CNSC_ELSB | FTM_CNSC_ELSA) /* Input Capture configuration both Edges, interrupt */
 
 /* Sanity checking */
 
-#if (HRT_PPM_CHANNEL != 0) && (HRT_PPM_CHANNEL != 1)
-#   error HRT_PPM_CHANNEL must be a value between 0 and 1
+#if HRT_PPM_CHANNEL > 7
+#   error HRT_PPM_CHANNEL must be a value between 0 and 7
 #endif
 
 # if (HRT_PPM_CHANNEL == HRT_TIMER_CHANNEL)
@@ -284,7 +324,7 @@ static void	hrt_ppm_decode(uint32_t status);
  */
 static void hrt_tim_init(void)
 {
-	/* Clock is enabled in S32K1XX_pheriphclocks.c */
+	/* FTM clock should be configured in s32k1xx_periphclocks.c */
 
 	/* claim our interrupt vector */
 
@@ -298,20 +338,27 @@ static void hrt_tim_init(void)
 	rMOD = HRT_COUNTER_PERIOD - 1;
 
 	rCNSC_HRT = (FTM_CNSC_CHF | FTM_CNSC_CHIE | FTM_CNSC_MSA);
+
+#ifdef HRT_PPM_CHANNEL
 	rCNSC_PPM = (FTM_CNSC_CHF | CNSC_PPM);
+#endif
+
 	rCOMBINE  = 0;
 	rPOL      = 0;
 	rFILTER   = 0;
 	rQDCTRL   = 0;
-	rCONF     = 0xC0; //FTM continues in DBG
+	rCONF     = 0x03 << FTM_CONF_BDMMODE_SHIFT; /* FTM continues when chip is in debug mode */
 
 	/* set an initial capture a little ways off */
 
+#ifdef HRT_PPM_CHANNEL
 	rCNV_PPM  = 0;
+#endif
+
 	rCNV_HRT  = 1000;
 
-	/* Use FIXEDCLK src and enable the timer
-	 * Set calculate prescaler for HRT_TIMER_FREQ */
+	/* Use external clock source (selected in periphclocks.c) and enable the timer. Set prescaler for HRT_TIMER_FREQ */
+
 	rSC |= (FTM_SC_TOIE | FTM_SC_CLKS_EXTCLK |
 		(LOG_2(HRT_TIMER_CLOCK / HRT_TIMER_FREQ) << FTM_SC_PS_SHIFT
 		 & FTM_SC_PS_MASK));
@@ -484,6 +531,7 @@ hrt_tim_isr(int irq, void *context, void *arg)
 	uint32_t status = rSTATUS;
 
 	/* ack the interrupts we just read */
+
 	rSTATUS = 0x00;
 
 #ifdef HRT_PPM_CHANNEL
@@ -604,16 +652,12 @@ hrt_elapsed_time_atomic(const volatile hrt_abstime *then)
 /**
  * Store the absolute time in an interrupt-safe fashion
  */
-hrt_abstime
-hrt_store_absolute_time(volatile hrt_abstime *now)
+void
+hrt_store_absolute_time(volatile hrt_abstime *t)
 {
 	irqstate_t flags = px4_enter_critical_section();
-
-	hrt_abstime ts = hrt_absolute_time();
-
+	*t = hrt_absolute_time();
 	px4_leave_critical_section(flags);
-
-	return ts;
 }
 
 /**
@@ -627,7 +671,7 @@ hrt_init(void)
 
 #ifdef HRT_PPM_CHANNEL
 	/* configure the PPM input pin */
-	//px4_arch_configgpio(GPIO_PPM_IN);
+	px4_arch_configgpio(GPIO_PPM_IN);
 #endif
 }
 

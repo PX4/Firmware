@@ -7,17 +7,17 @@
 
 set TEMP_COMP_START ""
 
-if param compare TC_A_ENABLE 1
+if param compare -s TC_A_ENABLE 1
 then
 	set TEMP_COMP_START "true"
 fi
 
-if param compare TC_B_ENABLE 1
+if param compare -s TC_B_ENABLE 1
 then
 	set TEMP_COMP_START "true"
 fi
 
-if param compare TC_G_ENABLE 1
+if param compare -s TC_G_ENABLE 1
 then
 	set TEMP_COMP_START "true"
 fi

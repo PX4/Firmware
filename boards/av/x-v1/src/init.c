@@ -64,7 +64,7 @@
 #include <chip.h>
 #include <stm32_uart.h>
 #include <arch/board/board.h>
-#include "up_internal.h"
+#include "arm_internal.h"
 
 #include <px4_arch/io_timer.h>
 #include <drivers/drv_hrt.h>
@@ -191,6 +191,10 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 #endif /* CONFIG_MMCSD */
 
 	configure_switch();
+
+	/* Configure the HW based on the manifest */
+
+	px4_platform_configure();
 
 	return OK;
 }

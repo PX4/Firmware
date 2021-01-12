@@ -213,7 +213,7 @@
 #define GPIO_nARMED          /* PC12 */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTC|GPIO_PIN12)
 
 #if !defined(TRACE_PINS)
-#  define BOARD_INDICATE_ARMED_STATE(on_armed)  px4_arch_configgpio((on_armed) ? GPIO_nARMED : GPIO_nARMED_INIT)
+#  define BOARD_INDICATE_EXTERNAL_LOCKOUT_STATE(enabled)  px4_arch_configgpio((enabled) ? GPIO_nARMED : GPIO_nARMED_INIT)
 #endif
 /* PWM
  */
@@ -429,6 +429,9 @@
 #define BOARD_ENABLE_CONSOLE_BUFFER
 
 #define BOARD_NUM_IO_TIMERS 5
+
+
+#define PX4_I2C_BUS_MTD      4,5
 
 __BEGIN_DECLS
 

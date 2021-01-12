@@ -17,7 +17,7 @@ then
 		# Allow PX4IO to recover from midair restarts.
 		px4io recovery
 	else
-		echo "PX4IO start failed" >> $LOG_FILE
-		tune_control play -t 20
+		echo "PX4IO start failed"
+		tune_control play -t 18 # PROG_PX4IO_ERR
 	fi
 fi

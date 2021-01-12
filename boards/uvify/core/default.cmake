@@ -14,7 +14,7 @@ px4_add_board(
 		TEL2:/dev/ttyS2
 		TEL3:/dev/ttyS6
 	DRIVERS
-		adc
+		adc/board_adc
 		barometer/ms5611
 		batt_smbus
 		camera_capture
@@ -29,7 +29,7 @@ px4_add_board(
 		lights/rgbled_ncp5623c
 		magnetometer/bmm150
 		magnetometer/lis3mdl
-		magnetometer/ist8310
+		magnetometer/isentek/ist8310
 		optical_flow # all available optical flow drivers
 		pca9685
 		pwm_input
@@ -46,6 +46,7 @@ px4_add_board(
 		dataman
 		ekf2
 		events
+		flight_mode_manager
 		land_detector
 		landing_target_estimator
 		load_mon
@@ -70,6 +71,7 @@ px4_add_board(
 		hardfault_log
 		i2cdetect
 		led_control
+		mft
 		mixer
 		motor_ramp
 		motor_test
@@ -81,6 +83,7 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
+		system_time
 		top
 		topic_listener
 		tune_control

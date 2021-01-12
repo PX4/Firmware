@@ -62,6 +62,10 @@
 #include <sys/file.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#if (_POSIX_MEMLOCK > 0)
+#include <sys/mman.h>
+#endif
 
 #include <px4_platform_common/time.h>
 #include <px4_platform_common/log.h>
@@ -174,6 +178,22 @@ int main(int argc, char **argv)
 		return client.process_args(argc, (const char **)argv);
 
 	} else {
+#if (_POSIX_MEMLOCK > 0) && !defined(ENABLE_LOCKSTEP_SCHEDULER)
+
+		// try to lock address space into RAM, to avoid page swap delay
+		// TODO: Check CAP_IPC_LOCK instead of euid
+		if (geteuid() == 0) {   // root user
+			if (mlockall(MCL_CURRENT | MCL_FUTURE)) {	// check if both works
+				PX4_ERR("mlockall() failed! errno: %d (%s)", errno, strerror(errno));
+				munlockall();	// avoid mlock limitation caused alloc failure in future
+
+			} else {
+				PX4_INFO("mlockall() enabled. PX4's virtual address space is locked into RAM.");
+			}
+		}
+
+#endif // (_POSIX_MEMLOCK > 0) && !ENABLE_LOCKSTEP_SCHEDULER
+
 		/* Server/daemon apps need to parse the command line arguments. */
 
 		std::string data_path{};

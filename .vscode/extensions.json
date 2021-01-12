@@ -4,6 +4,7 @@
     "recommendations": [
         "chiehyu.vscode-astyle",
         "dan-c-underwood.arm",
+        "fredericbonnet.cmake-test-adapter",
         "github.vscode-pull-request-github",
         "marus25.cortex-debug",
         "ms-azuretools.vscode-docker",
@@ -11,8 +12,9 @@
         "ms-python.python",
         "ms-vscode.cmake-tools",
         "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
         "redhat.vscode-yaml",
-        "timonwong.shellcheck",
+        "streetsidesoftware.code-spell-checker",
         "twxs.cmake",
         "uavcan.dsdl",
         "wholroyd.jinja",

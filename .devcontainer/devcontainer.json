@@ -1,0 +1,42 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or this file's README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.134.0/containers/cpp
+{
+	"name": "px4-dev-nuttx",
+	"image": "px4io/px4-dev-nuttx-focal:2020-11-18",
+
+	"runArgs": [ "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		"terminal.integrated.shell.linux": "/bin/bash"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"chiehyu.vscode-astyle",
+		"dan-c-underwood.arm",
+		"fredericbonnet.cmake-test-adapter",
+		"github.vscode-pull-request-github",
+		"marus25.cortex-debug",
+		"ms-azuretools.vscode-docker",
+		"ms-iot.vscode-ros",
+		"ms-python.python",
+		"ms-vscode.cmake-tools",
+		"ms-vscode.cpptools",
+		"ms-vscode.cpptools-extension-pack",
+		"redhat.vscode-yaml",
+		"streetsidesoftware.code-spell-checker",
+		"twxs.cmake",
+		"uavcan.dsdl",
+		"wholroyd.jinja",
+		"zixuanwang.linkerscript"
+	],
+
+	"containerUser": "user",
+	"containerEnv": {
+		"LOCAL_USER_ID": "${localEnv:UID}"
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [14556],
+}

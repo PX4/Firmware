@@ -173,7 +173,7 @@ void IST8308::RunImpl()
 
 			if (transfer(&cmd, 1, (uint8_t *)&buffer, sizeof(buffer)) == PX4_OK) {
 
-				if (buffer.STAT && STAT_BIT::DRDY) {
+				if (buffer.STAT & STAT_BIT::DRDY) {
 					int16_t x = combine(buffer.DATAXH, buffer.DATAXL);
 					int16_t y = combine(buffer.DATAYH, buffer.DATAYL);
 					int16_t z = combine(buffer.DATAZH, buffer.DATAZL);
@@ -181,6 +181,7 @@ void IST8308::RunImpl()
 					// sensor's frame is +x forward, +y right, +z up
 					z = (z == INT16_MIN) ? INT16_MAX : -z; // flip z
 
+					_px4_mag.set_error_count(perf_event_count(_bad_register_perf) + perf_event_count(_bad_transfer_perf));
 					_px4_mag.update(now, x, y, z);
 
 					success = true;

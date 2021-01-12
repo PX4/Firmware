@@ -79,10 +79,10 @@ public:
 	void update_airspeed_validator(const airspeed_validator_update_data &input_data);
 
 	float get_IAS() { return _IAS; }
-	float get_EAS() { return _EAS; }
+	float get_CAS() { return _CAS; }
 	float get_TAS() { return _TAS; }
 	bool get_airspeed_valid() { return _airspeed_valid; }
-	float get_EAS_scale() {return _EAS_scale;}
+	float get_CAS_scale() {return _CAS_scale;}
 
 	wind_estimate_s get_wind_estimator_states(uint64_t timestamp);
 
@@ -115,15 +115,15 @@ private:
 	WindEstimator _wind_estimator{}; ///< wind estimator instance running in this particular airspeedValidator
 
 	// wind estimator parameter
-	bool _wind_estimator_scale_estimation_on{false};	///< online scale estimation (IAS-->CAS/EAS) is on
+	bool _wind_estimator_scale_estimation_on{false};	///< online scale estimation (IAS-->CAS) is on
 	float _airspeed_scale_manual{1.0f}; ///< manually entered airspeed scale
 
 	// general states
 	bool _in_fixed_wing_flight{false}; ///< variable to bypass innovation and load factor checks
 	float _IAS{0.0f}; ///< indicated airsped in m/s
-	float _EAS{0.0f}; ///< equivalent airspeed in m/s
+	float _CAS{0.0f}; ///< calibrated airspeed in m/s
 	float _TAS{0.0f}; ///< true airspeed in m/s
-	float _EAS_scale{1.0f}; ///< scale factor from IAS to EAS
+	float _CAS_scale{1.0f}; ///< scale factor from IAS to CAS
 
 	uint64_t	_time_last_airspeed{0};		///< time last airspeed measurement was received (uSec)
 
@@ -162,8 +162,8 @@ private:
 				   float lpos_vy,
 				   float lpos_vz,
 				   float lpos_evh, float lpos_evv, const float att_q[4]);
-	void update_EAS_scale();
-	void update_EAS_TAS(float air_pressure_pa, float air_temperature_celsius);
+	void update_CAS_scale();
+	void update_CAS_TAS(float air_pressure_pa, float air_temperature_celsius);
 	void check_airspeed_innovation(uint64_t timestamp, float estimator_status_vel_test_ratio,
 				       float estimator_status_mag_test_ratio);
 	void check_load_factor(float accel_z);

@@ -98,8 +98,8 @@ FixedwingPositionControl::parameters_update()
 	_tecs.set_speed_weight(_param_fw_t_spdweight.get());
 	_tecs.set_indicated_airspeed_min(_param_fw_airspd_min.get());
 	_tecs.set_indicated_airspeed_max(_param_fw_airspd_max.get());
-	_tecs.set_time_const_throt(_param_fw_t_time_const.get());
-	_tecs.set_time_const(_param_fw_t_thro_const.get());
+	_tecs.set_time_const_throt(_param_fw_t_thro_const.get());
+	_tecs.set_time_const(_param_fw_t_time_const.get());
 	_tecs.set_min_sink_rate(_param_fw_t_sink_min.get());
 	_tecs.set_throttle_damp(_param_fw_t_thr_damp.get());
 	_tecs.set_integrator_gain(_param_fw_t_integ_gain.get());
@@ -176,16 +176,16 @@ FixedwingPositionControl::airspeed_poll()
 		const airspeed_validated_s &airspeed_validated = _airspeed_validated_sub.get();
 		_eas2tas = 1.0f; //this is the default value, taken in case of invalid airspeed
 
-		if (PX4_ISFINITE(airspeed_validated.equivalent_airspeed_m_s)
+		if (PX4_ISFINITE(airspeed_validated.calibrated_airspeed_m_s)
 		    && PX4_ISFINITE(airspeed_validated.true_airspeed_m_s)
-		    && (airspeed_validated.equivalent_airspeed_m_s > 0.0f)) {
+		    && (airspeed_validated.calibrated_airspeed_m_s > 0.0f)) {
 
 			airspeed_valid = true;
 
 			_airspeed_last_valid = airspeed_validated.timestamp;
-			_airspeed = airspeed_validated.equivalent_airspeed_m_s;
+			_airspeed = airspeed_validated.calibrated_airspeed_m_s;
 
-			_eas2tas = constrain(airspeed_validated.true_airspeed_m_s / airspeed_validated.equivalent_airspeed_m_s, 0.9f, 2.0f);
+			_eas2tas = constrain(airspeed_validated.true_airspeed_m_s / airspeed_validated.calibrated_airspeed_m_s, 0.9f, 2.0f);
 		}
 
 	} else {
@@ -201,6 +201,24 @@ FixedwingPositionControl::airspeed_poll()
 		_airspeed_valid = airspeed_valid;
 	}
 }
+
+void
+FixedwingPositionControl::manual_control_setpoint_poll()
+{
+	_manual_control_setpoint_sub.update(&_manual_control_setpoint);
+
+	_manual_control_setpoint_altitude = _manual_control_setpoint.x;
+	_manual_control_setpoint_airspeed = _manual_control_setpoint.z;
+
+	if (_param_fw_posctl_inv_st.get()) {
+		/* Alternate stick allocation (similar concept as for multirotor systems:
+		 * demanding up/down with the throttle stick, and move faster/break with the pitch one.
+		 */
+		_manual_control_setpoint_altitude = -(_manual_control_setpoint.z * 2.f - 1.f);
+		_manual_control_setpoint_airspeed = _manual_control_setpoint.x / 2.f + 0.5f;
+	}
+}
+
 
 void
 FixedwingPositionControl::vehicle_attitude_poll()
@@ -229,17 +247,17 @@ FixedwingPositionControl::get_demanded_airspeed()
 	float altctrl_airspeed = 0;
 
 	// neutral throttle corresponds to trim airspeed
-	if (_manual_control_setpoint.z < 0.5f) {
+	if (_manual_control_setpoint_airspeed < 0.5f) {
 		// lower half of throttle is min to trim airspeed
 		altctrl_airspeed = _param_fw_airspd_min.get() +
 				   (_param_fw_airspd_trim.get() - _param_fw_airspd_min.get()) *
-				   _manual_control_setpoint.z * 2;
+				   _manual_control_setpoint_airspeed * 2;
 
 	} else {
 		// upper half of throttle is trim to max airspeed
 		altctrl_airspeed = _param_fw_airspd_trim.get() +
 				   (_param_fw_airspd_max.get() - _param_fw_airspd_trim.get()) *
-				   (_manual_control_setpoint.z * 2 - 1);
+				   (_manual_control_setpoint_airspeed * 2 - 1);
 	}
 
 	return altctrl_airspeed;
@@ -365,6 +383,8 @@ FixedwingPositionControl::status_publish()
 
 	pos_ctrl_status.timestamp = hrt_absolute_time();
 
+	pos_ctrl_status.type = _type;
+
 	_pos_ctrl_status_pub.publish(pos_ctrl_status);
 }
 
@@ -445,7 +465,7 @@ FixedwingPositionControl::get_terrain_altitude_takeoff(float takeoff_alt)
 	return takeoff_alt;
 }
 
-bool
+void
 FixedwingPositionControl::update_desired_altitude(float dt)
 {
 	/*
@@ -460,9 +480,6 @@ FixedwingPositionControl::update_desired_altitude(float dt)
 	 * due to the deadband
 	 */
 	const float factor = 1.0f - deadBand;
-
-	/* Climbout mode sets maximum throttle and pitch up */
-	bool climbout_mode = false;
 
 	/*
 	 * Reset the hold altitude to the current altitude if the uncertainty
@@ -481,18 +498,17 @@ FixedwingPositionControl::update_desired_altitude(float dt)
 	 * an axis. Positive X means to rotate positively around
 	 * the X axis in NED frame, which is pitching down
 	 */
-	if (_manual_control_setpoint.x > deadBand) {
+	if (_manual_control_setpoint_altitude > deadBand) {
 		/* pitching down */
-		float pitch = -(_manual_control_setpoint.x - deadBand) / factor;
+		float pitch = -(_manual_control_setpoint_altitude - deadBand) / factor;
 		_hold_alt += (_param_fw_t_sink_max.get() * dt) * pitch;
 		_was_in_deadband = false;
 
-	} else if (_manual_control_setpoint.x < - deadBand) {
+	} else if (_manual_control_setpoint_altitude < - deadBand) {
 		/* pitching up */
-		float pitch = -(_manual_control_setpoint.x + deadBand) / factor;
+		float pitch = -(_manual_control_setpoint_altitude + deadBand) / factor;
 		_hold_alt += (_param_fw_t_clmb_max.get() * dt) * pitch;
 		_was_in_deadband = false;
-		climbout_mode = (pitch > MANUAL_THROTTLE_CLIMBOUT_THRESH);
 
 	} else if (!_was_in_deadband) {
 		/* store altitude at which manual.x was inside deadBand
@@ -509,7 +525,6 @@ FixedwingPositionControl::update_desired_altitude(float dt)
 		}
 	}
 
-	return climbout_mode;
 }
 
 bool
@@ -668,34 +683,131 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 		float mission_throttle = _param_fw_thr_cruise.get();
 
 		if (PX4_ISFINITE(pos_sp_curr.cruising_throttle) &&
-		    pos_sp_curr.cruising_throttle > 0.01f) {
-
+		    pos_sp_curr.cruising_throttle >= 0.0f) {
 			mission_throttle = pos_sp_curr.cruising_throttle;
 		}
 
-		if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
+		float tecs_fw_thr_min;
+		float tecs_fw_thr_max;
+		float tecs_fw_mission_throttle;
+
+		if (mission_throttle < _param_fw_thr_min.get()) {
+			/* enable gliding with this waypoint */
+			_tecs.set_speed_weight(2.0f);
+			tecs_fw_thr_min = 0.0;
+			tecs_fw_thr_max = 0.0;
+			tecs_fw_mission_throttle = 0.0;
+
+		} else {
+			tecs_fw_thr_min = _param_fw_thr_min.get();
+			tecs_fw_thr_max = _param_fw_thr_max.get();
+			tecs_fw_mission_throttle = mission_throttle;
+		}
+
+		const float acc_rad = _l1_control.switch_distance(500.0f);
+
+		uint8_t position_sp_type = pos_sp_curr.type;
+
+		if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+			// TAKEOFF: handle like a regular POSITION setpoint if already flying
+			if (!in_takeoff_situation() && (_airspeed >= _param_fw_airspd_min.get() || !_airspeed_valid)) {
+				// SETPOINT_TYPE_TAKEOFF -> SETPOINT_TYPE_POSITION
+				position_sp_type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+			}
+
+		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_POSITION
+			   || pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
+
+			float dist_xy = -1.f;
+			float dist_z = -1.f;
+
+			const float dist = get_distance_to_point_global_wgs84(
+						   (double)curr_wp(0), (double)curr_wp(1), pos_sp_curr.alt,
+						   _current_latitude, _current_longitude, _current_altitude,
+						   &dist_xy, &dist_z);
+
+			if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+				// POSITION: achieve position setpoint altitude via loiter
+				// close to waypoint, but altitude error greater than twice acceptance
+				if ((dist >= 0.f)
+				    && (dist_z > 2.f * _param_fw_clmbout_diff.get())
+				    && (dist_xy < 2.f * math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)))) {
+					// SETPOINT_TYPE_POSITION -> SETPOINT_TYPE_LOITER
+					position_sp_type = position_setpoint_s::SETPOINT_TYPE_LOITER;
+				}
+
+			} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
+				// LOITER: use SETPOINT_TYPE_POSITION to get to SETPOINT_TYPE_LOITER
+				if ((dist >= 0.f)
+				    && (dist_z > 2.f * _param_fw_clmbout_diff.get())
+				    && (dist_xy > 2.f * math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)))) {
+					// SETPOINT_TYPE_LOITER -> SETPOINT_TYPE_POSITION
+					position_sp_type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+				}
+			}
+		}
+
+		_type = position_sp_type;
+
+
+		if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 			_att_sp.thrust_body[0] = 0.0f;
 			_att_sp.roll_body = 0.0f;
 			_att_sp.pitch_body = 0.0f;
 
-		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
-			/* waypoint is a plain navigation waypoint */
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+			// waypoint is a plain navigation waypoint
+			float position_sp_alt = pos_sp_curr.alt;
+
+			// Altitude first order hold (FOH)
+			if (pos_sp_prev.valid && PX4_ISFINITE(pos_sp_prev.alt) &&
+			    ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
+			     (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER) ||
+			     (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF))
+			   ) {
+				const float d_curr_prev = get_distance_to_next_waypoint((double)curr_wp(0), (double)curr_wp(1),
+							  pos_sp_prev.lat, pos_sp_prev.lon);
+
+				// Do not try to find a solution if the last waypoint is inside the acceptance radius of the current one
+				if (d_curr_prev > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+					// Calculate distance to current waypoint
+					const float d_curr = get_distance_to_next_waypoint((double)curr_wp(0), (double)curr_wp(1),
+							     _current_latitude, _current_longitude);
+
+					// Save distance to waypoint if it is the smallest ever achieved, however make sure that
+					// _min_current_sp_distance_xy is never larger than the distance between the current and the previous wp
+					_min_current_sp_distance_xy = math::min(math::min(d_curr, _min_current_sp_distance_xy), d_curr_prev);
+
+					// if the minimal distance is smaller than the acceptance radius, we should be at waypoint alt
+					// navigator will soon switch to the next waypoint item (if there is one) as soon as we reach this altitude
+					if (_min_current_sp_distance_xy > math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius))) {
+						// The setpoint is set linearly and such that the system reaches the current altitude at the acceptance
+						// radius around the current waypoint
+						const float delta_alt = (pos_sp_curr.alt - pos_sp_prev.alt);
+						const float grad = -delta_alt / (d_curr_prev - math::max(acc_rad, fabsf(pos_sp_curr.loiter_radius)));
+						const float a = pos_sp_prev.alt - grad * d_curr_prev;
+
+						position_sp_alt = a + grad * _min_current_sp_distance_xy;
+					}
+				}
+			}
+
 			_l1_control.navigate_waypoints(prev_wp, curr_wp, curr_pos, nav_speed_2d);
 			_att_sp.roll_body = _l1_control.get_roll_setpoint();
 			_att_sp.yaw_body = _l1_control.nav_bearing();
 
-			tecs_update_pitch_throttle(now, pos_sp_curr.alt,
+			tecs_update_pitch_throttle(now, position_sp_alt,
 						   calculate_target_airspeed(mission_airspeed, ground_speed),
 						   radians(_param_fw_p_lim_min.get()) - radians(_param_fw_psp_off.get()),
 						   radians(_param_fw_p_lim_max.get()) - radians(_param_fw_psp_off.get()),
-						   _param_fw_thr_min.get(),
-						   _param_fw_thr_max.get(),
-						   mission_throttle,
+						   tecs_fw_thr_min,
+						   tecs_fw_thr_max,
+						   tecs_fw_mission_throttle,
 						   false,
 						   radians(_param_fw_p_lim_min.get()));
 
-		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
 
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
 			/* waypoint is a loiter waypoint */
 			float loiter_radius = pos_sp_curr.loiter_radius;
 			uint8_t loiter_direction = pos_sp_curr.loiter_direction;
@@ -745,26 +857,26 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 						   calculate_target_airspeed(mission_airspeed, ground_speed),
 						   radians(_param_fw_p_lim_min.get()) - radians(_param_fw_psp_off.get()),
 						   radians(_param_fw_p_lim_max.get()) - radians(_param_fw_psp_off.get()),
-						   _param_fw_thr_min.get(),
-						   _param_fw_thr_max.get(),
-						   _param_fw_thr_cruise.get(),
+						   tecs_fw_thr_min,
+						   tecs_fw_thr_max,
+						   tecs_fw_mission_throttle,
 						   false,
 						   radians(_param_fw_p_lim_min.get()));
 
-		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_LAND) {
 			control_landing(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
 
-		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
 			control_takeoff(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
 		}
 
 		/* reset landing state */
-		if (pos_sp_curr.type != position_setpoint_s::SETPOINT_TYPE_LAND) {
+		if (position_sp_type != position_setpoint_s::SETPOINT_TYPE_LAND) {
 			reset_landing_state();
 		}
 
 		/* reset takeoff/launch state */
-		if (pos_sp_curr.type != position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+		if (position_sp_type != position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
 			reset_takeoff_state();
 		}
 
@@ -796,7 +908,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 		float altctrl_airspeed = get_demanded_airspeed();
 
 		/* update desired altitude based on user pitch stick input */
-		bool climbout_requested = update_desired_altitude(dt);
+		update_desired_altitude(dt);
 
 		// if we assume that user is taking off then help by demanding altitude setpoint well above ground
 		// and set limit to pitch angle to prevent steering into ground
@@ -807,7 +919,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 		/* throttle limiting */
 		throttle_max = _param_fw_thr_max.get();
 
-		if (_vehicle_land_detected.landed && (fabsf(_manual_control_setpoint.z) < THROTTLE_THRESH)) {
+		if (_vehicle_land_detected.landed && (fabsf(_manual_control_setpoint_airspeed) < THROTTLE_THRESH)) {
 			throttle_max = 0.0f;
 		}
 
@@ -818,8 +930,8 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 					   _param_fw_thr_min.get(),
 					   throttle_max,
 					   _param_fw_thr_cruise.get(),
-					   climbout_requested,
-					   climbout_requested ? radians(10.0f) : pitch_limit_min,
+					   false,
+					   pitch_limit_min,
 					   tecs_status_s::TECS_MODE_NORMAL);
 
 		/* heading control */
@@ -898,7 +1010,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 		float altctrl_airspeed = get_demanded_airspeed();
 
 		/* update desired altitude based on user pitch stick input */
-		bool climbout_requested = update_desired_altitude(dt);
+		update_desired_altitude(dt);
 
 		// if we assume that user is taking off then help by demanding altitude setpoint well above ground
 		// and set limit to pitch angle to prevent steering into ground
@@ -909,7 +1021,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 		/* throttle limiting */
 		throttle_max = _param_fw_thr_max.get();
 
-		if (_vehicle_land_detected.landed && (fabsf(_manual_control_setpoint.z) < THROTTLE_THRESH)) {
+		if (_vehicle_land_detected.landed && (fabsf(_manual_control_setpoint_airspeed) < THROTTLE_THRESH)) {
 			throttle_max = 0.0f;
 		}
 
@@ -920,8 +1032,8 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 					   _param_fw_thr_min.get(),
 					   throttle_max,
 					   _param_fw_thr_cruise.get(),
-					   climbout_requested,
-					   climbout_requested ? radians(10.0f) : pitch_limit_min,
+					   false,
+					   pitch_limit_min,
 					   tecs_status_s::TECS_MODE_NORMAL);
 
 		_att_sp.roll_body = _manual_control_setpoint.y * radians(_param_fw_man_r_max.get());
@@ -1539,9 +1651,13 @@ FixedwingPositionControl::Run()
 		_alt_reset_counter = _local_pos.vz_reset_counter;
 		_pos_reset_counter = _local_pos.vxy_reset_counter;
 
+		if (_pos_sp_triplet_sub.update(&_pos_sp_triplet)) {
+			// reset the altitude foh (first order hold) logic
+			_min_current_sp_distance_xy = FLT_MAX;
+		}
+
 		airspeed_poll();
-		_manual_control_setpoint_sub.update(&_manual_control_setpoint);
-		_pos_sp_triplet_sub.update(&_pos_sp_triplet);
+		manual_control_setpoint_poll();
 		vehicle_attitude_poll();
 		vehicle_command_poll();
 		vehicle_control_mode_poll();

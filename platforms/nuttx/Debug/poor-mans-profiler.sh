@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Author: Pavel Kirienko <pavel.kirienko@zubax.com>
 #

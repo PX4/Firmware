@@ -90,10 +90,11 @@ PARAM_DEFINE_FLOAT(RTL_DESCEND_ALT, 30);
 PARAM_DEFINE_FLOAT(RTL_LAND_DELAY, -1.0f);
 
 /**
- * Maximum horizontal distance from return destination, below which RTL_DESCEND_ALT is used as return altitude
+ * Horizontal radius from return point within which special rules for return mode apply.
  *
- * If the vehicle is less than this horizontal distance from the return destination when return mode is activated it will ascend
- * to RTL_DESCEND_ALT for the return journey (rather than the altitude set by RTL_RETURN_ALT and RTL_CONE_ANG).
+ * The return altitude will be calculated based on RTL_CONE_ANG parameter.
+ * The yaw setpoint will switch to the one defined by corresponding waypoint.
+ *
  *
  * @unit m
  * @min 0.5
@@ -102,7 +103,7 @@ PARAM_DEFINE_FLOAT(RTL_LAND_DELAY, -1.0f);
  * @increment 0.5
  * @group Return Mode
  */
-PARAM_DEFINE_FLOAT(RTL_MIN_DIST, 5.0f);
+PARAM_DEFINE_FLOAT(RTL_MIN_DIST, 10.0f);
 
 /**
  * Return type
@@ -134,7 +135,7 @@ PARAM_DEFINE_INT32(RTL_TYPE, 0);
  * @value 90 Only climb to at least RTL_DESCEND_ALT above destination.
  * @group Return Mode
  */
-PARAM_DEFINE_INT32(RTL_CONE_ANG, 0);
+PARAM_DEFINE_INT32(RTL_CONE_ANG, 45);
 
 /**
  * RTL precision land mode

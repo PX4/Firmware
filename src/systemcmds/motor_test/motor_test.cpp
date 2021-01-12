@@ -61,14 +61,15 @@ void motor_test(unsigned channel, float value, uint8_t driver_instance, int time
 	test_motor.driver_instance = driver_instance;
 	test_motor.timeout_ms = timeout_ms;
 
-	uORB::PublicationQueued<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
+	uORB::Publication<test_motor_s> test_motor_pub{ORB_ID(test_motor)};
 	test_motor_pub.publish(test_motor);
 
 	if (test_motor.action == test_motor_s::ACTION_STOP) {
 		PX4_INFO("motors stop command sent");
 
 	} else {
-		PX4_INFO("motor %d set to %.2f", channel, (double)value);
+		/* Adjust for 1-based motor indexing */
+		PX4_INFO("motor %d set to %.2f", channel + 1, (double)value);
 	}
 }
 
@@ -87,7 +88,7 @@ WARNING: remove all props before using this command.
 
 	PRINT_MODULE_USAGE_NAME("motor_test", "command");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Set motor(s) to a specific output value");
-	PRINT_MODULE_USAGE_PARAM_INT('m', -1, 0, 7, "Motor to test (0...7, all if not specified)", true);
+	PRINT_MODULE_USAGE_PARAM_INT('m', -1, 1, 8, "Motor to test (1...8, all if not specified)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('p', 0, 0, 100, "Power (0...100)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('t', 0, 0, 100, "Timeout in seconds (default=no timeout)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('i', 0, 0, 4, "driver instance", true);
@@ -116,8 +117,8 @@ int motor_test_main(int argc, char *argv[])
 			break;
 
 		case 'm':
-			/* Read in motor number */
-			channel = (int)strtol(myoptarg, nullptr, 0);
+			/* Read in motor number and adjust for 1-based indexing */
+			channel = (int)strtol(myoptarg, nullptr, 0) - 1;
 			break;
 
 		case 'p':

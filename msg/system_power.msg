@@ -7,7 +7,7 @@ uint8 brick_valid		# brick bits power is good when bit 1
 uint8 usb_valid 		# USB is valid when 1
 uint8 servo_valid		# servo power is good when 1
 uint8 periph_5v_oc		# peripheral overcurrent when 1
-uint8 hipower_5v_oc		# hi power peripheral overcurrent when 1
+uint8 hipower_5v_oc		# high power peripheral overcurrent when 1
 
 uint8 BRICK1_VALID_SHIFTS=0
 uint8 BRICK1_VALID_MASK=1

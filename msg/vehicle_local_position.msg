@@ -1,6 +1,7 @@
 # Fused local position in NED.
 
 uint64 timestamp			# time since system start (microseconds)
+uint64 timestamp_sample                 # the timestamp of the raw data (microseconds)
 
 bool xy_valid				# true if x and y are valid
 bool z_valid				# true if z is valid
@@ -64,3 +65,4 @@ float32 hagl_min			# minimum height above ground level - set to 0 when limiting 
 float32 hagl_max			# maximum height above ground level - set to 0 when limiting not required (meters)
 
 # TOPICS vehicle_local_position vehicle_local_position_groundtruth
+# TOPICS estimator_local_position

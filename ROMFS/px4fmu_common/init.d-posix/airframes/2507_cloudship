@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# @name Cloudship
+# @type Airship
+# @class Airship
+#
+# @output MAIN1 thrust tilt
+# @output MAIN2 starboard thruster
+# @output MAIN3 port thruster
+# @output MAIN4 tail thruster
+
+. ${R}etc/init.d/rc.airship_defaults
+
+set MIXER cloudship
+set PWM_OUT 1234

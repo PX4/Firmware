@@ -70,11 +70,17 @@ unsigned SimpleMixer::get_trim(float *trim)
 	return 1;
 }
 
+void
+SimpleMixer::set_dt_once(float dt)
+{
+	_dt = dt;
+}
+
 int
-SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler_s &scaler)
+SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler_s &scaler, float &slew_rate_rise_time)
 {
 	int ret;
-	int s[5];
+	int s[6];
 	int n = -1;
 
 	buf = findtag(buf, buflen, 'O');
@@ -84,10 +90,15 @@ SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler
 		return -1;
 	}
 
-	if ((ret = sscanf(buf, "O: %d %d %d %d %d %n",
-			  &s[0], &s[1], &s[2], &s[3], &s[4], &n)) != 5) {
+	if ((ret = sscanf(buf, "O: %d %d %d %d %d %d %n",
+			  &s[0], &s[1], &s[2], &s[3], &s[4], &s[5], &n)) < 5) {
 		debug("out scaler parse failed on '%s' (got %d, consumed %d)", buf, ret, n);
 		return -1;
+	}
+
+	// set slew rate limit to 0 if no 6th number is specified in mixer file
+	if (ret == 5) {
+		s[5] = 0;
 	}
 
 	buf = skipline(buf, buflen);
@@ -102,6 +113,7 @@ SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler
 	scaler.offset		= s[2] / 10000.0f;
 	scaler.min_output	= s[3] / 10000.0f;
 	scaler.max_output	= s[4] / 10000.0f;
+	slew_rate_rise_time	= s[5] / 10000.0f;
 
 	return 0;
 }
@@ -193,16 +205,17 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 	if (next_tag == 'S') {
 		/* No output scalers specified. Use default values.
 		 * Corresponds to:
-		 * O:      10000  10000      0 -10000  10000
+		 * O:      10000  10000      0 -10000  10000 0
 		 */
 		mixinfo->output_scaler.negative_scale	= 1.0f;
 		mixinfo->output_scaler.positive_scale	= 1.0f;
 		mixinfo->output_scaler.offset		= 0.f;
 		mixinfo->output_scaler.min_output	= -1.0f;
 		mixinfo->output_scaler.max_output	= 1.0f;
+		mixinfo->slew_rate_rise_time		= 0.0f;
 
 	} else {
-		if (parse_output_scaler(end - buflen, buflen, mixinfo->output_scaler)) {
+		if (parse_output_scaler(end - buflen, buflen, mixinfo->output_scaler, mixinfo->slew_rate_rise_time)) {
 			debug("simple mixer parser failed parsing out scaler tag, ret: '%s'", buf);
 			goto out;
 		}
@@ -262,6 +275,28 @@ SimpleMixer::mix(float *outputs, unsigned space)
 	}
 
 	*outputs = scale(_pinfo->output_scaler, sum);
+
+	if (_dt > FLT_EPSILON && _pinfo->slew_rate_rise_time > FLT_EPSILON) {
+
+		// factor 2 is needed because actuator outputs are in the range [-1,1]
+		const float output_delta_max = 2.0f * _dt / _pinfo->slew_rate_rise_time;
+
+		float delta_out = *outputs - _output_prev;
+
+		if (delta_out > output_delta_max) {
+			*outputs = _output_prev + output_delta_max;
+
+		} else if (delta_out < -output_delta_max) {
+			*outputs = _output_prev - output_delta_max;
+		}
+
+	}
+
+	// this will force the caller of the mixer to always supply dt values, otherwise no slew rate limiting will happen
+	_dt = 0.f;
+
+	_output_prev = *outputs;
+
 	return 1;
 }
 

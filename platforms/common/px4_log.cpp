@@ -66,7 +66,7 @@ void px4_log_initialize(void)
 	log_message.severity = 6; //info
 	strcpy((char *)log_message.text, "initialized uORB logging");
 
-	orb_log_message_pub = orb_advertise_queue(ORB_ID(log_message), &log_message, 2);
+	orb_log_message_pub = orb_advertise_queue(ORB_ID(log_message), &log_message, log_message_s::ORB_QUEUE_LENGTH);
 
 	if (!orb_log_message_pub) {
 		PX4_ERR("failed to advertise log_message");

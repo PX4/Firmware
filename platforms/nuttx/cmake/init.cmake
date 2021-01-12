@@ -82,6 +82,17 @@ if((NOT EXISTS ${PX4_BINARY_DIR}/NuttX/nuttx_copy.stamp) OR (NOT EXISTS ${PX4_BI
 	file(RELATIVE_PATH CP_SRC ${CMAKE_SOURCE_DIR} ${NUTTX_SRC_DIR}/nuttx)
 	file(RELATIVE_PATH CP_DST ${CMAKE_SOURCE_DIR} ${PX4_BINARY_DIR}/NuttX)
 	execute_process(COMMAND ${NUTTX_COPY_CMD} ${NUTTX_COPY_CMD_OPTS} ${CP_SRC} ${CP_DST} WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+	# replace NuttX .git with actual git repo location (absolute path)
+	execute_process(
+		COMMAND git rev-parse --absolute-git-dir
+		OUTPUT_VARIABLE nuttx_git_dir
+		WORKING_DIRECTORY ${NUTTX_SRC_DIR}/nuttx
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${PX4_BINARY_DIR}/NuttX/nuttx/.git)
+	file(WRITE ${PX4_BINARY_DIR}/NuttX/nuttx/.git "gitdir: ${nuttx_git_dir}")
+
 	execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${PX4_BINARY_DIR}/NuttX/nuttx_copy.stamp)
 endif()
 

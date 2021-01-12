@@ -13,6 +13,6 @@
     <env name="PX4_ESTIMATOR" value="$(arg est)" />
     <arg unless="$(arg interactive)" name="px4_command_arg1" value="-d"/>
     <arg     if="$(arg interactive)" name="px4_command_arg1" value=""/>
-    <node name="sitl_$(arg ID)" pkg="px4" type="px4" output="screen" args="$(find px4)/ROMFS/px4fmu_common -s etc/init.d-posix/rcS -i $(arg ID) $(arg px4_command_arg1)">
+    <node name="sitl_$(arg ID)" pkg="px4" type="px4" output="screen" args="$(find px4)/build/px4_sitl_default/etc -s etc/init.d-posix/rcS -i $(arg ID) $(arg px4_command_arg1)">
     </node>
 </launch>

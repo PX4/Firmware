@@ -31,7 +31,7 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE drivers__pca9685
+	MODULE drivers__pca9685_pwm_out
 	MAIN pca9685_pwm_out
 	COMPILE_FLAGS
 	SRCS

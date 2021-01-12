@@ -35,6 +35,7 @@
 #include "PX4Accelerometer.hpp"
 
 #include <lib/drivers/device/Device.hpp>
+#include <lib/parameters/param.h>
 
 using namespace time_literals;
 using matrix::Vector3f;
@@ -64,7 +65,6 @@ static constexpr uint8_t clipping(const int16_t samples[16], int16_t clip_limit,
 }
 
 PX4Accelerometer::PX4Accelerometer(uint32_t device_id, enum Rotation rotation) :
-	ModuleParams(nullptr),
 	_sensor_pub{ORB_ID(sensor_accel)},
 	_sensor_fifo_pub{ORB_ID(sensor_accel_fifo)},
 	_device_id{device_id},
@@ -73,7 +73,7 @@ PX4Accelerometer::PX4Accelerometer(uint32_t device_id, enum Rotation rotation) :
 	// advertise immediately to keep instance numbering in sync
 	_sensor_pub.advertise();
 
-	updateParams();
+	param_get(param_find("IMU_GYRO_RATEMAX"), &_imu_gyro_rate_max);
 }
 
 PX4Accelerometer::~PX4Accelerometer()

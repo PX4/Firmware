@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,23 +34,20 @@
 #include "PAW3902.hpp"
 #include <px4_platform_common/module.h>
 
-extern "C" __EXPORT int paw3902_main(int argc, char *argv[]);
-
-void
-PAW3902::print_usage()
+void PAW3902::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("paw3902", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(false, true);
-	PRINT_MODULE_USAGE_PARAM_INT('R', 0, 0, 35, "Rotation", true);
+	PRINT_MODULE_USAGE_PARAM_INT('Y', 0, 0, 359, "custom yaw rotation (degrees)", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
 I2CSPIDriverBase *PAW3902::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
 				       int runtime_instance)
 {
-	PAW3902 *instance = new PAW3902(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
-					cli.bus_frequency, cli.spi_mode);
+	PAW3902 *instance = new PAW3902(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.bus_frequency,
+					cli.spi_mode, cli.custom1);
 
 	if (!instance) {
 		PX4_ERR("alloc failed");
@@ -65,19 +62,18 @@ I2CSPIDriverBase *PAW3902::instantiate(const BusCLIArguments &cli, const BusInst
 	return instance;
 }
 
-int
-paw3902_main(int argc, char *argv[])
+extern "C" __EXPORT int paw3902_main(int argc, char *argv[])
 {
-	int ch;
+	int ch = 0;
 	using ThisDriver = PAW3902;
 	BusCLIArguments cli{false, true};
 	cli.spi_mode = SPIDEV_MODE0;
-	cli.default_spi_frequency = PAW3902_SPI_BUS_SPEED;
+	cli.default_spi_frequency = SPI_SPEED;
 
-	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "Y:")) != EOF) {
 		switch (ch) {
-		case 'R':
-			cli.rotation = (enum Rotation)atoi(cli.optarg());
+		case 'Y':
+			cli.custom1 = atoi(cli.optarg());
 			break;
 		}
 	}

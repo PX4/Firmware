@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# @name 3DR Iris Quadrotor SITL (rplidar)
+#
+# @type Quadrotor Wide
+#
+
+. ${R}etc/init.d-posix/airframes/10016_iris
+
+if [ $AUTOCNF = yes ]
+then
+	param set LPE_FUSION 242
+fi

@@ -98,7 +98,7 @@ int px4_arch_adc_init(uint32_t base_address)
 		imxrt_clockall_adc1();
 
 		rCFG(base_address) = ADC_CFG_ADICLK_IPGDIV2 | ADC_CFG_MODE_12BIT | \
-				     ADC_CFG_ADIV_DIV8 | ADC_CFG_ADLSMP | ADC_CFG_ADSTS_6_20 | \
+				     ADC_CFG_ADIV_DIV8 | ADC_CFG_ADLSMP | ADC_CFG_ADSTS_7_21 | \
 				     ADC_CFG_AVGS_4SMPL | ADC_CFG_OVWREN;
 		px4_leave_critical_section(flags);
 

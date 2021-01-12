@@ -380,7 +380,7 @@ void UavcanNode::Run()
 	}
 
 	// distance_sensor[] -> uavcan::equipment::range_sensor::Measurement
-	for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+	for (int i = 0; i < MAX_INSTANCES; i++) {
 		distance_sensor_s dist;
 
 		if (_distance_sensor_sub[i].update(&dist)) {
@@ -626,7 +626,10 @@ extern "C" __EXPORT int uavcannode_main(int argc, char *argv[])
 	}
 
 	if (!std::strcmp(argv[1], "status") || !std::strcmp(argv[1], "info")) {
-		inst->print_info();
+		if (inst) {
+			inst->print_info();
+		}
+
 		return 0;
 	}
 

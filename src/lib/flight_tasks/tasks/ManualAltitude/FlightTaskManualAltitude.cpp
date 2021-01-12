@@ -44,14 +44,13 @@ using namespace matrix;
 
 FlightTaskManualAltitude::FlightTaskManualAltitude() :
 	_sticks(this)
-{};
+{}
 
 bool FlightTaskManualAltitude::updateInitialize()
 {
 	bool ret = FlightTask::updateInitialize();
 
-	_sticks.checkAndSetStickInputs(_time_stamp_current);
-	_sticks.setGearAccordingToSwitch(_gear);
+	_sticks.checkAndSetStickInputs();
 
 	if (_sticks_data_required) {
 		ret = ret && _sticks.isAvailable();

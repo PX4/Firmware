@@ -43,6 +43,8 @@ px4_add_module(
 		ms5611_main.cpp
 		MS5611.hpp
 	DEPENDS
+		cdev
+		drivers__device
 		drivers_barometer
 		px4_work_queue
 	)

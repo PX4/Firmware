@@ -36,7 +36,6 @@ px4_add_module(
 	COMPILE_FLAGS
 	SRCS
 		mtd.cpp
-		24xxxx_mtd.c
 	DEPENDS
 	)
 

@@ -14,9 +14,10 @@
 #
 # @maintainer Simon Wilks <simon@uaventure.com>
 #
+# @board px4_fmu-v2 exclude
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.fw_defaults
+. ${R}etc/init.d/rc.fw_defaults
 
 set MIXER Viper

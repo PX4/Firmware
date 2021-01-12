@@ -35,20 +35,19 @@
 
 #include <drivers/drv_hrt.h>
 #include <lib/conversion/rotation.h>
-#include <px4_platform_common/module_params.h>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/sensor_gyro_fifo.h>
 
-class PX4Gyroscope : public ModuleParams
+class PX4Gyroscope
 {
 public:
 	PX4Gyroscope(uint32_t device_id, enum Rotation rotation = ROTATION_NONE);
-	~PX4Gyroscope() override;
+	~PX4Gyroscope();
 
 	uint32_t get_device_id() const { return _device_id; }
 
-	float get_max_rate_hz() const { return _param_imu_gyro_rate_max.get(); }
+	int32_t get_max_rate_hz() const { return _imu_gyro_rate_max; }
 
 	void set_device_id(uint32_t device_id) { _device_id = device_id; }
 	void set_device_type(uint8_t devtype);
@@ -65,11 +64,13 @@ public:
 private:
 	void Publish(const hrt_abstime &timestamp_sample, float x, float y, float z);
 
-	uORB::PublicationQueuedMulti<sensor_gyro_s> _sensor_pub;
+	uORB::PublicationMulti<sensor_gyro_s> _sensor_pub;
 	uORB::PublicationMulti<sensor_gyro_fifo_s>  _sensor_fifo_pub;
 
 	uint32_t		_device_id{0};
 	const enum Rotation	_rotation;
+
+	int32_t			_imu_gyro_rate_max{0};
 
 	float			_range{math::radians(2000.f)};
 	float			_scale{1.f};
@@ -78,8 +79,4 @@ private:
 	uint32_t		_error_count{0};
 
 	int16_t			_last_sample[3] {};
-
-	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::IMU_GYRO_RATEMAX>) _param_imu_gyro_rate_max
-	)
 };

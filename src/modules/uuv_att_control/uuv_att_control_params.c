@@ -108,6 +108,14 @@ PARAM_DEFINE_FLOAT(UUV_YAW_D, 2.0f);
 PARAM_DEFINE_INT32(UUV_INPUT_MODE, 0);
 
 /**
+ * Skip the controller
+ *
+ * @value 0 use the module's controller
+ * @value 1 skip the controller and feedthrough the setpoints
+ */
+PARAM_DEFINE_INT32(UUV_SKIP_CTRL, 0);
+
+/**
  * Direct roll input
  *
  * @group UUV Attitude Control

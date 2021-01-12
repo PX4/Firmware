@@ -32,11 +32,11 @@
  ****************************************************************************/
 
 /**
- * @file battery_params_1.c
+ * @file battery_params_deprecated.c
  * @author Timothy Scott <timothy@auterion.com>
  *
- * Defines parameters for Battery 1. For backwards compatibility, the
- * parameter names do not have a "1" in them.
+ * Defines the deprcated single battery configuration which are temporarily kept for backwards compatibility with QGC.
+ * The new parameter set has a number after "BAT" e.g. BAT1_V_EMPTY.
  */
 
 /**

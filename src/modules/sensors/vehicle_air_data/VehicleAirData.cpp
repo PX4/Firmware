@@ -40,7 +40,6 @@ namespace sensors
 {
 
 using namespace matrix;
-using namespace time_literals;
 
 static constexpr uint32_t SENSOR_TIMEOUT{300_ms};
 
@@ -98,6 +97,10 @@ void VehicleAirData::SensorCorrectionsUpdate(bool force)
 							case 2:
 								_thermal_offset[baro_index] = corrections.baro_offset_2;
 								break;
+
+							case 3:
+								_thermal_offset[baro_index] = corrections.baro_offset_3;
+								break;
 							}
 						}
 					}
@@ -110,10 +113,10 @@ void VehicleAirData::SensorCorrectionsUpdate(bool force)
 void VehicleAirData::ParametersUpdate()
 {
 	// Check if parameters have changed
-	if (_params_sub.updated()) {
+	if (_parameter_update_sub.updated()) {
 		// clear update
 		parameter_update_s param_update;
-		_params_sub.copy(&param_update);
+		_parameter_update_sub.copy(&param_update);
 
 		updateParams();
 	}
@@ -133,7 +136,7 @@ void VehicleAirData::Run()
 
 		if (!_advertised[uorb_index]) {
 			// use data's timestamp to throttle advertisement checks
-			if (hrt_elapsed_time(&_last_data[uorb_index].timestamp) > 1_s) {
+			if ((_last_data[uorb_index].timestamp == 0) || (hrt_elapsed_time(&_last_data[uorb_index].timestamp) > 1_s)) {
 				if (_sensor_sub[uorb_index].advertised()) {
 					if (uorb_index > 0) {
 						/* the first always exists, but for each further sensor, add a new validator */
@@ -147,12 +150,17 @@ void VehicleAirData::Run()
 					// force temperature correction update
 					SensorCorrectionsUpdate(true);
 
+					if (_selected_sensor_sub_index < 0) {
+						_sensor_sub[uorb_index].registerCallback();
+					}
+
 				} else {
 					_last_data[uorb_index].timestamp = hrt_absolute_time();
 				}
 			}
+		}
 
-		} else {
+		if (_advertised[uorb_index]) {
 			updated[uorb_index] = _sensor_sub[uorb_index].update(&_last_data[uorb_index]);
 
 			if (updated[uorb_index]) {
@@ -200,7 +208,8 @@ void VehicleAirData::Run()
 		_baro_sum_count++;
 
 		if ((_param_sens_baro_rate.get() > 0)
-		    && hrt_elapsed_time(&_last_publication_timestamp) >= (1e6f / _param_sens_baro_rate.get())) {
+		    && ((_last_publication_timestamp == 0)
+			|| (hrt_elapsed_time(&_last_publication_timestamp) >= (1e6f / _param_sens_baro_rate.get())))) {
 
 			const float pressure = _baro_sum / _baro_sum_count;
 			const hrt_abstime timestamp_sample = _baro_timestamp_sum / _baro_sum_count;

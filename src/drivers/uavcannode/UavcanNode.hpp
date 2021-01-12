@@ -65,7 +65,6 @@
 #include <uavcan/equipment/power/BatteryInfo.hpp>
 #include <uavcan/equipment/range_sensor/Measurement.hpp>
 
-
 #include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 
@@ -78,6 +77,8 @@
 #include <uORB/topics/sensor_baro.h>
 #include <uORB/topics/sensor_mag.h>
 #include <uORB/topics/vehicle_gps_position.h>
+
+using namespace time_literals;
 
 /**
  * A UAVCAN node.
@@ -179,11 +180,12 @@ private:
 
 	hrt_abstime _last_static_temperature_publish{0};
 
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::SubscriptionCallbackWorkItem _battery_status_sub{this, ORB_ID(battery_status)};
 	uORB::SubscriptionCallbackWorkItem _diff_pressure_sub{this, ORB_ID(differential_pressure)};
-	uORB::SubscriptionCallbackWorkItem _distance_sensor_sub[ORB_MULTI_MAX_INSTANCES] {
+	static constexpr int MAX_INSTANCES = 4;
+	uORB::SubscriptionCallbackWorkItem _distance_sensor_sub[MAX_INSTANCES] {
 		{this, ORB_ID(distance_sensor), 0},
 		{this, ORB_ID(distance_sensor), 1},
 		{this, ORB_ID(distance_sensor), 2},

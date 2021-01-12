@@ -3,7 +3,7 @@
 # PX4 FMUv4 specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # We know there are sketchy boards out there
 # as chinese companies produce Pixracers without

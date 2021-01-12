@@ -16,4 +16,4 @@ uint16 msg_sequence		# allows determine drops
 uint8 flags			# see FLAGS_*
 uint8[249] data		# ulog data
 
-uint8 ORB_QUEUE_LENGTH = 14	# TODO: we might be able to reduce this if mavlink polled on the topic
+uint8 ORB_QUEUE_LENGTH = 16	# TODO: we might be able to reduce this if mavlink polled on the topic

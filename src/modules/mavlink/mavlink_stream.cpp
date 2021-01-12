@@ -64,7 +64,7 @@ MavlinkStream::update(const hrt_abstime &t)
 		// this will give different messages on the same run a different
 		// initial timestamp which will help spacing them out
 		// on the link scheduling
-		if (send(t)) {
+		if (send()) {
 			_last_sent = hrt_absolute_time();
 
 			if (!_first_message_sent) {
@@ -112,7 +112,7 @@ MavlinkStream::update(const hrt_abstime &t)
 		// do not use the actual time but increment at a fixed rate, so that processing delays do not
 		// distort the average rate. The check of the maximum interval is done to ensure that after a
 		// long time not sending anything, sending multiple messages in a short time is avoided.
-		if (send(t)) {
+		if (send()) {
 			_last_sent = ((interval > 0) && ((int64_t)(1.5f * interval) > dt)) ? _last_sent + interval : t;
 
 			if (!_first_message_sent) {

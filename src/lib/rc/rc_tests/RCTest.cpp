@@ -32,7 +32,8 @@ private:
 	bool crsfTest();
 	bool dsmTest(const char *filepath, unsigned expected_chancount, unsigned expected_dropcount, unsigned chan0);
 	bool dsmTest10Ch();
-	bool dsmTest12Ch();
+	bool dsmTest16Ch();
+	bool dsmTest22msDSMX16Ch();
 	bool sbus2Test();
 	bool st24Test();
 	bool sumdTest();
@@ -42,7 +43,8 @@ bool RCTest::run_tests()
 {
 	ut_run_test(crsfTest);
 	ut_run_test(dsmTest10Ch);
-	ut_run_test(dsmTest12Ch);
+	ut_run_test(dsmTest16Ch);
+	ut_run_test(dsmTest22msDSMX16Ch);
 	ut_run_test(sbus2Test);
 	ut_run_test(st24Test);
 	ut_run_test(sumdTest);
@@ -138,12 +140,17 @@ bool RCTest::crsfTest()
 
 bool RCTest::dsmTest10Ch()
 {
-	return dsmTest(TEST_DATA_PATH "dsm_x_data.txt", 10, 64, 1500);
+	return dsmTest(TEST_DATA_PATH "dsm_x_data.txt", 10, 6, 1500);
 }
 
-bool RCTest::dsmTest12Ch()
+bool RCTest::dsmTest16Ch()
 {
-	return dsmTest(TEST_DATA_PATH "dsm_x_dx9_data.txt", 12, 454, 1500);
+	return dsmTest(TEST_DATA_PATH "dsm_x_dx9_data.txt", 16, 3, 1500);
+}
+
+bool RCTest::dsmTest22msDSMX16Ch()
+{
+	return dsmTest(TEST_DATA_PATH "dsm_x_dx9_px4_binding_data.txt", 16, 6, 1499);
 }
 
 bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned expected_dropcount, unsigned chan0)
@@ -172,7 +179,7 @@ bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned
 	unsigned dsm_frame_drops = 0;
 	uint16_t max_channels = sizeof(rc_values) / sizeof(rc_values[0]);
 
-	int rate_limiter = 0;
+	int count = 0;
 	unsigned last_drop = 0;
 
 	dsm_proto_init();
@@ -192,7 +199,9 @@ bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned
 					&dsm_11_bit, &dsm_frame_drops, nullptr, max_channels);
 
 		if (result) {
-			ut_compare("num_values == expected_chancount", num_values, expected_chancount);
+			if (count > (16 * 10)) { // need to process enough data to have full channel count
+				ut_compare("num_values == expected_chancount", num_values, expected_chancount);
+			}
 
 			ut_test(abs((int)chan0 - (int)rc_values[0]) < 30);
 
@@ -208,13 +217,13 @@ bool RCTest::dsmTest(const char *filepath, unsigned expected_chancount, unsigned
 			last_drop = dsm_frame_drops;
 		}
 
-		rate_limiter++;
+		count++;
 	}
 
 	fclose(fp);
 
 	ut_test(ret == EOF);
-	PX4_INFO("drop: %d", (int)last_drop);
+	//PX4_INFO("drop: %d", (int)last_drop);
 	ut_compare("last_drop == expected_dropcount", last_drop, expected_dropcount);
 
 	return true;

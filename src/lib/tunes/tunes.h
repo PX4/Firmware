@@ -37,6 +37,7 @@
 
 #pragma once
 
+#include <errno.h>
 #include <uORB/uORB.h>
 #include <uORB/topics/tune_control.h>
 #include "tune_definition.h"
@@ -58,6 +59,19 @@ class Tunes
 public:
 	enum class NoteMode {NORMAL, LEGATO, STACCATO};
 
+	enum class Status {
+		Continue = 1,
+		Stop = 0,
+		Error = -1,
+	};
+
+	enum class ControlResult {
+		Success = 0,
+		AlreadyPlaying = 1,
+		InvalidTune = -EINVAL,
+		WouldInterrupt = -EBUSY,
+	};
+
 	/**
 	 * Constructor with the default parameters set to:
 	 * default_tempo: TUNE_DEFAULT_TEMPO
@@ -77,9 +91,12 @@ public:
 	 * the call to this function will be ignored, unless the override flag is set
 	 * or the tune being already played is a repeated tune.
 	 * @param  tune_control struct containig the uORB message
-	 * @return              return -EINVAL if the default tune does not exist.
+	 * @return              return ControlResult::InvalidTune if the default tune does not exist,
+	 * 			ControlResult::WouldInterrupt if tune was already playing and not interruptable,
+	 * 			ControlResult::AlreadyPlaying if same tune was already playing,
+	 * 			ControlResult::Success if new tune was set.
 	 */
-	int set_control(const tune_control_s &tune_control);
+	ControlResult set_control(const tune_control_s &tune_control);
 
 	/**
 	 * Set tune to be played using a string.
@@ -99,7 +116,7 @@ public:
 	 * @param  silence   return silence duration (us)
 	 * @return           -1 for error, 0 for play one tone and 1 for continue a sequence
 	 */
-	int get_next_note(unsigned &frequency, unsigned &duration, unsigned &silence);
+	Tunes::Status get_next_note(unsigned &frequency, unsigned &duration, unsigned &silence);
 
 	/**
 	 * Get next note in the current tune, which has been provided by either
@@ -110,8 +127,8 @@ public:
 	 * @param  volume    return the volume level of the note (between 0-100)
 	 * @return           -1 for no tune available/error, 0 to not play anything and 1 to play
 	 */
-	int get_next_note(unsigned &frequency, unsigned &duration,
-			  unsigned &silence, uint8_t &volume);
+	Tunes::Status get_next_note(unsigned &frequency, unsigned &duration,
+				    unsigned &silence, uint8_t &volume);
 
 	/**
 	 *  Get the number of default tunes. This is useful for when a tune is
@@ -182,9 +199,9 @@ private:
 	 */
 	void reset(bool repeat_flag);
 
-	int tune_end();
+	Tunes::Status tune_end();
 
-	int tune_error();
+	Tunes::Status tune_error();
 
 	static const char *const  _default_tunes[];
 	static const bool         _default_tunes_interruptable[];

@@ -132,6 +132,12 @@ public:
 
 	void set(float val) { _val = val; }
 
+	void reset()
+	{
+		param_reset_no_notification(handle());
+		update();
+	}
+
 	bool update() { return param_get(handle(), &_val) == 0; }
 
 	param_t handle() const { return param_handle(p); }
@@ -166,6 +172,12 @@ public:
 
 	void set(float val) { _val = val; }
 
+	void reset()
+	{
+		param_reset_no_notification(handle());
+		update();
+	}
+
 	bool update() { return param_get(handle(), &_val) == 0; }
 
 	param_t handle() const { return param_handle(p); }
@@ -197,6 +209,12 @@ public:
 	bool commit_no_notification() const { return param_set_no_notification(handle(), &_val) == 0; }
 
 	void set(int32_t val) { _val = val; }
+
+	void reset()
+	{
+		param_reset_no_notification(handle());
+		update();
+	}
 
 	bool update() { return param_get(handle(), &_val) == 0; }
 
@@ -231,6 +249,12 @@ public:
 	bool commit_no_notification() const { return param_set_no_notification(handle(), &_val) == 0; }
 
 	void set(int32_t val) { _val = val; }
+
+	void reset()
+	{
+		param_reset_no_notification(handle());
+		update();
+	}
 
 	bool update() { return param_get(handle(), &_val) == 0; }
 
@@ -271,6 +295,12 @@ public:
 	}
 
 	void set(bool val) { _val = val; }
+
+	void reset()
+	{
+		param_reset_no_notification(handle());
+		update();
+	}
 
 	bool update()
 	{

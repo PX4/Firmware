@@ -2,7 +2,7 @@
 #
 # CUAV X7Pro specific board sensors init
 #------------------------------------------------------------------------------
-adc start
+board_adc start
 
 # SPI1 (internal)
 #adis16470 -s start
@@ -17,3 +17,6 @@ ms5611 -s -b 4 start
 # SPI6 (internal)
 icm20649 -s -b 6 -R 2 start
 ms5611 -s -b 6 start
+
+# External compass on GPS1/I2C1: standard CUAV GPS/compass puck (with lights, safety button, and buzzer)
+ist8310 -X -b 1 -R 10 start

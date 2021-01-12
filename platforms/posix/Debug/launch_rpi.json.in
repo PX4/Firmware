@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "PX4 posix-configs/rpi/px4.config",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": [
+                "-s", "../../posix-configs/rpi/px4.config"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.buildDirectory}",
+            "externalConsole": false,
+            "linux": {
+                "MIMode": "gdb",
+                "externalConsole": false,
+                "setupCommands": [
+                    {
+                        "description": "Enable pretty-printing for gdb",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    },
+                    {
+                        "description": "PX4 ignore wq signals",
+                        "text": "handle SIGCONT nostop noprint nopass",
+                        "ignoreFailures": true
+                    }
+                ]
+            }
+        },
+    ]
+}

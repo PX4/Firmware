@@ -47,7 +47,7 @@
 #include <nuttx/spi/spi.h>
 #include <arch/board/board.h>
 
-#include "up_arch.h"
+#include "arm_arch.h"
 #include "chip.h"
 #include <kinetis.h>
 #include "board_config.h"

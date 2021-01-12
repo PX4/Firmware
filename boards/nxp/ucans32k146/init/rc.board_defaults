@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# board defaults
+#------------------------------------------------------------------------------
+
+
+if [ $AUTOCNF = yes ]
+then
+
+fi
+
+pwm_out mode_pwm1 start

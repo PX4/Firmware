@@ -35,7 +35,7 @@
 
 #include <systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 
 using namespace time_literals;
 
@@ -43,14 +43,13 @@ bool PreFlightCheck::manualControlCheck(orb_advert_t *mavlink_log_pub, const boo
 {
 	bool success = true;
 
-	uORB::SubscriptionData<manual_control_setpoint_s> manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
-	manual_control_setpoint_sub.update();
-	const manual_control_setpoint_s &manual_control_setpoint = manual_control_setpoint_sub.get();
+	uORB::SubscriptionData<manual_control_switches_s> manual_control_switches_sub{ORB_ID(manual_control_switches)};
+	const manual_control_switches_s &manual_control_switches = manual_control_switches_sub.get();
 
-	if (hrt_elapsed_time(&manual_control_setpoint.timestamp) < 1_s) {
+	if (manual_control_switches.timestamp != 0) {
 
-		//check action switches
-		if (manual_control_setpoint.return_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+		// check action switches
+		if (manual_control_switches.return_switch == manual_control_switches_s::SWITCH_POS_ON) {
 			success = false;
 
 			if (report_fail) {
@@ -58,7 +57,7 @@ bool PreFlightCheck::manualControlCheck(orb_advert_t *mavlink_log_pub, const boo
 			}
 		}
 
-		if (manual_control_setpoint.kill_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+		if (manual_control_switches.kill_switch == manual_control_switches_s::SWITCH_POS_ON) {
 			success = false;
 
 			if (report_fail) {
@@ -66,7 +65,7 @@ bool PreFlightCheck::manualControlCheck(orb_advert_t *mavlink_log_pub, const boo
 			}
 		}
 
-		if (manual_control_setpoint.gear_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+		if (manual_control_switches.gear_switch == manual_control_switches_s::SWITCH_POS_ON) {
 			success = false;
 
 			if (report_fail) {

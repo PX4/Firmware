@@ -41,3 +41,5 @@ px4_add_library(sensor_calibration
 	Utilities.cpp
 	Utilities.hpp
 )
+
+target_link_libraries(sensor_calibration PRIVATE conversion parameters)

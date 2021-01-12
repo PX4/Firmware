@@ -15,7 +15,7 @@ I2CSPIDriverBase *INA226::instantiate(const BusCLIArguments &cli, const BusInsta
 		return nullptr;
 	}
 
-	if (cli.custom1 == 1) {
+	if (cli.keep_running) {
 		if (instance->force_init() != PX4_OK) {
 			PX4_INFO("Failed to init INA226 on bus %d, but will try again periodically.", iterator.bus());
 		}
@@ -52,7 +52,7 @@ this flag set, the battery must be plugged in before starting the driver.
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAMS_I2C_SPI_DRIVER(true, false);
 	PRINT_MODULE_USAGE_PARAMS_I2C_ADDRESS(0x41);
-	PRINT_MODULE_USAGE_PARAM_FLAG('k', "if initialization (probing) fails, keep retrying periodically", true);
+	PRINT_MODULE_USAGE_PARAMS_I2C_KEEP_RUNNING_FLAG();
 	PRINT_MODULE_USAGE_PARAM_INT('t', 1, 1, 2, "battery index for calibration values (1 or 2)", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
@@ -65,14 +65,11 @@ ina226_main(int argc, char *argv[])
 	BusCLIArguments cli{true, false};
 	cli.i2c_address = INA226_BASEADDR;
 	cli.default_i2c_frequency = 100000;
+	cli.support_keep_running = true;
 	cli.custom2 = 1;
 
-	while ((ch = cli.getopt(argc, argv, "kt:")) != EOF) {
+	while ((ch = cli.getopt(argc, argv, "t:")) != EOF) {
 		switch (ch) {
-		case 'k': // keep retrying
-			cli.custom1 = 1;
-			break;
-
 		case 't': // battery index
 			cli.custom2 = (int)strtol(cli.optarg(), NULL, 0);
 			break;

@@ -41,6 +41,36 @@
 
 bool param_modify_on_import(bson_node_t node)
 {
+	// migrate COM_ARM_AUTH -> COM_ARM_AUTH_ID, COM_ARM_AUTH_MET and COM_ARM_AUTH_TO (2020-11-06). This can be removed after the next release (current release=1.11)
+	if (node->type == BSON_INT32) {
+		if (strcmp("COM_ARM_AUTH", node->name) == 0) {
+			union {
+				struct {
+					uint8_t authorizer_system_id;
+					uint16_t auth_method_arm_timeout_msec;
+					uint8_t authentication_method;
+				} __attribute__((packed)) struct_value;
+				int32_t param_value;
+			} old_param;
+			old_param.param_value = node->i;
+
+			int32_t method = old_param.struct_value.authentication_method;
+			param_set_no_notification(param_find("COM_ARM_AUTH_MET"), &method);
+
+			float timeout = old_param.struct_value.auth_method_arm_timeout_msec / 1000.f;
+			param_set_no_notification(param_find("COM_ARM_AUTH_TO"), &timeout);
+
+			strcpy(node->name, "COM_ARM_AUTH_ID");
+			node->i = old_param.struct_value.authorizer_system_id;
+
+			PX4_INFO("migrating COM_ARM_AUTH: %d -> COM_ARM_AUTH_ID:%d, COM_ARM_AUTH_MET: %d and COM_ARM_AUTH_TO: %f",
+				 old_param.param_value,
+				 old_param.struct_value.authorizer_system_id,
+				 method,
+				 (double)timeout);
+		}
+	}
+
 	// migrate MPC_*_VEL_* -> MPC_*_VEL_*_ACC (2020-04-27). This can be removed after the next release (current release=1.10)
 	if (node->type == BSON_DOUBLE) {
 		param_migrate_velocity_gain(node, "MPC_XY_VEL_P");
@@ -98,6 +128,18 @@ bool param_modify_on_import(bson_node_t node)
 		}
 	}
 
+	// 2020-08-23 (v1.12 alpha): translate GPS blending parameters from EKF2 -> SENS
+	{
+		if (strcmp("EKF2_GPS_MASK", node->name) == 0) {
+			strcpy(node->name, "SENS_GPS_MASK");
+			PX4_INFO("copying %s -> %s", "EKF2_GPS_MASK", "SENS_GPS_MASK");
+		}
+
+		if (strcmp("EKF2_GPS_TAU", node->name) == 0) {
+			strcpy(node->name, "SENS_GPS_TAU");
+			PX4_INFO("copying %s -> %s", "EKF2_GPS_TAU", "SENS_GPS_TAU");
+		}
+	}
 
 	// translate (SPI) calibration ID parameters. This can be removed after the next release (current release=1.10)
 

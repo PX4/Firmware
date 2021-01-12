@@ -98,7 +98,6 @@ then
 	param set BAT_V_DIV 10.14
 	param set BAT_A_PER_V 18.18
 	#param set CBRK_IO_SAFETY 22027
-	param set COM_ARM_EKF_AB 0.005
 	param set COM_DISARM_LAND 2
 
 	# Filter settings

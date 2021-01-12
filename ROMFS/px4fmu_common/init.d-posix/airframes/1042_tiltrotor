@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# @name VTOL Tiltrotor
+#
+# @type VTOL Tiltrotor
+#
+
+. ${R}etc/init.d/rc.vtol_defaults
+
+if [ $AUTOCNF = yes ]
+then
+	param set FW_L1_PERIOD 12
+	param set FW_MAN_P_MAX 30
+	param set FW_PR_FF 0.2
+	param set FW_PR_I 0.4
+	param set FW_PR_P 0.9
+	param set FW_PSP_OFF 3
+	param set FW_RR_FF 0.1
+	param set FW_RR_P 0.3
+
+	param set MC_YAW_P 1.6
+
+	param set MIS_TAKEOFF_ALT 10
+
+	param set MPC_ACC_HOR_MAX 2
+	param set MPC_XY_P 0.8
+	param set MPC_XY_VEL_P_ACC 3
+	param set MPC_XY_VEL_I_ACC 4
+	param set MPC_XY_VEL_D_ACC 0.1
+
+	param set NAV_LOITER_RAD 100
+
+	param set VT_B_TRANS_DUR 8
+	param set VT_ELEV_MC_LOCK 0
+	param set VT_FWD_THRUST_EN 4
+	param set VT_MOT_ID 1234
+	param set VT_TILT_TRANS 0.6
+	param set VT_TYPE 1
+
+fi
+
+set MAV_TYPE 21
+
+set MIXER_FILE etc/mixers-sitl/tiltrotor_sitl.main.mix
+set MIXER custom

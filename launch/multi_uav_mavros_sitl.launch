@@ -36,6 +36,9 @@
             <arg name="mavlink_udp_port" value="14560"/>
             <arg name="mavlink_tcp_port" value="4560"/>
             <arg name="ID" value="$(arg ID)"/>
+            <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
         </include>
         <!-- MAVROS -->
         <include file="$(find mavros)/launch/px4.launch">
@@ -62,6 +65,9 @@
             <arg name="mavlink_udp_port" value="14561"/>
             <arg name="mavlink_tcp_port" value="4561"/>
             <arg name="ID" value="$(arg ID)"/>
+            <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
         </include>
         <!-- MAVROS -->
         <include file="$(find mavros)/launch/px4.launch">
@@ -88,6 +94,9 @@
             <arg name="mavlink_udp_port" value="14562"/>
             <arg name="mavlink_tcp_port" value="4562"/>
             <arg name="ID" value="$(arg ID)"/>
+            <arg name="gst_udp_port" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="video_uri" value="$(eval 5600 + arg('ID'))"/>
+            <arg name="mavlink_cam_udp_port" value="$(eval 14530 + arg('ID'))"/>
         </include>
         <!-- MAVROS -->
         <include file="$(find mavros)/launch/px4.launch">

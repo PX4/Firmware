@@ -113,7 +113,7 @@ def main():
 
     if args.port == None:
         if sys.platform == "darwin":
-            args.port = "/dev/tty.usbmodem1"
+            args.port = "/dev/tty.usbmodem01"
         else:
             serial_list = mavutil.auto_detect_serial(preferred_list=['*FTDI*',
                 "*Arduino_Mega_2560*", "*3D_Robotics*", "*USB_to_UART*", '*PX4*', '*FMU*', "*Gumstix*"])

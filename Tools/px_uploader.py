@@ -287,13 +287,13 @@ class uploader(object):
             if (len(data) != count):
                 raise RuntimeError("Ack Window %i not %i " % (len(data), count))
             for i in range(0, len(data), 2):
-                if chr(data[i]) != self.INSYNC:
+                if bytes([data[i]]) != self.INSYNC:
                     raise RuntimeError("unexpected %s instead of INSYNC" % data[i])
-                if chr(data[i+1]) == self.INVALID:
+                if bytes([data[i+1]]) == self.INVALID:
                     raise RuntimeError("bootloader reports INVALID OPERATION")
-                if chr(data[i+1]) == self.FAILED:
+                if bytes([data[i+1]]) == self.FAILED:
                     raise RuntimeError("bootloader reports OPERATION FAILED")
-                if chr(data[i+1]) != self.OK:
+                if bytes([data[i+1]]) != self.OK:
                     raise RuntimeError("unexpected response 0x%x instead of OK" % ord(data[i+1]))
 
     # attempt to get back into sync with the bootloader
@@ -344,8 +344,9 @@ class uploader(object):
         try:
             self.__getSync(False)
         except:
-            # if it fails we are on a real Serial Port
-            self.ackWindowedMode = True
+            # if it fails we are on a real serial port - only leave this enabled on Windows
+            if _platform.system() == 'Windows':
+                self.ackWindowedMode = True
 
         self.port.baudrate = self.baudrate_bootloader
 
@@ -426,10 +427,7 @@ class uploader(object):
     # send a PROG_MULTI command to write a collection of bytes
     def __program_multi(self, data, windowMode):
 
-        if runningPython3:
-            length = len(data).to_bytes(1, byteorder='big')
-        else:
-            length = chr(len(data))
+        length = len(data).to_bytes(1, byteorder='big')
 
         self.__send(uploader.PROG_MULTI)
         self.__send(length)
@@ -450,10 +448,7 @@ class uploader(object):
     # verify multiple bytes in flash
     def __verify_multi(self, data):
 
-        if runningPython3:
-            length = len(data).to_bytes(1, byteorder='big')
-        else:
-            length = chr(len(data))
+        length = len(data).to_bytes(1, byteorder='big')
 
         self.__send(uploader.READ_MULTI)
         self.__send(length)
@@ -711,6 +706,9 @@ class uploader(object):
 
 
 def main():
+    # Python2 is EOL
+    if not runningPython3:
+        raise RuntimeError("Python 2 is not supported. Please try again using Python 3.")
 
     # Parse commandline arguments
     parser = argparse.ArgumentParser(description="Firmware uploader for the PX autopilot system.")

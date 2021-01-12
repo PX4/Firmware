@@ -51,7 +51,7 @@
 #include <nuttx/usb/usbdev.h>
 #include <nuttx/usb/usbdev_trace.h>
 
-#include <up_arch.h>
+#include <arm_arch.h>
 #include <kinetis.h>
 #include <kinetis_usbotg.h>
 #include "board_config.h"

@@ -41,7 +41,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <up_arch.h>
+#include <arm_arch.h>
 #include <hardware/imxrt_ocotp.h>
 
 #define CPU_UUID_BYTE_FORMAT_ORDER          {3, 2, 1, 0, 7, 6, 5, 4}

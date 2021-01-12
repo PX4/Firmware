@@ -51,6 +51,8 @@
 #include <uORB/topics/sensor_correction.h>
 #include <uORB/topics/vehicle_air_data.h>
 
+using namespace time_literals;
+
 namespace sensors
 {
 class VehicleAirData : public ModuleParams, public px4::ScheduledWorkItem
@@ -71,17 +73,19 @@ private:
 	void ParametersUpdate();
 	void SensorCorrectionsUpdate(bool force = false);
 
-	static constexpr int MAX_SENSOR_COUNT = 3;
+	static constexpr int MAX_SENSOR_COUNT = 4;
 
 	uORB::Publication<vehicle_air_data_s> _vehicle_air_data_pub{ORB_ID(vehicle_air_data)};
 
-	uORB::Subscription _params_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
 	uORB::Subscription _sensor_correction_sub{ORB_ID(sensor_correction)};
 
 	uORB::SubscriptionCallbackWorkItem _sensor_sub[MAX_SENSOR_COUNT] {
 		{this, ORB_ID(sensor_baro), 0},
 		{this, ORB_ID(sensor_baro), 1},
-		{this, ORB_ID(sensor_baro), 2}
+		{this, ORB_ID(sensor_baro), 2},
+		{this, ORB_ID(sensor_baro), 3},
 	};
 
 	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")};

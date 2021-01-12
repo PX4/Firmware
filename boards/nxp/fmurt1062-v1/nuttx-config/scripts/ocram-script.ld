@@ -120,10 +120,13 @@ SECTIONS
 		*(.text.*probe*)
 		*(.text.*thread_main*);
 		*(.text.*listener*)
+		*(.text.*BlockLocalPositionEstimator*)
 		*(.text.nsh_*)
 		*(.text.lib_vscanf)
+		*(.text.lib_vsprintf)
 		*(.text.*configure_streams_to_default*)
 		*(.text.*_main)
+		*(.text.*GPSDriverAshtech*)
 		*(.rodata .rodata.*)
 		KEEP(*(__param*))
 		*(.fixup)
@@ -146,11 +149,6 @@ SECTIONS
         *(.text .text.*)
         _etext = ABSOLUTE(.);
 
-		/*
-		 * This is a hack to make the newlib libm __errno() call
-		 * use the NuttX get_errno_ptr() function.
-		 */
-		__errno = get_errno_ptr;
     } > sram AT> flash
 
 	/*

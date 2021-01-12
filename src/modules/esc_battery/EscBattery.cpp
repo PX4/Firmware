@@ -113,7 +113,6 @@ EscBattery::Run()
 			battery_status_s::BATTERY_SOURCE_ESCS,
 			priority,
 			ctrl.control[actuator_controls_s::INDEX_THROTTLE]);
-		_battery.publish();
 	}
 }
 

@@ -156,12 +156,14 @@ bool FlightTaskOrbit::checkAcceleration(float r, float v, float a)
 
 bool FlightTaskOrbit::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
-	bool ret = FlightTaskManualAltitudeSmooth::activate(last_setpoint);
+	bool ret = FlightTaskManualAltitudeSmoothVel::activate(last_setpoint);
 	_r = _radius_min;
 	_v =  1.f;
 	_center = Vector2f(_position);
 	_center(0) -= _r;
 	_initial_heading = _yaw;
+	_slew_rate_yaw.setForcedValue(_yaw);
+	_slew_rate_yaw.setSlewRate(math::radians(_param_mpc_yawrauto_max.get()));
 
 	// need a valid position and velocity
 	ret = ret && PX4_ISFINITE(_position(0))
@@ -177,7 +179,7 @@ bool FlightTaskOrbit::activate(const vehicle_local_position_setpoint_s &last_set
 bool FlightTaskOrbit::update()
 {
 	// update altitude
-	bool ret = FlightTaskManualAltitudeSmooth::update();
+	bool ret = FlightTaskManualAltitudeSmoothVel::update();
 
 	// stick input adjusts parameters within a fixed time frame
 	const float r = _r - _sticks.getPositionExpo()(0) * _deltatime * (_radius_max / 8.f);
@@ -196,6 +198,9 @@ bool FlightTaskOrbit::update()
 		generate_circle_yaw_setpoints(center_to_position);
 	}
 
+	// Apply yaw smoothing
+	_yaw_setpoint = _slew_rate_yaw.update(_yaw_setpoint, _deltatime);
+
 	// publish information to UI
 	sendTelemetry();
 
@@ -204,15 +209,17 @@ bool FlightTaskOrbit::update()
 
 void FlightTaskOrbit::generate_circle_approach_setpoints(const Vector2f &center_to_position)
 {
+	const Vector2f start_to_circle = (_r - center_to_position.norm()) * center_to_position.unit_or_zero();
+
 	if (_circle_approach_line.isEndReached()) {
 		// calculate target point on circle and plan a line trajectory
-		const Vector2f start_to_circle = (_r - center_to_position.norm()) * center_to_position.unit_or_zero();
 		const Vector2f closest_circle_point = Vector2f(_position) + start_to_circle;
 		const Vector3f target = Vector3f(closest_circle_point(0), closest_circle_point(1), _position(2));
 		_circle_approach_line.setLineFromTo(_position, target);
 		_circle_approach_line.setSpeed(_param_mpc_xy_cruise.get());
-		_yaw_setpoint = atan2f(start_to_circle(1), start_to_circle(0));
 	}
+
+	_yaw_setpoint = atan2f(start_to_circle(1), start_to_circle(0));
 
 	// follow the planned line and switch to orbiting once the circle is reached
 	_circle_approach_line.generateSetpoints(_position_setpoint, _velocity_setpoint);
@@ -250,7 +257,7 @@ void FlightTaskOrbit::generate_circle_yaw_setpoints(const Vector2f &center_to_po
 		break;
 
 	case orbit_status_s::ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TANGENT_TO_CIRCLE:
-		_yaw_setpoint = wrap_pi(atan2f(center_to_position(1), center_to_position(0)) + (sign(_v) * M_PI_F / 2.f));
+		_yaw_setpoint = atan2f(sign(_v) * center_to_position(0), -sign(_v) * center_to_position(1));
 		_yawspeed_setpoint = _v / _r;
 		break;
 
@@ -260,7 +267,7 @@ void FlightTaskOrbit::generate_circle_yaw_setpoints(const Vector2f &center_to_po
 
 	case orbit_status_s::ORBIT_YAW_BEHAVIOUR_HOLD_FRONT_TO_CIRCLE_CENTER:
 	default:
-		_yaw_setpoint = wrap_pi(atan2f(center_to_position(1), center_to_position(0)) + M_PI_F);
+		_yaw_setpoint = atan2f(-center_to_position(1), -center_to_position(0));
 		// yawspeed feed-forward because we know the necessary angular rate
 		_yawspeed_setpoint = _v / _r;
 		break;

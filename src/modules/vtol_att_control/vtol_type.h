@@ -214,7 +214,7 @@ protected:
 
 	struct Params 					*_params;
 
-	bool flag_idle_mc = false;		//false = "idle is set for fixed wing mode"; true = "idle is set for multicopter mode"
+	bool _flag_idle_mc = false;		//false = "idle is set for fixed wing mode"; true = "idle is set for multicopter mode"
 
 	bool _pusher_active = false;
 	float _mc_roll_weight = 1.0f;	// weight for multicopter attitude controller roll output
@@ -235,7 +235,8 @@ protected:
 	bool _tecs_running = false;
 	hrt_abstime _tecs_running_ts = 0;
 
-	motor_state _motor_state = motor_state::DISABLED;
+	motor_state _main_motor_state = motor_state::DISABLED;
+	motor_state _alternate_motor_state = motor_state::DISABLED;
 
 	hrt_abstime _last_loop_ts = 0;
 	float _transition_dt = 0;
@@ -260,18 +261,11 @@ protected:
 	 */
 	bool set_idle_fw();
 
+	void set_all_motor_state(motor_state target_state, int value = 0);
 
-	/**
-	 * @brief      Sets state of a selection of motors, see struct motor_state
-	 *
-	 * @param[in]  current_state  The current motor state
-	 * @param[in]  next_state     The next state
-	 * @param[in]  value          Desired pwm value if next_state =
-	 *                            motor_state::VALUE
-	 *
-	 * @return     next_state if succesfull, otherwise current_state
-	 */
-	motor_state set_motor_state(const motor_state current_state, const motor_state next_state, const int value = 0);
+	void set_main_motor_state(motor_state target_state, int value = 0);
+
+	void set_alternate_motor_state(motor_state target_state, int value = 0);
 
 	float update_and_get_backtransition_pitch_sp();
 
@@ -285,6 +279,11 @@ private:
 	struct pwm_output_values _max_mc_pwm_values {};
 	struct pwm_output_values _disarmed_pwm_values {};
 
+	struct pwm_output_values _current_max_pwm_values {};
+
+	int32_t _main_motor_channel_bitmap = 0;
+	int32_t _alternate_motor_channel_bitmap = 0;
+
 	/**
 	 * @brief      Adjust minimum/maximum pwm values for the output channels.
 	 *
@@ -296,14 +295,19 @@ private:
 	bool apply_pwm_limits(struct pwm_output_values &pwm_values, pwm_limit_type type);
 
 	/**
-	 * @brief      Determines if channel is set in target.
+	 * @brief      Determines if channel is set in a bitmap.
 	 *
 	 * @param[in]  channel  The channel
-	 * @param[in]  target  	The target to check on.
+	 * @param[in]  bitmap  	The bitmap to check on.
 	 *
-	 * @return     True if motor off channel, False otherwise.
+	 * @return     True if set, false otherwise.
 	 */
-	bool is_channel_set(const int channel, const int target);
+	bool is_channel_set(const int channel, const int bitmap);
+
+	// generates a bitmap from a number format, e.g. 1235 -> first, second, third and fifth bits should be set.
+	int generate_bitmap_from_channel_numbers(const int channels);
+
+	bool set_motor_state(const motor_state target_state, const int32_t channel_bitmap,  const int value);
 
 };
 

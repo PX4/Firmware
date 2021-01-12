@@ -33,6 +33,8 @@
 px4_add_module(
 	MODULE systemcmds__tune_control
 	MAIN tune_control
+	PRIORITY
+		"SCHED_PRIORITY_MAX - 16" # max priority below high priority WQ threads
 	COMPILE_FLAGS
 	SRCS
 		tune_control.cpp

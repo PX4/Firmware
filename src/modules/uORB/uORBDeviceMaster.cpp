@@ -268,7 +268,8 @@ int uORB::DeviceMaster::addNewDeviceNodes(DeviceNodeStatisticsData **first_node,
 			max_topic_name_length = name_length;
 		}
 
-		last_node->last_pub_msg_count = last_node->node->published_message_count();
+		// Pass in 0 to get the index of the latest published data
+		last_node->last_pub_msg_count = last_node->node->updates_available(0);
 	}
 
 	return 0;
@@ -374,9 +375,9 @@ void uORB::DeviceMaster::showTop(char **topic_filter, int num_filters)
 			cur_node = first_node;
 
 			while (cur_node) {
-				unsigned int num_msgs = cur_node->node->published_message_count();
-				cur_node->pub_msg_delta = roundf((num_msgs - cur_node->last_pub_msg_count) / dt);
-				cur_node->last_pub_msg_count = num_msgs;
+				unsigned int num_msgs = cur_node->node->updates_available(cur_node->last_pub_msg_count);
+				cur_node->pub_msg_delta = roundf(num_msgs / dt);
+				cur_node->last_pub_msg_count += num_msgs;
 				cur_node = cur_node->next;
 			}
 

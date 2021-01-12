@@ -121,6 +121,8 @@
 
 #define IMXRT_SYS_PLL_SELECT      CCM_ANALOG_PLL_SYS_DIV_SELECT_22
 
+#define IMXRT_USB1_PLL_DIV_SELECT  CCM_ANALOG_PLL_USB1_DIV_SELECT_20
+
 #define BOARD_CPU_FREQUENCY \
 	(BOARD_XTAL_FREQUENCY * (IMXRT_ARM_PLL_DIV_SELECT / 2)) / IMXRT_ARM_PODF_DIVIDER
 
@@ -232,7 +234,12 @@
 #define GPIO_LPUART2_RX   (GPIO_LPUART2_RX_1 | LPUART_IOMUX) /* EVK J22-8 */ /* GPIO_AD_B1_03 */
 #define GPIO_LPUART2_TX   (GPIO_LPUART2_TX_1 | LPUART_IOMUX) /* EVK J22-7 */ /* GPIO_AD_B1_02 */
 
-/* Telem 2 */
+/* N.B. Rev B schematic did not change the names of the nets. Just the silk screen renamed the ports
+ * Such that Telem 2 had the real HW HS signals. The imx driver to dated does not support GOIO controlled
+ * HS lines
+ */
+
+/* Telem 1 */
 
 #define HS_INPUT_IOMUX  (IOMUX_CMOS_INPUT | IOMUX_SLEW_SLOW | IOMUX_DRIVE_HIZ  | IOMUX_SPEED_MEDIUM | IOMUX_PULL_UP_47K)
 #define HS_OUTPUT_IOMUX (IOMUX_CMOS_OUTPUT | IOMUX_SLEW_FAST | IOMUX_DRIVE_33OHM  | IOMUX_SPEED_MEDIUM | IOMUX_PULL_KEEP)
@@ -242,7 +249,7 @@
 #define GPIO_LPUART3_CTS  (GPIO_PORT3 | GPIO_PIN4  | GPIO_INPUT  | HS_INPUT_IOMUX)  /* GPIO_SD_B1_04 GPIO3_IO04 (GPIO only, no HW Flow control) */
 #define GPIO_LPUART3_RTS  (GPIO_PORT4 | GPIO_PIN24 | GPIO_OUTPUT | GPIO_OUTPUT_ZERO | HS_OUTPUT_IOMUX) /* GPIO_EMC_24   GPIO4_IO24 (GPIO only, no HW Flow control) */
 
-/* Telem 1 */
+/* Telem 2 */
 
 #define GPIO_LPUART4_RX   (GPIO_LPUART4_RX_2  | LPUART_IOMUX) /* GPIO_EMC_20 */
 #define GPIO_LPUART4_TX   (GPIO_LPUART4_TX_2  | LPUART_IOMUX) /* GPIO_EMC_19 */

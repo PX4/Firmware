@@ -110,6 +110,7 @@ public:
 	spi_mode_e spi_mode{SPIDEV_MODE3};
 	uint8_t i2c_address{0}; ///< optional I2C address: a driver can set this to allow configuring the I2C address
 	bool quiet_start{false}; ///< do not print a message when startup fails
+	bool keep_running{false}; ///< keep driver running even if no device is detected on startup
 
 	uint8_t orientation{0}; ///< distance_sensor_s::ROTATION_*
 
@@ -120,6 +121,8 @@ public:
 	// driver defaults, if not specified via CLI
 	int default_spi_frequency{-1}; ///< default spi bus frequency (driver needs to set this) [Hz]
 	int default_i2c_frequency{-1}; ///< default i2c bus frequency (driver needs to set this) [Hz]
+
+	bool support_keep_running{false}; ///< true if keep_running (see above) is supported
 
 private:
 	bool validateConfiguration();

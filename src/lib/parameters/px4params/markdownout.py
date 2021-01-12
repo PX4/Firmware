@@ -11,7 +11,7 @@ class MarkdownTablesOutput():
                   "\n")
         for group in groups:
             result += '## %s\n\n' % group.GetName()
-            result += '<table style="width: 100%; table-layout:fixed; font-size:1.5rem; overflow: auto; display:block;">\n'
+            result += '<table>\n'
             result += ' <colgroup><col style="width: 23%"><col style="width: 46%"><col style="width: 11%"><col style="width: 11%"><col style="width: 9%"></colgroup>\n'
             result += ' <thead>\n'
             result += '   <tr><th>Name</th><th>Description</th><th>Min > Max (Incr.)</th><th>Default</th><th>Units</th></tr>\n'

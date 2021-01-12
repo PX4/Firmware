@@ -58,13 +58,13 @@
 
 #include <px4_arch/io_timer.h>
 
-#include <kinetis.h>
-#include "hardware/kinetis_sim.h"
-#include "hardware/kinetis_ftm.h"
+#include "s32k1xx_pin.h"
+#include "hardware/s32k1xx_pcc.h"
+#include "hardware/s32k1xx_ftm.h"
 
 #if defined(BOARD_HAS_LED_PWM) || defined(BOARD_HAS_UI_LED_PWM)
 
-#define FTM_SRC_CLOCK_FREQ 16000000
+#define FTM_SRC_CLOCK_FREQ  8000000
 #define LED_PWM_FREQ        1000000
 
 #if (BOARD_LED_PWM_RATE)
@@ -80,54 +80,54 @@
 
 /* Timer register accessors */
 
-#define rSC(_tmr)         REG(_tmr,KINETIS_FTM_SC_OFFSET)
-#define rCNT(_tmr)        REG(_tmr,KINETIS_FTM_CNT_OFFSET)
-#define rMOD(_tmr)        REG(_tmr,KINETIS_FTM_MOD_OFFSET)
-#define rC0SC(_tmr)       REG(_tmr,KINETIS_FTM_C0SC_OFFSET)
-#define rC0V(_tmr)        REG(_tmr,KINETIS_FTM_C0V_OFFSET)
-#define rC1SC(_tmr)       REG(_tmr,KINETIS_FTM_C1SC_OFFSET)
-#define rC1V(_tmr)        REG(_tmr,KINETIS_FTM_C1V_OFFSET)
-#define rC2SC(_tmr)       REG(_tmr,KINETIS_FTM_C2SC_OFFSET)
-#define rC2V(_tmr)        REG(_tmr,KINETIS_FTM_C2V_OFFSET)
-#define rC3SC(_tmr)       REG(_tmr,KINETIS_FTM_C3SC_OFFSET)
-#define rC3V(_tmr)        REG(_tmr,KINETIS_FTM_C3V_OFFSET)
-#define rC4SC(_tmr)       REG(_tmr,KINETIS_FTM_C4SC_OFFSET)
-#define rC4V(_tmr)        REG(_tmr,KINETIS_FTM_C4V_OFFSET)
-#define rC5SC(_tmr)       REG(_tmr,KINETIS_FTM_C5SC_OFFSET)
-#define rC5V(_tmr)        REG(_tmr,KINETIS_FTM_C5V_OFFSET)
-#define rC6SC(_tmr)       REG(_tmr,KINETIS_FTM_C6SC_OFFSET)
-#define rC6V(_tmr)        REG(_tmr,KINETIS_FTM_C6V_OFFSET)
-#define rC7SC(_tmr)       REG(_tmr,KINETIS_FTM_C7SC_OFFSET)
-#define rC7V(_tmr)        REG(_tmr,KINETIS_FTM_C7V_OFFSET)
+#define rSC(_tmr)         REG(_tmr, S32K1XX_FTM_SC_OFFSET)
+#define rCNT(_tmr)        REG(_tmr, S32K1XX_FTM_CNT_OFFSET)
+#define rMOD(_tmr)        REG(_tmr, S32K1XX_FTM_MOD_OFFSET)
+#define rC0SC(_tmr)       REG(_tmr, S32K1XX_FTM_C0SC_OFFSET)
+#define rC0V(_tmr)        REG(_tmr, S32K1XX_FTM_C0V_OFFSET)
+#define rC1SC(_tmr)       REG(_tmr, S32K1XX_FTM_C1SC_OFFSET)
+#define rC1V(_tmr)        REG(_tmr, S32K1XX_FTM_C1V_OFFSET)
+#define rC2SC(_tmr)       REG(_tmr, S32K1XX_FTM_C2SC_OFFSET)
+#define rC2V(_tmr)        REG(_tmr, S32K1XX_FTM_C2V_OFFSET)
+#define rC3SC(_tmr)       REG(_tmr, S32K1XX_FTM_C3SC_OFFSET)
+#define rC3V(_tmr)        REG(_tmr, S32K1XX_FTM_C3V_OFFSET)
+#define rC4SC(_tmr)       REG(_tmr, S32K1XX_FTM_C4SC_OFFSET)
+#define rC4V(_tmr)        REG(_tmr, S32K1XX_FTM_C4V_OFFSET)
+#define rC5SC(_tmr)       REG(_tmr, S32K1XX_FTM_C5SC_OFFSET)
+#define rC5V(_tmr)        REG(_tmr, S32K1XX_FTM_C5V_OFFSET)
+#define rC6SC(_tmr)       REG(_tmr, S32K1XX_FTM_C6SC_OFFSET)
+#define rC6V(_tmr)        REG(_tmr, S32K1XX_FTM_C6V_OFFSET)
+#define rC7SC(_tmr)       REG(_tmr, S32K1XX_FTM_C7SC_OFFSET)
+#define rC7V(_tmr)        REG(_tmr, S32K1XX_FTM_C7V_OFFSET)
 
-#define rCNTIN(_tmr)      REG(_tmr,KINETIS_FTM_CNTIN_OFFSET)
-#define rSTATUS(_tmr)     REG(_tmr,KINETIS_FTM_STATUS_OFFSET)
-#define rMODE(_tmr)       REG(_tmr,KINETIS_FTM_MODE_OFFSET)
-#define rSYNC(_tmr)       REG(_tmr,KINETIS_FTM_SYNC_OFFSET)
-#define rOUTINIT(_tmr)    REG(_tmr,KINETIS_FTM_OUTINIT_OFFSET)
-#define rOUTMASK(_tmr)    REG(_tmr,KINETIS_FTM_OUTMASK_OFFSET)
-#define rCOMBINE(_tmr)    REG(_tmr,KINETIS_FTM_COMBINE_OFFSET)
-#define rDEADTIME(_tmr)   REG(_tmr,KINETIS_FTM_DEADTIME_OFFSET)
-#define rEXTTRIG(_tmr)    REG(_tmr,KINETIS_FTM_EXTTRIG_OFFSET)
-#define rPOL(_tmr)        REG(_tmr,KINETIS_FTM_POL_OFFSET)
-#define rFMS(_tmr)        REG(_tmr,KINETIS_FTM_FMS_OFFSET)
-#define rFILTER(_tmr)     REG(_tmr,KINETIS_FTM_FILTER_OFFSET)
-#define rFLTCTRL(_tmr)    REG(_tmr,KINETIS_FTM_FLTCTRL_OFFSET)
-#define rQDCTRL(_tmr)     REG(_tmr,KINETIS_FTM_QDCTRL_OFFSET)
-#define rCONF(_tmr)       REG(_tmr,KINETIS_FTM_CONF_OFFSET)
-#define rFLTPOL(_tmr)     REG(_tmr,KINETIS_FTM_FLTPOL_OFFSET)
-#define rSYNCONF(_tmr)    REG(_tmr,KINETIS_FTM_SYNCONF_OFFSET)
-#define rINVCTRL(_tmr)    REG(_tmr,KINETIS_FTM_INVCTRL_OFFSET)
-#define rSWOCTRL(_tmr)    REG(_tmr,KINETIS_FTM_SWOCTRL_OFFSET)
-#define rPWMLOAD(_tmr)    REG(_tmr,KINETIS_FTM_PWMLOAD_OFFSET)
+#define rCNTIN(_tmr)      REG(_tmr, S32K1XX_FTM_CNTIN_OFFSET)
+#define rSTATUS(_tmr)     REG(_tmr, S32K1XX_FTM_STATUS_OFFSET)
+#define rMODE(_tmr)       REG(_tmr, S32K1XX_FTM_MODE_OFFSET)
+#define rSYNC(_tmr)       REG(_tmr, S32K1XX_FTM_SYNC_OFFSET)
+#define rOUTINIT(_tmr)    REG(_tmr, S32K1XX_FTM_OUTINIT_OFFSET)
+#define rOUTMASK(_tmr)    REG(_tmr, S32K1XX_FTM_OUTMASK_OFFSET)
+#define rCOMBINE(_tmr)    REG(_tmr, S32K1XX_FTM_COMBINE_OFFSET)
+#define rDEADTIME(_tmr)   REG(_tmr, S32K1XX_FTM_DEADTIME_OFFSET)
+#define rEXTTRIG(_tmr)    REG(_tmr, S32K1XX_FTM_EXTTRIG_OFFSET)
+#define rPOL(_tmr)        REG(_tmr, S32K1XX_FTM_POL_OFFSET)
+#define rFMS(_tmr)        REG(_tmr, S32K1XX_FTM_FMS_OFFSET)
+#define rFILTER(_tmr)     REG(_tmr, S32K1XX_FTM_FILTER_OFFSET)
+#define rFLTCTRL(_tmr)    REG(_tmr, S32K1XX_FTM_FLTCTRL_OFFSET)
+#define rQDCTRL(_tmr)     REG(_tmr, S32K1XX_FTM_QDCTRL_OFFSET)
+#define rCONF(_tmr)       REG(_tmr, S32K1XX_FTM_CONF_OFFSET)
+#define rFLTPOL(_tmr)     REG(_tmr, S32K1XX_FTM_FLTPOL_OFFSET)
+#define rSYNCONF(_tmr)    REG(_tmr, S32K1XX_FTM_SYNCONF_OFFSET)
+#define rINVCTRL(_tmr)    REG(_tmr, S32K1XX_FTM_INVCTRL_OFFSET)
+#define rSWOCTRL(_tmr)    REG(_tmr, S32K1XX_FTM_SWOCTRL_OFFSET)
+#define rPWMLOAD(_tmr)    REG(_tmr, S32K1XX_FTM_PWMLOAD_OFFSET)
 
-#define CnSC_RESET          (FTM_CSC_CHF|FTM_CSC_CHIE|FTM_CSC_MSB|FTM_CSC_MSA|FTM_CSC_ELSB|FTM_CSC_ELSA|FTM_CSC_DMA)
-#define CnSC_CAPTURE_INIT   (FTM_CSC_CHIE|FTM_CSC_ELSB|FTM_CSC_ELSA) // Both
+#define CnSC_RESET          (FTM_CNSC_CHF | FTM_CNSC_CHIE | FTM_CNSC_MSB | FTM_CNSC_MSA | FTM_CNSC_ELSB | FTM_CNSC_ELSA | FTM_CNSC_DMA)
+#define CnSC_CAPTURE_INIT   (FTM_CNSC_CHIE | FTM_CNSC_ELSB | FTM_CNSC_ELSA) // Both
 
 #if defined(BOARD_LED_PWM_DRIVE_ACTIVE_LOW)
-#define CnSC_PWMOUT_INIT    (FTM_CSC_MSB|FTM_CSC_ELSA)
+#define CnSC_PWMOUT_INIT    (FTM_CNSC_MSB | FTM_CNSC_ELSA)
 #else
-#define CnSC_PWMOUT_INIT    (FTM_CSC_MSB|FTM_CSC_ELSB)
+#define CnSC_PWMOUT_INIT    (FTM_CNSC_MSB | FTM_CNSC_ELSB)
 #endif
 
 #define FTM_SYNC (FTM_SYNC_SWSYNC)
@@ -187,7 +187,7 @@ led_pwm_timer_init(unsigned timer)
 
 		/* disable and configure the timer */
 
-		rSC(timer)    = FTM_SC_CLKS_NONE;
+		rSC(timer)    = FTM_SC_CLKS_DIS;
 		rCNT(timer)   = 0;
 
 		rMODE(timer) = 0;
@@ -241,11 +241,12 @@ led_pwm_channel_init(unsigned channel)
 
 		uint32_t chan = led_pwm_channels[channel].timer_channel - 1;
 
-		uint16_t rvalue = REG(timer, KINETIS_FTM_CSC_OFFSET(chan));
+		uint16_t rvalue = REG(timer, S32K1XX_FTM_CNSC_OFFSET(chan));
 		rvalue &= ~CnSC_RESET;
 		rvalue |=  CnSC_PWMOUT_INIT;
-		REG(timer, KINETIS_FTM_CSC_OFFSET(chan)) = rvalue;
-		REG(timer, KINETIS_FTM_CV_OFFSET(0)) = 0;
+		REG(timer, S32K1XX_FTM_CNSC_OFFSET(chan)) = rvalue;
+		REG(timer, S32K1XX_FTM_CNV_OFFSET(0)) = 0;
+		rSC(timer) |= 1 << (FTM_SC_PWMEN_SHIFT + chan);
 		px4_leave_critical_section(flags);
 	}
 }
@@ -274,7 +275,7 @@ led_pwm_servo_set(unsigned channel, uint8_t  cvalue)
 		value--;
 	}
 
-	REG(timer, KINETIS_FTM_CV_OFFSET(led_pwm_channels[channel].timer_channel - 1)) = value;
+	REG(timer, S32K1XX_FTM_CNV_OFFSET(led_pwm_channels[channel].timer_channel - 1)) = value;
 
 	return 0;
 }
@@ -294,7 +295,7 @@ led_pwm_servo_get(unsigned channel)
 		return value;
 	}
 
-	value = REG(timer, KINETIS_FTM_CV_OFFSET(led_pwm_channels[channel].timer_channel - 1));
+	value = REG(timer, S32K1XX_FTM_CNV_OFFSET(led_pwm_channels[channel].timer_channel - 1));
 	unsigned period = led_pwm_timer_get_period(timer);
 	return ((value + 1) * 255 / period);
 }
@@ -303,6 +304,10 @@ led_pwm_servo_init(void)
 {
 	/* do basic timer initialisation first */
 	for (unsigned i = 0; i < arraySize(led_pwm_timers); i++) {
+#if defined(BOARD_HAS_SHARED_PWM_TIMERS)
+		// Use the io_timer init to mark it initialized
+		io_timer_init_timer(i);
+#endif
 		led_pwm_timer_init(i);
 	}
 
@@ -335,7 +340,7 @@ led_pwm_servo_arm(bool armed)
 			} else {
 				/* disable and configure the timer */
 
-				rSC(i)    = FTM_SC_CLKS_NONE;
+				rSC(i)    = FTM_SC_CLKS_DIS;
 				rCNT(i)   = 0;
 			}
 		}

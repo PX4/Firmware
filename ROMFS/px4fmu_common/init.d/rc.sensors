@@ -68,8 +68,15 @@ fi
 # Lightware i2c lidar sensor
 if param greater -s SENS_EN_SF1XX 0
 then
-	sf1xx start -X
+	lightware_laser_i2c start -X
 fi
+
+# Sensor HY-SRF05 or HC-SR05 ultrasonic sensor
+if param compare -s SENS_EN_SR05 1
+then
+	srf05 start
+fi
+
 
 # Heater driver for temperature regulated IMUs.
 if param compare -s SENS_EN_THERMAL 1
@@ -95,6 +102,12 @@ then
 	paw3902 -S start
 fi
 
+# vl53l1x i2c distance sensor
+if param compare -s SENS_EN_VL53L1X 1
+then
+	vl53l1x start -X
+fi
+
 # probe for optional external I2C devices
 if param compare SENS_EXT_I2C_PRB 1
 then
@@ -105,7 +118,7 @@ then
 	ist8310 -X -q start
 	lis2mdl -X -q start
 	lis3mdl -X -q start
-	qmc5883 -X -q start
+	qmc5883l -X -q start
 	rm3100 -X -q start
 
 	# differential pressure sensors

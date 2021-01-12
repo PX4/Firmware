@@ -229,6 +229,8 @@ public:
 
 	virtual unsigned		get_multirotor_count()  { return 0; }
 
+	virtual void 			set_dt_once(float dt) {}
+
 protected:
 
 	/** client-supplied callback used when fetching control values */

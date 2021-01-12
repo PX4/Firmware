@@ -3,7 +3,7 @@
 # Bitcraze Crazyflie specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # Onboard I2C
 mpu9250 -I -R 12 start

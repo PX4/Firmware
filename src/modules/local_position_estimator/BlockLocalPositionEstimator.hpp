@@ -33,6 +33,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/estimator_states.h>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/estimator_innovations.h>
 
@@ -111,7 +112,7 @@ class BlockLocalPositionEstimator : public ModuleBase<BlockLocalPositionEstimato
 public:
 
 	BlockLocalPositionEstimator();
-	~BlockLocalPositionEstimator() override;
+	~BlockLocalPositionEstimator() override = default;
 
 	/** @see ModuleBase */
 	static int task_spawn(int argc, char *argv[]);
@@ -262,12 +263,13 @@ private:
 	// subscriptions
 	uORB::SubscriptionCallbackWorkItem _sensors_sub{this, ORB_ID(sensor_combined)};
 
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
 	uORB::SubscriptionData<actuator_armed_s> _sub_armed{ORB_ID(actuator_armed)};
 	uORB::SubscriptionData<vehicle_land_detected_s> _sub_land{ORB_ID(vehicle_land_detected)};
 	uORB::SubscriptionData<vehicle_attitude_s> _sub_att{ORB_ID(vehicle_attitude)};
 	uORB::SubscriptionData<vehicle_angular_velocity_s> _sub_angular_velocity{ORB_ID(vehicle_angular_velocity)};
 	uORB::SubscriptionData<optical_flow_s> _sub_flow{ORB_ID(optical_flow)};
-	uORB::SubscriptionData<parameter_update_s> _sub_param_update{ORB_ID(parameter_update)};
 	uORB::SubscriptionData<vehicle_gps_position_s> _sub_gps{ORB_ID(vehicle_gps_position)};
 	uORB::SubscriptionData<vehicle_odometry_s> _sub_visual_odom{ORB_ID(vehicle_visual_odometry)};
 	uORB::SubscriptionData<vehicle_odometry_s> _sub_mocap_odom{ORB_ID(vehicle_mocap_odometry)};
@@ -285,6 +287,7 @@ private:
 	uORB::PublicationData<vehicle_local_position_s> _pub_lpos{ORB_ID(vehicle_local_position)};
 	uORB::PublicationData<vehicle_global_position_s> _pub_gpos{ORB_ID(vehicle_global_position)};
 	uORB::PublicationData<vehicle_odometry_s> _pub_odom{ORB_ID(vehicle_odometry)};
+	uORB::PublicationData<estimator_states_s> _pub_est_states{ORB_ID(estimator_states)};
 	uORB::PublicationData<estimator_status_s> _pub_est_status{ORB_ID(estimator_status)};
 	uORB::PublicationData<estimator_innovations_s> _pub_innov{ORB_ID(estimator_innovations)};
 	uORB::PublicationData<estimator_innovations_s> _pub_innov_var{ORB_ID(estimator_innovation_variances)};
@@ -335,8 +338,6 @@ private:
 	uint64_t _time_last_mocap;
 	uint64_t _time_last_land;
 	uint64_t _time_last_target;
-
-	int _lockstep_component{-1};
 
 	// reference altitudes
 	float _altOrigin;

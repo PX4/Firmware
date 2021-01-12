@@ -20,7 +20,7 @@ px4_add_board(
 		TEL4:/dev/ttyS6
 
 	DRIVERS
-		adc
+		adc/board_adc
 		#barometer # all available barometer drivers
 		barometer/ms5611
 		#batt_smbus
@@ -64,6 +64,7 @@ px4_add_board(
 		dataman
 		#ekf2
 		events
+		flight_mode_manager
 		#fw_att_control
 		#fw_pos_control_l1
 		#rover_pos_control
@@ -92,6 +93,7 @@ px4_add_board(
 		hardfault_log
 		i2cdetect
 		#led_control
+		mft
 		mixer
 		#motor_ramp
 		motor_test

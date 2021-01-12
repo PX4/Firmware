@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python3
 
 import serial, time
 import subprocess
@@ -10,7 +10,7 @@ def monitor_firmware_upload(port, baudrate):
     databits = serial.EIGHTBITS
     stopbits = serial.STOPBITS_ONE
     parity = serial.PARITY_NONE
-    ser = serial.Serial(port, baudrate, databits, parity, stopbits, timeout=10)
+    ser = serial.Serial(port, baudrate, databits, parity, stopbits, timeout=1)
 
     finished = 0
 
@@ -19,8 +19,9 @@ def monitor_firmware_upload(port, baudrate):
     timeout_newline = time.time()
 
     while finished == 0:
-        serial_line = ser.readline()
-        print(serial_line.replace('\n',''))
+        serial_line = ser.readline().decode("ascii", errors='ignore')
+        if (len(serial_line) > 0):
+            print(serial_line.replace('\n', ''))
 
         if "NuttShell (NSH)" in serial_line:
             finished = 1
@@ -36,16 +37,17 @@ def monitor_firmware_upload(port, baudrate):
             finished = 1
             break
 
-        # newline every 30 seconds if still running
-        if time.time() - timeout_newline > 30:
-            ser.write('\n')
+        # newline every 10 seconds if still running
+        if time.time() - timeout_newline > 10:
             timeout_newline = time.time()
+            ser.write('\n'.encode("ascii"))
+            ser.flush()
 
     ser.close()
 
 def main():
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument('--device', "-d", nargs='?', default = None, help='')
+    parser.add_argument('--device', "-d", nargs='?', default=None, help='', required=True)
     parser.add_argument("--baudrate", "-b", dest="baudrate", type=int, help="Mavlink port baud rate (default=57600)", default=57600)
     args = parser.parse_args()
 

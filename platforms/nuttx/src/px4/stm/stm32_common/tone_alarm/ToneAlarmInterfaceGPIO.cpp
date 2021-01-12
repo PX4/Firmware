@@ -44,9 +44,10 @@ void init()
 	px4_arch_configgpio(GPIO_TONE_ALARM_IDLE);
 }
 
-void start_note(unsigned frequency)
+hrt_abstime start_note(unsigned frequency)
 {
 	px4_arch_gpiowrite(GPIO_TONE_ALARM_GPIO, 1);
+	return hrt_absolute_time();
 }
 
 void stop_note()

@@ -41,6 +41,7 @@
 #include <px4_platform_common/defines.h>
 #include <systemlib/err.h>
 #include <uORB/uORB.h>
+#include "uORBDeviceNode.hpp"
 
 #include "Publication.hpp"
 
@@ -50,7 +51,7 @@ namespace uORB
 /**
  * Base publication multi wrapper class
  */
-template<typename T, uint8_t QSIZE = 1>
+template<typename T, uint8_t QSIZE = DefaultQueueSize<T>::value>
 class PublicationMulti : public PublicationBase
 {
 public:
@@ -90,6 +91,15 @@ public:
 
 		return (orb_publish(get_topic(), _handle, &data) == PX4_OK);
 	}
+
+	int get_instance() const
+	{
+		if (_handle) {
+			return static_cast<uORB::DeviceNode *>(_handle)->get_instance();
+		}
+
+		return -1;
+	}
 };
 
 /**
@@ -121,9 +131,5 @@ public:
 private:
 	T _data{};
 };
-
-
-template<class T>
-using PublicationQueuedMulti = PublicationMulti<T, T::ORB_QUEUE_LENGTH>;
 
 } // namespace uORB

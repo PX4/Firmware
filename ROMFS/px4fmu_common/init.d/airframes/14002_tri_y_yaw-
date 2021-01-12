@@ -16,7 +16,7 @@
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.mc_defaults
 
 set MIXER tri_y_yaw-
 

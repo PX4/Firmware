@@ -26,10 +26,10 @@ then
 	param set MAV_TYPE ${MAV_TYPE}
 
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start standard fixedwing apps.
-	sh /etc/init.d/rc.fw_apps
+	. ${R}etc/init.d/rc.fw_apps
 fi
 
 #
@@ -78,10 +78,10 @@ then
 	param set MAV_TYPE ${MAV_TYPE}
 
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start standard multicopter apps.
-	sh /etc/init.d/rc.mc_apps
+	. ${R}etc/init.d/rc.mc_apps
 fi
 
 #
@@ -105,10 +105,10 @@ then
 	param set MAV_TYPE ${MAV_TYPE}
 
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start standard UGV apps.
-	sh /etc/init.d/rc.rover_apps
+	. ${R}etc/init.d/rc.rover_apps
 fi
 
 #
@@ -141,10 +141,10 @@ then
 	param set MAV_TYPE ${MAV_TYPE}
 
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start standard vtol apps.
-	sh /etc/init.d/rc.vtol_apps
+	. ${R}etc/init.d/rc.vtol_apps
 fi
 
 #
@@ -167,10 +167,10 @@ then
 	param set MAV_TYPE ${MAV_TYPE}
 
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start airship apps.
-	sh /etc/init.d/rc.airship_apps
+	. ${R}etc/init.d/rc.airship_apps
 fi
 
 #
@@ -183,11 +183,18 @@ then
 		echo "UUV mixer undefined"
 	fi
 
+	if [ $MAV_TYPE = none ]
+	then
+		# Set default MAV_TYPE to submarine if not defined
+		set MAV_TYPE 12
+	fi
+
+	param set MAV_TYPE ${MAV_TYPE}
 	# Load mixer and configure outputs.
-	sh /etc/init.d/rc.interface
+	. ${R}etc/init.d/rc.interface
 
 	# Start standard vtol apps.
-	sh /etc/init.d/rc.uuv_apps
+	. ${R}etc/init.d/rc.uuv_apps
 
 fi
 
@@ -199,5 +206,5 @@ fi
 if [ $VEHICLE_TYPE = none ]
 then
 	echo "No autostart ID found"
-	ekf2 start
+	ekf2 start &
 fi

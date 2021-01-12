@@ -45,31 +45,36 @@ namespace calibration
 class Accelerometer
 {
 public:
-	static constexpr int MAX_SENSOR_COUNT = 3;
+	static constexpr int MAX_SENSOR_COUNT = 4;
 
 	static constexpr uint8_t DEFAULT_PRIORITY = 50;
-	static constexpr uint8_t DEFAULT_EXTERNAL_PRIORITY = 75;
+	static constexpr uint8_t DEFAULT_EXTERNAL_PRIORITY = 25;
 
 	static constexpr const char *SensorString() { return "ACC"; }
 
 	Accelerometer();
-	explicit Accelerometer(uint32_t device_id);
+	explicit Accelerometer(uint32_t device_id, bool external = false);
 
 	~Accelerometer() = default;
 
 	void PrintStatus();
 
 	void set_calibration_index(uint8_t calibration_index) { _calibration_index = calibration_index; }
-	void set_device_id(uint32_t device_id);
-	void set_external(bool external = true) { _external = external; }
-	void set_offset(const matrix::Vector3f &offset) { _offset = offset; }
-	void set_scale(const matrix::Vector3f &scale) { _scale = scale; }
+	void set_device_id(uint32_t device_id, bool external = false);
+	void set_external(bool external = true);
+	bool set_offset(const matrix::Vector3f &offset);
+	bool set_scale(const matrix::Vector3f &scale);
+	void set_rotation(Rotation rotation);
 
+	uint8_t calibration_count() const { return _calibration_count; }
 	uint32_t device_id() const { return _device_id; }
 	bool enabled() const { return (_priority > 0); }
 	bool external() const { return _external; }
+	const matrix::Vector3f &offset() const { return _offset; }
 	const int32_t &priority() const { return _priority; }
 	const matrix::Dcmf &rotation() const { return _rotation; }
+	const Rotation &rotation_enum() const { return _rotation_enum; }
+	const matrix::Vector3f &scale() const { return _scale; }
 
 	// apply offsets and scale
 	// rotate corrected measurements from sensor to body frame
@@ -88,6 +93,8 @@ public:
 private:
 	uORB::Subscription _sensor_correction_sub{ORB_ID(sensor_correction)};
 
+	Rotation _rotation_enum{ROTATION_NONE};
+
 	matrix::Dcmf _rotation;
 	matrix::Vector3f _offset;
 	matrix::Vector3f _scale;
@@ -95,8 +102,10 @@ private:
 
 	int8_t _calibration_index{-1};
 	uint32_t _device_id{0};
-	int32_t _priority{DEFAULT_PRIORITY};
+	int32_t _priority{-1};
 
 	bool _external{false};
+
+	uint8_t _calibration_count{0};
 };
 } // namespace calibration

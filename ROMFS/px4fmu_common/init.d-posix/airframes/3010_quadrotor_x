@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# @name Quadrotor SITL model for JSBSim
+#
+# @type Quadrotor Wide
+#
+# @maintainer Jaeyoung Lim <jaeyoung@auterion.com>
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+
+set MIXER quad_w

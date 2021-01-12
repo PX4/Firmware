@@ -256,6 +256,26 @@ bool FlightTaskAuto::_evaluateTriplets()
 		_ext_yaw_handler->deactivate();
 	}
 
+	// Calculate the current vehicle state and check if it has updated.
+	State previous_state = _current_state;
+	_current_state = _getCurrentState();
+
+	if (triplet_update || (_current_state != previous_state) || _current_state == State::offtrack) {
+		_updateInternalWaypoints();
+		_mission_gear = _sub_triplet_setpoint.get().current.landing_gear;
+		_yaw_lock = false;
+	}
+
+	if (_param_com_obs_avoid.get()
+	    && _sub_vehicle_status.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+		_obstacle_avoidance.updateAvoidanceDesiredWaypoints(_triplet_target, _yaw_setpoint, _yawspeed_setpoint,
+				_triplet_next_wp,
+				_sub_triplet_setpoint.get().next.yaw,
+				_sub_triplet_setpoint.get().next.yawspeed_valid ? _sub_triplet_setpoint.get().next.yawspeed : NAN,
+				_ext_yaw_handler != nullptr && _ext_yaw_handler->is_active(), _sub_triplet_setpoint.get().current.type);
+		_obstacle_avoidance.checkAvoidanceProgress(_position, _triplet_prev_wp, _target_acceptance_radius, _closest_pt);
+	}
+
 	// set heading
 	if (_ext_yaw_handler != nullptr && _ext_yaw_handler->is_active()) {
 		_yaw_setpoint = _yaw;
@@ -293,25 +313,6 @@ bool FlightTaskAuto::_evaluateTriplets()
 		_yawspeed_setpoint = NAN;
 	}
 
-	// Calculate the current vehicle state and check if it has updated.
-	State previous_state = _current_state;
-	_current_state = _getCurrentState();
-
-	if (triplet_update || (_current_state != previous_state)) {
-		_updateInternalWaypoints();
-		_mission_gear = _sub_triplet_setpoint.get().current.landing_gear;
-	}
-
-	if (_param_com_obs_avoid.get()
-	    && _sub_vehicle_status.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
-		_obstacle_avoidance.updateAvoidanceDesiredWaypoints(_triplet_target, _yaw_setpoint, _yawspeed_setpoint,
-				_triplet_next_wp,
-				_sub_triplet_setpoint.get().next.yaw,
-				_sub_triplet_setpoint.get().next.yawspeed_valid ? _sub_triplet_setpoint.get().next.yawspeed : NAN,
-				_ext_yaw_handler != nullptr && _ext_yaw_handler->is_active(), _sub_triplet_setpoint.get().current.type);
-		_obstacle_avoidance.checkAvoidanceProgress(_position, _triplet_prev_wp, _target_acceptance_radius, _closest_pt);
-	}
-
 	return true;
 }
 
@@ -323,19 +324,19 @@ void FlightTaskAuto::_set_heading_from_mode()
 	switch (_param_mpc_yaw_mode.get()) {
 
 	case 0: // Heading points towards the current waypoint.
-	case 4: // Same as 0 but yaw fisrt and then go
+	case 4: // Same as 0 but yaw first and then go
 		v = Vector2f(_target) - Vector2f(_position);
 		break;
 
 	case 1: // Heading points towards home.
-		if (_sub_home_position.get().valid_hpos) {
+		if (_sub_home_position.get().valid_lpos) {
 			v = Vector2f(&_sub_home_position.get().x) - Vector2f(_position);
 		}
 
 		break;
 
 	case 2: // Heading point away from home.
-		if (_sub_home_position.get().valid_hpos) {
+		if (_sub_home_position.get().valid_lpos) {
 			v = Vector2f(_position) - Vector2f(&_sub_home_position.get().x);
 		}
 
@@ -352,14 +353,13 @@ void FlightTaskAuto::_set_heading_from_mode()
 		// We only adjust yaw if vehicle is outside of acceptance radius. Once we enter acceptance
 		// radius, lock yaw to current yaw.
 		// This prevents excessive yawing.
-		if (v.length() > _target_acceptance_radius) {
-			_compute_heading_from_2D_vector(_yaw_setpoint, v);
-			_yaw_lock = false;
-
-		} else {
-			if (!_yaw_lock) {
+		if (!_yaw_lock) {
+			if (v.length() < _target_acceptance_radius) {
 				_yaw_setpoint = _yaw;
 				_yaw_lock = true;
+
+			} else {
+				_compute_heading_from_2D_vector(_yaw_setpoint, v);
 			}
 		}
 
@@ -451,11 +451,11 @@ State FlightTaskAuto::_getCurrentState()
 		// Target is behind.
 		return_state = State::target_behind;
 
-	} else if (u_prev_to_target * prev_to_pos < 0.0f && prev_to_pos.length() > _mc_cruise_speed) {
+	} else if (u_prev_to_target * prev_to_pos < 0.0f && prev_to_pos.length() > _target_acceptance_radius) {
 		// Current position is more than cruise speed in front of previous setpoint.
 		return_state = State::previous_infront;
 
-	} else if (Vector2f(Vector2f(_position) - _closest_pt).length() > _mc_cruise_speed) {
+	} else if (Vector2f(Vector2f(_position) - _closest_pt).length() > _target_acceptance_radius) {
 		// Vehicle is more than cruise speed off track.
 		return_state = State::offtrack;
 

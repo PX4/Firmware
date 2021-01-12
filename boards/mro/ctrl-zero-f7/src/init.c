@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -63,7 +63,7 @@
 #include <chip.h>
 #include <stm32_uart.h>
 #include <arch/board/board.h>
-#include "up_internal.h"
+#include "arm_internal.h"
 
 #include <px4_arch/io_timer.h>
 #include <drivers/drv_hrt.h>
@@ -80,7 +80,7 @@
 /* Configuration ************************************************************/
 
 /*
- * Ideally we'd be able to get these from up_internal.h,
+ * Ideally we'd be able to get these from arm_internal.h,
  * but since we want to be able to disable the NuttX use
  * of leds for system indication at will and there is no
  * separate switch, we need to build independent of the
@@ -100,9 +100,6 @@ __END_DECLS
  ************************************************************************************/
 __EXPORT void board_peripheral_reset(int ms)
 {
-	/* set the peripheral rails off */
-	board_control_spi_sensors_power(false, 0xffff);
-
 	bool last = READ_VDD_3V3_SPEKTRUM_POWER_EN();
 	/* Keep Spektum on to discharge rail*/
 	VDD_3V3_SPEKTRUM_POWER_EN(false);
@@ -115,7 +112,6 @@ __EXPORT void board_peripheral_reset(int ms)
 
 	/* switch the peripheral rail back on */
 	VDD_3V3_SPEKTRUM_POWER_EN(last);
-	board_control_spi_sensors_power(true, 0xffff);
 }
 
 /************************************************************************************
@@ -161,9 +157,7 @@ stm32_boardinitialize(void)
 	/* configure pins */
 	const uint32_t gpio[] = PX4_GPIO_INIT_LIST;
 	px4_gpio_init(gpio, arraySize(gpio));
-
-	/* configure SPI interfaces */
-	px4_arch_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 0);
+	board_control_spi_sensors_power_configgpio();
 
 	/* configure USB interfaces */
 	stm32_usbinitialize();
@@ -198,7 +192,6 @@ stm32_boardinitialize(void)
 __EXPORT int board_app_initialize(uintptr_t arg)
 {
 	/* Power on Interfaces */
-	px4_arch_gpiowrite(GPIO_VDD_3V3_SENSORS_EN, 1);
 	board_control_spi_sensors_power(true, 0xffff);
 	VDD_3V3_SPEKTRUM_POWER_EN(true);
 
@@ -248,6 +241,10 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	}
 
 #endif /* CONFIG_MMCSD */
+
+	/* Configure the HW based on the manifest */
+
+	px4_platform_configure();
 
 	return OK;
 }

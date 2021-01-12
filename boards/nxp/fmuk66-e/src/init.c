@@ -67,7 +67,7 @@
 #include <hardware/kinetis_sim.h>
 #include "board_config.h"
 
-#include "up_arch.h"
+#include "arm_arch.h"
 #include <arch/board/board.h>
 
 #include <drivers/drv_hrt.h>
@@ -84,7 +84,7 @@
  ****************************************************************************/
 
 /*
- * Ideally we'd be able to get these from up_internal.h,
+ * Ideally we'd be able to get these from arm_internal.h,
  * but since we want to be able to disable the NuttX use
  * of leds for system indication at will and there is no
  * separate switch, we need to build independent of the
@@ -119,9 +119,6 @@ void board_on_reset(int status)
 	for (int i = 0; i < 6; ++i) {
 		px4_arch_configgpio(PX4_MAKE_GPIO_INPUT(io_timer_channel_get_as_pwm_input(i)));
 	}
-
-	px4_arch_configgpio(io_timer_channel_get_gpio_output(6)); // Echo trigger pin
-	px4_arch_configgpio(PX4_MAKE_GPIO_INPUT(io_timer_channel_get_as_pwm_input(7)));
 
 	if (status >= 0) {
 		up_mdelay(6);
@@ -302,6 +299,10 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 # endif
 
 #endif
+
+	/* Configure the HW based on the manifest */
+
+	px4_platform_configure();
 
 	return OK;
 }

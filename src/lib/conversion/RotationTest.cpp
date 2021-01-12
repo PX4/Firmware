@@ -97,25 +97,6 @@ TEST(Rotations, duplicates)
 				if (j == ROTATION_ROLL_180_YAW_90 && i == ROTATION_PITCH_180_YAW_270) { continue; }
 
 
-				// ROTATION_ROLL_180_PITCH_90 (29) = ROTATION_PITCH_90_YAW_180 (43)
-				if (i == ROTATION_ROLL_180_PITCH_90 && j == ROTATION_PITCH_90_YAW_180) { continue; }
-
-				if (j == ROTATION_ROLL_180_PITCH_90 && i == ROTATION_PITCH_90_YAW_180) { continue; }
-
-
-				// ROTATION_ROLL_90_PITCH_180 (31) = ROTATION_ROLL_270_YAW_180 (41)
-				if (i == ROTATION_ROLL_90_PITCH_180 && j == ROTATION_ROLL_270_YAW_180) { continue; }
-
-				if (j == ROTATION_ROLL_90_PITCH_180 && i == ROTATION_ROLL_270_YAW_180) { continue; }
-
-
-				// ROTATION_ROLL_90_PITCH_180_YAW_90 (36) = ROTATION_ROLL_270_YAW_270 (42)
-				if (i == ROTATION_ROLL_90_PITCH_180_YAW_90 && j == ROTATION_ROLL_270_YAW_270) { continue; }
-
-				if (j == ROTATION_ROLL_90_PITCH_180_YAW_90 && i == ROTATION_ROLL_270_YAW_270) { continue; }
-
-
-
 				// otherwise all rotations should be different
 				ASSERT_GT((transformed_1 - transformed_2).norm(), 0) << "Rotation " << i << " and " << j << " equal";
 			}

@@ -32,11 +32,15 @@
 ############################################################################
 
 px4_add_romfs_files(
+	autogyro_sitl.main.mix
+	boat_sitl.main.mix
 	delta_wing_sitl.main.mix
 	plane_sitl.main.mix
+	quad_x_vtol.main.mix
 	rover_ackermann_sitl.main.mix
 	rover_diff_sitl.main.mix
 	standard_vtol_sitl.main.mix
 	tiltrotor_sitl.main.mix
 	uuv_x_sitl.main.mix
+	vectored6dof_sitl.main.mix
 )

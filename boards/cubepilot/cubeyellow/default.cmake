@@ -15,10 +15,10 @@ px4_add_board(
 		TEL2:/dev/ttyS1
 		GPS1:/dev/ttyS2
 		# PX4IO:/dev/ttyS3
-		# CONSOLE:/dev/ttyS4
+		TEL3:/dev/ttyS4
 		GPS2:/dev/ttyS5
 	DRIVERS
-		adc
+		adc/board_adc
 		barometer # all available barometer drivers
 		batt_smbus
 		camera_capture
@@ -66,6 +66,7 @@ px4_add_board(
 		ekf2
 		esc_battery
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
@@ -96,6 +97,7 @@ px4_add_board(
 		hardfault_log
 		i2cdetect
 		led_control
+		mft
 		mixer
 		motor_ramp
 		motor_test

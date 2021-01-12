@@ -63,11 +63,13 @@
 #include "output_mavlink.h"
 
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/module.h>
 
+using namespace time_literals;
 using namespace vmount;
 
 /* thread state */
@@ -163,16 +165,9 @@ static int vmount_thread_main(int argc, char *argv[])
 
 	InputTest *test_input = nullptr;
 
-#ifdef __PX4_NUTTX
-	/* the NuttX optarg handler does not
-	 * ignore argv[0] like the POSIX handler
-	 * does, nor does it deal with non-flag
-	 * verbs well. So we Remove the application
-	 * name and the verb.
-	 */
+	// We don't need the task name.
 	argc -= 1;
 	argv += 1;
-#endif
 
 	if (argc > 0 && !strcmp(argv[0], "test")) {
 		PX4_INFO("Starting in test mode");
@@ -215,7 +210,7 @@ static int vmount_thread_main(int argc, char *argv[])
 		return -1;
 	}
 
-	uORB::Subscription parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	thread_running = true;
 	ControlData *control_data = nullptr;
 	g_thread_data = &thread_data;

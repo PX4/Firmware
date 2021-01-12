@@ -55,6 +55,7 @@
 #include <parameters/param.h>
 #include <perf/perf_counter.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
@@ -65,7 +66,8 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_rates_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/uORB.h>
+
+using namespace time_literals;
 
 /* Prototypes */
 
@@ -315,7 +317,7 @@ int fixedwing_control_thread_main(int argc, char *argv[])
 	int vstatus_sub = orb_subscribe(ORB_ID(vehicle_status));
 	int global_sp_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 
-	uORB::Subscription parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	/* Setup of loop */
 

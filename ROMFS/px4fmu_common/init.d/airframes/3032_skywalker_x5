@@ -15,11 +15,12 @@
 #
 # @maintainer Julian Oes <julian@px4.io>
 #
+# @board px4_fmu-v2 exclude
 # @board intel_aerofc-v1 exclude
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.fw_defaults
+. ${R}etc/init.d/rc.fw_defaults
 
 if [ $AUTOCNF = yes ]
 then

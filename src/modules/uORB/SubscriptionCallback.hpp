@@ -68,22 +68,24 @@ public:
 
 	bool registerCallback()
 	{
-		if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
-			// registered
-			_registered = true;
+		if (!_registered) {
+			if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
+				// registered
+				_registered = true;
 
-		} else {
-			// force topic creation by subscribing with old API
-			int fd = orb_subscribe_multi(_subscription.get_topic(), _subscription.get_instance());
+			} else {
+				// force topic creation by subscribing with old API
+				int fd = orb_subscribe_multi(_subscription.get_topic(), _subscription.get_instance());
 
-			// try to register callback again
-			if (_subscription.subscribe()) {
-				if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
-					_registered = true;
+				// try to register callback again
+				if (_subscription.subscribe()) {
+					if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
+						_registered = true;
+					}
 				}
-			}
 
-			orb_unsubscribe(fd);
+				orb_unsubscribe(fd);
+			}
 		}
 
 		return _registered;
@@ -98,7 +100,40 @@ public:
 		_registered = false;
 	}
 
+	/**
+	 * Change subscription instance
+	 * @param instance The new multi-Subscription instance
+	 */
+	bool ChangeInstance(uint8_t instance)
+	{
+		bool ret = false;
+
+		if (instance != get_instance()) {
+			const bool registered = _registered;
+
+			if (registered) {
+				unregisterCallback();
+			}
+
+			if (_subscription.ChangeInstance(instance)) {
+				ret = true;
+			}
+
+			if (registered) {
+				registerCallback();
+			}
+
+		} else {
+			// already on desired index
+			return true;
+		}
+
+		return ret;
+	}
+
 	virtual void call() = 0;
+
+	bool registered() const { return _registered; }
 
 protected:
 
@@ -129,7 +164,7 @@ public:
 	{
 		// schedule immediately if updated (queue depth or subscription interval)
 		if ((_required_updates == 0)
-		    || (_subscription.get_node()->published_message_count() >= (_subscription.get_last_generation() + _required_updates))) {
+		    || (_subscription.get_node()->updates_available(_subscription.get_last_generation()) >= _required_updates)) {
 			if (updated()) {
 				_work_item->ScheduleNow();
 			}

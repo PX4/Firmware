@@ -47,6 +47,7 @@
 static constexpr float DELAY_SIGMA = 0.01f;
 
 using namespace time_literals;
+using namespace math;
 
 RTL::RTL(Navigator *navigator) :
 	MissionBlock(navigator),
@@ -76,6 +77,10 @@ void RTL::find_RTL_destination()
 		return;
 	}
 
+	if (!_navigator->home_position_valid()) {
+		return;
+	}
+
 	_destination_check_time = hrt_absolute_time();
 
 	// get home position:
@@ -91,7 +96,7 @@ void RTL::find_RTL_destination()
 	double dlat = home_landing_position.lat - global_position.lat;
 	double dlon = home_landing_position.lon - global_position.lon;
 
-	double lon_scale = cos(math::radians(global_position.lat));
+	double lon_scale = cos(radians(global_position.lat));
 
 	auto coord_dist_sq = [lon_scale](double lat_diff, double lon_diff) -> double {
 		double lon_diff_scaled =  lon_scale * matrix::wrap(lon_diff, -180., 180.);
@@ -102,10 +107,28 @@ void RTL::find_RTL_destination()
 
 	_destination.type = RTL_DESTINATION_HOME;
 
+	const bool vtol_in_rw_mode = _navigator->get_vstatus()->is_vtol
+				     && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
+
+
 	// consider the mission landing if not RTL_HOME type set
 	if (rtl_type() != RTL_HOME && _navigator->get_mission_start_land_available()) {
-		double mission_landing_lat = _navigator->get_mission_landing_lat();
-		double mission_landing_lon = _navigator->get_mission_landing_lon();
+		double mission_landing_lat;
+		double mission_landing_lon;
+		float mission_landing_alt;
+		RTLDestinationType destination_type = RTL_DESTINATION_MISSION_LANDING;
+
+		if (vtol_in_rw_mode) {
+			mission_landing_lat = _navigator->get_mission_landing_lat();
+			mission_landing_lon = _navigator->get_mission_landing_lon();
+			mission_landing_alt = _navigator->get_mission_landing_alt();
+			destination_type = RTL_DESTINATION_HOME;
+
+		} else {
+			mission_landing_lat = _navigator->get_mission_landing_start_lat();
+			mission_landing_lon = _navigator->get_mission_landing_start_lon();
+			mission_landing_alt = _navigator->get_mission_landing_start_alt();
+		}
 
 		// compare home position to landing position to decide which is closer
 		dlat = mission_landing_lat - global_position.lat;
@@ -115,10 +138,11 @@ void RTL::find_RTL_destination()
 		// set destination to mission landing if closest or in RTL_LAND or RTL_MISSION (so not in RTL_CLOSEST)
 		if (dist_squared < min_dist_squared || rtl_type() != RTL_CLOSEST) {
 			min_dist_squared = dist_squared;
-			_destination.lat = _navigator->get_mission_landing_lat();
-			_destination.lon = _navigator->get_mission_landing_lon();
-			_destination.alt = _navigator->get_mission_landing_alt();
-			_destination.type = RTL_DESTINATION_MISSION_LANDING;
+			_destination.lat = mission_landing_lat;
+			_destination.lon = mission_landing_lon;
+			_destination.alt = mission_landing_alt;
+			_destination.type = destination_type;
+
 
 		}
 	}
@@ -193,6 +217,9 @@ void RTL::find_RTL_destination()
 void RTL::on_activation()
 {
 
+	_deny_mission_landing = _navigator->get_vstatus()->is_vtol
+				&& _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
+
 	// output the correct message, depending on where the RTL destination is
 	switch (_destination.type) {
 	case RTL_DESTINATION_HOME:
@@ -214,15 +241,20 @@ void RTL::on_activation()
 		_rtl_alt = calculate_return_alt_from_cone_half_angle((float)_param_rtl_cone_half_angle_deg.get());
 
 	} else {
-		_rtl_alt = math::max(global_position.alt, _destination.alt + _param_rtl_return_alt.get());
+		_rtl_alt = max(global_position.alt, max(_destination.alt,
+							_navigator->get_home_position()->alt + _param_rtl_return_alt.get()));
 	}
+
 
 	if (_navigator->get_land_detected()->landed) {
 		// For safety reasons don't go into RTL if landed.
 		_rtl_state = RTL_STATE_LANDED;
 
-	} else if ((_destination.type == RTL_DESTINATION_MISSION_LANDING) && _navigator->on_mission_landing()) {
-		// RTL straight to RETURN state, but mission will takeover for landing.
+	} else if ((_destination.type == RTL_DESTINATION_MISSION_LANDING) && _navigator->getMissionLandingInProgress()) {
+		// we were just on a mission landing, set _rtl_state past RTL_STATE_RETURN such that navigator will engage mission mode,
+		// which will continue executing the landing
+		_rtl_state = RTL_STATE_DESCEND;
+
 
 	} else if ((global_position.alt < _destination.alt + _param_rtl_return_alt.get()) || _rtl_alt_min) {
 
@@ -235,7 +267,10 @@ void RTL::on_activation()
 		_rtl_state = RTL_STATE_RETURN;
 	}
 
+	setClimbAndReturnDone(_rtl_state > RTL_STATE_RETURN);
+
 	set_rtl_item();
+
 }
 
 void RTL::on_active()
@@ -259,7 +294,7 @@ void RTL::set_rtl_item()
 	// Landing using planned mission landing, fly to DO_LAND_START instead of returning _destination.
 	// After reaching DO_LAND_START, do nothing, let navigator takeover with mission landing.
 	if (_destination.type == RTL_DESTINATION_MISSION_LANDING) {
-		if (_rtl_state > RTL_STATE_CLIMB) {
+		if (_rtl_state > RTL_STATE_RETURN) {
 			if (_navigator->start_mission_landing()) {
 				mavlink_log_info(_navigator->get_mavlink_log_pub(), "RTL: using mission landing");
 				return;
@@ -277,16 +312,22 @@ void RTL::set_rtl_item()
 
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
-	// Check if we are pretty close to the destination already.
 	const float destination_dist = get_distance_to_next_waypoint(_destination.lat, _destination.lon, gpos.lat, gpos.lon);
-
-	// Compute the loiter altitude.
-	const float loiter_altitude = math::min(_destination.alt + _param_rtl_descend_alt.get(), gpos.alt);
+	const float descend_altitude_target = min(_destination.alt + _param_rtl_descend_alt.get(), gpos.alt);
+	const float loiter_altitude = min(descend_altitude_target, _rtl_alt);
 
 	switch (_rtl_state) {
 	case RTL_STATE_CLIMB: {
 
-			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+			// do not use LOITER_TO_ALT for rotary wing mode as it would then always climb to at least MIS_LTRMIN_ALT,
+			// even if current climb altitude is below (e.g. RTL immediately after take off)
+			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+				_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+
+			} else {
+				_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
+			}
+
 			_mission_item.lat = gpos.lat;
 			_mission_item.lon = gpos.lon;
 			_mission_item.altitude = _rtl_alt;
@@ -303,7 +344,6 @@ void RTL::set_rtl_item()
 		}
 
 	case RTL_STATE_RETURN: {
-
 			// Don't change altitude.
 			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 			_mission_item.lat = _destination.lat;
@@ -337,8 +377,21 @@ void RTL::set_rtl_item()
 			break;
 		}
 
-	case RTL_STATE_DESCEND: {
+	case RTL_MOVE_TO_LAND_HOVER_VTOL: {
 			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+			_mission_item.lat = _destination.lat;
+			_mission_item.lon = _destination.lon;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.altitude_is_relative = false;
+			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.origin = ORIGIN_ONBOARD;
+			break;
+		}
+
+	case RTL_STATE_DESCEND: {
+			_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
+
 			_mission_item.lat = _destination.lat;
 			_mission_item.lon = _destination.lon;
 			_mission_item.altitude = loiter_altitude;
@@ -378,13 +431,13 @@ void RTL::set_rtl_item()
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.loiter_radius = _navigator->get_loiter_radius();
 			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
-			_mission_item.time_inside = math::max(_param_rtl_land_delay.get(), 0.0f);
+			_mission_item.time_inside = max(_param_rtl_land_delay.get(), 0.0f);
 			_mission_item.autocontinue = autoland;
 			_mission_item.origin = ORIGIN_ONBOARD;
 
 			_navigator->set_can_loiter_at_sp(true);
 
-			if (autoland && (get_time_inside(_mission_item) > FLT_EPSILON)) {
+			if (autoland) {
 				_mission_item.nav_cmd = NAV_CMD_LOITER_TIME_LIMIT;
 				mavlink_log_info(_navigator->get_mavlink_log_pub(), "RTL: loiter %.1fs",
 						 (double)get_time_inside(_mission_item));
@@ -451,36 +504,56 @@ void RTL::set_rtl_item()
 
 void RTL::advance_rtl()
 {
+	// determines if the vehicle should loiter above land
+	const bool descend_and_loiter = _param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA;
+
+	// vehicle is a vtol and currently in fixed wing mode
+	const bool vtol_in_fw_mode = _navigator->get_vstatus()->is_vtol
+				     && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
+
+
 	switch (_rtl_state) {
 	case RTL_STATE_CLIMB:
 		_rtl_state = RTL_STATE_RETURN;
 		break;
 
 	case RTL_STATE_RETURN:
+		setClimbAndReturnDone(true);
 
-		// Descend to desired altitude if delay is set, directly land otherwise
-		if (_param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA) {
+		if (vtol_in_fw_mode || descend_and_loiter) {
 			_rtl_state = RTL_STATE_DESCEND;
 
 		} else {
 			_rtl_state = RTL_STATE_LAND;
 		}
 
-		if (_navigator->get_vstatus()->is_vtol
-		    && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+		break;
+
+
+	case RTL_STATE_TRANSITION_TO_MC:
+
+		_rtl_state = RTL_MOVE_TO_LAND_HOVER_VTOL;
+
+		break;
+
+	case RTL_MOVE_TO_LAND_HOVER_VTOL:
+
+		if (descend_and_loiter) {
+			_rtl_state = RTL_STATE_LOITER;
+
+		} else {
+			_rtl_state = RTL_STATE_LAND;
 		}
 
 		break;
 
-	case RTL_STATE_TRANSITION_TO_MC:
-		_rtl_state = RTL_STATE_RETURN;
-		break;
-
 	case RTL_STATE_DESCEND:
 
-		// Only go to land if autoland is enabled.
-		if (_param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA) {
+		// If the vehicle is a vtol in fixed wing mode, then first transition to hover
+		if (vtol_in_fw_mode) {
+			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+
+		} else if (descend_and_loiter) {
 			_rtl_state = RTL_STATE_LOITER;
 
 		} else {
@@ -509,39 +582,32 @@ float RTL::calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg)
 	// horizontal distance to destination
 	const float destination_dist = get_distance_to_next_waypoint(_destination.lat, _destination.lon, gpos.lat, gpos.lon);
 
-	float rtl_altitude;
+	// minium rtl altitude to use when outside of horizontal acceptance radius of target position.
+	// We choose the minimum height to be two times the distance from the land position in order to
+	// avoid the vehicle touching the ground while still moving horizontally.
+	const float return_altitude_min_outside_acceptance_rad_amsl = _destination.alt + 2.0f *
+			_navigator->get_acceptance_radius();
 
-	if (destination_dist <= _param_rtl_min_dist.get()) {
-		rtl_altitude = _destination.alt + _param_rtl_descend_alt.get();
+	float return_altitude_amsl = _destination.alt + _param_rtl_return_alt.get();
 
-	} else if (gpos.alt > _destination.alt + _param_rtl_return_alt.get() || cone_half_angle_deg >= 90.0f) {
-		rtl_altitude = gpos.alt;
-
-	} else if (cone_half_angle_deg <= 0) {
-		rtl_altitude = _destination.alt + _param_rtl_return_alt.get();
+	if (destination_dist <= _navigator->get_acceptance_radius()) {
+		return_altitude_amsl = _destination.alt + 2.0f * destination_dist;
 
 	} else {
 
-		// constrain cone half angle to meaningful values. All other cases are already handled above.
-		const float cone_half_angle_rad = math::radians(math::constrain(cone_half_angle_deg, 1.0f, 89.0f));
+		if (cone_half_angle_deg > 0.0f && destination_dist <= _param_rtl_min_dist.get()) {
 
-		// minimum height above destination required
-		float height_above_destination_min = destination_dist / tanf(cone_half_angle_rad);
+			// constrain cone half angle to meaningful values. All other cases are already handled above.
+			const float cone_half_angle_rad = radians(constrain(cone_half_angle_deg, 1.0f, 89.0f));
 
-		// minimum altitude we need in order to be within the user defined cone
-		const float altitude_min = math::constrain(height_above_destination_min + _destination.alt, _destination.alt,
-					   _destination.alt + _param_rtl_return_alt.get());
+			// minimum altitude we need in order to be within the user defined cone
+			const float cone_intersection_altitude_amsl = destination_dist / tanf(cone_half_angle_rad) + _destination.alt;
 
-		if (gpos.alt < altitude_min) {
-			rtl_altitude = altitude_min;
-
-		} else {
-			rtl_altitude = gpos.alt;
+			return_altitude_amsl = min(cone_intersection_altitude_amsl, return_altitude_amsl);
 		}
+
+		return_altitude_amsl = max(return_altitude_amsl, return_altitude_min_outside_acceptance_rad_amsl);
 	}
 
-	// always demand altitude which is higher or equal the RTL descend altitude
-	rtl_altitude = math::max(rtl_altitude, _destination.alt + _param_rtl_descend_alt.get());
-
-	return rtl_altitude;
+	return max(return_altitude_amsl, gpos.alt);
 }

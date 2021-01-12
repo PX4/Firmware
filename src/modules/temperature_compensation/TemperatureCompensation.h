@@ -49,16 +49,16 @@
 namespace temperature_compensation
 {
 
-static constexpr uint8_t GYRO_COUNT_MAX = 3;
-static constexpr uint8_t ACCEL_COUNT_MAX = 3;
-static constexpr uint8_t BARO_COUNT_MAX = 3;
+static constexpr uint8_t GYRO_COUNT_MAX = 4;
+static constexpr uint8_t ACCEL_COUNT_MAX = 4;
+static constexpr uint8_t BARO_COUNT_MAX = 4;
 
-static_assert(GYRO_COUNT_MAX == 3, "GYRO_COUNT_MAX must be 3 (if changed, add/remove TC_* params to match the count)");
-static_assert(ACCEL_COUNT_MAX == 3,
-	      "ACCEL_COUNT_MAX must be 3 (if changed, add/remove TC_* params to match the count)");
-static_assert(BARO_COUNT_MAX == 3, "BARO_COUNT_MAX must be 3 (if changed, add/remove TC_* params to match the count)");
+static_assert(GYRO_COUNT_MAX == 4, "GYRO_COUNT_MAX must be 4 (if changed, add/remove TC_* params to match the count)");
+static_assert(ACCEL_COUNT_MAX == 4,
+	      "ACCEL_COUNT_MAX must be 4 (if changed, add/remove TC_* params to match the count)");
+static_assert(BARO_COUNT_MAX == 4, "BARO_COUNT_MAX must be 4 (if changed, add/remove TC_* params to match the count)");
 
-static constexpr uint8_t SENSOR_COUNT_MAX = 3;
+static constexpr uint8_t SENSOR_COUNT_MAX = 4;
 
 /**
  ** class TemperatureCompensation

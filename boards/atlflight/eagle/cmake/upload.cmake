@@ -46,7 +46,7 @@ else()
 
 	add_custom_target(upload
 		COMMAND ${PX4_BOARD_DIR}/scripts/adb_upload.sh
-				${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${PX4_SOURCE_DIR}/posix-configs/eagle/flight/mainapp.config ${PX4_SOURCE_DIR}/ROMFS # source
+				${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${PX4_SOURCE_DIR}/posix-configs/eagle/flight/mainapp.config ${PX4_BINARY_DIR}/etc # source
 				/home/linaro # destination
 		DEPENDS px4 ${PX4_BOARD_DIR}/scripts/adb_upload.sh
 		COMMENT "uploading px4"

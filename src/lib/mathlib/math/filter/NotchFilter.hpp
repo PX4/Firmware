@@ -141,8 +141,6 @@ public:
 
 	T reset(const T &sample);
 
-	void update(float sample_freq, float notch_freq, float bandwidth);
-
 protected:
 	float _notch_freq{};
 	float _bandwidth{};

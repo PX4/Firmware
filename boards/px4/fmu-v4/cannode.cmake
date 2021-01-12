@@ -32,7 +32,7 @@ px4_add_board(
 		TEL1:/dev/ttyS1
 		TEL2:/dev/ttyS2
 	DRIVERS
-		adc
+		adc/board_adc
 		#barometer # all available barometer drivers
 		barometer/ms5611
 		bootloaders
@@ -67,6 +67,7 @@ px4_add_board(
 		#esc_calib
 		#hardfault_log
 		i2cdetect
+		mft
 		#led_control
 		#mixer
 		#motor_ramp
@@ -79,6 +80,7 @@ px4_add_board(
 		reboot
 		#reflect
 		#sd_bench
+		system_time
 		#shutdown
 		top
 		#topic_listener

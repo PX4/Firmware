@@ -133,10 +133,11 @@ parameters:
                     This requires the ESC to provide both voltage as well as current.
             type: enum
             values:
+                -1: Disabled
                 0: Power Module
                 1: External
                 2: ESCs
             reboot_required: true
             num_instances: *max_num_config_instances
             instance_start: 1
-            default: [0, 0]
+            default: [0, -1]

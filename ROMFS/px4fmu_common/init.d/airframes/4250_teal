@@ -23,7 +23,7 @@
 
 echo "Executing 4250_teal script."
 
-sh /etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.mc_defaults
 
 set MIXER quad_x
 set PWM_OUT 1234
@@ -31,7 +31,7 @@ set PWM_OUT 1234
 if [ $AUTOCNF = yes ]
 then
 	# First thing, reset all params to default... EXCEPT THIS LIST
-	param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* CAL_MAG* SENS_BOARD* EKF2_MAGBIAS*
+	param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* CAL_MAG* SENS_BOARD* EKF2_MAGBIAS*
 
 	# battery
 	param set BAT_CAPACITY 2750
@@ -49,7 +49,6 @@ then
 	# sensor calibration
 	param set CAL_MAG_SIDES 63
 	param set SENS_BOARD_ROT 0
-	param set COM_ARM_EKF_AB 0.0032
 
 	# circuit breakers
 	param set CBRK_IO_SAFETY 22027

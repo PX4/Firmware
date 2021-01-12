@@ -54,11 +54,22 @@ set(NUTTX_CONFIG_DIR ${PX4_BOARD_DIR}/nuttx-config)
 file(RELATIVE_PATH CP_SRC ${CMAKE_SOURCE_DIR} ${NUTTX_SRC_DIR}/nuttx)
 file(RELATIVE_PATH CP_DST ${CMAKE_SOURCE_DIR} ${PX4_BINARY_DIR}/NuttX)
 
+execute_process(
+	COMMAND git rev-parse --absolute-git-dir
+	OUTPUT_VARIABLE nuttx_git_dir
+	WORKING_DIRECTORY ${NUTTX_SRC_DIR}/nuttx
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 # setup custom command to copy changes later
 file(GLOB_RECURSE copy_nuttx_files LIST_DIRECTORIES false ${NUTTX_SRC_DIR}/nuttx/*)
+list(REMOVE_ITEM copy_nuttx_files ${NUTTX_SRC_DIR}/nuttx/.git)
+
 add_custom_command(
 	OUTPUT ${PX4_BINARY_DIR}/NuttX/nuttx_copy.stamp
 	COMMAND ${NUTTX_COPY_CMD} ${NUTTX_COPY_CMD_OPTS} ${CP_SRC} ${CP_DST}
+	COMMAND ${CMAKE_COMMAND} -E remove -f ${PX4_BINARY_DIR}/NuttX/nuttx/.git
+	COMMAND echo "gitdir: ${nuttx_git_dir}" > ${PX4_BINARY_DIR}/NuttX/nuttx/.git
 	COMMAND ${CMAKE_COMMAND} -E touch ${PX4_BINARY_DIR}/NuttX/nuttx_copy.stamp
 	DEPENDS
 		git_nuttx
@@ -146,6 +157,9 @@ add_custom_command(
 )
 add_custom_target(nuttx_copy_config_dir_target DEPENDS ${PX4_BINARY_DIR}/NuttX/nuttx_copy_config_dir.stamp)
 
+if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 9.3)
+	set(CMAKE_C_COMP_DEP_FLAGS -Wno-stringop-truncation)
+endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Make.defs.in ${NUTTX_DIR}/Make.defs)
 
@@ -258,9 +272,9 @@ add_custom_target(nuttx_builtin_list_target DEPENDS ${nuttx_builtin_list})
 # APPS
 
 # libapps.a
-add_custom_command(OUTPUT ${APPS_DIR}/libapps.a ${APPS_DIR}/platform/.built
+add_custom_command(OUTPUT ${APPS_DIR}/libapps.a
 	COMMAND find ${APPS_DIR} -name \*.o -delete
-	COMMAND make ${nuttx_build_options} --no-print-directory TOPDIR="${NUTTX_DIR}"
+	COMMAND make ${nuttx_build_options} --no-print-directory TOPDIR="${NUTTX_DIR}" > nuttx_apps.log
 	DEPENDS
 		nuttx_builtin_list_target ${nuttx_builtin_list}
 		nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h
@@ -281,7 +295,7 @@ function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra)
 
 	add_custom_command(OUTPUT ${NUTTX_DIR}/${nuttx_lib_dir}/lib${nuttx_lib}.a
 		COMMAND find ${nuttx_lib_dir} -type f -name *.o -delete
-		COMMAND make -C ${nuttx_lib_dir} ${nuttx_build_options} --no-print-directory all TOPDIR=${NUTTX_DIR} KERNEL=${kernel} EXTRADEFINES=${extra}
+		COMMAND make -C ${nuttx_lib_dir} ${nuttx_build_options} --no-print-directory all TOPDIR=${NUTTX_DIR} KERNEL=${kernel} EXTRAFLAGS=${extra}
 		DEPENDS
 			${nuttx_lib_files}
 			nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h

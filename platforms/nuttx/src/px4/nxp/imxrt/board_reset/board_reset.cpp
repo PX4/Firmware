@@ -40,7 +40,7 @@
 #include <px4_platform_common/px4_config.h>
 #include <errno.h>
 #include <nuttx/board.h>
-#include <up_arch.h>
+#include <arm_arch.h>
 #include <hardware/imxrt_snvs.h>
 
 #define PX4_IMXRT_RTC_REBOOT_REG 3 // Must be common with bootloader and:

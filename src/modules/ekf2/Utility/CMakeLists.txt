@@ -31,15 +31,15 @@
 #
 #############################################################################
 
-px4_add_library(Ekf2Utility
+px4_add_library(EKF2Utility
 	PreFlightChecker.cpp
 )
 
-target_include_directories(Ekf2Utility
+target_include_directories(EKF2Utility
 	PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(Ekf2Utility PRIVATE mathlib)
+target_link_libraries(EKF2Utility PRIVATE mathlib)
 
-px4_add_unit_gtest(SRC PreFlightCheckerTest.cpp LINKLIBS Ekf2Utility)
+px4_add_unit_gtest(SRC PreFlightCheckerTest.cpp LINKLIBS EKF2Utility)

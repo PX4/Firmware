@@ -363,7 +363,7 @@ bool ParameterTest::exportImportAll()
 		return false;
 	}
 
-	int result = param_export(fd, false);
+	int result = param_export(fd, false, nullptr);
 
 	if (result != PX4_OK) {
 		PX4_ERR("param_export failed");
@@ -516,7 +516,7 @@ bool ParameterTest::exportImportAll()
 		return false;
 	}
 
-	result = param_import(fd);
+	result = param_import(fd, false);
 	close(fd);
 
 	if (result < 0) {

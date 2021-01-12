@@ -15,7 +15,7 @@
 #
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # Internal SPI bus ICM-20602
 icm20602 -R 2 -s start
@@ -28,7 +28,7 @@ bmi055 -A -R 2 -s start
 bmi055 -G -R 2 -s start
 
 # internal compass
-ist8310 -I start
+ist8310 -I -R 10 start
 
 # Baro on internal SPI
 ms5611 -s start

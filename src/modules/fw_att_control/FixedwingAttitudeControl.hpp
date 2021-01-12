@@ -72,6 +72,8 @@ using matrix::Quatf;
 
 using uORB::SubscriptionData;
 
+using namespace time_literals;
+
 class FixedwingAttitudeControl final : public ModuleBase<FixedwingAttitudeControl>, public ModuleParams,
 	public px4::WorkItem
 {
@@ -95,11 +97,12 @@ private:
 
 	uORB::SubscriptionCallbackWorkItem _att_sub{this, ORB_ID(vehicle_attitude)};	/**< vehicle attitude */
 
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
 	uORB::Subscription _att_sp_sub{ORB_ID(vehicle_attitude_setpoint)};		/**< vehicle attitude setpoint */
 	uORB::Subscription _battery_status_sub{ORB_ID(battery_status)};			/**< battery status subscription */
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};		/**< local position subscription */
 	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};		/**< notification of manual control updates */
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};		/**< notification of parameter updates */
 	uORB::Subscription _rates_sp_sub{ORB_ID(vehicle_rates_setpoint)};		/**< vehicle rates setpoint */
 	uORB::Subscription _vcontrol_mode_sub{ORB_ID(vehicle_control_mode)};		/**< vehicle status subscription */
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};	/**< vehicle land detected subscription */

@@ -46,11 +46,13 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_accel.h>
 
 #include <mathlib/mathlib.h>
+
+using namespace time_literals;
 
 #define CONTROLLER_PERIOD_DEFAULT 100000
 
@@ -174,7 +176,7 @@ private:
 
 	float _integrator_value = 0.0f;
 
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	float _proportional_value = 0.0f;
 

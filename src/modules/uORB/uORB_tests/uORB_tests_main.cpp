@@ -66,18 +66,8 @@ uorb_tests_main(int argc, char *argv[])
 	 * Test the latency.
 	 */
 	if (argc > 1 && !strcmp(argv[1], "latency_test")) {
-
 		uORBTest::UnitTest &t = uORBTest::UnitTest::instance();
-
-		if (argc > 2 && !strcmp(argv[2], "medium")) {
-			return t.latency_test<orb_test_medium_s>(ORB_ID(orb_test_medium), true);
-
-		} else if (argc > 2 && !strcmp(argv[2], "large")) {
-			return t.latency_test<orb_test_large_s>(ORB_ID(orb_test_large), true);
-
-		} else {
-			return t.latency_test<orb_test_s>(ORB_ID(orb_test), true);
-		}
+		return t.latency_test(true);
 	}
 
 	usage();

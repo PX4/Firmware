@@ -14,6 +14,10 @@ then
 	param set BAT1_A_PER_V 17
 	param set BAT2_A_PER_V 17
 
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
+
 	# Disable IMU thermal control
 	param set SENS_EN_THERMAL 0
 fi

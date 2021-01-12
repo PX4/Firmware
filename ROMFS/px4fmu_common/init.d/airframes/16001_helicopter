@@ -18,7 +18,7 @@
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.mc_defaults
 
 # Configure as helicopter (number 4 defined in commander_helper.cpp)
 set MAV_TYPE 4

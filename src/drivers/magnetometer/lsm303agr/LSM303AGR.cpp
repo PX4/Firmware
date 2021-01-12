@@ -315,9 +315,9 @@ int LSM303AGR::collect()
 		const hrt_abstime timestamp_sample = hrt_absolute_time();
 
 		// switch to right hand coordinate system in place
-		float x_raw = read_reg(OUTX_L_REG_M) + (read_reg(OUTX_H_REG_M) << 8);
-		float y_raw = read_reg(OUTY_L_REG_M) + (read_reg(OUTY_H_REG_M) << 8);
-		float z_raw = -(read_reg(OUTZ_L_REG_M) + (read_reg(OUTZ_H_REG_M) << 8));
+		int16_t x_raw = read_reg(OUTX_L_REG_M) + (read_reg(OUTX_H_REG_M) << 8);
+		int16_t y_raw = read_reg(OUTY_L_REG_M) + (read_reg(OUTY_H_REG_M) << 8);
+		int16_t z_raw = -(read_reg(OUTZ_L_REG_M) + (read_reg(OUTZ_H_REG_M) << 8));
 
 		_px4_mag.update(timestamp_sample, x_raw, y_raw, z_raw);
 

@@ -38,6 +38,7 @@
  */
 
 #include <px4_platform_common/px4_config.h>
+#include "factory_calibration_storage.h"
 #include "gyro_calibration.h"
 #include "calibration_messages.h"
 #include "calibration_routines.h"
@@ -48,10 +49,11 @@
 #include <px4_platform_common/time.h>
 
 #include <drivers/drv_hrt.h>
-#include <lib/sensor_calibration/Gyroscope.hpp>
-#include <lib/sensor_calibration/Utilities.hpp>
+#include <lib/mathlib/math/filter/MedianFilter.hpp>
 #include <lib/mathlib/mathlib.h>
 #include <lib/parameters/param.h>
+#include <lib/sensor_calibration/Gyroscope.hpp>
+#include <lib/sensor_calibration/Utilities.hpp>
 #include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionBlocking.hpp>
@@ -59,7 +61,7 @@
 #include <uORB/topics/sensor_gyro.h>
 
 static constexpr char sensor_name[] {"gyro"};
-static constexpr unsigned MAX_GYROS = 3;
+static constexpr unsigned MAX_GYROS = 4;
 
 using matrix::Vector3f;
 
@@ -71,21 +73,8 @@ struct gyro_worker_data_t {
 
 	Vector3f offset[MAX_GYROS] {};
 
-	static constexpr int last_num_samples = 9; ///< number of samples for the motion detection median filter
-	float last_sample_0_x[last_num_samples];
-	float last_sample_0_y[last_num_samples];
-	float last_sample_0_z[last_num_samples];
-	int last_sample_0_idx;
+	math::MedianFilter<float, 9> filter[3] {};
 };
-
-static int float_cmp(const void *elem1, const void *elem2)
-{
-	if (*(const float *)elem1 < * (const float *)elem2) {
-		return -1;
-	}
-
-	return *(const float *)elem1 > *(const float *)elem2;
-}
 
 static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 {
@@ -101,12 +90,8 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 		{ORB_ID(sensor_gyro), 0, 0},
 		{ORB_ID(sensor_gyro), 0, 1},
 		{ORB_ID(sensor_gyro), 0, 2},
+		{ORB_ID(sensor_gyro), 0, 3},
 	};
-
-	memset(&worker_data.last_sample_0_x, 0, sizeof(worker_data.last_sample_0_x));
-	memset(&worker_data.last_sample_0_y, 0, sizeof(worker_data.last_sample_0_y));
-	memset(&worker_data.last_sample_0_z, 0, sizeof(worker_data.last_sample_0_z));
-	worker_data.last_sample_0_idx = 0;
 
 	/* use slowest gyro to pace, but count correctly per-gyro for statistics */
 	unsigned slow_count = 0;
@@ -148,6 +133,9 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 									case 2:
 										offset = Vector3f{sensor_correction.gyro_offset_2};
 										break;
+									case 3:
+										offset = Vector3f{sensor_correction.gyro_offset_3};
+										break;
 									}
 								}
 							}
@@ -157,10 +145,9 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 						calibration_counter[gyro_index]++;
 
 						if (gyro_index == 0) {
-							worker_data.last_sample_0_x[worker_data.last_sample_0_idx] = gyro_report.x - offset(0);
-							worker_data.last_sample_0_y[worker_data.last_sample_0_idx] = gyro_report.y - offset(1);
-							worker_data.last_sample_0_z[worker_data.last_sample_0_idx] = gyro_report.z - offset(2);
-							worker_data.last_sample_0_idx = (worker_data.last_sample_0_idx + 1) % gyro_worker_data_t::last_num_samples;
+							worker_data.filter[0].insert(gyro_report.x - offset(0));
+							worker_data.filter[1].insert(gyro_report.y - offset(1));
+							worker_data.filter[2].insert(gyro_report.z - offset(2));
 						}
 					}
 
@@ -252,13 +239,9 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 
 		} else {
 			/* check offsets using a median filter */
-			qsort(worker_data.last_sample_0_x, gyro_worker_data_t::last_num_samples, sizeof(float), float_cmp);
-			qsort(worker_data.last_sample_0_y, gyro_worker_data_t::last_num_samples, sizeof(float), float_cmp);
-			qsort(worker_data.last_sample_0_z, gyro_worker_data_t::last_num_samples, sizeof(float), float_cmp);
-
-			float xdiff = worker_data.last_sample_0_x[gyro_worker_data_t::last_num_samples / 2] - worker_data.offset[0](0);
-			float ydiff = worker_data.last_sample_0_y[gyro_worker_data_t::last_num_samples / 2] - worker_data.offset[0](1);
-			float zdiff = worker_data.last_sample_0_z[gyro_worker_data_t::last_num_samples / 2] - worker_data.offset[0](2);
+			float xdiff = worker_data.filter[0].median() - worker_data.offset[0](0);
+			float ydiff = worker_data.filter[1].median() - worker_data.offset[0](1);
+			float zdiff = worker_data.filter[2].median() - worker_data.offset[0](2);
 
 			/* maximum allowable calibration error */
 			static constexpr float maxoff = math::radians(0.6f);
@@ -285,10 +268,17 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		res = PX4_ERROR;
 	}
 
-	if (res == PX4_OK) {
+	FactoryCalibrationStorage factory_storage;
 
-		/* set offset parameters to new values */
-		bool failed = false;
+	if (factory_storage.open() != PX4_OK) {
+		calibration_log_critical(mavlink_log_pub, "ERROR: cannot open calibration storage");
+		res = PX4_ERROR;
+	}
+
+	if (res == PX4_OK) {
+		// set offset parameters to new values
+		bool param_save = false;
+		bool failed = true;
 
 		for (unsigned uorb_index = 0; uorb_index < MAX_GYROS; uorb_index++) {
 
@@ -304,29 +294,35 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 			}
 
 			calibration.set_calibration_index(uorb_index);
-			calibration.ParametersSave();
+
+			if (calibration.ParametersSave()) {
+				param_save = true;
+				failed = false;
+
+			} else {
+				failed = true;
+				calibration_log_critical(mavlink_log_pub, "calibration save failed");
+				break;
+			}
 		}
 
-		if (failed) {
-			calibration_log_critical(mavlink_log_pub, "ERROR: failed to set offset params");
-			res = PX4_ERROR;
+		if (!failed && factory_storage.store() != PX4_OK) {
+			failed = true;
+		}
+
+		if (param_save) {
+			param_notify_changes();
+		}
+
+		if (!failed) {
+			calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+			px4_usleep(600000); // give this message enough time to propagate
+			return PX4_OK;
 		}
 	}
 
-	param_notify_changes();
+	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	px4_usleep(600000); // give this message enough time to propagate
 
-	/* if there is a any preflight-check system response, let the barrage of messages through */
-	px4_usleep(200000);
-
-	if (res == PX4_OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
-
-	} else {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
-	}
-
-	/* give this message enough time to propagate */
-	px4_usleep(600000);
-
-	return res;
+	return PX4_ERROR;
 }

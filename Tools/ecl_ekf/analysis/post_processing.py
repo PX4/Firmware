@@ -146,18 +146,18 @@ def get_gps_check_fail_flags(estimator_status: dict) -> dict:
     return gps_fail_flags
 
 
-def magnetic_field_estimates_from_status(estimator_status: dict) -> Tuple[float, float, float]:
+def magnetic_field_estimates_from_states(estimator_states: dict) -> Tuple[float, float, float]:
     """
 
-    :param estimator_status:
+    :param estimator_states:
     :return:
     """
     rad2deg = 57.2958
     field_strength = np.sqrt(
-        estimator_status['states[16]'] ** 2 + estimator_status['states[17]'] ** 2 +
-        estimator_status['states[18]'] ** 2)
-    declination = rad2deg * np.arctan2(estimator_status['states[17]'],
-                                       estimator_status['states[16]'])
+        estimator_states['states[16]'] ** 2 + estimator_states['states[17]'] ** 2 +
+        estimator_states['states[18]'] ** 2)
+    declination = rad2deg * np.arctan2(estimator_states['states[17]'],
+                                       estimator_states['states[16]'])
     inclination = rad2deg * np.arcsin(
-        estimator_status['states[18]'] / np.maximum(field_strength, np.finfo(np.float32).eps))
+        estimator_states['states[18]'] / np.maximum(field_strength, np.finfo(np.float32).eps))
     return declination, field_strength, inclination

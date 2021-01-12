@@ -219,8 +219,6 @@ Syslink::update_params(bool force_set)
 		this->_params_update[2] = t;
 		this->_params_ack[2] = 0;
 	}
-
-
 }
 
 // 1M 8N1 serial connection to NRF51
@@ -363,7 +361,7 @@ Syslink::task_main()
 			}
 
 			if (fds[1].revents & POLLIN) {
-				struct parameter_update_s update;
+				parameter_update_s update;
 				orb_copy(ORB_ID(parameter_update), _params_sub, &update);
 				update_params(false);
 			}
@@ -372,7 +370,6 @@ Syslink::task_main()
 	}
 
 	close(_fd);
-
 }
 
 void
@@ -497,7 +494,6 @@ Syslink::handle_message(syslink_message_t *msg)
 	} else if (_params_ack[2] == 0 && t - _params_update[2] > 10000) {
 		set_address(_addr);
 	}
-
 }
 
 void
@@ -515,7 +511,6 @@ Syslink::handle_radio(syslink_message_t *sys)
 	} else if (sys->type == SYSLINK_RADIO_ADDRESS) {
 		_params_ack[2] = t;
 	}
-
 }
 
 void
@@ -602,7 +597,6 @@ Syslink::handle_bootloader(syslink_message_t *sys)
 		c->data[22] = 0x10; // Protocol version
 		send_message(sys);
 	}
-
 }
 
 void
@@ -797,7 +791,6 @@ void status()
 		}
 
 		printf("\n\n");
-
 	}
 
 	close(deckfd);
@@ -827,20 +820,13 @@ void attached(int pid)
 	exit(found ? 1 : 0);
 }
 
-
-
 void test()
 {
 	// TODO: Ensure battery messages are recent
 	// TODO: Read and write from memory to ensure it is working
 }
 
-
-
-
-}
-
-
+} // namespace syslink
 
 int syslink_main(int argc, char *argv[])
 {
@@ -848,7 +834,6 @@ int syslink_main(int argc, char *argv[])
 		syslink::usage();
 		exit(1);
 	}
-
 
 	const char *verb = argv[1];
 
@@ -872,9 +857,6 @@ int syslink_main(int argc, char *argv[])
 	if (!strcmp(verb, "test")) {
 		syslink::test();
 	}
-
-
-
 
 	syslink::usage();
 	exit(1);

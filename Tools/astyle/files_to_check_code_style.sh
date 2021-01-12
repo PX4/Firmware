@@ -16,6 +16,7 @@ exec find boards msg src platforms test \
     -path src/lib/ecl -prune -o \
     -path src/lib/matrix -prune -o \
     -path src/lib/systemlib/uthash -prune -o \
+    -path src/examples/gyro_fft/CMSIS_5 -prune -o \
     -path src/modules/micrortps_bridge/micro-CDR -prune -o \
     -path src/modules/micrortps_bridge/microRTPS_client -prune -o \
     -path test/mavsdk_tests/catch2 -prune -o \

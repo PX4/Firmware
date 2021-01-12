@@ -35,6 +35,7 @@
 #include "PX4Gyroscope.hpp"
 
 #include <lib/drivers/device/Device.hpp>
+#include <lib/parameters/param.h>
 
 using namespace time_literals;
 using matrix::Vector3f;
@@ -51,7 +52,6 @@ static constexpr int32_t sum(const int16_t samples[16], uint8_t len)
 }
 
 PX4Gyroscope::PX4Gyroscope(uint32_t device_id, enum Rotation rotation) :
-	ModuleParams(nullptr),
 	_sensor_pub{ORB_ID(sensor_gyro)},
 	_sensor_fifo_pub{ORB_ID(sensor_gyro_fifo)},
 	_device_id{device_id},
@@ -60,7 +60,7 @@ PX4Gyroscope::PX4Gyroscope(uint32_t device_id, enum Rotation rotation) :
 	// advertise immediately to keep instance numbering in sync
 	_sensor_pub.advertise();
 
-	updateParams();
+	param_get(param_find("IMU_GYRO_RATEMAX"), &_imu_gyro_rate_max);
 }
 
 PX4Gyroscope::~PX4Gyroscope()

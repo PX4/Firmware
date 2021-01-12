@@ -191,7 +191,8 @@ private:
 
 	unsigned motorTest();
 
-	void updateOutputSlewrate();
+	void updateOutputSlewrateMultirotorMixer();
+	void updateOutputSlewrateSimplemixer();
 	void setAndPublishActuatorOutputs(unsigned num_outputs, actuator_outputs_s &actuator_outputs);
 	void publishMixerStatus(const actuator_outputs_s &actuator_outputs);
 	void updateLatencyPerfCounter(const actuator_outputs_s &actuator_outputs);
@@ -244,7 +245,8 @@ private:
 	actuator_controls_s _controls[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS] {};
 	actuator_armed_s _armed{};
 
-	hrt_abstime _time_last_mix{0};
+	hrt_abstime _time_last_dt_update_multicopter{0};
+	hrt_abstime _time_last_dt_update_simple_mixer{0};
 	unsigned _max_topic_update_interval_us{0}; ///< max _control_subs topic update interval (0=unlimited)
 
 	bool _throttle_armed{false};

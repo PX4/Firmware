@@ -36,44 +36,44 @@
 namespace PixArt_PAW3902JF
 {
 
-static constexpr uint8_t PRODUCT_ID = 0x49;	// shared with the PMW3901
+static constexpr uint8_t PRODUCT_ID = 0x49;
 static constexpr uint8_t REVISION_ID = 0x01;
+static constexpr uint8_t PRODUCT_ID_INVERSE = 0xB6;
 
 static constexpr uint32_t SAMPLE_INTERVAL_MODE_0{1000000 / 126};	// 126 fps
 static constexpr uint32_t SAMPLE_INTERVAL_MODE_1{1000000 / 126};	// 126 fps
 static constexpr uint32_t SAMPLE_INTERVAL_MODE_2{1000000 / 50};		// 50 fps
 
-static constexpr uint64_t T_SWW{11};	// 10.5 microseconds
-static constexpr uint64_t T_SRR{2};	// 1.5 microseconds
+static constexpr uint32_t SPI_SPEED = 2 * 1000 * 1000; // 2MHz SPI serial interface
 
 enum Register : uint8_t {
-	Product_ID	= 0x00,
-	Revision_ID	= 0x01,
-	Motion		= 0x02,
-	Delta_X_L	= 0x03,
-	Delta_X_H	= 0x04,
-	Delta_Y_L	= 0x05,
-	Delta_Y_H	= 0x06,
-	Squal		= 0x07,
-	RawData_Sum	= 0x08,
-	Maximum_RawData	= 0x09,
-	Minimum_RawData	= 0x0A,
-	Shutter_Lower	= 0x0B,
-	Shutter_Upper	= 0x0C,
+	Product_ID         = 0x00,
+	Revision_ID        = 0x01,
+	Motion             = 0x02,
+	Delta_X_L          = 0x03,
+	Delta_X_H          = 0x04,
+	Delta_Y_L          = 0x05,
+	Delta_Y_H          = 0x06,
+	Squal              = 0x07,
+	RawData_Sum        = 0x08,
+	Maximum_RawData    = 0x09,
+	Minimum_RawData    = 0x0A,
+	Shutter_Lower      = 0x0B,
+	Shutter_Upper      = 0x0C,
 
-	Observation	= 0x15,
-	Motion_Burst	= 0x16,
+	Observation        = 0x15,
+	Motion_Burst       = 0x16,
 
-	Power_Up_Reset	= 0x3A,
+	Power_Up_Reset     = 0x3A,
 
-	Resolution	= 0x4E,
+	Resolution	   = 0x4E,
 
+	Inverse_Product_ID = 0x5F,
 };
 
 enum Product_ID_Bit : uint8_t {
 	Reset = 0x5A,
 };
-
 
 enum class Mode {
 	Bright = 0,

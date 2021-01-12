@@ -563,9 +563,15 @@ Navigator::run()
 
 					}
 
-					// if RTL is set to use a mission landing and mission has a planned landing, then use MISSION to fly there directly
-					if (on_mission_landing() && !get_land_detected()->landed) {
+					if (!rtl_activated && !_rtl.denyMissionLanding() && _rtl.getClimbAndReturnDone()
+					    && get_mission_start_land_available()) {
 						_mission.set_execution_mode(mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD);
+
+						if (!getMissionLandingInProgress() && _vstatus.arming_state == vehicle_status_s::ARMING_STATE_ARMED
+						    && !get_land_detected()->landed) {
+							start_mission_landing();
+						}
+
 						navigation_mode_new = &_mission;
 
 					} else {
@@ -907,7 +913,7 @@ Navigator::get_cruising_throttle()
 		return _mission_throttle;
 
 	} else {
-		return -1.0f;
+		return NAN;
 	}
 }
 
@@ -1006,7 +1012,7 @@ void Navigator::fake_traffic(const char *callsign, float distance, float directi
 
 #endif /* BOARD_HAS_NO_UUID */
 
-	uORB::PublicationQueued<transponder_report_s> tr_pub{ORB_ID(transponder_report)};
+	uORB::Publication<transponder_report_s> tr_pub{ORB_ID(transponder_report)};
 	tr_pub.publish(tr);
 }
 

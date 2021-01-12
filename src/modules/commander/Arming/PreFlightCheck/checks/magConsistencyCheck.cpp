@@ -39,7 +39,6 @@
 #include <mathlib/mathlib.h>
 #include <systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/subsystem_info.h>
 #include <uORB/topics/sensor_preflight_mag.h>
 
 // return false if the magnetomer measurements are inconsistent

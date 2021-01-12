@@ -62,7 +62,7 @@ int  MuorbTestExample::DefaultTest()
 	int i = 0;
 
 	uORB::Subscription sub_vc{ORB_ID(vehicle_command)};
-	uORB::PublicationQueued<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
+	uORB::Publication<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
 	uORB::Publication<esc_status_s> pub_id{ORB_ID(esc_status)};
 	pub_id.publish(m_esc_status);
 
@@ -103,7 +103,7 @@ int  MuorbTestExample::DefaultTest()
 int MuorbTestExample::PingPongTest()
 {
 	int i = 0;
-	uORB::PublicationQueued<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
+	uORB::Publication<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
 	uORB::Subscription sub_esc_status{ORB_ID(esc_status)};
 
 	while (!appState.exitRequested()) {

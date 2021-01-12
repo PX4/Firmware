@@ -175,10 +175,12 @@ out:
 
 	if (success) {
 		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "level");
+		px4_usleep(600000); // give this message enough time to propagate
 		return 0;
 
 	} else {
 		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
+		px4_usleep(600000); // give this message enough time to propagate
 		return 1;
 	}
 }

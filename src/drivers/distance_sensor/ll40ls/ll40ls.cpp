@@ -72,7 +72,7 @@ Setup/usage information: https://docs.px4.io/master/en/sensor/lidar_lite.html
 I2CSPIDriverBase *LidarLiteI2C::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
 				      int runtime_instance)
 {
-	LidarLiteI2C* instance = new LidarLiteI2C(iterator.configuredBusOption(), iterator.bus(), cli.rotation, cli.bus_frequency);
+	LidarLiteI2C* instance = new LidarLiteI2C(iterator.configuredBusOption(), iterator.bus(), cli.orientation, cli.bus_frequency);
 
 	if (instance == nullptr) {
 		PX4_ERR("alloc failed");
@@ -105,7 +105,7 @@ extern "C" __EXPORT int ll40ls_main(int argc, char *argv[])
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
 		case 'R':
-			cli.rotation = (enum Rotation)atoi(cli.optarg());
+			cli.orientation = (enum Rotation)atoi(cli.optarg());
 			break;
 		}
 	}

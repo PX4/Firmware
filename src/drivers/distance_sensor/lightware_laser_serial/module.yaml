@@ -1,0 +1,7 @@
+module_name: Lightware Laser Rangefinder (serial)
+serial_config:
+    - command: lightware_laser_serial start -d ${SERIAL_DEV}
+      port_config_param:
+        name: SENS_SF0X_CFG
+        group: Sensors
+

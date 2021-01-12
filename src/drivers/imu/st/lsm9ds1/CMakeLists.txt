@@ -34,10 +34,11 @@
 px4_add_module(
 	MODULE drivers__imu__st__lsm9ds1
 	MAIN lsm9ds1
+	COMPILE_FLAGS
 	SRCS
-		lsm9ds1_main.cpp
 		LSM9DS1.cpp
 		LSM9DS1.hpp
+		lsm9ds1_main.cpp
 		ST_LSM9DS1_Registers.hpp
 	DEPENDS
 		drivers_accelerometer

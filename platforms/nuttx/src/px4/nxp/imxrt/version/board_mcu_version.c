@@ -42,7 +42,7 @@
 
 #include <chip.h>
 #include <hardware/imxrt_usb_analog.h>
-#include "up_arch.h"
+#include "arm_arch.h"
 
 #define DIGPROG_MINOR_SHIFT           0
 #define DIGPROG_MINOR_MASK            (0xff << DIGPROG_MINOR_SHIFT)

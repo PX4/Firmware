@@ -4,7 +4,7 @@
     "description": "Firmware for the CUAV Nora board",
     "image": "",
     "build_time": 0,
-    "summary": "NOra",
+    "summary": "Nora",
     "version": "0.1",
     "image_size": 0,
     "image_maxsize": 1966080,

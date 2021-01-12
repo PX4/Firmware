@@ -105,15 +105,7 @@ CameraFeedback::Run()
 		capture.q[1] = att.q[1];
 		capture.q[2] = att.q[2];
 		capture.q[3] = att.q[3];
-
-		// Indicate whether capture feedback from camera is available
-		// What is case 0 for capture.result?
-		if (!_param_camera_capture_feedback.get()) {
-			capture.result = 0;
-
-		} else {
-			capture.result = 1;
-		}
+		capture.result = 1;
 
 		_capture_pub.publish(capture);
 	}

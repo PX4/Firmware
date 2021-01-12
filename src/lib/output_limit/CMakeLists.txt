@@ -31,4 +31,6 @@
 #
 ############################################################################
 
-px4_add_library(output_limit output_limit.cpp)
+add_library(output_limit output_limit.cpp)
+target_link_libraries(output_limit PRIVATE prebuild_targets)
+

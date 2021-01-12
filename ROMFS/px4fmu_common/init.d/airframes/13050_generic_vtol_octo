@@ -5,8 +5,6 @@
 # @type VTOL Octoplane
 # @class VTOL
 #
-# @maintainer
-#
 # @output MAIN1 motor 1
 # @output MAIN2 motor 2
 # @output MAIN3 motor 3
@@ -21,11 +19,12 @@
 # @output AUX4 Rudder
 # @output AUX5 Throttle
 #
+# @board px4_fmu-v2 exclude
 # @board intel_aerofc-v1 exclude
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.vtol_defaults
+. ${R}etc/init.d/rc.vtol_defaults
 
 if [ $AUTOCNF = yes ]
 then

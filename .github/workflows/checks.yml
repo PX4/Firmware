@@ -26,11 +26,9 @@ jobs:
           "module_documentation",
           "parameters_metadata",
         ]
-        ubuntu_release: [
-          #bionic,
-          focal
-          ]
-    container: px4io/px4-dev-nuttx-${{ matrix.ubuntu_release }}:2020-04-01
+    container:
+      image: px4io/px4-dev-nuttx-focal:2020-11-18
+      options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
     steps:
     - uses: actions/checkout@v1
       with:
@@ -57,6 +55,9 @@ jobs:
           echo "max_size = 400M" >> ~/.ccache/ccache.conf
           ccache -s
           ccache -z
-
+    - name: check environment
+      run: |
+          export
+          ulimit -a
     - name: ${{matrix.check}}
       run: make ${{matrix.check}}

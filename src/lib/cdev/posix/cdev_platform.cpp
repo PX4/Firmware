@@ -62,9 +62,9 @@ private:
 	px4_dev_t() = default;
 };
 
-static px4_dev_t *devmap[128] {};
+static px4_dev_t *devmap[256] {};
 
-#define PX4_MAX_FD 128
+#define PX4_MAX_FD 256
 static cdev::file_t filemap[PX4_MAX_FD] {};
 
 class VFile : public cdev::CDev

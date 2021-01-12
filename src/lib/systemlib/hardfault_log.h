@@ -229,17 +229,31 @@ typedef enum {
 	eRegsPresent          = 0x01,
 	eUserStackPresent     = 0x02,
 	eIntStackPresent      = 0x04,
+	eFaultRegPresent      = 0x08,
 	eInvalidUserStackPtr  = 0x20,
 	eInvalidIntStackPrt   = 0x40,
 } fault_flags_t;
+
+typedef struct {
+	uint32_t              cfsr;  /* 0x0d28 Configurable fault status register */
+	uint32_t              hfsr;  /* 0x0d2c Hard fault status register */
+	uint32_t              dfsr;  /* 0x0d30 Debug fault status register */
+	uint32_t              mmfsr; /* 0x0d34 Mem manage address register */
+	uint32_t              bfsr;  /* 0x0d38 Bus fault address register */
+	uint32_t              afsr;  /* 0x0d3c Auxiliary fault status register */
+#if defined(CONFIG_ARCH_CORTEXM7)
+	uint32_t              abfsr; /* 0x0fa8 Auxiliary Bus Fault Status Register */
+#endif
+
+} fault_regs_s;
 
 typedef struct {
 	fault_flags_t         flags;                  /* What is in the dump */
 	uintptr_t             current_regs;           /* Used to validate the dump */
 	int                   lineno;                 /* __LINE__ to up_assert */
 	int                   pid;                    /* Process ID */
-	uint32_t              regs[XCPTCONTEXT_REGS]; /* Interrupt register save
-											 * area */
+	uint32_t              regs[XCPTCONTEXT_REGS]; /* Interrupt register save area */
+	fault_regs_s          fault_regs;             /* NVIC status */
 	stack_t               stacks;                 /* Stack info */
 #if CONFIG_TASK_NAME_SIZE > 0
 	char                  name[CONFIG_TASK_NAME_SIZE + 1]; /* Task name (with NULL

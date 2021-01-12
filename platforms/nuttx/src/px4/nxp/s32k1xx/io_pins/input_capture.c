@@ -74,19 +74,19 @@
 #include <drivers/drv_input_capture.h>
 #include <px4_arch/io_timer.h>
 
-#include <kinetis.h>
-#include "hardware/kinetis_sim.h"
-#include "hardware/kinetis_ftm.h"
+#include "s32k1xx_pin.h"
+#include "hardware/s32k1xx_pcc.h"
+#include "hardware/s32k1xx_ftm.h"
 
 
-#define _REG(_addr)	(*(volatile uint32_t *)(_addr))
+#define _REG(_addr)		(*(volatile uint32_t *)(_addr))
 #define _REG32(_base, _reg)	(*(volatile uint32_t *)(_base + _reg))
 #define REG(_tmr, _reg)		_REG32(io_timers[_tmr].base, _reg)
 
 
 /* Timer register accessors */
 
-#define rFILTER(_tmr)     REG(_tmr,KINETIS_FTM_FILTER_OFFSET)
+#define rFILTER(_tmr)     REG(_tmr, S32K1XX_FTM_FILTER_OFFSET)
 
 static input_capture_stats_t channel_stats[MAX_TIMER_IO_CHANNELS];
 
@@ -110,7 +110,7 @@ static void input_capture_chan_handler(void *context, const io_timers_t *timer, 
 
 	channel_stats[chan_index].chan_in_edges_out++;
 	channel_stats[chan_index].last_time = isrs_time - (isrs_rcnt - capture);
-	uint32_t overflow = _REG32(timer, KINETIS_FTM_CSC_OFFSET(chan->timer_channel - 1)) & FTM_CSC_CHF;
+	uint32_t overflow = _REG32(timer, S32K1XX_FTM_CNSC_OFFSET(chan->timer_channel - 1)) & FTM_CNSC_CHF;
 
 	if (overflow) {
 
@@ -320,20 +320,20 @@ int up_input_capture_get_trigger(unsigned channel,  input_capture_edge *edge)
 			rv = OK;
 
 			uint32_t timer = timer_io_channels[channel].timer_index;
-			uint16_t rvalue = _REG32(timer, KINETIS_FTM_CSC_OFFSET(timer_io_channels[channel].timer_channel - 1));
-			rvalue &= (FTM_CSC_MSB | FTM_CSC_MSA);
+			uint16_t rvalue = _REG32(timer, S32K1XX_FTM_CNSC_OFFSET(timer_io_channels[channel].timer_channel - 1));
+			rvalue &= (FTM_CNSC_MSB | FTM_CNSC_MSA);
 
 			switch (rvalue) {
 
-			case (FTM_CSC_MSA):
+			case (FTM_CNSC_MSA):
 				*edge = Rising;
 				break;
 
-			case (FTM_CSC_MSB):
+			case (FTM_CNSC_MSB):
 				*edge = Falling;
 				break;
 
-			case (FTM_CSC_MSB|FTM_CSC_MSA):
+			case (FTM_CNSC_MSB | FTM_CNSC_MSA):
 				*edge = Both;
 				break;
 
@@ -364,15 +364,15 @@ int up_input_capture_set_trigger(unsigned channel,  input_capture_edge edge)
 				break;
 
 			case Rising:
-				edge_bits = FTM_CSC_MSA;
+				edge_bits = FTM_CNSC_MSA;
 				break;
 
 			case Falling:
-				edge_bits = FTM_CSC_MSB;
+				edge_bits = FTM_CNSC_MSB;
 				break;
 
 			case Both:
-				edge_bits = (FTM_CSC_MSB | FTM_CSC_MSA);
+				edge_bits = (FTM_CNSC_MSB | FTM_CNSC_MSA);
 				break;
 
 			default:
@@ -381,10 +381,10 @@ int up_input_capture_set_trigger(unsigned channel,  input_capture_edge edge)
 
 			uint32_t timer = timer_io_channels[channel].timer_index;
 			irqstate_t flags = px4_enter_critical_section();
-			uint32_t rvalue = _REG32(timer, KINETIS_FTM_CSC_OFFSET(timer_io_channels[channel].timer_channel - 1));
-			rvalue &= (FTM_CSC_MSB | FTM_CSC_MSA);
+			uint32_t rvalue = _REG32(timer, S32K1XX_FTM_CNSC_OFFSET(timer_io_channels[channel].timer_channel - 1));
+			rvalue &= (FTM_CNSC_MSB | FTM_CNSC_MSA);
 			rvalue |=  edge_bits;
-			_REG32(timer, KINETIS_FTM_CSC_OFFSET(timer_io_channels[channel].timer_channel - 1)) = rvalue;
+			_REG32(timer, S32K1XX_FTM_CNSC_OFFSET(timer_io_channels[channel].timer_channel - 1)) = rvalue;
 			px4_leave_critical_section(flags);
 			rv = OK;
 		}

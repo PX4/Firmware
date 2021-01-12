@@ -7,7 +7,7 @@ serial_config:
         then
             mavlink start -d /dev/iridium -m iridium -b 115200
         else
-            tune_control play -t 20
+            tune_control play error
         fi
       port_config_param:
         name: ISBD_CONFIG

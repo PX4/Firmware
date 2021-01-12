@@ -53,7 +53,7 @@
 #include <systemlib/px4_macros.h>
 #include <px4_platform/gpio.h>
 
-#include <up_arch.h>
+#include <arm_arch.h>
 #include <chip.h>
 #include "imxrt_lpspi.h"
 #include "imxrt_gpio.h"

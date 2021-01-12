@@ -37,7 +37,7 @@
 
 #ifdef __PX4_NUTTX
 #include <sched.h>
-#include <systemlib/cpuload.h>
+#include <px4_platform/cpuload.h>
 #endif /* __PX4_NUTTX */
 
 namespace px4

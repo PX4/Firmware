@@ -34,6 +34,7 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/log.h>
 #include <lib/conversion/rotation.h>
+#include <lib/mathlib/mathlib.h>
 #include <lib/parameters/param.h>
 
 using math::radians;
@@ -90,7 +91,7 @@ int32_t GetCalibrationParam(const char *sensor_type, const char *cal_type, uint8
 	return value;
 }
 
-int SetCalibrationParam(const char *sensor_type, const char *cal_type, uint8_t instance, int32_t value)
+bool SetCalibrationParam(const char *sensor_type, const char *cal_type, uint8_t instance, int32_t value)
 {
 	char str[20] {};
 
@@ -103,7 +104,7 @@ int SetCalibrationParam(const char *sensor_type, const char *cal_type, uint8_t i
 		PX4_ERR("failed to set %s = %d", str, value);
 	}
 
-	return ret;
+	return ret == PX4_OK;
 }
 
 Vector3f GetCalibrationParamsVector3f(const char *sensor_type, const char *cal_type, uint8_t instance)
@@ -126,7 +127,7 @@ Vector3f GetCalibrationParamsVector3f(const char *sensor_type, const char *cal_t
 	return values;
 }
 
-int SetCalibrationParamsVector3f(const char *sensor_type, const char *cal_type, uint8_t instance, Vector3f values)
+bool SetCalibrationParamsVector3f(const char *sensor_type, const char *cal_type, uint8_t instance, Vector3f values)
 {
 	int ret = PX4_OK;
 	char str[20] {};
@@ -143,10 +144,10 @@ int SetCalibrationParamsVector3f(const char *sensor_type, const char *cal_type, 
 		}
 	}
 
-	return ret;
+	return ret == PX4_OK;
 }
 
-Dcmf GetBoardRotation()
+Eulerf GetSensorLevelAdjustment()
 {
 	float x_offset = 0.f;
 	float y_offset = 0.f;
@@ -155,13 +156,28 @@ Dcmf GetBoardRotation()
 	param_get(param_find("SENS_BOARD_Y_OFF"), &y_offset);
 	param_get(param_find("SENS_BOARD_Z_OFF"), &z_offset);
 
-	const Dcmf board_rotation_offset(Eulerf(radians(x_offset), radians(y_offset), radians(z_offset)));
+	return Eulerf{radians(x_offset), radians(y_offset), radians(z_offset)};
+}
 
+enum Rotation GetBoardRotation()
+{
 	// get transformation matrix from sensor/board to body frame
-	int32_t board_rot = 0;
+	int32_t board_rot = -1;
 	param_get(param_find("SENS_BOARD_ROT"), &board_rot);
 
-	return board_rotation_offset * get_rot_matrix((enum Rotation)board_rot);
+	if (board_rot >= 0 && board_rot <= Rotation::ROTATION_MAX) {
+		return static_cast<enum Rotation>(board_rot);
+
+	} else {
+		PX4_ERR("invalid SENS_BOARD_ROT: %d", board_rot);
+	}
+
+	return Rotation::ROTATION_NONE;
+}
+
+Dcmf GetBoardRotationMatrix()
+{
+	return get_rot_matrix(GetBoardRotation());
 }
 
 } // namespace calibration

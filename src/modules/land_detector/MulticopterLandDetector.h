@@ -112,9 +112,10 @@ private:
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _vehicle_local_position_setpoint_sub{ORB_ID(vehicle_local_position_setpoint)};
 
+	hrt_abstime _hover_thrust_estimate_last_valid{0};
+
 	bool _flag_control_climb_rate_enabled{false};
 	bool _hover_thrust_initialized{false};
-	bool _hover_thrust_estimate_valid{false};
 
 	float _actuator_controls_throttle{0.f};
 

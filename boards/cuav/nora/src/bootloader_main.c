@@ -45,7 +45,9 @@
 #include <chip.h>
 #include <stm32_uart.h>
 #include <arch/board/board.h>
-#include "up_internal.h"
+#include "arm_internal.h"
+#include <px4_platform_common/init.h>
+
 
 extern int sercon_main(int c, char **argv);
 
@@ -64,6 +66,7 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 void board_late_initialize(void)
 {
+	px4_platform_console_init();
 	sercon_main(0, NULL);
 }
 

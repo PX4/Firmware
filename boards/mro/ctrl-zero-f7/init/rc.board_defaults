@@ -6,7 +6,9 @@
 
 if [ $AUTOCNF = yes ]
 then
-
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
 fi
 
 set LOGGER_BUF 64

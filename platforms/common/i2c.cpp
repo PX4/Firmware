@@ -73,7 +73,7 @@ bool I2CBusIterator::next()
 			if (px4_i2c_bus_external(bus_data)) {
 				++_external_bus_counter;
 
-				if (_bus == _external_bus_counter || _bus == -1) {
+				if (_bus == bus_data.bus || _bus == -1) {
 					return true;
 				}
 			}

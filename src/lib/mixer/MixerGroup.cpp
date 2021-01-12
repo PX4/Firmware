@@ -243,3 +243,11 @@ void MixerGroup::set_max_delta_out_once(float delta_out_max)
 		mixer->set_max_delta_out_once(delta_out_max);
 	}
 }
+
+void
+MixerGroup::set_dt_once(float dt)
+{
+	for (auto mixer : _mixers) {
+		mixer->set_dt_once(dt);
+	}
+}

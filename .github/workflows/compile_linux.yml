@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-armhf:2020-04-01
+    container: px4io/px4-dev-armhf:2020-11-18
     strategy:
       matrix:
         config: [
@@ -19,6 +19,7 @@ jobs:
           beaglebone_blue_default,
           emlid_navio2_default,
           px4_raspberrypi_default,
+          scumaker_pilotpi_default,
           ]
     steps:
     - uses: actions/checkout@v1

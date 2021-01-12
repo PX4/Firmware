@@ -285,14 +285,6 @@
 #  endif
 #endif //
 
-/* Provide an overridable default nop
- * for BOARD_INDICATE_ARMED_STATE
- */
-
-#if !defined(BOARD_INDICATE_ARMED_STATE)
-#  define BOARD_INDICATE_ARMED_STATE(on_armed)
-#endif
-
 /************************************************************************************
  * Public Data
  ************************************************************************************/

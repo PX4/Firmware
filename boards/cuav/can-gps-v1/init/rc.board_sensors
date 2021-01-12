@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# board sensors init
+#------------------------------------------------------------------------------
+
+#board_adc start
+
+# Internal SPI
+ms5611 -s start
+rm3100 -s start

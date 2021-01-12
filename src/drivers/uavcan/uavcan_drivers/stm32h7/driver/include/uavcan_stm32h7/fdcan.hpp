@@ -23,8 +23,8 @@ namespace uavcan_stm32h7
 {
 namespace fdcan
 {
-#ifdef CONFIG_ARCH_CHIP_STM32H743ZI
-#include "fdcan_h743xx.h"
+#ifdef CONFIG_STM32H7_STM32H7X3XX
+#include "fdcan_h7x3xx.h"
 #else
 # error "Unsupported STM32H7 MCU"
 #endif

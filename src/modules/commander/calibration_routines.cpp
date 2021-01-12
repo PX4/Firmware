@@ -538,7 +538,7 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 		/* inform user about already handled side */
 		if (side_data_collected[orient]) {
 			orientation_failures++;
-			set_tune(TONE_NOTIFY_NEGATIVE_TUNE);
+			set_tune(tune_control_s::TUNE_ID_NOTIFY_NEGATIVE);
 			calibration_log_info(mavlink_log_pub, "[cal] %s side already completed", detect_orientation_str(orient));
 			px4_usleep(20000);
 			continue;
@@ -566,7 +566,7 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 		side_data_collected[orient] = true;
 
 		// output neutral tune
-		set_tune(TONE_NOTIFY_NEUTRAL_TUNE);
+		set_tune(tune_control_s::TUNE_ID_NOTIFY_NEUTRAL);
 
 		// temporary priority boost for the white blinking led to come trough
 		rgbled_set_color_and_mode(led_control_s::COLOR_WHITE, led_control_s::MODE_BLINK_FAST, 3, 1);
@@ -614,7 +614,7 @@ bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub, const hrt_abstime &ca
 				command_ack.target_component = cmd.source_component;
 				command_ack.timestamp = hrt_absolute_time();
 
-				uORB::PublicationQueued<vehicle_command_ack_s> command_ack_pub{ORB_ID(vehicle_command_ack)};
+				uORB::Publication<vehicle_command_ack_s> command_ack_pub{ORB_ID(vehicle_command_ack)};
 				command_ack_pub.publish(command_ack);
 
 				return ret;

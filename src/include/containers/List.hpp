@@ -126,12 +126,12 @@ public:
 
 		operator T() const { return node; }
 		operator T &() { return node; }
-		T operator* () const { return node; }
+		const T &operator* () const { return node; }
 		Iterator &operator++ ()
 		{
 			if (node) {
 				node = node->getSibling();
-			};
+			}
 
 			return *this;
 		}

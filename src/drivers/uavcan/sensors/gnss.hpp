@@ -46,12 +46,16 @@
 
 #include <uORB/Subscription.hpp>
 #include <uORB/PublicationMulti.hpp>
-#include <uORB/topics/vehicle_gps_position.h>
+#include <uORB/topics/sensor_gps.h>
+#include <uORB/topics/gps_inject_data.h>
 
 #include <uavcan/uavcan.hpp>
 #include <uavcan/equipment/gnss/Auxiliary.hpp>
 #include <uavcan/equipment/gnss/Fix.hpp>
 #include <uavcan/equipment/gnss/Fix2.hpp>
+#include <uavcan/equipment/gnss/RTCMStream.hpp>
+
+#include <lib/perf/perf_counter.h>
 
 #include "sensor_bridge.hpp"
 
@@ -68,6 +72,8 @@ public:
 	const char *get_name() const override { return NAME; }
 
 	int init() override;
+	void update() override;
+	void print_status() const override;
 
 private:
 	/**
@@ -79,10 +85,12 @@ private:
 
 	template <typename FixType>
 	void process_fixx(const uavcan::ReceivedDataStructure<FixType> &msg,
+			  uint8_t fix_type,
 			  const float (&pos_cov)[9], const float (&vel_cov)[9],
 			  const bool valid_pos_cov, const bool valid_vel_cov);
 
-	void broadcast_from_orb(const uavcan::TimerEvent &);
+	void handleInjectDataTopic();
+	bool injectData(const uint8_t *data, size_t data_len);
 
 	typedef uavcan::MethodBinder < UavcanGnssBridge *,
 		void (UavcanGnssBridge::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::gnss::Auxiliary> &) >
@@ -105,17 +113,14 @@ private:
 	uavcan::Subscriber<uavcan::equipment::gnss::Auxiliary, AuxiliaryCbBinder> _sub_auxiliary;
 	uavcan::Subscriber<uavcan::equipment::gnss::Fix, FixCbBinder> _sub_fix;
 	uavcan::Subscriber<uavcan::equipment::gnss::Fix2, Fix2CbBinder> _sub_fix2;
-
-	uavcan::Publisher<uavcan::equipment::gnss::Fix2> _pub_fix2;
-
-	uavcan::TimerEventForwarder<TimerCbBinder> _orb_to_uavcan_pub_timer;
+	uavcan::Publisher<uavcan::equipment::gnss::RTCMStream> _pub_rtcm;
 
 	uint64_t	_last_gnss_auxiliary_timestamp{0};
 	float		_last_gnss_auxiliary_hdop{0.0f};
 	float		_last_gnss_auxiliary_vdop{0.0f};
 
-	uORB::PublicationMulti<vehicle_gps_position_s>	_gps_pub{ORB_ID(vehicle_gps_position)};
-	uORB::Subscription				_orb_sub_gnss{ORB_ID(vehicle_gps_position)};
+	uORB::Subscription			_orb_inject_data_sub{ORB_ID(gps_inject_data)};
+	uORB::PublicationMulti<sensor_gps_s>	_gps_pub{ORB_ID(sensor_gps)};
 
 	int	_receiver_node_id{-1};
 	bool	_old_fix_subscriber_active{true};
@@ -125,4 +130,6 @@ private:
 	bool _system_clock_set{false};  ///< Have we set the system clock at least once from GNSS data?
 
 	bool *_channel_using_fix2; ///< Flag for whether each channel is using Fix2 or Fix msg
+
+	perf_counter_t _rtcm_perf;
 };

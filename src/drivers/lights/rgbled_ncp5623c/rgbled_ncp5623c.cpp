@@ -47,9 +47,10 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/module.h>
-#include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 
+using namespace time_literals;
 
 #define ADDR			0x39	/**< I2C adress of NCP5623C */
 
@@ -89,7 +90,7 @@ private:
 	volatile bool		_should_run{true};
 	bool			_leds_enabled{true};
 
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	LedController		_led_controller;
 

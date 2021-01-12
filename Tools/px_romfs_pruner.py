@@ -83,6 +83,7 @@ def main():
 
             # only prune text files
             if ".zip" in file or ".bin" in file or ".swp" in file \
+                    or ".gz" in file or ".bz2" in file \
                     or ".data" in file or ".DS_Store" in file:
                 continue
 

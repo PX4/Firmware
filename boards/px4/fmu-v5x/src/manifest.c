@@ -84,7 +84,7 @@ static const px4_hw_mft_item_t hw_mft_list_v0500[] = {
 	},
 };
 
-static const px4_hw_mft_item_t hw_mft_list_v0501[] = {
+static const px4_hw_mft_item_t hw_mft_list_v0510[] = {
 	{
 		.present     = 0,
 		.mandatory   = 0,
@@ -112,7 +112,8 @@ static const px4_hw_mft_item_t hw_mft_list_v0509[] = {
 
 static px4_hw_mft_list_entry_t mft_lists[] = {
 	{0x0000, hw_mft_list_v0500, arraySize(hw_mft_list_v0500)},
-	{0x0001, hw_mft_list_v0501, arraySize(hw_mft_list_v0501)},
+	{0x0001, hw_mft_list_v0500, arraySize(hw_mft_list_v0500)},
+	{0x0100, hw_mft_list_v0510, arraySize(hw_mft_list_v0510)},
 	{0x0900, hw_mft_list_v0509, arraySize(hw_mft_list_v0509)},
 };
 

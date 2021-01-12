@@ -115,21 +115,6 @@ PARAM_DEFINE_FLOAT(MIS_DIST_1WP, 900);
 PARAM_DEFINE_FLOAT(MIS_DIST_WPS, 900);
 
 /**
- * Altitude setpoint mode
- *
- * 0: the system will follow a zero order hold altitude setpoint
- * 1: the system will follow a first order hold altitude setpoint
- * values follow the definition in enum mission_altitude_mode
- *
- * @min 0
- * @max 1
- * @value 0 Zero Order Hold
- * @value 1 First Order Hold
- * @group Mission
- */
-PARAM_DEFINE_INT32(MIS_ALTMODE, 1);
-
-/**
 * Enable yaw control of the mount. (Only affects multicopters and ROI mission items)
 *
 * If enabled, yaw commands will be sent to the mount and the vehicle will follow its heading towards the flight direction.

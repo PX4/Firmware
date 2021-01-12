@@ -44,8 +44,6 @@ bool FlightTaskTransition::updateInitialize()
 
 bool FlightTaskTransition::activate(const vehicle_local_position_setpoint_s &last_setpoint)
 {
-	_transition_altitude = PX4_ISFINITE(last_setpoint.z) ? last_setpoint.z : _position(2);
-	_transition_yaw = PX4_ISFINITE(last_setpoint.yaw) ? last_setpoint.yaw : _yaw;
 	return FlightTask::activate(last_setpoint);
 }
 

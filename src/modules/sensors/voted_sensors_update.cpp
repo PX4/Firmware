@@ -48,7 +48,8 @@ using namespace sensors;
 using namespace matrix;
 using namespace time_literals;
 
-VotedSensorsUpdate::VotedSensorsUpdate(bool hil_enabled, uORB::SubscriptionCallbackWorkItem(&vehicle_imu_sub)[3]) :
+VotedSensorsUpdate::VotedSensorsUpdate(bool hil_enabled,
+				       uORB::SubscriptionCallbackWorkItem(&vehicle_imu_sub)[MAX_SENSOR_COUNT]) :
 	ModuleParams(nullptr),
 	_vehicle_imu_sub(vehicle_imu_sub),
 	_hil_enabled(hil_enabled)
@@ -73,8 +74,8 @@ int VotedSensorsUpdate::init(sensor_combined_s &raw)
 
 void VotedSensorsUpdate::initializeSensors()
 {
-	initSensorClass(_gyro, GYRO_COUNT_MAX);
-	initSensorClass(_accel, ACCEL_COUNT_MAX);
+	initSensorClass(_gyro, MAX_SENSOR_COUNT);
+	initSensorClass(_accel, MAX_SENSOR_COUNT);
 }
 
 void VotedSensorsUpdate::parametersUpdate()
@@ -82,7 +83,7 @@ void VotedSensorsUpdate::parametersUpdate()
 	updateParams();
 
 	// run through all IMUs
-	for (uint8_t uorb_index = 0; uorb_index < math::max(ACCEL_COUNT_MAX, GYRO_COUNT_MAX); uorb_index++) {
+	for (uint8_t uorb_index = 0; uorb_index < MAX_SENSOR_COUNT; uorb_index++) {
 		uORB::SubscriptionData<vehicle_imu_s> imu{ORB_ID(vehicle_imu), uorb_index};
 		imu.update();
 
@@ -137,7 +138,7 @@ void VotedSensorsUpdate::parametersUpdate()
 
 void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 {
-	for (int uorb_index = 0; uorb_index < 3; uorb_index++) {
+	for (int uorb_index = 0; uorb_index < MAX_SENSOR_COUNT; uorb_index++) {
 		vehicle_imu_s imu_report;
 
 		if ((_accel.priority[uorb_index] > 0) && (_gyro.priority[uorb_index] > 0)
@@ -145,7 +146,7 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 
 			// copy corresponding vehicle_imu_status for accel & gyro error counts
 			vehicle_imu_status_s imu_status{};
-			_vehicle_imu_status_sub[uorb_index].copy(&imu_status);
+			_vehicle_imu_status_subs[uorb_index].copy(&imu_status);
 
 			_accel_device_id[uorb_index] = imu_report.accel_device_id;
 			_gyro_device_id[uorb_index] = imu_report.gyro_device_id;
@@ -182,13 +183,40 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 	}
 
 	// find the best sensor
-	int accel_best_index;
-	int gyro_best_index;
-	_accel.voter.get_best(hrt_absolute_time(), &accel_best_index);
-	_gyro.voter.get_best(hrt_absolute_time(), &gyro_best_index);
+	int accel_best_index = -1;
+	int gyro_best_index = -1;
 
-	checkFailover(_accel, "Accel", subsystem_info_s::SUBSYSTEM_TYPE_ACC);
-	checkFailover(_gyro, "Gyro", subsystem_info_s::SUBSYSTEM_TYPE_GYRO);
+	if (_param_sens_imu_mode.get()) {
+		_accel.voter.get_best(hrt_absolute_time(), &accel_best_index);
+		_gyro.voter.get_best(hrt_absolute_time(), &gyro_best_index);
+
+		checkFailover(_accel, "Accel");
+		checkFailover(_gyro, "Gyro");
+
+	} else {
+
+		// use sensor_selection to find best
+		if (_sensor_selection_sub.update(&_selection)) {
+			// reset inconsistency checks against primary
+			for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+				_accel_diff[sensor_index].zero();
+			}
+
+			for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+				_gyro_diff[sensor_index].zero();
+			}
+		}
+
+		for (int i = 0; i < MAX_SENSOR_COUNT; i++) {
+			if ((_accel_device_id[i] != 0) && (_accel_device_id[i] == _selection.accel_device_id)) {
+				accel_best_index = i;
+			}
+
+			if ((_gyro_device_id[i] != 0) && (_gyro_device_id[i] == _selection.gyro_device_id)) {
+				gyro_best_index = i;
+			}
+		}
+	}
 
 	// write data for the best sensor to output variables
 	if ((accel_best_index >= 0) && (gyro_best_index >= 0)) {
@@ -216,7 +244,7 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 				sub.unregisterCallback();
 			}
 
-			for (int i = 0; i < GYRO_COUNT_MAX; i++) {
+			for (int i = 0; i < MAX_SENSOR_COUNT; i++) {
 				vehicle_imu_s report{};
 
 				if (_vehicle_imu_sub[i].copy(&report)) {
@@ -229,7 +257,7 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 	}
 }
 
-bool VotedSensorsUpdate::checkFailover(SensorData &sensor, const char *sensor_name, const uint64_t type)
+bool VotedSensorsUpdate::checkFailover(SensorData &sensor, const char *sensor_name)
 {
 	if (sensor.last_failover_count != sensor.voter.failover_count() && !_hil_enabled) {
 
@@ -261,34 +289,6 @@ bool VotedSensorsUpdate::checkFailover(SensorData &sensor, const char *sensor_na
 
 				// reduce priority of failed sensor to the minimum
 				sensor.priority[failover_index] = 1;
-
-				int ctr_valid = 0;
-
-				for (uint8_t i = 0; i < sensor.subscription_count; i++) {
-					if (sensor.priority[i] > 1) {
-						ctr_valid++;
-					}
-				}
-
-				if (ctr_valid < 2) {
-					if (ctr_valid == 0) {
-						// Zero valid sensors remain! Set even the primary sensor health to false
-						_info.subsystem_type = type;
-
-					} else if (ctr_valid == 1) {
-						// One valid sensor remains, set secondary sensor health to false
-						if (type == subsystem_info_s::SUBSYSTEM_TYPE_GYRO) { _info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_GYRO2; }
-
-						if (type == subsystem_info_s::SUBSYSTEM_TYPE_ACC) { _info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_ACC2; }
-					}
-
-					_info.timestamp = hrt_absolute_time();
-					_info.present = true;
-					_info.enabled = true;
-					_info.ok = false;
-
-					_info_pub.publish(_info);
-				}
 			}
 		}
 
@@ -351,14 +351,51 @@ void VotedSensorsUpdate::sensorsPoll(sensor_combined_s &raw)
 	imuPoll(raw);
 
 	// publish sensor selection if changed
-	if (_selection_changed) {
-		// don't publish until selected IDs are valid
-		if (_selection.accel_device_id > 0 && _selection.gyro_device_id > 0) {
-			_selection.timestamp = hrt_absolute_time();
-			_sensor_selection_pub.publish(_selection);
-			_selection_changed = false;
+	if (_param_sens_imu_mode.get()) {
+		if (_selection_changed) {
+			// don't publish until selected IDs are valid
+			if (_selection.accel_device_id > 0 && _selection.gyro_device_id > 0) {
+				_selection.timestamp = hrt_absolute_time();
+				_sensor_selection_pub.publish(_selection);
+				_selection_changed = false;
+			}
+
+			for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+				_accel_diff[sensor_index].zero();
+				_gyro_diff[sensor_index].zero();
+			}
 		}
 	}
+
+	calcAccelInconsistency();
+	calcGyroInconsistency();
+
+	sensors_status_imu_s status{};
+	status.accel_device_id_primary = _selection.accel_device_id;
+	status.gyro_device_id_primary = _selection.gyro_device_id;
+
+	static_assert(MAX_SENSOR_COUNT == (sizeof(sensors_status_imu_s::accel_inconsistency_m_s_s) / sizeof(
+			sensors_status_imu_s::accel_inconsistency_m_s_s[0])), "check sensors_status_imu accel_inconsistency_m_s_s size");
+	static_assert(MAX_SENSOR_COUNT == (sizeof(sensors_status_imu_s::gyro_inconsistency_rad_s) / sizeof(
+			sensors_status_imu_s::gyro_inconsistency_rad_s[0])), "check sensors_status_imu accel_inconsistency_m_s_s size");
+
+	for (int i = 0; i < MAX_SENSOR_COUNT; i++) {
+		if ((_accel_device_id[i] != 0) && (_accel.priority[i] > 0)) {
+			status.accel_device_ids[i] = _accel_device_id[i];
+			status.accel_inconsistency_m_s_s[i] = _accel_diff[i].norm();
+			status.accel_healthy[i] = (_accel.voter.get_sensor_state(i) == DataValidator::ERROR_FLAG_NO_ERROR);
+		}
+
+		if ((_gyro_device_id[i] != 0) && (_gyro.priority[i] > 0)) {
+			status.gyro_device_ids[i] = _gyro_device_id[i];
+			status.gyro_inconsistency_rad_s[i] = _gyro_diff[i].norm();
+			status.gyro_healthy[i] = (_gyro.voter.get_sensor_state(i) == DataValidator::ERROR_FLAG_NO_ERROR);
+		}
+	}
+
+
+	status.timestamp = hrt_absolute_time();
+	_sensors_status_imu_pub.publish(status);
 }
 
 void VotedSensorsUpdate::setRelativeTimestamps(sensor_combined_s &raw)
@@ -369,100 +406,52 @@ void VotedSensorsUpdate::setRelativeTimestamps(sensor_combined_s &raw)
 	}
 }
 
-void VotedSensorsUpdate::calcAccelInconsistency(sensor_preflight_imu_s &preflt)
+void VotedSensorsUpdate::calcAccelInconsistency()
 {
-	float accel_diff_sum_max_sq = 0.0f; // the maximum sum of axis differences squared
-	unsigned check_index = 0; // the number of sensors the primary has been checked against
+	Vector3f accel_mean{};
+	Vector3f accel_all[MAX_SENSOR_COUNT] {};
+	uint8_t accel_count = 0;
 
-	// Check each sensor against the primary
-	for (int sensor_index = 0; sensor_index < _accel.subscription_count; sensor_index++) {
-
-		// check that the sensor we are checking against is not the same as the primary
-		if (_accel.advertised[sensor_index] && (_accel.priority[sensor_index] > 0) && (sensor_index != _accel.last_best_vote)) {
-
-			float accel_diff_sum_sq = 0.0f; // sum of differences squared for a single sensor comparison agains the primary
-
-			// calculate accel_diff_sum_sq for the specified sensor against the primary
-			for (unsigned axis_index = 0; axis_index < 3; axis_index++) {
-				_accel_diff[axis_index][check_index] = 0.95f * _accel_diff[axis_index][check_index] + 0.05f *
-								       (_last_sensor_data[_accel.last_best_vote].accelerometer_m_s2[axis_index] -
-									_last_sensor_data[sensor_index].accelerometer_m_s2[axis_index]);
-				accel_diff_sum_sq += _accel_diff[axis_index][check_index] * _accel_diff[axis_index][check_index];
-
-			}
-
-			// capture the largest sum value
-			if (accel_diff_sum_sq > accel_diff_sum_max_sq) {
-				accel_diff_sum_max_sq = accel_diff_sum_sq;
-
-			}
-
-			// increment the check index
-			check_index++;
-		}
-
-		// check to see if the maximum number of checks has been reached and break
-		if (check_index >= 2) {
-			break;
-
+	for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+		if ((_accel_device_id[sensor_index] != 0) && (_accel.priority[sensor_index] > 0)) {
+			accel_count++;
+			accel_all[sensor_index] = Vector3f{_last_sensor_data[sensor_index].accelerometer_m_s2};
+			accel_mean += accel_all[sensor_index];
 		}
 	}
 
-	// skip check if less than 2 sensors
-	if (check_index < 1) {
-		preflt.accel_inconsistency_m_s_s = 0.0f;
+	if (accel_count > 0) {
+		accel_mean /= accel_count;
 
-	} else {
-		// get the vector length of the largest difference and write to the combined sensor struct
-		preflt.accel_inconsistency_m_s_s = sqrtf(accel_diff_sum_max_sq);
+		for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+			if ((_accel_device_id[sensor_index] != 0) && (_accel.priority[sensor_index] > 0)) {
+				_accel_diff[sensor_index] = 0.95f * _accel_diff[sensor_index] + 0.05f * (accel_all[sensor_index] - accel_mean);
+			}
+		}
 	}
 }
 
-void VotedSensorsUpdate::calcGyroInconsistency(sensor_preflight_imu_s &preflt)
+void VotedSensorsUpdate::calcGyroInconsistency()
 {
-	float gyro_diff_sum_max_sq = 0.0f; // the maximum sum of axis differences squared
-	unsigned check_index = 0; // the number of sensors the primary has been checked against
+	Vector3f gyro_mean{};
+	Vector3f gyro_all[MAX_SENSOR_COUNT] {};
+	uint8_t gyro_count = 0;
 
-	// Check each sensor against the primary
-	for (int sensor_index = 0; sensor_index < _gyro.subscription_count; sensor_index++) {
-
-		// check that the sensor we are checking against is not the same as the primary
-		if (_gyro.advertised[sensor_index] && (_gyro.priority[sensor_index] > 0) && (sensor_index != _gyro.last_best_vote)) {
-
-			float gyro_diff_sum_sq = 0.0f; // sum of differences squared for a single sensor comparison against the primary
-
-			// calculate gyro_diff_sum_sq for the specified sensor against the primary
-			for (unsigned axis_index = 0; axis_index < 3; axis_index++) {
-				_gyro_diff[axis_index][check_index] = 0.95f * _gyro_diff[axis_index][check_index] + 0.05f *
-								      (_last_sensor_data[_gyro.last_best_vote].gyro_rad[axis_index] -
-								       _last_sensor_data[sensor_index].gyro_rad[axis_index]);
-				gyro_diff_sum_sq += _gyro_diff[axis_index][check_index] * _gyro_diff[axis_index][check_index];
-
-			}
-
-			// capture the largest sum value
-			if (gyro_diff_sum_sq > gyro_diff_sum_max_sq) {
-				gyro_diff_sum_max_sq = gyro_diff_sum_sq;
-
-			}
-
-			// increment the check index
-			check_index++;
-		}
-
-		// check to see if the maximum number of checks has been reached and break
-		if (check_index >= 2) {
-			break;
-
+	for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+		if ((_gyro_device_id[sensor_index] != 0) && (_gyro.priority[sensor_index] > 0)) {
+			gyro_count++;
+			gyro_all[sensor_index] = Vector3f{_last_sensor_data[sensor_index].gyro_rad};
+			gyro_mean += gyro_all[sensor_index];
 		}
 	}
 
-	// skip check if less than 2 sensors
-	if (check_index < 1) {
-		preflt.gyro_inconsistency_rad_s = 0.0f;
+	if (gyro_count > 0) {
+		gyro_mean /= gyro_count;
 
-	} else {
-		// get the vector length of the largest difference and write to the combined sensor struct
-		preflt.gyro_inconsistency_rad_s = sqrtf(gyro_diff_sum_max_sq);
+		for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+			if ((_gyro_device_id[sensor_index] != 0) && (_gyro.priority[sensor_index] > 0)) {
+				_gyro_diff[sensor_index] = 0.95f * _gyro_diff[sensor_index] + 0.05f * (gyro_all[sensor_index] - gyro_mean);
+			}
+		}
 	}
 }

@@ -616,16 +616,12 @@ hrt_elapsed_time_atomic(const volatile hrt_abstime *then)
 /**
  * Store the absolute time in an interrupt-safe fashion
  */
-hrt_abstime
-hrt_store_absolute_time(volatile hrt_abstime *now)
+void
+hrt_store_absolute_time(volatile hrt_abstime *t)
 {
 	irqstate_t flags = px4_enter_critical_section();
-
-	hrt_abstime ts = hrt_absolute_time();
-
+	*t = hrt_absolute_time();
 	px4_leave_critical_section(flags);
-
-	return ts;
 }
 
 /**

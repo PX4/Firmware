@@ -50,8 +50,8 @@
  * LIS2MDL internal constants and data structures.
  */
 
-/* Max measurement rate is 50Hz */
-#define LIS2MDL_CONVERSION_INTERVAL     (1000000 / 50)
+/* Max measurement rate is 20Hz */
+#define LIS2MDL_CONVERSION_INTERVAL     (1000000 / 20)
 
 #define ADDR_WHO_AM_I                   0x4f
 #define ID_WHO_AM_I                     0x40
@@ -72,7 +72,7 @@
 #define ADDR_OUT_T_H                    0x6f
 
 #define CFG_REG_A_TEMP_COMP_EN          (1 << 7)
-#define CFG_REG_A_ODR                   (2 << 2) /* 50Hz (100Hz creates spikes randomly) */
+#define CFG_REG_A_ODR                   (1 << 2) /* 20Hz (100Hz or 50Hz creates spikes randomly) */
 #define CFG_REG_A_MD                    (0 << 0) /* continuous mode */
 
 #define CFG_REG_B_LPF                   (1 << 0) /* LPF */

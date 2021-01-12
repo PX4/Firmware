@@ -2,174 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "SITL (gazebo iris)",
+            "name": "SITL (gazebo)",
             "type": "cppdbg",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
             "args": [
                 "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
+                "-s", "etc/init.d-posix/rcS",
+                "-t", "${workspaceFolder}/test_data"
             ],
             "stopAtEntry": false,
             "cwd": "${command:cmake.buildDirectory}/tmp",
             "environment": [
                 {
                     "name": "PX4_SIM_MODEL",
-                    "value": "iris"
+                    "value": "${input:PX4_SIM_MODEL}"
                 }
             ],
             "externalConsole": false,
-            "preLaunchTask": "gazebo iris",
-            "postDebugTask": "gazebo kill",
-            "linux": {
-                "MIMode": "gdb",
-                "externalConsole": false,
-                "setupCommands": [
-                    {
-                        "description": "Enable pretty-printing for gdb",
-                        "text": "-enable-pretty-printing",
-                        "ignoreFailures": true
-                    },
-                    {
-                        "description": "PX4 ignore wq signals",
-                        "text": "handle SIGCONT nostop noprint nopass",
-                        "ignoreFailures": true
-                    }
-                ]
-            },
-            "osx": {
-                "MIMode": "lldb",
-                "externalConsole": true,
-                "setupCommands": [
-                    {
-                        "text": "pro hand -p true -s false -n false SIGCONT",
-                    }
-                ]
-            }
-        },
-        {
-            "name": "SITL (gazebo plane)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${command:cmake.buildDirectory}/tmp",
-            "environment": [
-                {
-                    "name": "PX4_SIM_MODEL",
-                    "value": "plane"
-                }
-            ],
-            "externalConsole": false,
-            "preLaunchTask": "gazebo plane",
-            "postDebugTask": "gazebo kill",
-            "linux": {
-                "MIMode": "gdb",
-                "externalConsole": false,
-                "setupCommands": [
-                    {
-                        "description": "Enable pretty-printing for gdb",
-                        "text": "-enable-pretty-printing",
-                        "ignoreFailures": true
-                    },
-                    {
-                        "description": "PX4 ignore wq signals",
-                        "text": "handle SIGCONT nostop noprint nopass",
-                        "ignoreFailures": true
-                    }
-                ]
-            },
-            "osx": {
-                "MIMode": "lldb",
-                "externalConsole": true,
-                "setupCommands": [
-                    {
-                        "text": "pro hand -p true -s false -n false SIGCONT",
-                    }
-                ]
-            }
-        },
-        {
-            "name": "SITL (gazebo standard_vtol)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${command:cmake.buildDirectory}/tmp",
-            "environment": [
-                {
-                    "name": "PX4_SIM_MODEL",
-                    "value": "standard_vtol"
-                }
-            ],
-            "externalConsole": false,
-            "preLaunchTask": "gazebo standard_vtol",
-            "postDebugTask": "gazebo kill",
-            "linux": {
-                "MIMode": "gdb",
-                "externalConsole": false,
-                "setupCommands": [
-                    {
-                        "description": "Enable pretty-printing for gdb",
-                        "text": "-enable-pretty-printing",
-                        "ignoreFailures": true
-                    },
-                    {
-                        "description": "PX4 ignore wq signals",
-                        "text": "handle SIGCONT nostop noprint nopass",
-                        "ignoreFailures": true
-                    }
-                ]
-            },
-            "osx": {
-                "MIMode": "lldb",
-                "externalConsole": true,
-                "setupCommands": [
-                    {
-                        "text": "pro hand -p true -s false -n false SIGCONT",
-                    }
-                ]
-            }
-        },
-        {
-            "name": "SITL (gazebo tailsitter)",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [
-                "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${command:cmake.buildDirectory}/tmp",
-            "environment": [
-                {
-                    "name": "PX4_SIM_MODEL",
-                    "value": "tailsitter"
-                }
-            ],
-            "externalConsole": false,
-            "preLaunchTask": "gazebo tailsitter",
+            "preLaunchTask": "gazebo",
             "postDebugTask": "gazebo kill",
             "linux": {
                 "MIMode": "gdb",
@@ -204,10 +55,8 @@
             "program": "${command:cmake.launchTargetPath}",
             "args": [
                 "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
+                "-s", "etc/init.d-posix/rcS",
+                "-t", "${workspaceFolder}/test_data"
             ],
             "stopAtEntry": false,
             "cwd": "${command:cmake.buildDirectory}/tmp",
@@ -252,10 +101,8 @@
             "program": "${command:cmake.launchTargetPath}",
             "args": [
                 "${workspaceFolder}/ROMFS/px4fmu_common",
-                "-s",
-                "etc/init.d-posix/rcS",
-                "-t",
-                "${workspaceFolder}/test_data"
+                "-s", "etc/init.d-posix/rcS",
+                "-t", "${workspaceFolder}/test_data"
             ],
             "stopAtEntry": false,
             "cwd": "${command:cmake.buildDirectory}/tmp",
@@ -291,5 +138,25 @@
                 ]
             }
         }
+    ],
+    "inputs": [
+        {
+            "type": "pickString",
+            "id": "PX4_SIM_MODEL",
+            "description": "PX4_SIM_MODEL",
+            "options": [
+              "iris",
+              "typhoon_h480",
+              "plane",
+              "plane_catapult",
+              "plane_lidar",
+              "standard_vtol",
+              "tailsitter",
+              "tiltrotor",
+              "r1_rover",
+              "boat"
+            ],
+            "default": "iris"
+          }
     ]
 }

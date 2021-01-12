@@ -35,8 +35,8 @@
  *
  ****************************************************************************/
 
-/* The SP Racing H7 Extreme uses an STM32H750VIT6 has 128Kb of main FLASH memory and 
-128 MB external NAND FLASH memory. 
+/* The SP Racing H7 Extreme uses an STM32H750VIT6 has 128Kb of main FLASH memory and
+128 MB external NAND FLASH memory.
  * The flash memory is partitioned into a User Flash memory and a System
  * Flash memory. Each of these memories has two banks:
  *
@@ -139,7 +139,7 @@ SECTIONS
 	.itcm_code : {
 		_start_itcm = ABSOLUTE(.);
 		. = ALIGN(4);
-		
+
 		*modules__mc_att_control.a:*(.text* .rodata*)
 		*modules__mc_rate_control.a:*(.text* .rodata*)
 		*modules__rc_update.a:*(.text* .rodata*)
@@ -152,16 +152,17 @@ SECTIONS
 		*modules__attitude_estimator_q.a:*(.text* .rodata*)
 		*stm32_spi.o(.text* .rodata*)
 		*stm32_dma.o(.text* .rodata*)
-		
+
 		_end_itcm = ABSOLUTE(.);
 	} > itcm AT > qspi2
 	_load_itcm = LOADADDR(.itcm_code);
-	
+
 	.sram_code : {
 		_start_sram = ABSOLUTE(.);
 		. = ALIGN(4);
-		
+
 		*drivers__dshot.a:*(.text* .rodata*)
+		*modules__flight_mode_manager.a:*(.text* .rodata*)
 		*modules__mc_pos_control.a:*(.text* .rodata*)
 		*modules__mc_hover_thrust_estimator.a:*(.text* .rodata*)
 		*modules__sensors.a:*(.text* .rodata*)
@@ -179,7 +180,7 @@ SECTIONS
 		_end_sram = ABSOLUTE(.);
 	} > sram AT > qspi2
 	_load_sram = LOADADDR(.sram_code);
-	
+
 	.text : {
 		_stext = ABSOLUTE(.);
 		*(.vectors)
@@ -201,14 +202,8 @@ SECTIONS
 		*(.gcc_except_table)
 		*(.gnu.linkonce.r.*)
 		_etext = ABSOLUTE(.);
-
-		/*
-		 * This is a hack to make the newlib libm __errno() call
-		 * use the NuttX get_errno_ptr() function.
-		 */
-		__errno = get_errno_ptr;
 	} > qspi
-	
+
 	.ramfunc : {
 		_sramfuncs = ABSOLUTE(.);
 		. = ALIGN(4);

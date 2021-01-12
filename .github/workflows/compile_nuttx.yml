@@ -11,31 +11,36 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-nuttx-bionic:2020-04-01
+    container: px4io/px4-dev-nuttx-focal:2020-11-18
     strategy:
       matrix:
         config: [
           airmind_mindpx-v2_default,
           av_x-v1_default,
           bitcraze_crazyflie_default,
+          cuav_can-gps-v1_canbootloader,
+          cuav_can-gps-v1_default,
           cuav_nora_default,
           cuav_x7pro_default,
+          cubepilot_cubeorange_console,
           cubepilot_cubeorange_default,
+          cubepilot_cubeyellow_console,
           cubepilot_cubeyellow_default,
           holybro_durandal-v1_default,
-          holybro_durandal-v1_stackcheck,
           holybro_kakutef7_default,
           holybro_pix32v5_default,
           intel_aerofc-v1_default,
           modalai_fc-v1_default,
           mro_ctrl-zero-f7_default,
+          mro_pixracerpro_default,
           mro_x21-777_default,
           mro_x21_default,
           nxp_fmuk66-v3_default,
           nxp_fmuk66-e_default,
           nxp_fmuk66-v3_socketcan,
+          nxp_fmuk66-v3_rtps,
           nxp_fmurt1062-v1_default,
-          nxp_rddrone-uavcan146_default,
+          nxp_ucans32k146_default,
           omnibus_f4sd_default,
           px4_fmu-v2_default,
           px4_fmu-v2_fixedwing,

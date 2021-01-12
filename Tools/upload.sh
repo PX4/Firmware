@@ -15,7 +15,7 @@ SERIAL_PORTS="/dev/tty.usbmodemPX*,/dev/tty.usbmodem*"
 fi
 
 if [ $SYSTYPE = "Linux" ]; then
-SERIAL_PORTS="/dev/serial/by-id/*_PX4_*,/dev/serial/by-id/usb-3D_Robotics*,/dev/serial/by-id/usb-The_Autopilot*,/dev/serial/by-id/usb-Bitcraze*,/dev/serial/by-id/pci-Bitcraze*,/dev/serial/by-id/usb-Gumstix*,/dev/serial/by-id/usb-UVify*,"
+SERIAL_PORTS="/dev/serial/by-id/*_PX4_*,/dev/serial/by-id/usb-3D_Robotics*,/dev/serial/by-id/usb-The_Autopilot*,/dev/serial/by-id/usb-Bitcraze*,/dev/serial/by-id/pci-Bitcraze*,/dev/serial/by-id/usb-Gumstix*,/dev/serial/by-id/usb-UVify*,/dev/serial/by-id/usb-ArduPilot*,"
 fi
 
 if [[ $SYSTYPE = *"CYGWIN"* ]]; then

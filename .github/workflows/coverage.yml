@@ -11,7 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-04-01
+    container:
+      image: px4io/px4-dev-base-focal:2020-11-18
+      options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
     strategy:
       matrix:
         config: [

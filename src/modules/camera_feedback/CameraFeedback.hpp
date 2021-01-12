@@ -83,9 +83,4 @@ private:
 	uORB::Subscription	_att_sub{ORB_ID(vehicle_attitude)};
 
 	uORB::Publication<camera_capture_s>	_capture_pub{ORB_ID(camera_capture)};
-
-	DEFINE_PARAMETERS(
-		(ParamBool<px4::params::CAM_CAP_FBACK>) _param_camera_capture_feedback
-	)
-
 };

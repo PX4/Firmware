@@ -8,22 +8,26 @@ import re
 # This script is run from Build/<target>_default.build/$(PX4_BASE)/Firmware/src/systemcmds/topic_listener
 
 # argv[1] must be the full path of the top Firmware dir
-# argv[2] (optional) is the full path to the EXTERNAL_MODULES_LOCATION
+# argv[2] - argv[n] is the full list of msg files
 
-raw_messages = glob.glob(sys.argv[1]+"/msg/*.msg")
-if len(sys.argv) > 2:
-	external_raw_messages = glob.glob(sys.argv[2]+"/msg/*.msg")
-	raw_messages += external_raw_messages # Append the msgs defined in the EXTERNAL_MODULES_LOCATION to the normal msg list
+raw_messages = sys.argv[2:]
+
 messages = []
 topics = []
 message_elements = []
 
-# large and not worth printing
-raw_messages = [x for x in raw_messages if not any(exception in x for exception in ['qshell_req', 'ulog_stream', 'gps_inject_data', 'gps_dump'])]
-
 for index,m in enumerate(raw_messages):
 	topic_list = []
-	f = open(m,'r')
+
+	msg_path = sys.argv[1]+ '/msg/' + m
+
+	if os.path.isfile(msg_path):
+		# first try opening file in msg/ directory
+		f = open(msg_path,'r')
+	else:
+		# otherwise try opening directly (could be an external module msg)
+		f = open(m,'r')
+
 	for line in f.readlines():
 		items = re.split('\s+', line.strip())
 

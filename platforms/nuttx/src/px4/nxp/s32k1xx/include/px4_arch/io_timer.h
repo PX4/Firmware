@@ -45,17 +45,13 @@
 #pragma once
 __BEGIN_DECLS
 /* configuration limits */
-#ifdef BOARD_NUM_IO_TIMERS
-#define MAX_IO_TIMERS			BOARD_NUM_IO_TIMERS
-#else
-#define MAX_IO_TIMERS			2
-#endif
-#define MAX_TIMER_IO_CHANNELS	16
+#define MAX_IO_TIMERS			1
+#define MAX_TIMER_IO_CHANNELS		1
 
-#define MAX_LED_TIMERS			2
-#define MAX_TIMER_LED_CHANNELS	6
+#define MAX_LED_TIMERS			1
+#define MAX_TIMER_LED_CHANNELS		3
 
-#define IO_TIMER_ALL_MODES_CHANNELS 0
+#define IO_TIMER_ALL_MODES_CHANNELS 	0
 
 typedef enum io_timer_channel_mode_t {
 	IOTimerChanMode_NotUsed = 0,

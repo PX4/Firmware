@@ -45,6 +45,7 @@
  */
 
 #include "SMBus.hpp"
+#include <mathlib/mathlib.h>
 
 SMBus::SMBus(int bus_num, uint16_t address) :
 	I2C(DRV_BAT_DEVTYPE_SMBUS, MODULE_NAME, bus_num, address, 100000)
@@ -106,7 +107,7 @@ int SMBus::write_word(const uint8_t cmd_code, uint16_t data)
 
 int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, const bool use_pec)
 {
-	unsigned byte_count = 0;
+	uint8_t byte_count = 0;
 	// addr(wr), cmd_code, addr(r), byte_count, data (32 bytes max), pec
 	uint8_t rx_data[32 + 5];
 
@@ -121,9 +122,10 @@ int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, 
 	rx_data[0] = (device_address << 1) | 0x00;
 	rx_data[1] = cmd_code;
 	rx_data[2] = (device_address << 1) | 0x01;
-	byte_count = rx_data[3];
+	byte_count = math::min(rx_data[3], (uint8_t)32);
 
-	memcpy(data, &rx_data[4], byte_count);
+	// ensure data is not longer than given buffer
+	memcpy(data, &rx_data[4], math::min(byte_count, length));
 
 	if (use_pec) {
 		uint8_t pec = get_pec(rx_data, byte_count + 4);

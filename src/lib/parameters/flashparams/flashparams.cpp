@@ -76,7 +76,7 @@ struct param_wbuf_s {
 };
 
 static int
-param_export_internal(bool only_unsaved)
+param_export_internal(bool only_unsaved, param_filter_func filter)
 {
 	struct param_wbuf_s *s = nullptr;
 	struct bson_encoder_s encoder;
@@ -102,6 +102,10 @@ param_export_internal(bool only_unsaved)
 		 * one hasn't, then skip it
 		 */
 		if (only_unsaved && !s->unsaved) {
+			continue;
+		}
+
+		if (filter && !filter(s->param)) {
 			continue;
 		}
 
@@ -345,9 +349,9 @@ out:
 	return result;
 }
 
-int flash_param_save(bool only_unsaved)
+int flash_param_save(bool only_unsaved, param_filter_func filter)
 {
-	return param_export_internal(only_unsaved);
+	return param_export_internal(only_unsaved, filter);
 }
 
 int flash_param_load()
@@ -358,5 +362,5 @@ int flash_param_load()
 
 int flash_param_import()
 {
-	return param_import_internal(false);
+	return param_import_internal(true);
 }

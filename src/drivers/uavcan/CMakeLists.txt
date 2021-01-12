@@ -94,7 +94,7 @@ target_include_directories(uavcan_${UAVCAN_DRIVER}_driver PUBLIC
 
 
 # generated DSDL
-set(DSDLC_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/com" "${LIBUAVCAN_DIR}/dsdl/uavcan")
+set(DSDLC_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/com" "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/ardupilot" "${LIBUAVCAN_DIR}/dsdl/uavcan")
 set(DSDLC_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/dsdlc_generated")
 
 set(DSDLC_INPUT_FILES)
@@ -113,6 +113,7 @@ add_custom_target(px4_uavcan_dsdlc DEPENDS px4_uavcan_dsdlc_run.stamp)
 px4_add_module(
 	MODULE drivers__uavcan
 	MAIN uavcan
+	STACK_MAIN 4096
 	INCLUDES
 		${DSDLC_OUTPUT}
 		${LIBUAVCAN_DIR}/libuavcan/include
@@ -120,6 +121,11 @@ px4_add_module(
 		${LIBUAVCAN_DIR}/libuavcan_drivers/posix/include
 		${LIBUAVCAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/include
 	SRCS
+		rgbled.cpp
+		rgbled.hpp
+		safety_state.cpp
+		safety_state.hpp
+
 		# Main
 		uavcan_main.cpp
 		uavcan_servers.cpp
@@ -137,10 +143,12 @@ px4_add_module(
 		sensors/flow.cpp
 		sensors/gnss.cpp
 		sensors/mag.cpp
+		sensors/rangefinder.cpp
 
 	DEPENDS
 		px4_uavcan_dsdlc
 
+		led
 		mixer
 		mixer_module
 		output_limit

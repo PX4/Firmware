@@ -9,6 +9,25 @@ then
 	# Disable safety switch by default
 	param set CBRK_IO_SAFETY 22027
 
+	# start MAVLink on Wifi (ESP8266 port). Except for the TealOne airframe.
+	if ! param compare SYS_AUTOSTART 4250
+	then
+		param set MAV_2_CONFIG 301
+		param set MAV_2_RATE 20000
+		param set SER_WIFI_BAUD 921600
+	fi
+fi
+
+if param compare SER_WIFI_BAUD 1
+then
+	# Transitional support: The Wifi port has not been configured by the user,
+	# configure it for MAVLink via the ESP8266 Wifi module. Except for the TealOne airframe.
+	if ! param compare SYS_AUTOSTART 4250
+	then
+		param set MAV_2_CONFIG 301
+		param set MAV_2_RATE 20000
+		param set SER_WIFI_BAUD 921600
+	fi
 fi
 
 safety_button start

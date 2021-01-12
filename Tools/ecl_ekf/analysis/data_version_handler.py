@@ -12,7 +12,7 @@ def get_output_tracking_error_message(ulog: ULog) -> str:
     :param ulog:
     :return: str
     """
-    for elem in  ulog.data_list:
+    for elem in ulog.data_list:
         if elem.name == "ekf2_innovations":
             return "ekf2_innovations"
         if elem.name == "estimator_innovations":

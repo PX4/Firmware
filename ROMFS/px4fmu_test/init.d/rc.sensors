@@ -12,7 +12,7 @@ if bst start -X
 then
 fi
 
-if adc start
+if board_adc start
 then
 fi
 
@@ -32,7 +32,7 @@ if ets_airspeed start -X
 then
 fi
 
-if sf1xx start
+if lightware_laser_i2c start
 then
 fi
 

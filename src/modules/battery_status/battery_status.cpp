@@ -57,6 +57,7 @@
 #include <lib/battery/battery.h>
 #include <lib/conversion/rotation.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionCallback.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/parameter_update.h>
@@ -100,8 +101,8 @@ private:
 	void Run() override;
 
 	uORB::Subscription	_actuator_ctrl_0_sub{ORB_ID(actuator_controls_0)};		/**< attitude controls sub */
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};				/**< notification of parameter updates */
-	uORB::Subscription	_adc_report_sub{ORB_ID(adc_report)};
+	uORB::SubscriptionInterval	_parameter_update_sub{ORB_ID(parameter_update), 1_s};				/**< notification of parameter updates */
+	uORB::SubscriptionCallbackWorkItem _adc_report_sub{this, ORB_ID(adc_report)};
 
 	static constexpr uint32_t SAMPLE_FREQUENCY_HZ = 100;
 	static constexpr uint32_t SAMPLE_INTERVAL_US  = 1_s / SAMPLE_FREQUENCY_HZ;
@@ -280,9 +281,7 @@ BatteryStatus::task_spawn(int argc, char *argv[])
 bool
 BatteryStatus::init()
 {
-	ScheduleOnInterval(SAMPLE_INTERVAL_US);
-
-	return true;
+	return _adc_report_sub.registerCallback();
 }
 
 int BatteryStatus::custom_command(int argc, char *argv[])

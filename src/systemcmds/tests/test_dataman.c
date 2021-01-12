@@ -68,9 +68,9 @@ task_main(int argc, char *argv[])
 {
 	char buffer[DM_MAX_DATA_SIZE];
 
-	PX4_INFO("Starting dataman test task %s", argv[1]);
+	PX4_INFO("Starting dataman test task %s", argv[2]);
 	/* try to read an invalid item */
-	int my_id = atoi(argv[1]);
+	int my_id = atoi(argv[2]);
 
 	/* try to read an invalid item */
 	if (dm_read(DM_KEY_NUM_KEYS, 0, buffer, sizeof(buffer)) >= 0) {

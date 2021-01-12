@@ -5,8 +5,8 @@ function check_git_submodule {
 # The .git exists in a submodule if init and update have been done.
 if [[ -f $1"/.git" || -d $1"/.git" ]]; then
 
-	# CI environment always update
-	if [ "$CI" == "true" ]; then
+	# always update within CI environment or configuring withing VSCode CMake where you can't interact
+	if [ "$CI" == "true" ] || [ -n "${VSCODE_PID+set}" ]; then
 		git submodule --quiet sync --recursive -- $1
 		git submodule --quiet update --init --recursive --jobs=8 -- $1  || true
 		git submodule --quiet update --init --recursive --jobs=8 -- $1

@@ -86,6 +86,7 @@ public:
 	~SubscriptionInterval() = default;
 
 	bool subscribe() { return _subscription.subscribe(); }
+	void unsubscribe() { _subscription.unsubscribe(); }
 
 	bool advertised() { return _subscription.advertised(); }
 

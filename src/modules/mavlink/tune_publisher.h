@@ -51,5 +51,5 @@ private:
 	char _tune_buffer[MAX_TUNE_LEN] {0};
 	hrt_abstime _next_publish_time {0};
 
-	uORB::PublicationQueued<tune_control_s> _tune_control_pub{ORB_ID(tune_control)};
+	uORB::Publication<tune_control_s> _tune_control_pub{ORB_ID(tune_control)};
 };

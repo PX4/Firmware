@@ -12,7 +12,7 @@ jobs:
 
   airframe:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -27,7 +27,7 @@ jobs:
 
   module:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -42,7 +42,7 @@ jobs:
 
   parameter:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -57,7 +57,7 @@ jobs:
 
   uorb_graph:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-nuttx-focal:2020-04-01
+    container: px4io/px4-dev-nuttx-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -72,7 +72,7 @@ jobs:
 
   micrortps_agent:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-bionic:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -86,7 +86,7 @@ jobs:
 
   ROS_msgs:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-bionic:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:
@@ -99,7 +99,7 @@ jobs:
 
   ROS2_bridge:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-bionic:2020-04-01
+    container: px4io/px4-dev-base-focal:2020-11-18
     steps:
     - uses: actions/checkout@v1
       with:

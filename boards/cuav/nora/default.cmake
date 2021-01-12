@@ -9,7 +9,8 @@ px4_add_board(
 	ROMFSROOT px4fmu_common
 	BUILD_BOOTLOADER
 	TESTING
-#	UAVCAN_INTERFACES 2  - No H7 or FD can support in UAVCAN
+	UAVCAN_INTERFACES 2
+	UAVCAN_TIMER_OVERRIDE 2
 	SERIAL_PORTS
 		GPS1:/dev/ttyS0
 		TEL1:/dev/ttyS1
@@ -18,7 +19,7 @@ px4_add_board(
 		# CONSOLE: /dev/ttyS4
 		# RC: /dev/ttyS5
 	DRIVERS
-		adc
+		adc/board_adc
 		barometer # all available barometer drivers
 		batt_smbus
 		camera_capture
@@ -53,7 +54,7 @@ px4_add_board(
 		telemetry # all available telemetry drivers
 		test_ppm
 		tone_alarm
-#		uavcan - No H7 or FD can support in UAVCAN yet
+		uavcan
 	MODULES
 		airspeed_selector
 		attitude_estimator_q
@@ -63,6 +64,7 @@ px4_add_board(
 		dataman
 		ekf2
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
@@ -91,6 +93,7 @@ px4_add_board(
 		hardfault_log
 		i2cdetect
 		led_control
+		mft
 		mixer
 		motor_ramp
 		motor_test
@@ -102,6 +105,7 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
+		system_time
 		tests # tests and test runner
 		top
 		topic_listener

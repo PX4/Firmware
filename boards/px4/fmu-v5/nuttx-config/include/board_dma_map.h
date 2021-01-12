@@ -38,7 +38,7 @@
 |------------|------------------|------------------|------------------|------------------|------------------|------------------|------------------|------------------|
 | Channel 0  | SPI3_RX_1        | SPDIFRX_DT       | SPI3_RX_2        | SPI2_RX          | SPI2_TX          | SPI3_TX_1        | SPDIFRX_CS       | SPI3_TX_2        |
 | Channel 1  | I2C1_RX          | I2C3_RX          | TIM7_UP_1        | -                | TIM7_UP_2        |  I2C1_RX_1       | I2C1_TX          | I2C1_TX_1        |
-| Channel 2  | TIM4_CH1         | -                | I2C4_RX          | TIM4_CH2         | -                | I2C4_RX          | TIM4_UP          | TIM4_CH3         |
+| Channel 2  | TIM4_CH1         | -                | I2C4_RX          | TIM4_CH2         | -                | I2C4_TX          | TIM4_UP          | TIM4_CH3         |
 | Channel 3  | -                | TIM2_UP_1        | I2C3_RX_1        | -                | I2C3_TX          | TIM2_CH1         | TIM2_CH2         | TIM2_UP_2        |
 |            |                  |   TIM2_CH3       |                  |                  |                  |                  |   TIM2_CH4_1     |   TIM2_CH4_2     |
 | Channel 4  | UART5_RX         | USART3_RX        | UART4_RX         | USART3_TX_1      | UART4_TX         | USART2_RX        | USART2_TX        | UART5_TX         |
@@ -47,7 +47,7 @@
 | Channel 6  | TIM5_CH3         | TIM5_CH4_1       | TIM5_CH1         | TIM5_CH4_2       | TIM5_CH2         | -                | TIM5_UP_2        | -                |
 |            |   TIM5_UP_1      |   TIM5_TRIG_1    |                  |   TIM5_TRIG_2    |                  |                  |                  |                  |
 | Channel 7  | -                | TIM6_UP          | I2C2_RX          | I2C2_RX_1        | USART3_TX_2      | DAC1             | DAC2             | I2C2_TX          |
-| Channel 8  | I2C3_TX          | I2C4_RX          | -                | -                | I2C2_TX          | -                | I2C4_TX          | -                |
+| Channel 8  | I2C3_TX_1        | I2C4_RX_1        | -                | -                | I2C2_TX_1        | -                | I2C4_TX_1        | -                |
 | Channel 9  | -                | SPI2_RX          | -                | -                | -                | -                | SPI2_TX          | -                |
 |            |                  |                  |                  |                  |                  |                  |                  |                  |
 | Usage      | UART8_TX         | USART3_RX        | UART4_RX         | USART3_TX_1      |                  | USART2_RX        | UART8_RX         |                  |
@@ -55,7 +55,7 @@
 
 |    DMA2    | Stream 0         | Stream 1         | Stream 2         | Stream 3         | Stream 4         | Stream 5         | Stream 6         | Stream 7         |
 |------------|------------------|------------------|------------------|------------------|------------------|------------------|------------------|------------------|
-| Channel 0  | ADC1_1           | SAI1_A           | TIM8_CH1_1       | SAI1_A_1         | ADC1_2           | SAI1_B_1         | TIM1_CH1_1       | SAI2_B_2         |
+| Channel 0  | ADC1_1           | SAI1_A           | TIM8_CH1_1       | SAI1_A_2         | ADC1_2           | SAI1_B_1         | TIM1_CH1_1       | SAI1_B_2         |
 |            |                  |                  |   TIM8_CH2_1     |                  |                  |                  |   TIM1_CH2_1     |                  |
 |            |                  |                  |   TIM8_CH3_1     |                  |                  |                  |   TIM1_CH3_1     |                  |
 | Channel 1  | -                | DCMI_1           | ADC2_1           | ADC2_2           | SAI1_B           | SPI6_TX          | SPI6_RX          | DCMI_2           |
@@ -69,12 +69,12 @@
 | Channel 7  | -                | TIM8_UP          | TIM8_CH1_2       | TIM8_CH2_2       | TIM8_CH3_2       | SPI5_RX_2        | SPI5_TX_2        | TIM8_CH4         |
 |            |                  |                  |                  |                  |                  |                  |                  |   TIM8_TRIG      |
 |            |                  |                  |                  |                  |                  |                  |                  |   TIM8_COM       |
-| Channel 8  | DSFDM1_FLT0      | DSFDM1_FLT1      | DSFDM1_FLT2      | DSFDM1_FLT3      | DSFDM1_FLT0      | DSFDM1_FLT1      | DSFDM1_FLT2      | DSFDM1_FLT3      |
-| Channel 9  | JPEG_IN          | JPEG_OUT         | SPI4_TX          | JPEG_IN          | JPEG_OUT         | SPI5_RX          | -                | -                |
-| Channel 10 | SAI1_B           | SAI2_B           | SAI2_A           | -                | -                | -                | SAI1_A           | -                |
-| Channel 11 | SDMMC2           | -                | QUADSPI          | -                | -                | SDMMC2           | -                | -                |
+| Channel 8  | DFSDM1_FLT0_1    | DFSDM1_FLT1_1    | DFSDM1_FLT2_1    | DFSDM1_FLT3_1    | DFSDM1_FLT0_2    | DFSDM1_FLT1_2    | DFSDM1_FLT2_2    | DFSDM1_FLT3_2    |
+| Channel 9  | JPEG_IN_1        | JPEG_OUT         | SPI4_TX_3        | JPEG_IN_2        | JPEG_OUT_2       | SPI5_RX_3        | -                | -                |
+| Channel 10 | SAI1_B_3         | SAI2_B_1         | SAI2_A_1         | -                | -                | -                | SAI1_A_3         | -                |
+| Channel 11 | SDMMC2_1         | -                | QUADSPI_1        | -                | -                | SDMMC2_2         | -                | -                |
 |            |                  |                  |                  |                  |                  |                  |                  |                  |
-| Usage      | SPI1_RX_1        |                  | USART6_RX_2      | SPI1_TX_1        |                  | TIM1_UP          | SDMMC1_2         | USART6_TX_2      |
+| Usage      | SPI1_RX_1        |                  | USART6_RX_2      | SPI1_TX_1        |                  | TIM1_UP          | SDMMC1_2         |                  |
  */
 
 // DMA1 Channel/Stream Selections
@@ -96,4 +96,4 @@
 //      AVAILABLE                             // DMA2, Stream 4
 //      DMAMAP_TIM1_UP                        // DMA2, Stream 5, Channel 6    (DSHOT)
 #define DMAMAP_SDMMC1     DMAMAP_SDMMC1_2     // DMA2, Stream 6, Channel 4
-#define DMAMAP_USART6_TX  DMAMAP_USART6_TX_2  // DMA2, Stream 7, Channel 5
+//      AVAILABLE                             // DMA2, Stream 7

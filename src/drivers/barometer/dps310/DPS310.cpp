@@ -135,7 +135,7 @@ DPS310::reset()
 	getTwosComplement(_calibration.c01, 16);
 
 	// 0x1A c11 [15:8] + 0x1B c11 [7:0]
-	_calibration.c11 = ((uint32_t)coef[8] << 8) | (uint32_t)coef[9];
+	_calibration.c11 = ((uint32_t)coef[10] << 8) | (uint32_t)coef[11];
 	getTwosComplement(_calibration.c11, 16);
 
 	// 0x1C c20 [15:8] + 0x1D c20 [7:0]

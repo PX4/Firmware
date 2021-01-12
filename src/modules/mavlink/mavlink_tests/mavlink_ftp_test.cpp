@@ -619,8 +619,7 @@ bool MavlinkFtpTest::_burst_test()
 		_ftp_server->handle_message(&msg);
 
 		// First packet is sent using stream mechanism, so we need to force it out ourselves
-		hrt_abstime t = 0;
-		_ftp_server->send(t);
+		_ftp_server->send();
 
 		ut_compare("Incorrect sequence of messages", burst_info.burst_state, burst_state_complete);
 
@@ -876,7 +875,6 @@ void MavlinkFtpTest::receive_message_handler_burst(const mavlink_file_transfer_p
 bool MavlinkFtpTest::_receive_message_handler_burst(const mavlink_file_transfer_protocol_t *ftp_msg,
 		BurstInfo *burst_info)
 {
-	hrt_abstime t = 0;
 	const MavlinkFTP::PayloadHeader *reply{nullptr};
 	uint32_t full_packet_bytes = MAVLINK_MSG_FILE_TRANSFER_PROTOCOL_FIELD_PAYLOAD_LEN - sizeof(MavlinkFTP::PayloadHeader);
 	uint32_t expected_bytes;
@@ -897,7 +895,7 @@ bool MavlinkFtpTest::_receive_message_handler_burst(const mavlink_file_transfer_
 		burst_info->burst_state = burst_info->single_packet_file ? burst_state_nak_eof : burst_state_last_ack;
 
 		ut_assert("Remaining stream packets missing", _ftp_server->get_size());
-		_ftp_server->send(t);
+		_ftp_server->send();
 		break;
 
 	case burst_state_last_ack:
@@ -913,7 +911,7 @@ bool MavlinkFtpTest::_receive_message_handler_burst(const mavlink_file_transfer_
 		burst_info->burst_state = burst_state_nak_eof;
 
 		ut_assert("Remaining stream packets missing", _ftp_server->get_size());
-		_ftp_server->send(t);
+		_ftp_server->send();
 		break;
 
 	case burst_state_nak_eof:

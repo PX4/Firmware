@@ -115,7 +115,7 @@ MavlinkLogHandler::handle_message(const mavlink_message_t *msg)
 
 //-------------------------------------------------------------------
 void
-MavlinkLogHandler::send(const hrt_abstime /*t*/)
+MavlinkLogHandler::send()
 {
 	//-- An arbitrary count of max bytes in one go (one of the two below but never both)
 #define MAX_BYTES_SEND 256 * 1024

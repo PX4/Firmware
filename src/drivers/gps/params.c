@@ -64,6 +64,27 @@ PARAM_DEFINE_INT32(GPS_DUMP_COMM, 0);
  */
 PARAM_DEFINE_INT32(GPS_UBX_DYNMODEL, 7);
 
+/**
+ * u-blox GPS Mode
+ *
+ * Select the u-blox configuration setup. Most setups will use the default, including RTK and
+ * dual GPS without heading.
+ *
+ * The Heading mode requires 2 F9P devices to be attached. The main GPS will act as rover and output
+ * heading information, whereas the secondary will act as moving base, sending RTCM on UART2 to
+ * the rover GPS.
+ * RTK is still possible with this setup.
+ *
+ * @min 0
+ * @max 1
+ * @value 0 Default
+ * @value 1 Heading
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_UBX_MODE, 0);
+
 
 /**
  * Heading/Yaw offset for dual antenna GPS
@@ -72,7 +93,7 @@ PARAM_DEFINE_INT32(GPS_UBX_DYNMODEL, 7);
  * (currently only for the Trimble MB-Two).
  *
  * Set this to 0 if the antennas are parallel to the forward-facing direction of the vehicle and the first antenna is in
- * front. The offset angle increases counterclockwise.
+ * front. The offset angle increases clockwise.
  *
  * Set this to 90 if the first antenna is placed on the right side and the second on the left side of the vehicle.
  *
@@ -86,3 +107,42 @@ PARAM_DEFINE_INT32(GPS_UBX_DYNMODEL, 7);
  */
 PARAM_DEFINE_FLOAT(GPS_YAW_OFFSET, 0.f);
 
+/**
+ * Protocol for Main GPS
+ *
+ * Select the GPS protocol over serial.
+ *
+ * Auto-detection will probe all protocols, and thus is a bit slower.
+ *
+ * @min 0
+ * @max 4
+ * @value 0 Auto detect
+ * @value 1 u-blox
+ * @value 2 MTK
+ * @value 3 Ashtech / Trimble
+ * @value 4 Emlid Reach
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_1_PROTOCOL, 1);
+
+/**
+ * Protocol for Secondary GPS
+ *
+ * Select the GPS protocol over serial.
+ *
+ * Auto-detection will probe all protocols, and thus is a bit slower.
+ *
+ * @min 0
+ * @max 4
+ * @value 0 Auto detect
+ * @value 1 u-blox
+ * @value 2 MTK
+ * @value 3 Ashtech / Trimble
+ * @value 4 Emlid Reach
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_2_PROTOCOL, 1);

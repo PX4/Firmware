@@ -56,13 +56,13 @@ package = package[0]
 
 #include "RtpsTopics.h"
 
-bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue)
+bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_send_queue_mutex, std::queue<uint8_t>* t_send_queue, const std::string& ns)
 {
 @[if recv_topics]@
     // Initialise subscribers
     std::cout << "\033[0;36m---   Subscribers   ---\033[0m" << std::endl;
 @[for topic in recv_topics]@
-    if (_@(topic)_sub.init(@(rtps_message_id(ids, topic)), t_send_queue_cv, t_send_queue_mutex, t_send_queue)) {
+    if (_@(topic)_sub.init(@(rtps_message_id(ids, topic)), t_send_queue_cv, t_send_queue_mutex, t_send_queue, ns)) {
         std::cout << "- @(topic) subscriber started" << std::endl;
     } else {
         std::cerr << "Failed starting @(topic) subscriber" << std::endl;
@@ -75,7 +75,7 @@ bool RtpsTopics::init(std::condition_variable* t_send_queue_cv, std::mutex* t_se
     // Initialise publishers
     std::cout << "\033[0;36m----   Publishers  ----\033[0m" << std::endl;
 @[for topic in send_topics]@
-    if (_@(topic)_pub.init()) {
+    if (_@(topic)_pub.init(ns)) {
         std::cout << "- @(topic) publisher started" << std::endl;
 @[    if topic == 'Timesync' or topic == 'timesync']@
         _timesync->start(&_@(topic)_pub);
@@ -119,7 +119,7 @@ void RtpsTopics::publish(uint8_t topic_ID, char data_buffer[], size_t len)
         break;
 @[end for]@
         default:
-            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID to publish\033[0m\n");
+            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID '%hhu' to publish Please make sure the agent is capable of parsing the message associated to the topic ID '%hhu'\033[0m\n", topic_ID, topic_ID);
         break;
     }
 }
@@ -153,7 +153,7 @@ bool RtpsTopics::getMsg(const uint8_t topic_ID, eprosima::fastcdr::Cdr &scdr)
         break;
 @[end for]@
         default:
-            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID '%hhu' to getMsg\033[0m\n", topic_ID);
+            printf("\033[1;33m[   micrortps_agent   ]\tUnexpected topic ID '%hhu' to getMsg. Please make sure the agent is capable of parsing the message associated to the topic ID '%hhu'\033[0m\n", topic_ID, topic_ID);
         break;
     }
 

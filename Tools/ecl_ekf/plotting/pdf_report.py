@@ -11,13 +11,13 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 from pyulog import ULog
 
-from analysis.post_processing import magnetic_field_estimates_from_status, get_estimator_check_flags
+from analysis.post_processing import magnetic_field_estimates_from_states, get_estimator_check_flags
 from plotting.data_plots import TimeSeriesPlot, InnovationPlot, ControlModeSummaryPlot, \
     CheckFlagsPlot
 from analysis.detectors import PreconditionError
 import analysis.data_version_handler as dvh
 
-def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
+def create_pdf_report(ulog: ULog, multi_instance: int, output_plot_filename: str) -> None:
     """
     creates a pdf report of the ekf analysis.
     :param ulog:
@@ -29,27 +29,44 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
     # save the plots to PDF
 
     try:
-        estimator_status = ulog.get_dataset('estimator_status').data
-        print('found estimator_status data')
+        estimator_status = ulog.get_dataset('estimator_status', multi_instance).data
     except:
-        raise PreconditionError('could not find estimator_status data')
+        raise PreconditionError('could not find estimator_status instance', multi_instance)
 
     try:
-        estimator_innovations = ulog.get_dataset('estimator_innovations').data
-        estimator_innovation_variances = ulog.get_dataset('estimator_innovation_variances').data
+        estimator_states = ulog.get_dataset('estimator_states', multi_instance).data
+    except:
+        raise PreconditionError('could not find estimator_states instance', multi_instance)
+
+    try:
+        estimator_innovations = ulog.get_dataset('estimator_innovations', multi_instance).data
+        estimator_innovation_variances = ulog.get_dataset('estimator_innovation_variances', multi_instance).data
         innovation_data = estimator_innovations
         for key in estimator_innovation_variances:
             # append 'var' to the field name such that we can distingush between innov and innov_var
             innovation_data.update({str('var_'+key): estimator_innovation_variances[key]})
-        print('found innovation data')
+
+        innovations_min_length = float('inf')
+        for key in estimator_innovations:
+            if len(estimator_innovations[key]) < innovations_min_length:
+                innovations_min_length = len(estimator_innovations[key])
+
+        variances_min_length = float('inf')
+        for key in estimator_innovation_variances:
+            if len(estimator_innovation_variances[key]) < variances_min_length:
+                variances_min_length = len(estimator_innovation_variances[key])
+
+        # ensure consistent sizing for plots
+        if (innovations_min_length != variances_min_length):
+            print("estimator_innovations and estimator_innovation_variances are different sizes, adjusting")
+            innovation_data_min_length = min(innovations_min_length, variances_min_length)
+            for key in innovation_data:
+                innovation_data[key] = innovation_data[key][0:innovation_data_min_length]
+
+        print('found innovation data (merged estimator_innovations + estimator_innovation_variances) instance', multi_instance)
+
     except:
         raise PreconditionError('could not find innovation data')
-
-    try:
-        sensor_preflight_imu = ulog.get_dataset('sensor_preflight_imu').data
-        print('found sensor_preflight data')
-    except:
-        raise PreconditionError('could not find sensor_preflight_imu data')
 
     control_mode, innov_flags, gps_fail_flags = get_estimator_check_flags(estimator_status)
 
@@ -59,17 +76,6 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
     on_ground_transition_time = detect_airtime(control_mode, status_time)
 
     with PdfPages(output_plot_filename) as pdf_pages:
-
-        # plot IMU consistency data
-        if ('accel_inconsistency_m_s_s' in sensor_preflight_imu.keys()) and (
-                'gyro_inconsistency_rad_s' in sensor_preflight_imu.keys()):
-            data_plot = TimeSeriesPlot(
-                sensor_preflight_imu, [['accel_inconsistency_m_s_s'], ['gyro_inconsistency_rad_s']],
-                x_labels=['data index', 'data index'],
-                y_labels=['acceleration (m/s/s)', 'angular rate (rad/s)'],
-                plot_title='IMU Consistency Check Levels', pdf_handle=pdf_pages)
-            data_plot.save()
-            data_plot.close()
 
         # vertical velocity and position innovations
         data_plot = InnovationPlot(
@@ -275,7 +281,7 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
 
         # Plot the delta angle bias estimates
         data_plot = CheckFlagsPlot(
-            1e-6 * estimator_status['timestamp'], estimator_status,
+            1e-6 * estimator_states['timestamp'], estimator_states,
             [['states[10]'], ['states[11]'], ['states[12]']],
             x_label='time (sec)', y_labels=['X (rad)', 'Y (rad)', 'Z (rad)'],
             plot_title='Delta Angle Bias Estimates', annotate=False, pdf_handle=pdf_pages)
@@ -284,7 +290,7 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
 
         # Plot the delta velocity bias estimates
         data_plot = CheckFlagsPlot(
-            1e-6 * estimator_status['timestamp'], estimator_status,
+            1e-6 * estimator_states['timestamp'], estimator_states,
             [['states[13]'], ['states[14]'], ['states[15]']],
             x_label='time (sec)', y_labels=['X (m/s)', 'Y (m/s)', 'Z (m/s)'],
             plot_title='Delta Velocity Bias Estimates', annotate=False, pdf_handle=pdf_pages)
@@ -292,10 +298,10 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
         data_plot.close()
 
         # Plot the earth frame magnetic field estimates
-        declination, field_strength, inclination = magnetic_field_estimates_from_status(
-            estimator_status)
+        declination, field_strength, inclination = magnetic_field_estimates_from_states(
+            estimator_states)
         data_plot = CheckFlagsPlot(
-            1e-6 * estimator_status['timestamp'],
+            1e-6 * estimator_states['timestamp'],
             {'strength': field_strength, 'declination': declination, 'inclination': inclination},
             [['declination'], ['inclination'], ['strength']],
             x_label='time (sec)', y_labels=['declination (deg)', 'inclination (deg)',
@@ -307,7 +313,7 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
 
         # Plot the body frame magnetic field estimates
         data_plot = CheckFlagsPlot(
-            1e-6 * estimator_status['timestamp'], estimator_status,
+            1e-6 * estimator_states['timestamp'], estimator_states,
             [['states[19]'], ['states[20]'], ['states[21]']],
             x_label='time (sec)', y_labels=['X (Gauss)', 'Y (Gauss)', 'Z (Gauss)'],
             plot_title='Magnetometer Bias Estimates', annotate=False, pdf_handle=pdf_pages)
@@ -316,7 +322,7 @@ def create_pdf_report(ulog: ULog, output_plot_filename: str) -> None:
 
         # Plot the EKF wind estimates
         data_plot = CheckFlagsPlot(
-            1e-6 * estimator_status['timestamp'], estimator_status,
+            1e-6 * estimator_states['timestamp'], estimator_states,
             [['states[22]'], ['states[23]']], x_label='time (sec)',
             y_labels=['North (m/s)', 'East (m/s)'], plot_title='Wind Velocity Estimates',
             annotate=False, pdf_handle=pdf_pages)

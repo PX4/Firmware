@@ -31,7 +31,7 @@
  *
  ****************************************************************************/
 
-#include "up_arch.h"
+#include "arm_arch.h"
 #include "systick.h"
 #include <nvic.h>
 

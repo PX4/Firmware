@@ -57,6 +57,7 @@ struct mixer_control_s {
 struct mixer_simple_s {
 	uint8_t			control_count;	/**< number of inputs */
 	mixer_scaler_s		output_scaler;	/**< scaling for the output */
+	float 			slew_rate_rise_time{0.0f}; /**< output max rise time (slew rate limit)*/
 	mixer_control_s		controls[];	/**< actual size of the array is set by control_count */
 };
 
@@ -119,6 +120,7 @@ public:
 
 	unsigned			set_trim(float trim) override;
 	unsigned			get_trim(float *trim) override;
+	void				set_dt_once(float dt) override;
 
 private:
 
@@ -139,9 +141,12 @@ private:
 	 */
 	static int			scale_check(struct mixer_scaler_s &scaler);
 
-	static int parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler_s &scaler);
+	static int parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler_s &scaler, float &slew_rate_rise_time);
 	static int parse_control_scaler(const char *buf, unsigned &buflen, mixer_scaler_s &scaler, uint8_t &control_group,
 					uint8_t &control_index);
+
+	float 				_output_prev{0.f};
+	float				_dt{0.f};
 
 	mixer_simple_s			*_pinfo;
 

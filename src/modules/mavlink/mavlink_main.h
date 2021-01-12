@@ -59,7 +59,6 @@
 #endif
 
 #include <containers/List.hpp>
-#include <drivers/device/ringbuffer.h>
 #include <parameters/param.h>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/cli.h>
@@ -69,11 +68,11 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/posix.h>
-#include <systemlib/mavlink_log.h>
 #include <systemlib/uthash/utlist.h>
+#include <uORB/Publication.hpp>
 #include <uORB/PublicationMulti.hpp>
-#include <uORB/topics/mavlink_log.h>
-#include <uORB/topics/mission_result.h>
+#include <uORB/SubscriptionInterval.hpp>
+#include <uORB/topics/parameter_update.h>
 #include <uORB/topics/radio_status.h>
 #include <uORB/topics/telemetry_status.h>
 
@@ -258,7 +257,7 @@ public:
 
 	bool			get_forwarding_on() { return _forwarding_on; }
 
-	bool			is_connected();
+	bool			is_connected() { return _tstatus.heartbeat_type_gcs; }
 
 #if defined(MAVLINK_UDP)
 	static Mavlink 		*get_instance_for_network_port(unsigned long port);
@@ -430,16 +429,12 @@ public:
 	/**
 	 * Get the receive status of this MAVLink link
 	 */
-	telemetry_status_s	&get_telemetry_status() { return _tstatus; }
-	void                    lock_telemetry_status() { pthread_mutex_lock(&_telemetry_status_mutex); }
-	void                    unlock_telemetry_status() { pthread_mutex_unlock(&_telemetry_status_mutex); }
+	telemetry_status_s	&telemetry_status() { return _tstatus; }
 	void                    telemetry_status_updated() { _tstatus_updated = true; }
 
 	void			set_telemetry_status_type(uint8_t type) { _tstatus.type = type; }
 
 	void			update_radio_status(const radio_status_s &radio_status);
-
-	ringbuffer::RingBuffer	*get_logbuffer() { return &_logbuffer; }
 
 	unsigned		get_system_type() { return _param_mav_type.get(); }
 
@@ -504,6 +499,8 @@ public:
 	bool forward_heartbeats_enabled() const { return _param_mav_hb_forw_en.get(); }
 	bool odometry_loopback_enabled() const { return _param_mav_odom_lp.get(); }
 
+	bool failure_injection_enabled() const { return _param_sys_failure_injection_enabled.get(); }
+
 	struct ping_statistics_s {
 		uint64_t last_ping_time;
 		uint32_t last_ping_seq;
@@ -535,6 +532,8 @@ private:
 
 	uORB::PublicationMulti<telemetry_status_s> _telem_status_pub{ORB_ID(telemetry_status)};
 
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
 	bool			_task_running{true};
 	static bool		_boot_complete;
 	static constexpr int	MAVLINK_MAX_INSTANCES{4};
@@ -564,8 +563,6 @@ private:
 	MAVLINK_MODE 		_mode{MAVLINK_MODE_NORMAL};
 
 	mavlink_channel_t	_channel{MAVLINK_COMM_0};
-
-	ringbuffer::RingBuffer	_logbuffer{5, sizeof(mavlink_log_s)};
 
 	pthread_t		_receive_thread {};
 
@@ -650,7 +647,6 @@ private:
 
 	pthread_mutex_t		_message_buffer_mutex {};
 	pthread_mutex_t		_send_mutex {};
-	pthread_mutex_t		_telemetry_status_mutex {};
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MAV_SYS_ID>) _param_mav_sys_id,
@@ -667,7 +663,8 @@ private:
 		(ParamBool<px4::params::MAV_HB_FORW_EN>) _param_mav_hb_forw_en,
 		(ParamBool<px4::params::MAV_ODOM_LP>) _param_mav_odom_lp,
 		(ParamInt<px4::params::MAV_RADIO_TOUT>)      _param_mav_radio_timeout,
-		(ParamInt<px4::params::SYS_HITL>) _param_sys_hitl
+		(ParamInt<px4::params::SYS_HITL>) _param_sys_hitl,
+		(ParamBool<px4::params::SYS_FAILURE_EN>) _param_sys_failure_injection_enabled
 	)
 
 	perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": tx run elapsed")};                      /**< loop performance counter */

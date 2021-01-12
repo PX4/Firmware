@@ -20,6 +20,7 @@ set +e
 # Do not add intra word spaces
 # it wastes flash
 #
+set R /
 set AUTOCNF no
 set AUX_MODE pwm
 set DATAMAN_OPT ""
@@ -31,7 +32,6 @@ set FMU_MODE pwm
 set FRC /fs/microsd/etc/rc.txt
 set IOFW "/etc/extras/px4_io-v2_default.bin"
 set IO_PRESENT no
-set LOG_FILE /fs/microsd/bootlog.txt
 set LOGGER_ARGS ""
 set LOGGER_BUF  14
 set MAV_TYPE none
@@ -130,19 +130,16 @@ then
 
 else
 	# tune SD_INIT
-	set STARTUP_TUNE 16
+	set STARTUP_TUNE 14 # tune 14 = SD_INIT
 	if mkfatfs /dev/mmcsd0
 	then
 		if mount -t vfat /dev/mmcsd0 /fs/microsd
 		then
 			echo "INFO [init] card formatted"
 		else
-			set STARTUP_TUNE 17
+			set STARTUP_TUNE 15 # tune 15 = SD_ERROR
 			echo "ERROR [init] format failed"
-			set LOG_FILE /dev/null
 		fi
-	else
-		set LOG_FILE /dev/null
 	fi
 fi
 
@@ -152,13 +149,14 @@ fi
 #
 if [ -f $FRC ]
 then
-	sh $FRC
+	. $FRC
 else
 
 	#
-	# Set the parameter file if mtd starts successfully.
+	# Set the parameter file the board supports params on
+	# MTD device.
 	#
-	if mtd start
+	if mft query -q -k MTD -s MTD_PARAMETERS -v /fs/mtd_params
 	then
 		set PARAM_FILE /fs/mtd_params
 	fi
@@ -166,10 +164,16 @@ else
 	#
 	# Load parameters.
 	#
-	param select $PARAM_FILE
-	if ! param load
+	# if the board has a storage for (factory) calibration data
+	if mft query -q -k MTD -s MTD_CALDATA -v /fs/mtd_caldata
 	then
-		param reset
+		param load /fs/mtd_caldata
+	fi
+
+	param select $PARAM_FILE
+	if ! param import
+	then
+		param reset_all
 	fi
 
 	#
@@ -180,11 +184,28 @@ else
 		if param compare SYS_AUTOCONFIG 1
 		then
 			# Wipe out params except RC*, flight modes, total flight time, accel cal, gyro cal, next flight UUID
-			param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
+			param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
 		fi
 
 		set AUTOCNF yes
 	fi
+
+	#
+	# Optional board defaults: rc.board_defaults
+	#
+	set BOARD_RC_DEFAULTS ${R}etc/init.d/rc.board_defaults
+	if [ -f $BOARD_RC_DEFAULTS ]
+	then
+		echo "Board defaults: ${BOARD_RC_DEFAULTS}"
+		. $BOARD_RC_DEFAULTS
+	fi
+	unset BOARD_RC_DEFAULTS
+
+	#
+	# Start the tone_alarm driver.
+	# Needs to be started after the parameters are loaded (for CBRK_BUZZER).
+	#
+	tone_alarm start
 
 	#
 	# Play the startup tune (if not disabled or there is an error)
@@ -194,17 +215,6 @@ else
 	then
 		tune_control play -t $STARTUP_TUNE
 	fi
-
-	#
-	# Optional board defaults: rc.board_defaults
-	#
-	set BOARD_RC_DEFAULTS /etc/init.d/rc.board_defaults
-	if [ -f $BOARD_RC_DEFAULTS ]
-	then
-		echo "Board defaults: ${BOARD_RC_DEFAULTS}"
-		sh $BOARD_RC_DEFAULTS
-	fi
-	unset BOARD_RC_DEFAULTS
 
 	#
 	# Waypoint storage.
@@ -228,7 +238,7 @@ else
 	rgbled start -X -q
 	rgbled_ncp5623c start -X -q
 
-	if param greater LIGHT_EN_BLINKM 0
+	if param greater -s LIGHT_EN_BLINKM 0
 	then
 		if blinkm start -X
 		then
@@ -237,18 +247,11 @@ else
 	fi
 
 	#
-	# Start the tone_alarm driver.
-	# Needs to be started after the parameters are loaded (for CBRK_BUZZER).
-	# Note that this will still play the already published startup tone.
-	#
-	tone_alarm start
-
-	#
 	# Set parameters and env variables for selected AUTOSTART.
 	#
 	if ! param compare SYS_AUTOSTART 0
 	then
-		sh /etc/init.d/rc.autostart
+		. ${R}etc/init.d/rc.autostart
 	fi
 
 	#
@@ -257,7 +260,7 @@ else
 	if [ -f $FCONFIG ]
 	then
 		echo "Custom: ${FCONFIG}"
-		sh $FCONFIG
+		. $FCONFIG
 	fi
 
 	#
@@ -269,59 +272,6 @@ else
 	fi
 
 	#
-	# Check if PX4IO present and update firmware if needed.
-	# Assumption IOFW set to firmware file and IO_PRESENT = no
-	#
-
-	if [ -f $IOFW ]
-	then
-		# Check for the mini using build with px4io fw file
-		# but not a px4IO
-		if ver hwtypecmp V540 V560
-		then
-			param set SYS_USE_IO 0
-		else
-			if px4io checkcrc ${IOFW}
-			then
-				set IO_PRESENT yes
-			else
-				# tune Program PX4IO
-				tune_control play -t 18
-
-				if px4io start
-				then
-					# Try to safety px4 io so motor outputs don't go crazy.
-					if ! px4io safety_on
-					then
-						# px4io did not respond to the safety command.
-						px4io stop
-					fi
-				fi
-
-				if px4io forceupdate 14662 ${IOFW}
-				then
-					usleep 10000
-					tune_control stop
-					if px4io checkcrc ${IOFW}
-					then
-						echo "PX4IO CRC OK after updating" >> $LOG_FILE
-						#tune MLL8CDE Program PX4IO success
-						tune_control play -t 19
-						set IO_PRESENT yes
-					fi
-				fi
-
-				if [ $IO_PRESENT = no ]
-				then
-					echo "PX4IO update failed" >> $LOG_FILE
-					# Error tune.
-					tune_control play -t 20
-				fi
-			fi
-		fi
-	fi
-
-	#
 	# Set USE_IO flag.
 	#
 	if param compare -s SYS_USE_IO 1
@@ -329,11 +279,54 @@ else
 		set USE_IO yes
 	fi
 
-	if [ $USE_IO = yes -a $IO_PRESENT = no ]
+	#
+	# Check if PX4IO present and update firmware if needed.
+	# Assumption IOFW set to firmware file and IO_PRESENT = no
+	#
+
+	if [ -f $IOFW -a $USE_IO = yes ]
 	then
-		echo "PX4IO not found" >> $LOG_FILE
-		# Error tune.
-		tune_control play -t 2
+		if px4io checkcrc ${IOFW}
+		then
+			set IO_PRESENT yes
+		else
+			# tune Program PX4IO
+			tune_control play -t 16 # tune 16 = PROG_PX4IO
+
+			if px4io start
+			then
+				# Try to safety px4 io so motor outputs don't go crazy.
+				if ! px4io safety_on
+				then
+					# px4io did not respond to the safety command.
+					px4io stop
+				fi
+			fi
+
+			if px4io forceupdate 14662 ${IOFW}
+			then
+				usleep 10000
+				tune_control stop
+				if px4io checkcrc ${IOFW}
+				then
+					echo "PX4IO CRC OK after updating"
+					tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
+					set IO_PRESENT yes
+				fi
+			fi
+
+			if [ $IO_PRESENT = no ]
+			then
+				echo "PX4IO update failed"
+				tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
+			fi
+		fi
+
+		if [ $USE_IO = yes -a $IO_PRESENT = no ]
+		then
+			echo "PX4IO not found"
+			tune_control play error
+		fi
 	fi
 
 	#
@@ -364,15 +357,15 @@ else
 		#
 		# board sensors: rc.sensors
 		#
-		set BOARD_RC_SENSORS /etc/init.d/rc.board_sensors
+		set BOARD_RC_SENSORS ${R}etc/init.d/rc.board_sensors
 		if [ -f $BOARD_RC_SENSORS ]
 		then
 			echo "Board sensors: ${BOARD_RC_SENSORS}"
-			sh $BOARD_RC_SENSORS
+			. $BOARD_RC_SENSORS
 		fi
 		unset BOARD_RC_SENSORS
 
-		sh /etc/init.d/rc.sensors
+		. ${R}etc/init.d/rc.sensors
 
 		if param compare -s BAT1_SOURCE 2
 		then
@@ -404,7 +397,7 @@ else
 		set AUX_MODE pwm4
 	fi
 
-	if param greater TRIG_MODE 0
+	if param greater -s TRIG_MODE 0
 	then
 		# We ONLY support trigger on pins 5+6 or 7+8 when simultanously using AUX for actuator output.
 		if param compare TRIG_PINS 56
@@ -447,19 +440,18 @@ else
 				fi
 			fi
 		else
-			# Error tune.
-			tune_control play -t 2
+			tune_control play error
 		fi
 	fi
 
 	#
 	# Optional board mavlink streams: rc.board_mavlink
 	#
-	set BOARD_RC_MAVLINK /etc/init.d/rc.board_mavlink
+	set BOARD_RC_MAVLINK ${R}etc/init.d/rc.board_mavlink
 	if [ -f $BOARD_RC_MAVLINK ]
 	then
 		echo "Board extras: ${BOARD_RC_MAVLINK}"
-		sh $BOARD_RC_MAVLINK
+		. $BOARD_RC_MAVLINK
 	fi
 	unset BOARD_RC_MAVLINK
 
@@ -467,7 +459,7 @@ else
 	# Start UART/Serial device drivers.
 	# Note: rc.serial is auto-generated from Tools/serial/generate_config.py
 	#
-	sh /etc/init.d/rc.serial
+	. ${R}etc/init.d/rc.serial
 
 	if [ $IO_PRESENT = no ]
 	then
@@ -480,7 +472,7 @@ else
 	# Note: rc.vehicle_setup is the entry point for rc.interface,
 	#       rc.fw_apps, rc.mc_apps, rc.rover_apps, and rc.vtol_apps.
 	#
-	sh /etc/init.d/rc.vehicle_setup
+	. ${R}etc/init.d/rc.vehicle_setup
 
 	# Camera capture driver
 	if param greater -s CAM_CAP_FBACK 0
@@ -499,36 +491,41 @@ else
 	#
 	# Start a thermal calibration if required.
 	#
-	sh /etc/init.d/rc.thermal_cal
+	. ${R}etc/init.d/rc.thermal_cal
 
 	#
 	# Start vmount to control mounts such as gimbals, disabled by default.
 	#
-	if ! param compare MNT_MODE_IN -1
+	if param greater -s MNT_MODE_IN -1
 	then
 		vmount start
 	fi
 
 	# Check for flow sensor
-	if param compare SENS_EN_PX4FLOW 1
+	if param compare -s SENS_EN_PX4FLOW 1
 	then
 		px4flow start -X
 	fi
 
 	# Blacksheep telemetry
-	if param greater TEL_BST_EN 0
+	if param compare -s TEL_BST_EN 1
 	then
 		bst start -X
+	fi
+
+	if param compare -s IMU_GYRO_FFT_EN 1
+	then
+		gyro_fft start
 	fi
 
 	#
 	# Optional board supplied extras: rc.board_extras
 	#
-	set BOARD_RC_EXTRAS /etc/init.d/rc.board_extras
+	set BOARD_RC_EXTRAS ${R}etc/init.d/rc.board_extras
 	if [ -f $BOARD_RC_EXTRAS ]
 	then
 		echo "Board extras: ${BOARD_RC_EXTRAS}"
-		sh $BOARD_RC_EXTRAS
+		. $BOARD_RC_EXTRAS
 	fi
 	unset BOARD_RC_EXTRAS
 
@@ -538,20 +535,20 @@ else
 	if [ -f $FEXTRAS ]
 	then
 		echo "Addons script: ${FEXTRAS}"
-		sh $FEXTRAS
+		. $FEXTRAS
 	fi
 
 	#
 	# Start the logger.
 	#
-	sh /etc/init.d/rc.logging
+	. ${R}etc/init.d/rc.logging
 
 	#
 	# Set additional parameters and env variables for selected AUTOSTART.
 	#
 	if ! param compare SYS_AUTOSTART 0
 	then
-		sh /etc/init.d/rc.autostart.post
+		. ${R}etc/init.d/rc.autostart.post
 	fi
 
 	if ! param compare SYS_PARAM_VER ${PARAM_DEFAULTS_VER}
@@ -571,6 +568,7 @@ fi
 #
 # Unset all script parameters to free RAM.
 #
+unset R
 unset AUTOCNF
 unset AUX_MODE
 unset DATAMAN_OPT
@@ -582,7 +580,6 @@ unset FMU_MODE
 unset FRC
 unset IO_PRESENT
 unset IOFW
-unset LOG_FILE
 unset LOGGER_ARGS
 unset LOGGER_BUF
 unset MAV_TYPE

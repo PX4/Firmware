@@ -45,8 +45,6 @@
 
 #include <tunes/tune_definition.h>
 
-#include <uORB/topics/tune_control.h>
-
 namespace events
 {
 namespace rc_loss
@@ -84,32 +82,20 @@ void RC_Loss_Alarm::process()
 
 void RC_Loss_Alarm::play_tune()
 {
-	struct tune_control_s tune_control = {};
-	tune_control.timestamp     = hrt_absolute_time();
-	tune_control.tune_id       = static_cast<int>(TuneID::ERROR_TUNE);
-	tune_control.tune_override = 1;
-	tune_control.volume        = tune_control_s::VOLUME_LEVEL_MAX;
-
-	if (_tune_control_pub == nullptr) {
-		_tune_control_pub = orb_advertise_queue(ORB_ID(tune_control), &tune_control, tune_control_s::ORB_QUEUE_LENGTH);
-
-	} else	{
-		orb_publish(ORB_ID(tune_control), _tune_control_pub, &tune_control);
-	}
+	tune_control_s tune_control{};
+	tune_control.tune_id = tune_control_s::TUNE_ID_ERROR;
+	tune_control.tune_override = true;
+	tune_control.volume = tune_control_s::VOLUME_LEVEL_MAX;
+	tune_control.timestamp = hrt_absolute_time();
+	_tune_control_pub.publish(tune_control);
 }
 
 void RC_Loss_Alarm::stop_tune()
 {
-	struct tune_control_s tune_control = {};
+	tune_control_s tune_control{};
 	tune_control.tune_override = true;
 	tune_control.timestamp = hrt_absolute_time();
-
-	if (_tune_control_pub == nullptr) {
-		_tune_control_pub = orb_advertise_queue(ORB_ID(tune_control), &tune_control, tune_control_s::ORB_QUEUE_LENGTH);
-
-	} else	{
-		orb_publish(ORB_ID(tune_control), _tune_control_pub, &tune_control);
-	}
+	_tune_control_pub.publish(tune_control);
 }
 
 } /* namespace rc_loss */

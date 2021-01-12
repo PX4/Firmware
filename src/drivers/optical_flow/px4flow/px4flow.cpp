@@ -40,7 +40,6 @@
  */
 
 #include <drivers/device/i2c.h>
-#include <drivers/device/ringbuffer.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_range_finder.h>
 #include <lib/conversion/rotation.h>

@@ -26,6 +26,10 @@ then
 	#  V110 - J1011 pin 5
 	#
 	param set CBRK_IO_SAFETY 22027
+
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
 fi
 
 #

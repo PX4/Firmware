@@ -8,6 +8,7 @@ px4_add_board(
 	LABEL default
 	PLATFORM posix
 	ARCHITECTURE cortex-a9
+	ROMFSROOT px4fmu_common
 	TOOLCHAIN arm-linux-gnueabihf
 	TESTING
 	SERIAL_PORTS
@@ -44,6 +45,7 @@ px4_add_board(
 		dataman
 		ekf2
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
@@ -61,9 +63,9 @@ px4_add_board(
 		rc_update
 		rover_pos_control
 		sensors
-		temperature_compensation
 		sih
 		#simulator
+		temperature_compensation
 		vmount
 		vtol_att_control
 	SYSTEMCMDS
@@ -75,6 +77,7 @@ px4_add_board(
 		perf
 		pwm
 		sd_bench
+		system_time
 		shutdown
 		tests # tests and test runner
 		#top

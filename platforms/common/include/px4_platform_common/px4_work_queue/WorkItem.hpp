@@ -70,7 +70,7 @@ public:
 		}
 	}
 
-	virtual void print_run_status() const;
+	virtual void print_run_status();
 
 	/**
 	 * Switch to a different WorkQueue.
@@ -99,10 +99,12 @@ protected:
 
 	void RunPreamble()
 	{
-		_run_count++;
-
-		if (_time_first_run == 0) {
+		if (_run_count == 0) {
 			_time_first_run = hrt_absolute_time();
+			_run_count = 1;
+
+		} else {
+			_run_count++;
 		}
 	}
 

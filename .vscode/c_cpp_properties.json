@@ -1,74 +1,15 @@
 {
     "configurations": [
         {
-            "name": "Linux",
-            "browse": {
-                "limitSymbolsToIncludedHeaders": true,
-                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
-            },
-            "compileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
-            "compilerPath": "/usr/bin/g++",
+            "name": "PX4",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "macFrameworkPath": [],
             "configurationProvider": "ms-vscode.cmake-tools",
             "cppStandard": "c++14",
-            "cStandard": "c11",
-            "defines": [
-                "__PX4_LINUX",
-                "__PX4_POSIX"
-            ],
-            "forcedInclude": [
-                "${workspaceFolder}/src/include/visibility.h"
-            ],
-            "includePath": [
-                "${workspaceFolder}/boards/px4/sitl/src",
-                "${workspaceFolder}/build/px4_sitl_default",
-                "${workspaceFolder}/platforms/common/include",
-                "${workspaceFolder}/platforms/posix/include",
-                "${workspaceFolder}/platforms/posix/src/px4/common/include",
-                "${workspaceFolder}/platforms/posix/src/px4/common/include",
-                "${workspaceFolder}/platforms/posix/src/px4/generic/generic/include",
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/src/include",
-                "${workspaceFolder}/src/lib",
-                "${workspaceFolder}/src/lib",
-                "${workspaceFolder}/src/lib/matrix",
-                "${workspaceFolder}/src/modules"
-            ],
-            "intelliSenseMode": "${default}"
-        },
-        {
-            "name": "Mac",
-            "browse": {
-                "limitSymbolsToIncludedHeaders": true,
-                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
-            },
-            "compileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
-            "compilerPath": "/usr/bin/clang++",
-            "configurationProvider": "ms-vscode.cmake-tools",
-            "cppStandard": "c++14",
-            "cStandard": "c11",
-            "defines": [
-                "__PX4_DARWIN",
-                "__PX4_POSIX"
-            ],
-            "forcedInclude": [
-                "${workspaceFolder}/src/include/visibility.h"
-            ],
-            "includePath": [
-                "${workspaceFolder}/boards/px4/sitl/src",
-                "${workspaceFolder}/build/px4_sitl_default",
-                "${workspaceFolder}/platforms/common/include",
-                "${workspaceFolder}/platforms/posix/include",
-                "${workspaceFolder}/platforms/posix/src/px4/common/include",
-                "${workspaceFolder}/platforms/posix/src/px4/common/include",
-                "${workspaceFolder}/platforms/posix/src/px4/generic/generic/include",
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/src/include",
-                "${workspaceFolder}/src/lib",
-                "${workspaceFolder}/src/lib",
-                "${workspaceFolder}/src/lib/matrix",
-                "${workspaceFolder}/src/modules"
-            ],
-            "intelliSenseMode": "${default}"
+            "cStandard": "c11"
         }
     ],
     "version": 4

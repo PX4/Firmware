@@ -1202,9 +1202,13 @@ PARAM_DEFINE_INT32(RC_MAP_PITCH, 0);
 /**
  * Failsafe channel mapping.
  *
- * The RC mapping index indicates which channel is used for failsafe
+ * Configures which channel is used by the receiver to indicate the signal was lost.
+ * Futaba receivers do report that way.
  * If 0, whichever channel is mapped to throttle is used
  * otherwise the value indicates the specific RC channel to use
+ *
+ * Use RC_FAILS_THR to set the threshold indicating lost signal. By default it's below
+ * the expected range and hence diabled.
  *
  * @min 0
  * @max 18
@@ -1997,6 +2001,9 @@ PARAM_DEFINE_INT32(RC_MAP_PARAM3, 0);
  *
  * Set to a value slightly above the PWM value assumed by throttle in a failsafe event,
  * but ensure it is below the PWM value assumed by throttle during normal operation.
+ *
+ * Use RC_MAP_FAILSAFE to specify which channel is used to check.
+ * Note: The default value of 0 is below the epxed range and hence disables the feature.
  *
  * @min 0
  * @max 2200

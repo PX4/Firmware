@@ -56,6 +56,7 @@ px4_add_board(
 		attitude_estimator_q
 		commander
 		ekf2
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector

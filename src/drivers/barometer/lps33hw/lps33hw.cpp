@@ -34,6 +34,7 @@
 #include "lps33hw.hpp"
 
 using namespace ST_LPS33HW;
+using namespace time_literals;
 
 namespace lps33hw
 {
@@ -46,13 +47,14 @@ static void getTwosComplement(T &raw, uint8_t length)
 	}
 }
 
-LPS33HW::LPS33HW(I2CSPIBusOption bus_option, int bus, device::Device *interface) :
+LPS33HW::LPS33HW(I2CSPIBusOption bus_option, int bus, device::Device *interface, bool keep_retrying) :
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(interface->get_device_id()), bus_option, bus,
 		     interface->get_device_address()),
 	_px4_barometer(interface->get_device_id()),
 	_interface(interface),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
-	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comm errors"))
+	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": comm errors")),
+	_keep_retrying(keep_retrying)
 {
 }
 
@@ -72,6 +74,13 @@ LPS33HW::init()
 
 	if (ret != 0) {
 		PX4_DEBUG("read failed (%i)", ret);
+
+		if (_keep_retrying) {
+			PX4_INFO("no sensor found, but will keep retrying");
+			ScheduleNow();
+			return 0;
+		}
+
 		return ret;
 	}
 
@@ -80,87 +89,104 @@ LPS33HW::init()
 		return PX4_ERROR;
 	}
 
-	ret = reset();
-
-	if (ret != OK) {
-		PX4_DEBUG("reset failed");
-		return ret;
-	}
-
-	start();
-
+	_state = State::Reset;
+	ScheduleNow();
 	return PX4_OK;
-}
-
-int
-LPS33HW::reset()
-{
-	// Soft Reset
-	int ret = RegisterWrite(Register::CTRL_REG2, SWRESET);
-
-	// wait until SWRESET goes back to 0
-	int i;
-
-	for (i = 0; i < 10; ++i) {
-		uint8_t val;
-		ret = RegisterRead(Register::CTRL_REG2, val);
-
-		if (ret == 0 && (val & SWRESET) == 0) {
-			break;
-		}
-
-		usleep(1000);
-	}
-
-	if (i >= 10) {
-		PX4_ERR("reset failed");
-		return PX4_ERROR;
-	}
-
-	// Configure sampling rate
-	ret = RegisterWrite(Register::CTRL_REG1, ODR_75HZ | BDU);
-
-	return ret;
-}
-
-void
-LPS33HW::start()
-{
-	ScheduleOnInterval(1000000 / SAMPLE_RATE);
 }
 
 void
 LPS33HW::RunImpl()
 {
-	perf_begin(_sample_perf);
+	int ret;
 
-	uint8_t data[6];
+	switch (_state) {
+	case State::Detect:
+		uint8_t who_am_i;
+		ret = RegisterRead(Register::WHO_AM_I, who_am_i);
 
-	if (_interface->read((uint8_t)Register::STATUS, data, sizeof(data)) != PX4_OK) {
-		perf_count(_comms_errors);
+		if (ret != 0 || who_am_i != WHO_AM_I_VALUE) {
+			// periodically retry to detect
+			ScheduleDelayed(300_ms);
+			return;
+		}
+
+		ScheduleDelayed(10_ms);
+		_state = State::Reset;
+		break;
+
+	case State::Reset:
+		// Soft Reset
+		ret = RegisterWrite(Register::CTRL_REG2, SWRESET);
+
+		if (ret != OK) {
+			PX4_DEBUG("reset failed");
+			ScheduleDelayed(100_ms);
+			_state = State::Detect;
+			return;
+		}
+
+		ScheduleDelayed(20_ms);
+		_state = State::WaitForReset;
+		break;
+
+	case State::WaitForReset:
+		uint8_t val;
+		ret = RegisterRead(Register::CTRL_REG2, val);
+
+		if (ret != 0 || (val & SWRESET) != 0) {
+			ScheduleDelayed(10_ms);
+			_state = State::Reset;
+			return;
+		}
+
+		// Configure sampling rate
+		ret = RegisterWrite(Register::CTRL_REG1, ODR_75HZ | BDU);
+
+		if (ret != 0) {
+			ScheduleDelayed(10_ms);
+			_state = State::Detect;
+			return;
+		}
+
+		ScheduleDelayed(1000000 / SAMPLE_RATE);
+		_state = State::Running;
+		break;
+
+	case State::Running:
+		perf_begin(_sample_perf);
+		uint8_t data[6];
+
+		if (_interface->read((uint8_t)Register::STATUS, data, sizeof(data)) != PX4_OK) {
+			perf_count(_comms_errors);
+			perf_end(_sample_perf);
+			ScheduleDelayed(10_ms);
+			_state = State::Reset;
+			return;
+		}
+
+		uint8_t status = data[0];
+
+		if ((status & P_DA) == 0) { // check if pressure data is available
+			perf_end(_sample_perf);
+			ScheduleDelayed(1000000 / SAMPLE_RATE);
+			return;
+		}
+
+		hrt_abstime timestamp_sample = hrt_absolute_time();
+		float temp = ((int16_t)data[4] | (data[5] << 8)) / 100.f;
+
+		int32_t Praw = (int32_t)data[1] | (data[2] << 8) | (data[3] << 16);
+		getTwosComplement(Praw, 24);
+		float pressure_hPa = Praw / 4096.f;
+
+		_px4_barometer.set_error_count(perf_event_count(_comms_errors));
+		_px4_barometer.set_temperature(temp);
+		_px4_barometer.update(timestamp_sample, pressure_hPa); // hPascals -> Millibar
+
 		perf_end(_sample_perf);
-		return;
+		ScheduleDelayed(1000000 / SAMPLE_RATE);
+		break;
 	}
-
-	uint8_t status = data[0];
-
-	if ((status & P_DA) == 0) { // check if pressure data is available
-		perf_end(_sample_perf);
-		return;
-	}
-
-	hrt_abstime timestamp_sample = hrt_absolute_time();
-	float temp = ((int16_t)data[4] | (data[5] << 8)) / 100.f;
-
-	int32_t Praw = (int32_t)data[1] | (data[2] << 8) | (data[3] << 16);
-	getTwosComplement(Praw, 24);
-	float pressure_hPa = Praw / 4096.f;
-
-	_px4_barometer.set_error_count(perf_event_count(_comms_errors));
-	_px4_barometer.set_temperature(temp);
-	_px4_barometer.update(timestamp_sample, pressure_hPa); // hPascals -> Millibar
-
-	perf_end(_sample_perf);
 }
 
 int

@@ -74,7 +74,7 @@ inline bool operator&(SDLogProfileMask a, SDLogProfileMask b)
 class LoggedTopics
 {
 public:
-	static constexpr int 		MAX_TOPICS_NUM = 200; /**< Maximum number of logged topics */
+	static constexpr int MAX_TOPICS_NUM = 255; /**< Maximum number of logged topics */
 
 	struct RequestedSubscription {
 		uint16_t interval_ms;
@@ -110,7 +110,16 @@ private:
 	 * @return true on success
 	 */
 	bool add_topic(const char *name, uint16_t interval_ms = 0, uint8_t instance = 0);
-	bool add_topic_multi(const char *name, uint16_t interval_ms = 0);
+
+	/**
+	 * Add a topic to be logged.
+	 * @param name topic name
+	 * @param interval limit in milliseconds if >0, otherwise log as fast as the topic is updated.
+	 * @param instance orb topic instance
+	 * @param max_num_instances the max multi-instance to add.
+	 * @return true on success
+	 */
+	bool add_topic_multi(const char *name, uint16_t interval_ms = 0, uint8_t max_num_instances = ORB_MULTI_MAX_INSTANCES);
 
 	/**
 	 * Parse a file containing a list of uORB topics to log, calling add_topic for each

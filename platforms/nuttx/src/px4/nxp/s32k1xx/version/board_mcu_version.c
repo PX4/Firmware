@@ -41,10 +41,10 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/defines.h>
 
-#include "up_arch.h"
+#include "arm_arch.h"
 #include "hardware/s32k1xx_sim.h"
 
-#define CHIP_TAG     "S32K1XX"
+#define CHIP_TAG     "S32KXXX"
 #define CHIP_TAG_LEN sizeof(CHIP_TAG)-1
 
 int board_mcu_version(char *rev, const char **revstr, const char **errata)
@@ -52,8 +52,9 @@ int board_mcu_version(char *rev, const char **revstr, const char **errata)
 	uint32_t sim_sdid = getreg32(S32K1XX_SIM_SDID);
 	static char chip[sizeof(CHIP_TAG)] = CHIP_TAG;
 
-	chip[CHIP_TAG_LEN - 2] = '0' + ((sim_sdid & SIM_SDID_GENERATION_MASK) >> SIM_SDID_GENERATION_SHIFT);
-	chip[CHIP_TAG_LEN - 1] = '0' + ((sim_sdid & SIM_SDID_SUBSERIES_MASK) >> SIM_SDID_SUBSERIES_SHIFT);
+	chip[CHIP_TAG_LEN - 3] = '0' + ((sim_sdid & SIM_SDID_GENERATION_MASK) >> SIM_SDID_GENERATION_SHIFT);
+	chip[CHIP_TAG_LEN - 2] = '0' + ((sim_sdid & SIM_SDID_SUBSERIES_MASK) >> SIM_SDID_SUBSERIES_SHIFT);
+	chip[CHIP_TAG_LEN - 1] = '0' + ((sim_sdid & SIM_SDID_DERIVATE_MASK) >> SIM_SDID_DERIVATE_SHIFT);
 	*revstr = chip;
 	*rev = '0' + ((sim_sdid & SIM_SDID_REVID_MASK) >> SIM_SDID_REVID_SHIFT);
 

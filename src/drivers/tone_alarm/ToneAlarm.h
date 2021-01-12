@@ -40,79 +40,50 @@
 
 #pragma once
 
-#include <circuit_breaker/circuit_breaker.h>
-#include <drivers/device/device.h>
-#include <drivers/drv_tone_alarm.h>
-#include <lib/tunes/tunes.h>
-#include <px4_platform_common/defines.h>
+#include <px4_platform_common/px4_config.h>
+#include <px4_platform_common/getopt.h>
+#include <px4_platform_common/log.h>
+#include <px4_platform_common/module.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <lib/circuit_breaker/circuit_breaker.h>
+#include <lib/tunes/tunes.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/tune_control.h>
+
+#include <drivers/drv_tone_alarm.h>
 
 #include <string.h>
 
-#if !defined(UNUSED)
-#  define UNUSED(a) ((void)(a))
-#endif
-
-class ToneAlarm : public cdev::CDev, public px4::ScheduledWorkItem
+class ToneAlarm : public ModuleBase<ToneAlarm>, public px4::ScheduledWorkItem
 {
 public:
 	ToneAlarm();
-	~ToneAlarm();
+	~ToneAlarm() override;
 
-	/**
-	 * @brief Initializes the character device and hardware registers.
-	 */
-	int init() override;
+	/** @see ModuleBase */
+	static int task_spawn(int argc, char *argv[]);
 
-	/**
-	 * @brief Prints the driver status to the console.
-	 */
-	void status();
+	/** @see ModuleBase */
+	static int custom_command(int argc, char *argv[]) { return 0; };
 
-protected:
-
-	/**
-	 * @brief Parses the next note out of the string and plays it.
-	 */
-	void next_note();
-
-	/**
-	 * @brief Trampoline for the work queue.
-	 */
-	void Run() override;
-
-	/**
-	 * @brief Updates the uORB topics for local subscribers.
-	 */
-	void orb_update();
-
-	/**
-	 * @brief Starts playing the note.
-	 */
-	void start_note(unsigned frequency);
-
-	/**
-	 * @brief Stops playing the current note and makes the player 'safe'.
-	 */
-	void stop_note();
-
-	volatile bool _running{false};		///< Flag to indicate the current driver status.
-
-	int _cbrk{CBRK_UNINIT};     		///< If true, no audio output.
+	/** @see ModuleBase */
+	static int print_usage(const char *reason = nullptr);
 
 private:
+	static void InterruptStopNote(void *arg);
 
-	volatile bool _should_run{true};
+	bool Init();
+	void Run() override;
 
+	hrt_call _hrt_call{};
+
+	Tunes _tunes;
+
+	hrt_abstime _next_note_time{0};
+
+	uORB::SubscriptionCallbackWorkItem _tune_control_sub{this, ORB_ID(tune_control)};
+
+	bool _circuit_break_initialized{false};
 	bool _play_tone{false};
-
-	unsigned int _silence_length{0};	///< If nonzero, silence before next note.
-
-	uORB::Subscription _tune_control_sub{ORB_ID(tune_control)};
-
-	tune_control_s _tune{};
-
-	Tunes _tunes = Tunes();
 };

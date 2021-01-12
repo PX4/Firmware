@@ -5,6 +5,7 @@ Adapted from https://github.com/eProsima/px4_to_ros/blob/master/px4_to_ros2_PoC/
 """
 
 import os
+import re
 import sys
 from shutil import copyfile
 
@@ -90,7 +91,7 @@ for filename in os.listdir(output_dir):
                         fileUpdated = True
                         line = line.replace(('px4/' + msg_type),
                                             msg_type.partition(".")[0].title().replace('_', ''))
-                    if ('' + msg_type + '[') in line.partition('#')[0] or ('' + msg_type + ' ') in line.partition('#')[0]:
+                    if re.findall('^' + msg_type + '[\s\[]', line.partition('#')[0]):
                         fileUpdated = True
                         line = line.replace(msg_type,
                                             msg_type.partition(".")[0].title().replace('_', ''))

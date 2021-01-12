@@ -34,63 +34,15 @@
 /**
  * @file drv_tone_alarm.h
  *
- * Driver for the PX4 audio alarm port, /dev/tone_alarm.
+ * Driver for the PX4 audio alarm port.
  *
- * The tone_alarm driver supports a set of predefined "alarm"
- * patterns and one user-supplied pattern.  Patterns are ordered by
- * priority, with a higher-priority pattern interrupting any
- * lower-priority pattern that might be playing.
- *
- * The TONE_SET_ALARM ioctl can be used to select a predefined
- * alarm pattern, from 1 - <TBD>.  Selecting pattern zero silences
- * the alarm.
- *
- * To supply a custom pattern, write an array of 1 - <TBD> tone_note
- * structures to /dev/tone_alarm.  The custom pattern has a priority
- * of zero.
- *
- * Patterns will normally play once and then silence (if a pattern
- * was overridden it will not resume).  A pattern may be made to
- * repeat by inserting a note with the duration set to
- * DURATION_REPEAT.  This pattern will loop until either a
- * higher-priority pattern is started or pattern zero is requested
- * via the ioctl.
  */
 
 #pragma once
 
+#include "drv_hrt.h"
 #include <lib/tunes/tune_definition.h>
 #include <uORB/topics/tune_control.h>
-
-#define CBRK_BUZZER_KEY 782097
-#define CBRK_OFF        0
-#define CBRK_ON         1
-#define CBRK_UNINIT     2
-
-#define _TONE_ALARM_BASE        0x7400
-#define TONE_SET_ALARM          _PX4_IOC(_TONE_ALARM_BASE, 1)
-#define TONE_ALARM0_DEVICE_PATH "/dev/tone_alarm0"
-
-// TODO: remove this once the tone_alarm driver is changed to the new tunelib
-enum {
-	TONE_STOP_TUNE = 0,
-	TONE_STARTUP_TUNE,
-	TONE_ERROR_TUNE,
-	TONE_NOTIFY_POSITIVE_TUNE,
-	TONE_NOTIFY_NEUTRAL_TUNE,
-	TONE_NOTIFY_NEGATIVE_TUNE,
-	TONE_ARMING_WARNING_TUNE,
-	TONE_BATTERY_WARNING_SLOW_TUNE,
-	TONE_BATTERY_WARNING_FAST_TUNE,
-	TONE_GPS_WARNING_TUNE,
-	TONE_ARMING_FAILURE_TUNE,
-	TONE_PARACHUTE_RELEASE_TUNE,
-	TONE_EKF_WARNING_TUNE,
-	TONE_BARO_WARNING_TUNE,
-	TONE_SINGLE_BEEP_TUNE,
-	TONE_HOME_SET,
-	TONE_NUMBER_OF_TUNES
-};
 
 namespace ToneAlarmInterface
 {
@@ -102,8 +54,9 @@ void init();
 
 /**
  * @brief Starts playing the note.
+ * @return the time the note started played.
  */
-void start_note(unsigned frequency);
+hrt_abstime start_note(unsigned frequency);
 
 /**
  * @brief Stops playing the current note and makes the player 'safe'.

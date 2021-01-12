@@ -56,12 +56,12 @@
 /* Clocking *************************************************************************/
 /* The sp racing h7 extreme  board provides the following clock sources:
  *
- *   X1: 25 MHz crystal for HSE
+ *   X1: 8 MHz crystal for HSE
  *
  * So we have these clock source available within the STM32
  *
  *   HSI: 64 MHz RC factory-trimmed
- *   HSE: 25 MHz crystal for HSE
+ *   HSE:  8 MHz crystal for HSE
  */
 
 #define STM32_BOARD_XTAL        8000000ul
@@ -98,11 +98,11 @@
 
 /* PLL1, wide 4 - 8 MHz input, enable DIVP, DIVQ, DIVR
  *
- *   PLL1_VCO = (25,000,000 / 5) * 160 = 800 MHz
+ *   PLL1_VCO = (8,000,000 / 2) * 200 = 800 MHz
  *
  *   PLL1P = PLL1_VCO/2  = 800 MHz / 2   = 400 MHz
- *   PLL1Q = PLL1_VCO/4  = 800 MHz / 4   = 200 MHz
- *   PLL1R = PLL1_VCO/8  = 800 MHz / 8   = 100 MHz
+ *   PLL1Q = PLL1_VCO/4  = 800 MHz / 4  =  200 MHz
+ *   PLL1R = PLL1_VCO/2  = 800 MHz / 2   = 400 MHz - locked for H750
  */
 
 #define STM32_PLLCFG_PLL1CFG    (RCC_PLLCFGR_PLL1VCOSEL_WIDE | \

@@ -2,6 +2,7 @@
 
 import argparse
 import datetime
+import fnmatch
 import json
 import math
 import os
@@ -32,7 +33,8 @@ def main() -> NoReturn:
     parser.add_argument("--model", type=str, default='all',
                         help="only run tests for one model")
     parser.add_argument("--case", type=str, default='all',
-                        help="only run tests for one case")
+                        help="only run tests for one case "
+                             "(or multiple cases with wildcard '*')")
     parser.add_argument("--debugger", default="",
                         help="choice from valgrind, callgrind, gdb, lldb")
     parser.add_argument("--verbose", default=False, action='store_true',
@@ -148,9 +150,14 @@ class Tester:
             for key in test['cases'].keys():
                 test['cases'][key] = {
                     'selected': (test['selected'] and
-                                 (case == 'all' or case == key))}
+                                 (case == 'all' or
+                                  cls.wildcard_match(case, key)))}
 
         return tests
+
+    @staticmethod
+    def wildcard_match(pattern: str, potential_match: str) -> bool:
+        return fnmatch.fnmatchcase(potential_match, pattern)
 
     @staticmethod
     def query_test_cases(filter: str) -> List[str]:
@@ -269,7 +276,7 @@ class Tester:
 
                 log_dir = self.get_log_dir(iteration, test['model'], key)
                 if self.verbose:
-                    print("creating log directory: {}"
+                    print("Creating log directory: {}"
                           .format(log_dir))
                 os.makedirs(log_dir, exist_ok=True)
 

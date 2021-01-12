@@ -88,6 +88,7 @@ fi
 qshell commander start
 qshell land_detector start multicopter
 qshell mc_hover_thrust_estimator start
+qshell flight_mode_manager start
 qshell mc_pos_control start
 qshell mc_att_control start
 qshell mc_rate_control start

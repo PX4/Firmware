@@ -183,3 +183,14 @@ TEST(FunctionsTest, gradual3)
 				 0.f, .5f, 1.5f,
 				 1.f, 2.f, 3.f), 3.f);
 }
+
+TEST(FunctionsTest, sqrt_linear)
+{
+	EXPECT_FLOAT_EQ(sqrt_linear(-12.f), 0.f);
+	EXPECT_FLOAT_EQ(sqrt_linear(-2.f), 0.f);
+	EXPECT_FLOAT_EQ(sqrt_linear(0.f), 0.f);
+	EXPECT_FLOAT_EQ(sqrt_linear(.5f), 0.70710678f);
+	EXPECT_FLOAT_EQ(sqrt_linear(1.f), 1.f);
+	EXPECT_FLOAT_EQ(sqrt_linear(2.f), 2.f);
+	EXPECT_FLOAT_EQ(sqrt_linear(120.f), 120.f);
+}

@@ -48,6 +48,7 @@
 #include <px4_platform_common/time.h>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_accel.h>
 #include <uORB/topics/sensor_baro.h>
@@ -57,6 +58,8 @@
 #include <uORB/topics/vehicle_command_ack.h>
 
 #include "TemperatureCompensation.h"
+
+using namespace time_literals;
 
 namespace temperature_compensation
 {
@@ -105,22 +108,26 @@ private:
 	uORB::Subscription _accel_subs[ACCEL_COUNT_MAX] {
 		{ORB_ID(sensor_accel), 0},
 		{ORB_ID(sensor_accel), 1},
-		{ORB_ID(sensor_accel), 2}
+		{ORB_ID(sensor_accel), 2},
+		{ORB_ID(sensor_accel), 3},
 	};
 
 	uORB::Subscription _gyro_subs[GYRO_COUNT_MAX] {
 		{ORB_ID(sensor_gyro), 0},
 		{ORB_ID(sensor_gyro), 1},
-		{ORB_ID(sensor_gyro), 2}
+		{ORB_ID(sensor_gyro), 2},
+		{ORB_ID(sensor_gyro), 3},
 	};
 
 	uORB::Subscription _baro_subs[BARO_COUNT_MAX] {
 		{ORB_ID(sensor_baro), 0},
 		{ORB_ID(sensor_baro), 1},
-		{ORB_ID(sensor_baro), 2}
+		{ORB_ID(sensor_baro), 2},
+		{ORB_ID(sensor_baro), 3},
 	};
 
-	uORB::Subscription _params_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 
 	perf_counter_t _loop_perf;			/**< loop performance counter */

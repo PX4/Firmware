@@ -3,7 +3,7 @@
 # KakuteF7 specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # The default IMU is an ICM20689, but there might also be an MPU6000
 if ! mpu6000 -R 6 -s start

@@ -9,7 +9,7 @@
 #                       Begin Estimator group selection                       #
 ###############################################################################
 
-ekf2 start
+ekf2 start &
 
 ###############################################################################
 #                        End Estimator group selection                        #
@@ -21,6 +21,7 @@ vtol_att_control start
 
 mc_rate_control start vtol
 mc_att_control start vtol
+flight_mode_manager start vtol
 mc_pos_control start vtol
 mc_hover_thrust_estimator start
 

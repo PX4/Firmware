@@ -33,7 +33,7 @@ set(tests
 	rc
 	search_min
 	servo
-	#sf0x
+	#lightware_laser
 	sleep
 	uorb
 	versioning
@@ -57,15 +57,12 @@ foreach(test_name ${tests})
 	configure_file(${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_template.in ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated)
 
 	add_test(NAME ${test_name_prefix}
-		COMMAND ${PX4_SOURCE_DIR}/Tools/sitl_run.sh
-			$<TARGET_FILE:px4>
-			none
-			none
-			test_${test_name}_generated
-			none
-			${PX4_SOURCE_DIR}
-			${PX4_BINARY_DIR}
-		WORKING_DIRECTORY ${SITL_WORKING_DIR})
+		COMMAND $<TARGET_FILE:px4>
+			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated
+			-t ${PX4_SOURCE_DIR}/test_data
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+		WORKING_DIRECTORY ${SITL_WORKING_DIR}
+	)
 
 	set_tests_properties(${test_name_prefix} PROPERTIES FAIL_REGULAR_EXPRESSION "${test_name} FAILED")
 	set_tests_properties(${test_name_prefix} PROPERTIES PASS_REGULAR_EXPRESSION "${test_name} PASSED")
@@ -75,38 +72,32 @@ endforeach()
 
 
 # Mavlink test requires mavlink running
-add_test(NAME mavlink
-	COMMAND ${PX4_SOURCE_DIR}/Tools/sitl_run.sh
-		$<TARGET_FILE:px4>
-		none
-		none
-		test_mavlink
-		none
-		${PX4_SOURCE_DIR}
-		${PX4_BINARY_DIR}
-	WORKING_DIRECTORY ${SITL_WORKING_DIR})
+add_test(NAME sitl-mavlink
+	COMMAND $<TARGET_FILE:px4>
+		-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_mavlink
+		-t ${PX4_SOURCE_DIR}/test_data
+		${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+	WORKING_DIRECTORY ${SITL_WORKING_DIR}
+)
 
-set_tests_properties(mavlink PROPERTIES FAIL_REGULAR_EXPRESSION "mavlink FAILED")
-set_tests_properties(mavlink PROPERTIES PASS_REGULAR_EXPRESSION "mavlink PASSED")
-sanitizer_fail_test_on_error(mavlink)
+set_tests_properties(sitl-mavlink PROPERTIES FAIL_REGULAR_EXPRESSION "mavlink FAILED")
+set_tests_properties(sitl-mavlink PROPERTIES PASS_REGULAR_EXPRESSION "mavlink PASSED")
+sanitizer_fail_test_on_error(sitl-mavlink)
 
 # A mystery why this fails on Cygwin currently.
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "CYGWIN")
 	# Shutdown test
-	add_test(NAME shutdown
-		COMMAND ${PX4_SOURCE_DIR}/Tools/sitl_run.sh
-			$<TARGET_FILE:px4>
-			none
-			none
-			test_shutdown
-			none
-			${PX4_SOURCE_DIR}
-			${PX4_BINARY_DIR}
-		WORKING_DIRECTORY ${SITL_WORKING_DIR})
+	add_test(NAME sitl-shutdown
+		COMMAND $<TARGET_FILE:px4>
+			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_shutdown
+			-t ${PX4_SOURCE_DIR}/test_data
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+		WORKING_DIRECTORY ${SITL_WORKING_DIR}
+	)
 
 	#set_tests_properties(shutdown PROPERTIES FAIL_REGULAR_EXPRESSION "shutdown FAILED")
-	set_tests_properties(shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
-	sanitizer_fail_test_on_error(shutdown)
+	set_tests_properties(sitl-shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
+	sanitizer_fail_test_on_error(sitl-shutdown)
 endif()
 
 # Dynamic module loading test
@@ -135,15 +126,12 @@ foreach(cmd_name ${test_cmds})
 	configure_file(${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/cmd_template.in ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/cmd_${cmd_name}_generated)
 
 	add_test(NAME posix_${cmd_name}
-		COMMAND ${PX4_SOURCE_DIR}/Tools/sitl_run.sh
-			$<TARGET_FILE:px4>
-			none
-			none
-			cmd_${cmd_name}_generated
-			none
-			${PX4_SOURCE_DIR}
-			${PX4_BINARY_DIR}
-		WORKING_DIRECTORY ${SITL_WORKING_DIR})
+		COMMAND $<TARGET_FILE:px4>
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/cmd_${cmd_name}_generated
+			-t ${PX4_SOURCE_DIR}/test_data
+		WORKING_DIRECTORY ${SITL_WORKING_DIR}
+	)
 
 	sanitizer_fail_test_on_error(posix_${cmd_name})
 	set_tests_properties(posix_${cmd_name} PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")

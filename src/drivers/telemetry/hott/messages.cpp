@@ -295,9 +295,11 @@ build_gps_response(uint8_t *buffer, size_t *size)
 			memset(&home, 0, sizeof(home));
 			orb_copy(ORB_ID(home_position), _home_sub, &home);
 
-			_home_lat = home.lat;
-			_home_lon = home.lon;
-			_home_position_set = true;
+			if (home.valid_hpos) {
+				_home_lat = home.lat;
+				_home_lon = home.lon;
+				_home_position_set = true;
+			}
 		}
 
 		/* Distance from home */

@@ -80,6 +80,7 @@ static unsigned _rssi_adc_counts = 0;
 /* receive signal strenght indicator (RSSI). 0 = no connection, 100 (RC_INPUT_RSSI_MAX): perfect connection */
 /* Note: this is static because RC-provided telemetry does not occur every tick */
 static uint16_t _rssi = 0;
+static unsigned _frame_drops = 0;
 
 bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated)
 {
@@ -90,8 +91,9 @@ bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool 
 	uint8_t *bytes;
 	bool dsm_11_bit;
 	int8_t spektrum_rssi;
+	unsigned frame_drops;
 	*dsm_updated = dsm_input(_dsm_fd, r_raw_rc_values, &r_raw_rc_count, &dsm_11_bit, &n_bytes, &bytes,
-				 &spektrum_rssi, PX4IO_RC_INPUT_CHANNELS);
+				 &spektrum_rssi, &frame_drops, PX4IO_RC_INPUT_CHANNELS);
 
 	if (*dsm_updated) {
 
@@ -102,7 +104,14 @@ bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool 
 			r_raw_rc_flags &= ~PX4IO_P_RAW_RC_FLAGS_RC_DSM11;
 		}
 
-		r_raw_rc_flags &= ~(PX4IO_P_RAW_RC_FLAGS_FRAME_DROP);
+		if (frame_drops == _frame_drops) {
+			r_raw_rc_flags &= ~(PX4IO_P_RAW_RC_FLAGS_FRAME_DROP);
+
+		} else {
+			r_raw_rc_flags |= (PX4IO_P_RAW_RC_FLAGS_FRAME_DROP);
+		}
+
+		_frame_drops = frame_drops;
 		r_raw_rc_flags &= ~(PX4IO_P_RAW_RC_FLAGS_FAILSAFE);
 
 		if (spektrum_rssi >= 0 && spektrum_rssi <= 100) {

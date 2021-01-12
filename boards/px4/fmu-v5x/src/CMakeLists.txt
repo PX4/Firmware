@@ -37,6 +37,7 @@ add_library(drivers_board
 	init.c
 	led.c
 	manifest.c
+	mtd.cpp
 	sdio.c
 	spi.cpp
 	timer_config.cpp

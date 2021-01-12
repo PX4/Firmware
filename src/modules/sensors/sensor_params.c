@@ -131,19 +131,25 @@ PARAM_DEFINE_FLOAT(SENS_DPRES_ANSC, 0);
  * @value 23 Roll 270°, Yaw 135°
  * @value 24 Pitch 90°
  * @value 25 Pitch 270°
- * @value 26 Roll 270°, Yaw 270°
- * @value 27 Roll 180°, Pitch 270°
- * @value 28 Pitch 90°, Yaw 180
- * @value 29 Pitch 90°, Roll 90°
- * @value 30 Yaw 293°, Pitch 68°, Roll 90° (Solo)
- * @value 31 Pitch 90°, Roll 270°
- * @value 32 Pitch 9°, Yaw 180°
- * @value 33 Pitch 45°
- * @value 34 Pitch 315°
- * @value 35 Roll 90°, Yaw 270°
+ * @value 26 Pitch 180°, Yaw 90°
+ * @value 27 Pitch 180°, Yaw 270°
+ * @value 28 Roll 90°, Pitch 90°
+ * @value 29 Roll 180°, Pitch 90°
+ * @value 30 Roll 270°, Pitch 90°
+ * @value 31 Roll 90°, Pitch 180°
+ * @value 32 Roll 270°, Pitch 180°
+ * @value 33 Roll 90°, Pitch 270°
+ * @value 34 Roll 180°, Pitch 270°
+ * @value 35 Roll 270°, Pitch 270°
+ * @value 36 Roll 90°, Pitch 180°, Yaw 90°
+ * @value 37 Roll 90°, Yaw 270°
+ * @value 38 Roll 90°, Pitch 68°, Yaw 293°
+ * @value 39 Pitch 315°
+ * @value 40 Roll 90°, Pitch 315°
  *
+ * @min -1
+ * @max 40
  * @reboot_required true
- *
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_BOARD_ROT, 0);
@@ -202,3 +208,15 @@ PARAM_DEFINE_INT32(SENS_EN_THERMAL, -1);
  * @group Sensors
  */
 PARAM_DEFINE_INT32(SENS_EXT_I2C_PRB, 1);
+
+/**
+ * Sensors hub IMU mode
+ *
+ * @value 0 Disabled
+ * @value 1 Publish primary IMU selection
+ *
+ * @category system
+ * @reboot_required true
+ * @group Sensors
+ */
+PARAM_DEFINE_INT32(SENS_IMU_MODE, 1);

@@ -50,6 +50,11 @@ class Manager;
 class SubscriptionCallback;
 }
 
+namespace uORBTest
+{
+class UnitTest;
+}
+
 /**
  * Per-object device instance.
  */
@@ -188,7 +193,18 @@ public:
 
 	int8_t subscriber_count() const { return _subscriber_count; }
 
-	unsigned published_message_count() const { return _generation.load(); }
+	/**
+	 * Returns the number of updated data relative to the parameter 'generation'
+	 * We can get the correct value regardless of wrap-around or not.
+	 * @param generation The generation of subscriber
+	 */
+	unsigned updates_available(unsigned generation) const { return _generation.load() - generation; }
+
+	/**
+	 * Return the initial generation to the subscriber
+	 * @return The initial generation.
+	 */
+	unsigned get_initial_generation();
 
 	const orb_metadata *get_meta() const { return _meta; }
 
@@ -224,10 +240,12 @@ protected:
 	void poll_notify_one(px4_pollfd_struct_t *fds, px4_pollevent_t events) override;
 
 private:
+	friend uORBTest::UnitTest;
 
 	const orb_metadata *_meta; /**< object metadata information */
 
-	uint8_t     *_data{nullptr};   /**< allocated object buffer */
+	uint8_t *_data{nullptr};   /**< allocated object buffer */
+	bool _data_valid{false}; /**< At least one valid data */
 	px4::atomic<unsigned>  _generation{0};  /**< object generation count */
 	List<uORB::SubscriptionCallback *>	_callbacks;
 

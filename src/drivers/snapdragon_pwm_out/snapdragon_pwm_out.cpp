@@ -333,7 +333,7 @@ void task_main(int argc, char *argv[])
 
 	Mixer::Airmode airmode = Mixer::Airmode::disabled;
 	update_params(airmode);
-	uORB::Subscription parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	// Start disarmed
 	_armed.armed = false;

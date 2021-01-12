@@ -47,11 +47,14 @@
 #include "mavlink_bridge_header.h"
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/rc_parameter_map.h>
 #include <uORB/topics/uavcan_parameter_request.h>
 #include <uORB/topics/uavcan_parameter_value.h>
 #include <uORB/topics/parameter_update.h>
 #include <drivers/drv_hrt.h>
+
+using namespace time_literals;
 
 class Mavlink;
 
@@ -65,7 +68,7 @@ public:
 	 * Handle sending of messages. Call this regularly at a fixed frequency.
 	 * @param t current time
 	 */
-	void send(const hrt_abstime t);
+	void send();
 
 	unsigned get_size();
 
@@ -128,7 +131,7 @@ protected:
 	uORB::Publication<rc_parameter_map_s>	_rc_param_map_pub{ORB_ID(rc_parameter_map)};
 	rc_parameter_map_s _rc_param_map{};
 
-	uORB::PublicationQueued<uavcan_parameter_request_s> _uavcan_parameter_request_pub{ORB_ID(uavcan_parameter_request)};
+	uORB::Publication<uavcan_parameter_request_s> _uavcan_parameter_request_pub{ORB_ID(uavcan_parameter_request)};
 	// enforce ORB_ID(uavcan_parameter_request) constants that map to MAVLINK defines
 	static_assert(uavcan_parameter_request_s::MESSAGE_TYPE_PARAM_REQUEST_READ == MAVLINK_MSG_ID_PARAM_REQUEST_READ,
 		      "uavcan_parameter_request_s MAVLINK_MSG_ID_PARAM_REQUEST_READ constant mismatch");
@@ -147,9 +150,11 @@ protected:
 
 	uORB::Subscription _uavcan_parameter_value_sub{ORB_ID(uavcan_parameter_value)};
 
-	uORB::Subscription _mavlink_parameter_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	hrt_abstime _param_update_time{0};
 	int _param_update_index{0};
 
 	Mavlink *_mavlink;
+
+	bool _first_send{false};
 };

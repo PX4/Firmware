@@ -38,41 +38,46 @@
 #include "Sticks.hpp"
 
 using namespace time_literals;
+using namespace matrix;
 
 Sticks::Sticks(ModuleParams *parent) :
 	ModuleParams(parent)
 {};
 
-bool Sticks::checkAndSetStickInputs(hrt_abstime now)
+bool Sticks::checkAndSetStickInputs()
 {
-	_sub_manual_control_setpoint.update();
-
-	hrt_abstime rc_timeout = (_param_com_rc_loss_t.get() * 1.5f) * 1_s;
-
 	// Sticks are rescaled linearly and exponentially to [-1,1]
-	if ((now - _sub_manual_control_setpoint.get().timestamp) < rc_timeout) {
+	manual_control_setpoint_s manual_control_setpoint;
+
+	if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 		// Linear scale
-		_positions(0) = _sub_manual_control_setpoint.get().x; // NED x, pitch [-1,1]
-		_positions(1) = _sub_manual_control_setpoint.get().y; // NED y, roll [-1,1]
-		_positions(2) = -(_sub_manual_control_setpoint.get().z - 0.5f) * 2.f; // NED z, thrust resacaled from [0,1] to [-1,1]
-		_positions(3) = _sub_manual_control_setpoint.get().r; // yaw [-1,1]
+		_positions(0) = manual_control_setpoint.x; // NED x, pitch [-1,1]
+		_positions(1) = manual_control_setpoint.y; // NED y, roll [-1,1]
+		_positions(2) = -(manual_control_setpoint.z - 0.5f) * 2.f; // NED z, thrust resacaled from [0,1] to [-1,1]
+		_positions(3) = manual_control_setpoint.r; // yaw [-1,1]
 
 		// Exponential scale
 		_positions_expo(0) = math::expo_deadzone(_positions(0), _param_mpc_xy_man_expo.get(), _param_mpc_hold_dz.get());
 		_positions_expo(1) = math::expo_deadzone(_positions(1), _param_mpc_xy_man_expo.get(), _param_mpc_hold_dz.get());
-		_positions_expo(2) = math::expo_deadzone(_positions(2), _param_mpc_z_man_expo.get(), _param_mpc_hold_dz.get());
-		_positions_expo(3) = math::expo_deadzone(_positions(3), _param_mpc_yaw_expo.get(), _param_mpc_hold_dz.get());
+		_positions_expo(2) = math::expo_deadzone(_positions(2), _param_mpc_z_man_expo.get(),  _param_mpc_hold_dz.get());
+		_positions_expo(3) = math::expo_deadzone(_positions(3), _param_mpc_yaw_expo.get(),    _param_mpc_hold_dz.get());
 
 		// valid stick inputs are required
-		const bool valid_sticks =  PX4_ISFINITE(_positions(0))
-					   && PX4_ISFINITE(_positions(1))
-					   && PX4_ISFINITE(_positions(2))
-					   && PX4_ISFINITE(_positions(3));
+		const bool valid_sticks = PX4_ISFINITE(_positions(0))
+					  && PX4_ISFINITE(_positions(1))
+					  && PX4_ISFINITE(_positions(2))
+					  && PX4_ISFINITE(_positions(3));
 
 		_input_available = valid_sticks;
 
 	} else {
-		_input_available = false;
+		vehicle_status_s vehicle_status;
+
+		if (_vehicle_status_sub.update(&vehicle_status)) {
+			if (vehicle_status.rc_signal_lost) {
+				_input_available = false;
+			}
+		}
 	}
 
 	if (!_input_available) {
@@ -84,27 +89,18 @@ bool Sticks::checkAndSetStickInputs(hrt_abstime now)
 	return _input_available;
 }
 
-void Sticks::setGearAccordingToSwitch(landing_gear_s &gear)
+void Sticks::limitStickUnitLengthXY(Vector2f &v)
 {
-	// Only switch the landing gear up if the user switched from gear down to gear up.
-	// If the user had the switch in the gear up position and took off ignore it
-	// until he toggles the switch to avoid retracting the gear immediately on takeoff.
-	if (!isAvailable()) {
-		gear.landing_gear = landing_gear_s::GEAR_KEEP;
+	const float vl = v.length();
 
-	} else {
-		const int8_t gear_switch = _sub_manual_control_setpoint.get().gear_switch;
-
-		if (_gear_switch_old != gear_switch) {
-			if (gear_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
-				gear.landing_gear = landing_gear_s::GEAR_DOWN;
-			}
-
-			if (gear_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
-				gear.landing_gear = landing_gear_s::GEAR_UP;
-			}
-		}
-
-		_gear_switch_old = gear_switch;
+	if (vl > 1.0f) {
+		v /= vl;
 	}
+}
+
+void Sticks::rotateIntoHeadingFrameXY(Vector2f &v, const float yaw, const float yaw_setpoint)
+{
+	Vector3f v3(v(0), v(1), 0.f);
+	const float yaw_rotate = PX4_ISFINITE(yaw_setpoint) ? yaw_setpoint : yaw;
+	v = Vector2f(Dcmf(Eulerf(0.0f, 0.0f, yaw_rotate)) * v3);
 }

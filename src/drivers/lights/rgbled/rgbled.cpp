@@ -49,7 +49,10 @@
 #include <px4_platform_common/i2c_spi_buses.h>
 #include <px4_platform_common/module.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
+
+using namespace time_literals;
 
 #define ADDR			0x55	/**< I2C adress of TCA62724FMG */
 #define SUB_ADDR_START		0x01	/**< write everything (with auto-increment) */
@@ -60,6 +63,7 @@
 
 #define SETTING_NOT_POWERSAVE	0x01	/**< power-save mode not off */
 #define SETTING_ENABLE   	0x02	/**< on */
+
 
 class RGBLED : public device::I2C, public I2CSPIDriver<RGBLED>
 {
@@ -88,10 +92,9 @@ private:
 	uint8_t			_b{0};
 	bool			_leds_enabled{true};
 
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	LedController		_led_controller;
-
 
 	int			send_led_enable(bool enable);
 	int			send_led_rgb();

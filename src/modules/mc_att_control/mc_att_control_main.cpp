@@ -53,7 +53,7 @@ using namespace matrix;
 
 MulticopterAttitudeControl::MulticopterAttitudeControl(bool vtol) :
 	ModuleParams(nullptr),
-	WorkItem(MODULE_NAME, px4::wq_configurations::attitude_ctrl),
+	WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	_vehicle_attitude_setpoint_pub(vtol ? ORB_ID(mc_virtual_attitude_setpoint) : ORB_ID(vehicle_attitude_setpoint)),
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
 	_vtol(vtol)
@@ -228,10 +228,10 @@ MulticopterAttitudeControl::Run()
 	perf_begin(_loop_perf);
 
 	// Check if parameters have changed
-	if (_params_sub.updated()) {
+	if (_parameter_update_sub.updated()) {
 		// clear update
 		parameter_update_s param_update;
-		_params_sub.copy(&param_update);
+		_parameter_update_sub.copy(&param_update);
 
 		updateParams();
 		parameters_updated();

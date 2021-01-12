@@ -53,7 +53,7 @@ __BEGIN_DECLS
 
 #include <chip.h>
 #include <hardware/stm32_flash.h>
-#include <up_internal.h> //include up_systemreset() which is included on stm32.h
+#include <arm_internal.h> //include up_systemreset() which is included on stm32.h
 #include <stm32_bbsram.h>
 #define PX4_BBSRAM_SIZE STM32H7_BBSRAM_SIZE
 #define PX4_BBSRAM_GETDESC_IOCTL STM32H7_BBSRAM_GETDESC_IOCTL

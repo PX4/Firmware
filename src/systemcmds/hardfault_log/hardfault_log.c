@@ -59,6 +59,8 @@
 #include <systemlib/hardfault_log.h>
 #include <lib/version/version.h>
 
+#include "chip.h"
+
 
 /****************************************************************************
  * Public Function Prototypes
@@ -69,6 +71,7 @@ __EXPORT int hardfault_log_main(int argc, char *argv[]);
  * Pre-processor Definitions
  ****************************************************************************/
 #define OUT_BUFFER_LEN  200
+
 /****************************************************************************
  * Private Types
  ****************************************************************************/
@@ -130,6 +133,17 @@ static int genfault(int fault)
 	return OK;
 }
 
+/****************************************************************************
+ * verify ram address
+ ****************************************************************************/
+bool verify_ram_address(uint32_t bot, uint32_t size)
+{
+	bool ret = true;
+#if defined STM32_IS_SRAM
+	ret =  STM32_IS_SRAM(bot) && STM32_IS_SRAM(bot +  size);
+#endif
+	return ret;
+}
 
 /****************************************************************************
  * format_fault_time
@@ -257,9 +271,16 @@ static int write_stack_detail(bool inValid, _stack_s *si, char *sp_name,
 
 #ifdef CONFIG_STACK_COLORATION
 	FAR struct tcb_s tcb;
-	tcb.stack_alloc_ptr = (void *) sbot;
+	tcb.adj_stack_ptr = (void *) sbot;
 	tcb.adj_stack_size = si->size;
-	n = snprintf(buffer, max,         "  used:   %08x\n", up_check_tcbstack(&tcb));
+
+	if (verify_ram_address(sbot, si->size)) {
+		n = snprintf(buffer, max,         "  used:   %08x\n", up_check_tcbstack(&tcb));
+
+	} else {
+		n = snprintf(buffer, max,         "Invalid Stack! (Corrupted TCB)  Stack base:  %08x Stack size:  %08x\n", sbot,
+			     si->size);
+	}
 
 	if (n != write(fd, buffer, n)) {
 		return -EIO;
@@ -393,6 +414,31 @@ static int write_registers(uint32_t regs[], char *buffer, int max, int fd)
 }
 
 /****************************************************************************
+ * write_registers
+ ****************************************************************************/
+static int write_fault_registers(fault_regs_s *fault_regs, char *buffer, int max, int fd)
+{
+#if defined(CONFIG_ARCH_CORTEXM7)
+	const char fmt[] =  " cfsr:0x%08x hfsr:0x%08x  dfsr:0x%08x  mmfsr:0x%08x  bfsr:0x%08x afsr:0x%08x abfsr:0x%08x \n";
+#else
+	const char fmt[] =  " cfsr:0x%08x hfsr:0x%08x  dfsr:0x%08x  mmfsr:0x%08x  bfsr:0x%08x afsr:0x%08x\n";
+#endif
+	int n = snprintf(buffer, max, fmt,
+			 fault_regs->cfsr, fault_regs->hfsr, fault_regs->dfsr,
+#if defined(CONFIG_ARCH_CORTEXM7)
+			 fault_regs->mmfsr, fault_regs->bfsr, fault_regs->afsr, fault_regs->abfsr);
+#else
+			 fault_regs->mmfsr, fault_regs->bfsr, fault_regs->afsr);
+#endif
+
+	if (n != write(fd, buffer, n)) {
+		return -EIO;
+	}
+
+	return OK;
+}
+
+/****************************************************************************
  * write_registers_info
  ****************************************************************************/
 static int write_registers_info(int fdout, info_s *pi, char *buffer, int sz)
@@ -405,6 +451,15 @@ static int write_registers_info(int fdout, info_s *pi, char *buffer, int sz)
 
 		if (n == write(fdout, buffer, n)) {
 			ret = write_registers(pi->regs, buffer, sz, fdout);
+		}
+	}
+
+	if (pi->flags & eFaultRegPresent) {
+		ret = -EIO;
+		int n = snprintf(buffer, sz, " Fault status registers: from NVIC\n");
+
+		if (n == write(fdout, buffer, n)) {
+			ret = write_fault_registers(&pi->fault_regs, buffer, sz, fdout);
 		}
 	}
 

@@ -146,6 +146,10 @@ public:
 			float min_diff = _min_temperature_rise;
 
 			for (unsigned uorb_index = 0; uorb_index < _num_sensor_instances; uorb_index++) {
+				if (!_data[uorb_index].has_valid_temperature) {
+					return 110;
+				}
+
 				float cur_diff = _data[uorb_index].high_temp - _data[uorb_index].low_temp;
 
 				if (cur_diff < min_diff) {
@@ -171,6 +175,7 @@ protected:
 		/// verified and the starting temperature set
 		bool hot_soaked = false; ///< true when the sensor has achieved the specified temperature increase
 		bool tempcal_complete = false; ///< true when the calibration has been completed
+		bool has_valid_temperature = false; ///< true if this sensor has temperature sensor
 		float low_temp = 0.f; ///< low temperature recorded at start of calibration (deg C)
 		float high_temp = 0.f; ///< highest temperature recorded during calibration (deg C)
 		float ref_temp = 0.f; /**< calibration reference temperature, nominally in the middle of the

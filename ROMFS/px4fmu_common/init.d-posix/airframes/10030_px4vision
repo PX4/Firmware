@@ -1,0 +1,11 @@
+#!/bin/sh
+#
+# @name PX4Vision SITL
+# Holybro px4vision. Gazebo Only.
+#
+# @type Quadrotor
+#
+
+. ${R}etc/init.d/airframes/4016_holybro_px4vision
+
+set MIXER quad_x

@@ -19,7 +19,7 @@ jobs:
           - {test_file: "mavros_posix_test_safe_landing.test", vehicle: "iris_obs_avoid", mission: "MC_safe_landing", build_type: "RelWithDebInfo"}
 
     container:
-      image: px4io/px4-dev-ros-melodic:2020-04-01
+      image: px4io/px4-dev-ros-melodic:2020-11-18
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
     steps:
     - uses: actions/checkout@v1
@@ -49,7 +49,9 @@ jobs:
           ccache -z
 
     - name: check environment
-      run: export
+      run: |
+          export
+          ulimit -a
     - name: Build PX4 and sitl_gazebo
       env:
         PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}

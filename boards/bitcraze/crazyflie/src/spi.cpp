@@ -44,7 +44,7 @@
 #include <systemlib/px4_macros.h>
 #include <nuttx/mmcsd.h>
 
-#include <up_arch.h>
+#include <arm_arch.h>
 #include <chip.h>
 #include <stm32_gpio.h>
 #include "board_config.h"

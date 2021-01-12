@@ -201,6 +201,23 @@ serial_port_to_wq(const char *serial)
 	return wq_configurations::UART_UNKNOWN;
 }
 
+const wq_config_t &ins_instance_to_wq(uint8_t instance)
+{
+	switch (instance) {
+	case 0: return wq_configurations::INS0;
+
+	case 1: return wq_configurations::INS1;
+
+	case 2: return wq_configurations::INS2;
+
+	case 3: return wq_configurations::INS3;
+	}
+
+	PX4_WARN("no INS%d wq configuration, using INS0", instance);
+
+	return wq_configurations::INS0;
+}
+
 static void *
 WorkQueueRunner(void *context)
 {

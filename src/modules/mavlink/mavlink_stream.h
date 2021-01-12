@@ -98,7 +98,7 @@ public:
 	virtual bool request_message(float param2 = 0.0, float param3 = 0.0, float param4 = 0.0,
 				     float param5 = 0.0, float param6 = 0.0, float param7 = 0.0)
 	{
-		return send(hrt_absolute_time());
+		return send();
 	}
 
 	/**
@@ -126,7 +126,7 @@ protected:
 	Mavlink      *const _mavlink;
 	int _interval{1000000};		///< if set to negative value = unlimited rate
 
-	virtual bool send(const hrt_abstime t) = 0;
+	virtual bool send() = 0;
 
 	/**
 	 * Function to collect/update data for the streams at a high rate independant of

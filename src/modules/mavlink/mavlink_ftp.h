@@ -63,7 +63,7 @@ public:
 	 * Handle sending of messages. Call this regularly at a fixed frequency.
 	 * @param t current time
 	 */
-	void send(const hrt_abstime t);
+	void send();
 
 	/// Handle possible FTP message
 	void handle_message(const mavlink_message_t *msg);

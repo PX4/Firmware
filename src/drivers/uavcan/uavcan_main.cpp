@@ -82,6 +82,8 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	_node(can_driver, system_clock, _pool_allocator),
 	_esc_controller(_node),
 	_hardpoint_controller(_node),
+	_safety_state_controller(_node),
+	_rgbled_controller(_node),
 	_time_sync_master(_node),
 	_time_sync_slave(_node),
 	_node_status_monitor(_node),
@@ -621,6 +623,18 @@ UavcanNode::init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events)
 		return ret;
 	}
 
+	ret = _safety_state_controller.init();
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = _rgbled_controller.init();
+
+	if (ret < 0) {
+		return ret;
+	}
+
 	// Sensor bridges
 	IUavcanSensorBridge::make_all(_node, _sensor_bridges);
 
@@ -748,6 +762,10 @@ UavcanNode::Run()
 
 	perf_begin(_cycle_perf);
 	perf_count(_interval_perf);
+
+	for (auto &br : _sensor_bridges) {
+		br->update();
+	}
 
 	node_spin_once(); // expected to be non-blocking
 

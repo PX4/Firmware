@@ -87,7 +87,7 @@ int MavlinkCommandSender::handle_vehicle_command(const struct vehicle_command_s 
 	bool already_existing = false;
 	_commands.reset_to_start();
 
-	while (command_item_t *item = _commands.get_next()) {
+	while (command_item_s *item = _commands.get_next()) {
 		if (item->timestamp_us == command.timestamp) {
 
 			// We should activate the channel by setting num_sent_per_channel from -1 to 0.
@@ -99,7 +99,7 @@ int MavlinkCommandSender::handle_vehicle_command(const struct vehicle_command_s 
 
 	if (!already_existing) {
 
-		command_item_t new_item;
+		command_item_s new_item;
 		new_item.command = msg;
 		new_item.timestamp_us = command.timestamp;
 		new_item.num_sent_per_channel[channel] = 0;
@@ -120,7 +120,7 @@ void MavlinkCommandSender::handle_mavlink_command_ack(const mavlink_command_ack_
 
 	_commands.reset_to_start();
 
-	while (command_item_t *item = _commands.get_next()) {
+	while (command_item_s *item = _commands.get_next()) {
 		// Check if the incoming ack matches any of the commands that we have sent.
 		if (item->command.command == ack.command &&
 		    (item->command.target_system == 0 || from_sysid == item->command.target_system) &&
@@ -140,7 +140,7 @@ void MavlinkCommandSender::check_timeout(mavlink_channel_t channel)
 
 	_commands.reset_to_start();
 
-	while (command_item_t *item = _commands.get_next()) {
+	while (command_item_s *item = _commands.get_next()) {
 		if (hrt_elapsed_time(&item->last_time_sent_us) <= TIMEOUT_US) {
 			// We keep waiting for the timeout.
 			continue;

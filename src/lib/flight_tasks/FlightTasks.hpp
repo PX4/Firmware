@@ -196,7 +196,7 @@ private:
 
 	uORB::Subscription _sub_vehicle_command{ORB_ID(vehicle_command)}; /**< topic handle on which commands are received */
 
-	uORB::PublicationQueued<vehicle_command_ack_s>	_pub_vehicle_command_ack{ORB_ID(vehicle_command_ack)};
+	uORB::Publication<vehicle_command_ack_s>	_pub_vehicle_command_ack{ORB_ID(vehicle_command_ack)};
 
 	int _initTask(FlightTaskIndex task_index);
 };

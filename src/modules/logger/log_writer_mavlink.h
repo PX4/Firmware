@@ -77,7 +77,7 @@ private:
 	int publish_message();
 
 	ulog_stream_s _ulog_stream_data{};
-	uORB::PublicationQueued<ulog_stream_s> _ulog_stream_pub{ORB_ID(ulog_stream)};
+	uORB::Publication<ulog_stream_s> _ulog_stream_pub{ORB_ID(ulog_stream)};
 	int _ulog_stream_ack_sub{-1};
 	bool _need_reliable_transfer{false};
 	bool _is_started{false};

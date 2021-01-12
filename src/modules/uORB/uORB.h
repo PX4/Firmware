@@ -60,7 +60,7 @@ typedef const struct orb_metadata *orb_id_t;
 /**
  * Maximum number of multi topic instances
  */
-#define ORB_MULTI_MAX_INSTANCES	4 // This must be < 10 (because it's the last char of the node path)
+#define ORB_MULTI_MAX_INSTANCES	10 // This must be <= 10 (because it's the last char of the node path)
 
 /**
  * Generates a pointer to the uORB metadata structure for

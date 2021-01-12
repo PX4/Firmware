@@ -37,6 +37,7 @@ px4_add_module(
 	COMPILE_FLAGS
 		-Wno-cast-align # TODO: fix and enable
 	SRCS
+		ringbuffer.cpp
 		syslink_main.cpp
 		syslink_bridge.cpp
 		syslink_memory.cpp

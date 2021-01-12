@@ -3,70 +3,34 @@
         "astyle.c.enable": true,
         "astyle.cpp.enable": true,
         "breadcrumbs.enabled": true,
-        "cmake.autoRestartBuild": true,
-        "cmake.buildBeforeRun": true,
-        "cmake.buildDirectory": "${workspaceFolder}/build/${variant:CONFIG}",
-        "cmake.configureOnOpen": true,
-        "cmake.copyCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
-        "cmake.debugConfig": {
-                "name": "SITL shell (gdb)",
-                "type": "cppdbg",
-                "request": "launch",
-                "program": "${command:cmake.launchTargetPath}",
-                "args": [
-                        "${workspaceFolder}/ROMFS/px4fmu_common",
-                        "-s",
-                        "etc/init.d-posix/rcS",
-                        "-t",
-                        "${workspaceFolder}/test_data"
-                ],
-                "stopAtEntry": false,
-                "cwd": "${command:cmake.buildDirectory}/tmp",
-                "environment": [
-                        {
-                                "name": "PX4_SIM_MODEL",
-                                "value": "shell"
-                        }
-                ],
-                "externalConsole": false,
-                "linux": {
-                        "MIMode": "gdb",
-                        "setupCommands": [
-                                {
-                                        "description": "Enable pretty-printing for gdb",
-                                        "text": "-enable-pretty-printing",
-                                        "ignoreFailures": true
-                                },
-                                {
-                                        "description": "PX4 ignore wq signals",
-                                        "text": "handle SIGCONT nostop noprint nopass",
-                                        "ignoreFailures": true
-                                }
-                        ]
-                },
-                "osx": {
-                        "MIMode": "lldb",
-                        "setupCommands": [
-                                {
-                                        "text": "pro hand -p true -s false -n false SIGCONT",
-                                }
-                        ]
-                }
-        },
         "C_Cpp.autoAddFileAssociations": false,
         "C_Cpp.clang_format_fallbackStyle": "none",
-        "C_Cpp.default.browse.databaseFilename": "${workspaceRoot}/.vscode/browse.vc.db",
         "C_Cpp.default.browse.limitSymbolsToIncludedHeaders": true,
         "C_Cpp.default.cppStandard": "c++14",
         "C_Cpp.default.cStandard": "c11",
-        "C_Cpp.default.intelliSenseMode": "gcc-x64",
-        "C_Cpp.default.macFrameworkPath": null,
         "C_Cpp.formatting": "Disabled",
         "C_Cpp.intelliSenseEngine": "Default",
-        "C_Cpp.intelliSenseEngineFallback": "Enabled",
         "C_Cpp.vcpkg.enabled": false,
         "C_Cpp.workspaceParsingPriority": "low",
+        "cmake.buildBeforeRun": true,
+        "cmake.buildDirectory": "${workspaceFolder}/build/${variant:CONFIG}",
+        "cmake.buildTask": true,
+        "cmake.configureOnOpen": true,
+        "cmake.ctest.parallelJobs": 1,
+        "cmake.skipConfigureIfCachePresent": true,
+        "cmakeExplorer.buildDir": "${workspaceFolder}/build/px4_sitl_test",
+        "cmakeExplorer.parallelJobs": 1,
+        "cmakeExplorer.suiteDelimiter": "-",
         "cortex-debug.enableTelemetry": false,
+        "cSpell.allowCompoundWords": true,
+        "cSpell.diagnosticLevel": "Hint",
+        "cSpell.showStatus": false,
+        "cSpell.words": [
+                "acro",
+                "rattitude",
+                "nuttx",
+                "esc"
+        ],
         "debug.toolBarLocation": "docked",
         "editor.acceptSuggestionOnEnter": "off",
         "editor.defaultFormatter": "chiehyu.vscode-astyle",
@@ -88,7 +52,6 @@
         "git.ignoreLimitWarning": true,
         "githubPullRequests.defaultMergeMethod": "squash",
         "githubPullRequests.telemetry.enabled": false,
-        "gitlens.advanced.telemetry.enabled": false,
         "files.associations": {
                 "*.jinja": "jinja",
                 "algorithm": "cpp",
@@ -166,17 +129,15 @@
         },
         "search.showLineNumbers": true,
         "search.smartCase": true,
-        "shellcheck.exclude": [2154],
         "telemetry.enableTelemetry": false,
         "terminal.integrated.copyOnSelection": true,
-        "terminal.integrated.rightClickCopyPaste": true,
+        "terminal.integrated.rightClickBehavior": "paste",
         "terminal.integrated.scrollback": 5000,
         "window.title": "${dirty} ${activeEditorMedium}${separator}${rootName}",
         "workbench.editor.highlightModifiedTabs": true,
         "workbench.enableExperiments": false,
         "workbench.settings.enableNaturalLanguageSearch": false,
-        "workbench.statusBar.feedback.visible": false,
         "yaml.schemas": {
-                "${workspaceRoot}/validation/module_schema.yaml": "${workspaceRoot}/src/modules/*/module.yaml"
+                "${workspaceFolder}/validation/module_schema.yaml": "${workspaceFolder}/src/modules/*/module.yaml"
         }
 }

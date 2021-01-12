@@ -82,7 +82,7 @@ except AttributeError:
     Domain::removeParticipant(mp_participant);
 }
 
-bool @(topic)_Publisher::init()
+bool @(topic)_Publisher::init(const std::string& ns)
 {
     // Create RTPSParticipant
     ParticipantAttributes PParam;
@@ -96,7 +96,9 @@ bool @(topic)_Publisher::init()
 @[else]@
     PParam.rtps.builtin.discovery_config.leaseDuration = c_TimeInfinite;
 @[end if]@
-    PParam.rtps.setName("@(topic)_publisher");  //You can put here the name you want
+    std::string nodeName = ns;
+    nodeName.append("@(topic)_publisher");
+    PParam.rtps.setName(nodeName.c_str());
     mp_participant = Domain::createParticipant(PParam);
     if(mp_participant == nullptr)
         return false;
@@ -111,12 +113,19 @@ bool @(topic)_Publisher::init()
 @[if ros2_distro]@
 @[    if ros2_distro == "ardent"]@
     Wparam.qos.m_partition.push_back("rt");
-    Wparam.topic.topicName = "@(topic)_PubSubTopic";
+    std::string topicName = ns;
+    topicName.append("@(topic)_PubSubTopic");
+    Wparam.topic.topicName = topicName;
 @[    else]@
-    Wparam.topic.topicName = "rt/@(topic)_PubSubTopic";
+    std::string topicName = "rt/";
+    topicName.append(ns);
+    topicName.append("@(topic)_PubSubTopic");
+    Wparam.topic.topicName = topicName;
 @[    end if]@
 @[else]@
-    Wparam.topic.topicName = "@(topic)PubSubTopic";
+    std::string topicName = ns;
+    topicName.append("@(topic)PubSubTopic");
+    Wparam.topic.topicName = topicName;
 @[end if]@
     mp_publisher = Domain::createPublisher(mp_participant, Wparam, static_cast<PublisherListener*>(&m_listener));
     if(mp_publisher == nullptr)

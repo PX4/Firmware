@@ -3,7 +3,7 @@
 # Omnibus F4SD specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 if ! mpu6000 -R 6 -s start
 then

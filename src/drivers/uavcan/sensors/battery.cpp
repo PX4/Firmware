@@ -95,7 +95,12 @@ UavcanBatteryBridge::battery_sub_cb(const uavcan::ReceivedDataStructure<uavcan::
 	battery.serial_number = msg.model_instance_id;
 	battery.id = msg.getSrcNodeID().get();
 
-	// battery.voltage_cell_v[0] = msg.;
+	// Mavlink 2 needs individual cell voltages or cell[0] if cell voltages are not available.
+	battery.voltage_cell_v[0] = msg.voltage;
+
+	// Set cell count to 1 so the the battery code in mavlink_messages.cpp copies the values correctly (hack?)
+	battery.cell_count = 1;
+
 	// battery.max_cell_voltage_delta = msg.;
 
 	// battery.is_powering_off = msg.;

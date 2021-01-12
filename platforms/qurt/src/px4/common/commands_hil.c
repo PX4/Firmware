@@ -54,6 +54,7 @@ const char *get_commands()
 		"sensors start\n"
 		"ekf2 start\n"
 		"mc_hover_thrust_estimator start\n"
+		"flight_mode_manager start\n"
 		"mc_pos_control start\n"
 		"mc_att_control start\n"
 		"mc_rate_control start\n"

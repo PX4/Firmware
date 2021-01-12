@@ -45,6 +45,7 @@
 #include "gnss.hpp"
 #include "flow.hpp"
 #include "mag.hpp"
+#include "rangefinder.hpp"
 
 /*
  * IUavcanSensorBridge
@@ -58,6 +59,7 @@ void IUavcanSensorBridge::make_all(uavcan::INode &node, List<IUavcanSensorBridge
 	list.add(new UavcanBatteryBridge(node));
 	list.add(new UavcanAirspeedBridge(node));
 	list.add(new UavcanDifferentialPressureBridge(node));
+	list.add(new UavcanRangefinderBridge(node));
 }
 
 /*

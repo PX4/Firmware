@@ -39,17 +39,22 @@ if(NOT PX4_BOARD MATCHES "px4_io")
 		board_dma_alloc.c
 		board_fat_dma_alloc.c
 		console_buffer.cpp
+		cpuload.cpp
 		gpio.c
+		print_load.cpp
 		tasks.cpp
 		px4_nuttx_impl.cpp
 		px4_init.cpp
+		px4_manifest.cpp
+		px4_mtd.cpp
+		px4_24xxxx_mtd.c
 	)
 	target_link_libraries(px4_layer
 		PRIVATE
 			arch_board_reset
 			arch_board_critmon
 			arch_version
-			nuttx_apps # up_cxxinitialize
+			nuttx_apps
 			nuttx_sched
 			px4_work_queue
 		)

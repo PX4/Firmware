@@ -3,7 +3,7 @@
 # mRo x21 specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # Internal SPI bus ICM-20608-G
 icm20608g -s -R 8 start

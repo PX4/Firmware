@@ -62,22 +62,25 @@ uint16 VEHICLE_CMD_DO_LAST = 240			# NOP - This command is only used to mark the
 uint16 VEHICLE_CMD_PREFLIGHT_CALIBRATION = 241		# Trigger calibration. This command will be only accepted if in pre-flight mode. See mavlink spec MAV_CMD_PREFLIGHT_CALIBRATION
 uint16 PREFLIGHT_CALIBRATION_TEMPERATURE_CALIBRATION = 3		# param value for VEHICLE_CMD_PREFLIGHT_CALIBRATION to start temperature calibration
 uint16 VEHICLE_CMD_PREFLIGHT_SET_SENSOR_OFFSETS = 242	# Set sensor offsets. This command will be only accepted if in pre-flight mode. |Sensor to adjust the offsets for: 0: gyros, 1: accelerometer, 2: magnetometer, 3: barometer, 4: optical flow| X axis offset (or generic dimension 1), in the sensor's raw units| Y axis offset (or generic dimension 2), in the sensor's raw units| Z axis offset (or generic dimension 3), in the sensor's raw units| Generic dimension 4, in the sensor's raw units| Generic dimension 5, in the sensor's raw units| Generic dimension 6, in the sensor's raw units|
+uint16 VEHICLE_CMD_PREFLIGHT_UAVCAN = 243		# UAVCAN configuration. If param 1 == 1 actuator mapping and direction assignment should be started
 uint16 VEHICLE_CMD_PREFLIGHT_STORAGE = 245		# Request storage of different parameter values and logs. This command will be only accepted if in pre-flight mode. |Parameter storage: 0: READ FROM FLASH/EEPROM, 1: WRITE CURRENT TO FLASH/EEPROM| Mission storage: 0: READ FROM FLASH/EEPROM, 1: WRITE CURRENT TO FLASH/EEPROM| Reserved| Reserved| Empty| Empty| Empty|
 uint16 VEHICLE_CMD_PREFLIGHT_REBOOT_SHUTDOWN = 246	# Request the reboot or shutdown of system components. |0: Do nothing for autopilot, 1: Reboot autopilot, 2: Shutdown autopilot.| 0: Do nothing for onboard computer, 1: Reboot onboard computer, 2: Shutdown onboard computer.| Reserved| Reserved| Empty| Empty| Empty|
+uint16 VEHICLE_CMD_OBLIQUE_SURVEY=260			# Mission command to set a Camera Auto Mount Pivoting Oblique Survey for this flight|Camera trigger distance (meters)| Shutter integration time (ms)| Camera minimum trigger interval| Number of positions| Roll| Pitch| Empty|
 uint16 VEHICLE_CMD_MISSION_START = 300			# start running a mission |first_item: the first mission item to run| last_item:  the last mission item to run (after this item is run, the mission ends)|
 uint16 VEHICLE_CMD_COMPONENT_ARM_DISARM = 400		# Arms / Disarms a component |1 to arm, 0 to disarm|
+uint16 VEHICLE_CMD_INJECT_FAILURE = 420			# Inject artificial failure for testing purposes
 uint16 VEHICLE_CMD_START_RX_PAIR = 500			# Starts receiver pairing |0:Spektrum| 0:Spektrum DSM2, 1:Spektrum DSMX|
 uint16 VEHICLE_CMD_SET_CAMERA_MODE = 530            # Set camera capture mode (photo, video, etc.)
 uint16 VEHICLE_CMD_SET_CAMERA_ZOOM = 531                # Set camera zoom
 uint16 VEHICLE_CMD_DO_TRIGGER_CONTROL = 2003            # Enable or disable on-board camera triggering system
+uint16 VEHICLE_CMD_LOGGING_START = 2510		# start streaming ULog data
+uint16 VEHICLE_CMD_LOGGING_STOP = 2511			# stop streaming ULog data
+uint16 VEHICLE_CMD_CONTROL_HIGH_LATENCY = 2600	# control starting/stopping transmitting data over the high latency link
 uint16 VEHICLE_CMD_DO_VTOL_TRANSITION = 3000    # Command VTOL transition
 uint16 VEHICLE_CMD_ARM_AUTHORIZATION_REQUEST = 3001    # Request arm authorization
 uint16 VEHICLE_CMD_PAYLOAD_PREPARE_DEPLOY = 30001	# Prepare a payload deployment in the flight plan
 uint16 VEHICLE_CMD_PAYLOAD_CONTROL_DEPLOY = 30002	# Control a pre-programmed payload deployment
-uint16 VEHICLE_CMD_PREFLIGHT_UAVCAN = 243		# UAVCAN configuration. If param 1 == 1 actuator mapping and direction assignment should be started
-uint16 VEHICLE_CMD_LOGGING_START = 2510		# start streaming ULog data
-uint16 VEHICLE_CMD_LOGGING_STOP = 2511			# stop streaming ULog data
-uint16 VEHICLE_CMD_CONTROL_HIGH_LATENCY = 2600	# control starting/stopping transmitting data over the high latency link
+uint16 VEHICLE_CMD_FIXED_MAG_CAL_YAW = 42006            # Magnetometer calibration based on provided known yaw. This allows for fast calibration using WMM field tables in the vehicle, given only the known yaw of the vehicle. If Latitude and longitude are both zero then use the current vehicle location.
 
 uint8 VEHICLE_CMD_RESULT_ACCEPTED = 0			# Command ACCEPTED and EXECUTED |
 uint8 VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED = 1	# Command TEMPORARY REJECTED/DENIED |
@@ -106,7 +109,32 @@ uint8 VEHICLE_CAMERA_ZOOM_TYPE_CONTINUOUS = 1      # Continuous zoom up/down unt
 uint8 VEHICLE_CAMERA_ZOOM_TYPE_RANGE = 2           # Zoom value as proportion of full camera range
 uint8 VEHICLE_CAMERA_ZOOM_TYPE_FOCAL_LENGTH = 3    # Zoom to a focal length
 
-uint8 ORB_QUEUE_LENGTH = 3
+uint8 FAILURE_UNIT_SENSOR_GYRO = 0
+uint8 FAILURE_UNIT_SENSOR_ACCEL = 1
+uint8 FAILURE_UNIT_SENSOR_MAG = 2
+uint8 FAILURE_UNIT_SENSOR_BARO = 3
+uint8 FAILURE_UNIT_SENSOR_GPS = 4
+uint8 FAILURE_UNIT_SENSOR_OPTICAL_FLOW = 5
+uint8 FAILURE_UNIT_SENSOR_VIO = 6
+uint8 FAILURE_UNIT_SENSOR_DISTANCE_SENSOR = 7
+uint8 FAILURE_UNIT_SENSOR_AIRSPEED = 8
+uint8 FAILURE_UNIT_SYSTEM_BATTERY = 100
+uint8 FAILURE_UNIT_SYSTEM_MOTOR = 101
+uint8 FAILURE_UNIT_SYSTEM_SERVO = 102
+uint8 FAILURE_UNIT_SYSTEM_AVOIDANCE = 103
+uint8 FAILURE_UNIT_SYSTEM_RC_SIGNAL = 104
+uint8 FAILURE_UNIT_SYSTEM_MAVLINK_SIGNAL = 105
+
+uint8 FAILURE_TYPE_OK = 0
+uint8 FAILURE_TYPE_OFF = 1
+uint8 FAILURE_TYPE_STUCK = 2
+uint8 FAILURE_TYPE_GARBAGE = 3
+uint8 FAILURE_TYPE_WRONG = 4
+uint8 FAILURE_TYPE_SLOW = 5
+uint8 FAILURE_TYPE_DELAYED = 6
+uint8 FAILURE_TYPE_INTERMITTENT = 7
+
+uint8 ORB_QUEUE_LENGTH = 4
 
 float32 param1			# Parameter 1, as defined by MAVLink uint16 VEHICLE_CMD enum.
 float32 param2			# Parameter 2, as defined by MAVLink uint16 VEHICLE_CMD enum.

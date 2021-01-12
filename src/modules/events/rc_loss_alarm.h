@@ -39,8 +39,10 @@
 
 #pragma once
 
+#include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/tune_control.h>
 
 namespace events
 {
@@ -63,12 +65,12 @@ private:
 	/** Publish tune control to interrupt any sound */
 	void stop_tune();
 
+	uORB::Publication<tune_control_s> _tune_control_pub{ORB_ID(tune_control)};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	bool 		_was_armed = false;
 	bool 		_had_rc = false;  // Don't trigger alarm for systems without RC
 	bool		_alarm_playing = false;
-	orb_advert_t 	_tune_control_pub = nullptr;
 };
 
 } /* namespace rc_loss */

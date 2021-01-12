@@ -41,6 +41,7 @@
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_status.h>
@@ -67,34 +68,15 @@ public:
 private:
 	void Run() override;
 
+	static constexpr uint32_t BATTERY_SIMLATOR_SAMPLE_FREQUENCY_HZ = 100; // Hz
+	static constexpr uint32_t BATTERY_SIMLATOR_SAMPLE_INTERVAL_US = 1_s / BATTERY_SIMLATOR_SAMPLE_FREQUENCY_HZ;
+
 	uORB::Publication<battery_status_s> _battery_pub{ORB_ID(battery_status)};
 
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
-	class SimulatorBattery : public Battery
-	{
-	public:
-		static constexpr uint32_t SIMLATOR_BATTERY_SAMPLE_FREQUENCY_HZ = 100; // Hz
-		static constexpr uint32_t SIMLATOR_BATTERY_SAMPLE_INTERVAL_US = 1_s / SIMLATOR_BATTERY_SAMPLE_FREQUENCY_HZ;
-
-		SimulatorBattery() : Battery(1, nullptr, SIMLATOR_BATTERY_SAMPLE_INTERVAL_US) {}
-
-		virtual void updateParams() override
-		{
-			Battery::updateParams();
-			_params.v_empty = 3.5f;
-			_params.v_charged = 4.05f;
-			_params.n_cells = 4;
-			_params.capacity = 10.0f;
-			_params.v_load_drop = 0.0f;
-			_params.r_internal = 0.0f;
-			_params.low_thr = 0.15f;
-			_params.crit_thr = 0.07f;
-			_params.emergen_thr = 0.05f;
-			_params.source = 0;
-		}
-	} _battery;
+	Battery _battery;
 
 	uint64_t _last_integration_us{0};
 	float _battery_percentage{1.f};

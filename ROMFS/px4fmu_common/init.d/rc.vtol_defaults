@@ -15,8 +15,10 @@ then
 	param set MIS_TAKEOFF_ALT 20
 	param set MIS_YAW_TMT 10
 
+	param set EKF2_ARSP_THR 10
+	param set EKF2_FUSE_BETA 1
+
 	param set MPC_ACC_HOR_MAX 2
-	param set MPC_LAND_SPEED 0.7
 	param set MPC_TKO_SPEED 1
 	param set MPC_VEL_MANUAL 3
 	param set MPC_XY_CRUISE 3

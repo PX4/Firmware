@@ -3,7 +3,7 @@
 # NXP fmuk66-e specific board defaults
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # Internal Mag I2C bus roll 180, yaw 90
 bmm150 -I -R 10 start

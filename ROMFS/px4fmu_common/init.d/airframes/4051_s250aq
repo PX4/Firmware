@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # @name Spedix S250AQ
-# @url https://docs.px4.io/master/en/framebuild_multicopter/spedix_s250_pixracer.html
+# @url https://docs.px4.io/master/en/frames_multicopter/spedix_s250_pixracer.html
 #
 # @type Quadrotor asymmetric
 # @class Copter
@@ -21,7 +21,7 @@
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.mc_defaults
 
 set MIXER quad_s250aq
 set MAV_TYPE 2

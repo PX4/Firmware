@@ -42,10 +42,6 @@
 #include <ctype.h>
 #include <errno.h>
 
-#define TUNE_CONTINUE 1
-#define TUNE_ERROR   -1
-#define TUNE_STOP     0
-
 #define BEAT_TIME_CONVERSION_MS (60 * 1000 * 4)
 #define BEAT_TIME_CONVERSION_US BEAT_TIME_CONVERSION_MS * 1000
 #define BEAT_TIME_CONVERSION    BEAT_TIME_CONVERSION_US
@@ -82,11 +78,11 @@ void Tunes::reset(bool repeat_flag)
 	_tempo       = _default_tempo;
 }
 
-int Tunes::set_control(const tune_control_s &tune_control)
+Tunes::ControlResult Tunes::set_control(const tune_control_s &tune_control)
 {
 	// Sanity check
 	if (tune_control.tune_id >= _default_tunes_size) {
-		return -EINVAL;
+		return ControlResult::InvalidTune;
 	}
 
 	// Accept new tune or a stop?
@@ -97,7 +93,7 @@ int Tunes::set_control(const tune_control_s &tune_control)
 		// Check if this exact tune is already being played back
 		if (tune_control.tune_id != static_cast<int>(TuneID::CUSTOM) &&
 		    _tune == _default_tunes[tune_control.tune_id]) {
-			return OK; // Nothing to do
+			return ControlResult::AlreadyPlaying; // Nothing to do
 		}
 
 		// Reset repeat flag. Can jump to true again while tune is being parsed later
@@ -130,9 +126,10 @@ int Tunes::set_control(const tune_control_s &tune_control)
 		}
 
 		_current_tune_id = tune_control.tune_id;
+		return ControlResult::Success;
 	}
 
-	return OK;
+	return ControlResult::WouldInterrupt;
 }
 
 void Tunes::set_string(const char *const string, uint8_t volume)
@@ -153,10 +150,9 @@ void Tunes::set_string(const char *const string, uint8_t volume)
 	}
 }
 
-int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
-			 unsigned &silence, uint8_t &volume)
+Tunes::Status Tunes::get_next_note(unsigned &frequency, unsigned &duration, unsigned &silence, uint8_t &volume)
 {
-	int ret = get_next_note(frequency, duration, silence);
+	Tunes::Status ret = get_next_note(frequency, duration, silence);
 
 	// Check if note should not be heard -> adjust volume to 0 to be safe.
 	if (frequency == 0 || duration == 0) {
@@ -169,8 +165,7 @@ int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
 	return ret;
 }
 
-int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
-			 unsigned &silence)
+Tunes::Status Tunes::get_next_note(unsigned &frequency, unsigned &duration, unsigned &silence)
 {
 	// Return the values for frequency and duration if the custom msg was received.
 	if (_using_custom_msg) {
@@ -178,7 +173,7 @@ int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
 		duration  = _duration;
 		frequency = _frequency;
 		silence   = _silence;
-		return TUNE_CONTINUE;
+		return Tunes::Status::Continue;
 	}
 
 	// Make sure we still have a tune.
@@ -274,7 +269,7 @@ int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
 			frequency = 0;
 			duration = 0;
 			silence = rest_duration(next_number(), next_dots());
-			return TUNE_CONTINUE;
+			return Tunes::Status::Continue;
 
 		case 'T': {	// Change tempo.
 				unsigned nt = next_number();
@@ -299,7 +294,7 @@ int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
 			if (note == 0) {
 				// This is a rest - pause for the current note length.
 				silence = rest_duration(_note_length, next_dots());
-				return TUNE_CONTINUE;
+				return Tunes::Status::Continue;
 			}
 
 			break;
@@ -350,29 +345,29 @@ int Tunes::get_next_note(unsigned &frequency, unsigned &duration,
 
 	// Compute the note frequency.
 	frequency = note_to_frequency(note);
-	return TUNE_CONTINUE;
+	return Tunes::Status::Continue;
 }
 
-int Tunes::tune_end()
+Tunes::Status Tunes::tune_end()
 {
 	// Restore intial parameters.
 	reset(_repeat);
 
 	// Stop or restart the tune.
 	if (_repeat) {
-		return TUNE_CONTINUE;
+		return Tunes::Status::Continue;
 
 	} else {
-		return TUNE_STOP;
+		return Tunes::Status::Stop;
 	}
 }
 
-int Tunes::tune_error()
+Tunes::Status Tunes::tune_error()
 {
 	// The tune appears to be bad (unexpected EOF, bad character, etc.).
 	_repeat = false;	// Don't loop on error.
 	reset(_repeat);
-	return TUNE_ERROR;
+	return Tunes::Status::Error;
 }
 
 uint32_t Tunes::note_to_frequency(unsigned note) const

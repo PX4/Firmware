@@ -3,7 +3,7 @@
 # PX4 FMUv5 specific board sensors init
 #------------------------------------------------------------------------------
 
-adc start
+board_adc start
 
 # Internal SPI bus ICM-20602
 icm20602 -s -R 2 start
@@ -16,7 +16,10 @@ bmi055 -A -R 2 -s start
 bmi055 -G -R 2 -s start
 
 # internal compass
-ist8310 -I start
+ist8310 -I -R 10 start
 
 # Baro on internal SPI
 ms5611 -s start
+
+# External compass on GPS1/I2C1 (the 3rd external bus): standard Holybro GPS/compass puck (with lights, safety button, and buzzer)
+ist8310 -X -b 1 -R 10 start

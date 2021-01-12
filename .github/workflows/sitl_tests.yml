@@ -15,12 +15,12 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {latitude:  "59.617693", longitude: "-151.145316", altitude:  "48", build_type: "RelWithDebInfo"} # Alaska
-          - {latitude: "-38.071235", longitude:  "145.281220", altitude:  "31", build_type: "RelWithDebInfo"} # Australia
-          - {latitude:  "29.660316", longitude:  "-82.316658", altitude:  "30", build_type: "RelWithDebInfo"} # Florida
-          - {latitude:  "47.397742", longitude:    "8.545594", altitude: "488", build_type: "Coverage"} # Zurich
+          - {latitude:  "59.617693", longitude: "-151.145316", altitude:  "48", build_type: "RelWithDebInfo", model: "iris"          } # Alaska
+          - {latitude: "-38.071235", longitude:  "145.281220", altitude:  "31", build_type: "RelWithDebInfo", model: "standard_vtol" } # Australia
+          - {latitude:  "29.660316", longitude:  "-82.316658", altitude:  "30", build_type: "RelWithDebInfo", model: "tailsitter"    } # Florida
+          - {latitude:  "47.397742", longitude:    "8.545594", altitude: "488", build_type: "Coverage",       model: "standard_vtol" } # Zurich
     container:
-      image: px4io/px4-dev-simulation-focal:2020-04-01
+      image: px4io/px4-dev-simulation-focal:2020-11-18
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
     steps:
     - uses: actions/checkout@v1
@@ -28,9 +28,9 @@ jobs:
         token: ${{ secrets.ACCESS_TOKEN }}
 
     - name: Download MAVSDK
-      run: wget https://github.com/mavlink/MAVSDK/releases/download/v0.27.0/mavsdk_0.27.0_ubuntu18.04_amd64.deb
+      run: wget https://github.com/mavlink/MAVSDK/releases/download/v0.33.1/mavsdk_0.33.1_ubuntu20.04_amd64.deb
     - name: Install MAVSDK
-      run: dpkg -i mavsdk_0.27.0_ubuntu18.04_amd64.deb
+      run: dpkg -i mavsdk_0.33.1_ubuntu20.04_amd64.deb
 
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
@@ -60,7 +60,9 @@ jobs:
         PX4_HOME_LON: ${{matrix.config.longitude}}
         PX4_HOME_ALT: ${{matrix.config.altitude}}
         PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
-      run: export
+      run: |
+          export
+          ulimit -a
     - name: Build PX4
       env:
         PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
@@ -92,7 +94,7 @@ jobs:
         PX4_HOME_LON: ${{matrix.config.longitude}}
         PX4_HOME_ALT: ${{matrix.config.altitude}}
         PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
-      run: test/mavsdk_tests/mavsdk_test_runner.py --speed-factor 20 --abort-early test/mavsdk_tests/configs/sitl.json
+      run: test/mavsdk_tests/mavsdk_test_runner.py --speed-factor 20 --abort-early --model ${{matrix.config.model}} test/mavsdk_tests/configs/sitl.json
 
     - name: Look at core files
       if: failure()
@@ -106,7 +108,7 @@ jobs:
 
     - name: Upload logs to flight review
       if: failure()
-      run: ./Tools/upload_log.py -q --description "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID}" --feedback "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID} ${GITHUB_REPOSITORY} ${GITHUB_REF}" --source CI ./build/px4_sitl_default/tmp/rootfs/log/*/*.ulg
+      run: ./Tools/upload_log.py -q --description "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID}" --feedback "${GITHUB_WORKFLOW} ${GITHUB_RUN_ID} ${GITHUB_REPOSITORY} ${GITHUB_REF}" --source CI ${GITHUB_WORKSPACE}/build/px4_sitl_default/tmp_mavsdk_tests/rootfs/log/*/*.ulg
 
     - name: Upload px4 binary
       if: failure()

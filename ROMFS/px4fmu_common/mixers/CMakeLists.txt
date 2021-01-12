@@ -34,13 +34,16 @@
 px4_add_romfs_files(
 	AAERTWF.main.mix
 	AAVVTWFF.main.mix
+	AAVVTWFF_vtail.main.mix
 	AERT.main.mix
 	AETRFG.main.mix
+	babyshark.main.mix
 	blade130.main.mix
 	caipi.main.mix
 	CCPM.main.mix
 	claire.aux.mix
 	claire.main.mix
+	cloudship.main.mix
 	coax.main.mix
 	delta.main.mix
 	deltaquad.main.mix
@@ -69,20 +72,25 @@ px4_add_romfs_files(
 	quad_s250aq.main.mix
 	quad_+_vtol.main.mix
 	quad_w.main.mix
-	quad_x.main.mix
 	quad_x_cw.main.mix
+	quad_x.main.mix
 	quad_x_vtol.main.mix
-	stampede.main.mix
-	tri_y_yaw-.main.mix
-	tri_y_yaw+.main.mix
-	rover_generic.main.mix
 	rover_diff_and_servo.main.mix
+	rover_generic.main.mix
+	stampede.main.mix
+	standard_vtol_hitl.main.mix
+	TF-AutoG2.main.mix
+	tilt_quad.aux.mix
+	tilt_quad.main.mix
+	tri_y_yaw+.main.mix
+	tri_y_yaw-.main.mix
+	uuv_x.main.mix
+	vectored6dof.main.mix
 	Viper.main.mix
 	vtol_AAERT.aux.mix
 	vtol_AAVVT.aux.mix
 	vtol_convergence.main.mix
 	vtol_delta.aux.mix
+	vtol_tailsitter_duo.main.mix
 	wingwing.main.mix
-	TF-AutoG2.main.mix
-	uuv_x.main.mix
 )

@@ -129,36 +129,40 @@ if (GENERATE_RTPS_BRIDGE)
 
 	# Generate uORB serialization headers
 	add_custom_command(OUTPUT ${uorb_headers_microcdr}
-		COMMAND ${PYTHON_EXECUTABLE} tools/px_generate_uorb_topic_files.py
+		COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/msg/tools/px_generate_uorb_topic_files.py
 			--headers
 			-f ${send_topic_files} ${receive_topic_files}
-			-i .
+			-i ${PX4_SOURCE_DIR}/msg/
 			-o ${msg_out_path_microcdr}
-			-e templates/uorb_microcdr
+			-e ${PX4_SOURCE_DIR}/msg/templates/uorb_microcdr
 			-t ${CMAKE_CURRENT_BINARY_DIR}/tmp/headers_microcdr
 			-q
-		DEPENDS ${msg_files}
+		DEPENDS
+			${receive_topic_files}
+			${send_topic_files}
+			${PX4_SOURCE_DIR}/msg/tools/px_generate_uorb_topic_files.py
 		COMMENT "Generating uORB microcdr topic headers"
-		WORKING_DIRECTORY ${PX4_SOURCE_DIR}/msg/
 		VERBATIM
-		)
+	)
 	add_custom_target(uorb_headers_microcdr_gen DEPENDS ${uorb_headers_microcdr})
 
 	# Generate uORB serialization sources
 	add_custom_command(OUTPUT ${uorb_sources_microcdr}
-		COMMAND ${PYTHON_EXECUTABLE} tools/px_generate_uorb_topic_files.py
+		COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/msg/tools/px_generate_uorb_topic_files.py
 			--sources
 			-f ${send_topic_files} ${receive_topic_files}
-			-i .
+			-i ${PX4_SOURCE_DIR}/msg/
 			-o ${msg_source_out_path_microcdr}
-			-e templates/uorb_microcdr
+			-e ${PX4_SOURCE_DIR}/msg/templates/uorb_microcdr
 			-t ${CMAKE_CURRENT_BINARY_DIR}/tmp/sources_microcdr
 			-q
-		DEPENDS ${msg_files}
+		DEPENDS
+			${receive_topic_files}
+			${send_topic_files}
+			${PX4_SOURCE_DIR}/msg/tools/px_generate_uorb_topic_files.py
 		COMMENT "Generating uORB microcdr topic sources"
-		WORKING_DIRECTORY ${PX4_SOURCE_DIR}/msg/
 		VERBATIM
-		)
+	)
 	px4_add_library(uorb_msgs_microcdr ${uorb_sources_microcdr})
 	add_dependencies(uorb_msgs_microcdr
 		uorb_headers_microcdr_gen

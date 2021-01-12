@@ -48,6 +48,7 @@
 #include <perf/perf_counter.h>
 #include <px4_platform_common/module_params.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/actuator_armed.h>
@@ -77,6 +78,8 @@
 #if !defined(TAP_ESC_CTRL_UORB_UPDATE_INTERVAL)
 #  define TAP_ESC_CTRL_UORB_UPDATE_INTERVAL 2  // [ms] min: 2, max: 100
 #endif
+
+using namespace time_literals;
 
 /*
  * This driver connects to TAP ESCs via serial.
@@ -115,7 +118,7 @@ private:
 	int			_armed_sub = -1;
 	int 			_test_motor_sub = -1;
 
-	uORB::Subscription	_parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	orb_advert_t        	_outputs_pub = nullptr;
 	actuator_outputs_s      _outputs = {};

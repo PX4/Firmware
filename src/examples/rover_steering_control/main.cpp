@@ -52,6 +52,7 @@
 #include <time.h>
 #include <drivers/drv_hrt.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -69,6 +70,8 @@
 
 /* process-specific header files */
 #include "params.h"
+
+using namespace time_literals;
 
 /* Prototypes */
 
@@ -101,7 +104,7 @@ int parameters_init(struct param_handles *h);
  * Update all parameters
  *
  */
-int parameters_update(const struct param_handles *h, struct params *p);
+int parameter_update(const struct param_handles *h, struct params *p);
 
 /**
  * Mainloop of daemon.
@@ -141,7 +144,7 @@ int parameters_init(struct param_handles *h)
 	return OK;
 }
 
-int parameters_update(const struct param_handles *h, struct params *p)
+int parameter_update(const struct param_handles *h, struct params *p)
 {
 	param_get(h->yaw_p, &(p->yaw_p));
 
@@ -201,7 +204,7 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 
 	/* initialize parameters, first the handles, then the values */
 	parameters_init(&ph);
-	parameters_update(&ph, &pp);
+	parameter_update(&ph, &pp);
 
 
 	/*
@@ -271,7 +274,7 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 
 	int att_sp_sub = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
 
-	uORB::Subscription parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	/* Setup of loop */
 
@@ -313,7 +316,7 @@ int rover_steering_control_thread_main(int argc, char *argv[])
 				parameter_update_sub.copy(&pupdate);
 
 				// if a param update occured, re-read our parameters
-				parameters_update(&ph, &pp);
+				parameter_update(&ph, &pp);
 			}
 
 			/* only run controller if attitude changed */

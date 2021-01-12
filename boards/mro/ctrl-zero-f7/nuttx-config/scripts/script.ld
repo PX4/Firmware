@@ -1,7 +1,7 @@
 /****************************************************************************
  * scripts/script.ld
  *
- *   Copyright (C) 2016 Gregory Nutt. All rights reserved.
+ *   Copyright (C) 2019-2020 Gregory Nutt. All rights reserved.
  *   Author: Gregory Nutt <gnutt@nuttx.org>
  *
  *
@@ -65,19 +65,19 @@
  * where the code expects to begin execution by jumping to the entry point in
  * the 0x0800:0000 address range.
  *
- * Bootloader reserves the first 32K bank (2 Mbytes Flash memory single bank)
+ * Bootloader reserves three 32K banks (2 Mbytes Flash memory single bank)
  * organization (256 bits read width)
  */
 
 MEMORY
 {
-    FLASH_ITCM (rx) : ORIGIN = 0x00218000, LENGTH = 1952K
-    FLASH_AXIM (rx) : ORIGIN = 0x08018000, LENGTH = 1952K /* start on 4th sector (1st sector for bootloader, 2 for extra storage) */
+	FLASH_ITCM (rx) : ORIGIN = 0x00218000, LENGTH = 1952K
+	FLASH_AXIM (rx) : ORIGIN = 0x08018000, LENGTH = 1952K /* start on 4th sector (1st sector for bootloader, 2 for extra storage) */
 
-    ITCM_RAM (rwx) : ORIGIN = 0x00000000, LENGTH = 16K
-    DTCM_RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-    SRAM1    (rwx) : ORIGIN = 0x20020000, LENGTH = 368K
-    SRAM2    (rwx) : ORIGIN = 0x2007c000, LENGTH = 16K
+	ITCM_RAM (rwx) : ORIGIN = 0x00000000, LENGTH = 16K
+	DTCM_RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
+	SRAM1    (rwx) : ORIGIN = 0x20020000, LENGTH = 368K
+	SRAM2    (rwx) : ORIGIN = 0x2007c000, LENGTH = 16K
 }
 
 OUTPUT_ARCH(arm)
@@ -115,11 +115,6 @@ SECTIONS
 		*(.gnu.linkonce.r.*)
 		_etext = ABSOLUTE(.);
 
-		/*
-		 * This is a hack to make the newlib libm __errno() call
-		 * use the NuttX get_errno_ptr() function.
-		 */
-		__errno = get_errno_ptr;
 	} > FLASH_AXIM
 
 	/*

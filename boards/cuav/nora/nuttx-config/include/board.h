@@ -193,6 +193,9 @@
 #define STM32_RCC_D3CCIPR_SPI6SRC    RCC_D3CCIPR_SPI6SEL_PLL2    /* SPI6 clock source */
 #define STM32_RCC_D2CCIP2R_USBSRC    RCC_D2CCIP2R_USBSEL_PLL3    /* USB 1 and 2 clock source */
 #define STM32_RCC_D3CCIPR_ADCSEL     RCC_D3CCIPR_ADCSEL_PLL2     /* ADC 1 2 3 clock source */
+#define STM32_RCC_D2CCIP1R_FDCANSEL  RCC_D2CCIP1R_FDCANSEL_HSE   /* FDCAN 1 2 clock source */
+
+#define STM32_FDCANCLK               STM32_HSE_FREQUENCY
 
 /* FLASH wait states */
 #define BOARD_FLASH_WAITSTATES 2

@@ -50,8 +50,4 @@ public:
 	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool updateInitialize() override;
 	bool update() override;
-
-private:
-	float _transition_altitude = 0.0f;
-	float _transition_yaw = 0.0f;
 };

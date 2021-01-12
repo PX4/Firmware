@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# Board specific defaults
+#------------------------------------------------------------------------------
+
+#
+# Bootloader upgrade
+#
+set BL_FILE /etc/extras/mro_pixracerpro_bootloader.bin
+if [ -f $BL_FILE ]
+then
+	if param compare SYS_BL_UPDATE 1
+	then
+		param set SYS_BL_UPDATE 0
+		param save
+		echo "BL update..." >> $LOG_FILE
+		bl_update $BL_FILE
+		echo "BL update done" >> $LOG_FILE
+		reboot
+	fi
+fi
+unset BL_FILE
+
+if [ $AUTOCNF = yes ]
+then
+	param set BAT_V_DIV 10.1
+	param set BAT1_V_DIV 10.1
+
+	param set BAT_A_PER_V 17
+	param set BAT1_A_PER_V 17
+
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
+	param set EKF2_MULTI_MAG 3
+	param set SENS_MAG_MODE 0
+
+fi
+
+set LOGGER_BUF 64
+set MIXER_AUX none

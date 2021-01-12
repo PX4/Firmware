@@ -41,6 +41,7 @@ endif()
 
 add_library(px4_platform
 	board_identity.c
+	external_reset_lockout.cpp
 	i2c.cpp
 	i2c_spi_buses.cpp
 	module.cpp

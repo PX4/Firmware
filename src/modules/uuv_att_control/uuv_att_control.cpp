@@ -59,7 +59,7 @@ extern "C" __EXPORT int uuv_att_control_main(int argc, char *argv[]);
 
 UUVAttitudeControl::UUVAttitudeControl():
 	ModuleParams(nullptr),
-	WorkItem(MODULE_NAME, px4::wq_configurations::attitude_ctrl),
+	WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	/* performance counters */
 	_loop_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle"))
 {
@@ -205,6 +205,8 @@ void UUVAttitudeControl::Run()
 		return;
 	}
 
+	perf_begin(_loop_perf);
+
 	/* check vehicle control mode for changes to publication state */
 	_vcontrol_mode_sub.update(&_vcontrol_mode);
 
@@ -236,11 +238,17 @@ void UUVAttitudeControl::Run()
 			}
 
 			/* Geometric Control*/
-			control_attitude_geo(attitude, _attitude_setpoint, angular_velocity, _rates_setpoint);
+			int skip_controller = _param_skip_ctrl.get();
+
+			if (skip_controller) {
+				constrain_actuator_commands(_rates_setpoint.roll, _rates_setpoint.pitch, _rates_setpoint.yaw,
+							    _rates_setpoint.thrust_body[0]);
+
+			} else {
+				control_attitude_geo(attitude, _attitude_setpoint, angular_velocity, _rates_setpoint);
+			}
 		}
 	}
-
-	perf_end(_loop_perf);
 
 	/* Manual Control mode (e.g. gamepad,...) - raw feedthrough no assistance */
 	if (_manual_control_setpoint_sub.update(&_manual_control_setpoint)) {
@@ -264,42 +272,30 @@ void UUVAttitudeControl::Run()
 
 	}
 
-	warnx("exiting.\n");
+	perf_end(_loop_perf);
 }
 
 int UUVAttitudeControl::task_spawn(int argc, char *argv[])
 {
-	/* start the task */
-	_task_id = px4_task_spawn_cmd("uuv_att_ctrl",
-				      SCHED_DEFAULT,
-				      SCHED_PRIORITY_ATTITUDE_CONTROL,
-				      1700,  // maybe switch to 1500
-				      (px4_main_t)&UUVAttitudeControl::run_trampoline,
-				      nullptr);
-
-	if (_task_id < 0) {
-		warn("task start failed");
-		return -errno;
-	}
-
-	return OK;
-}
-
-UUVAttitudeControl *UUVAttitudeControl::instantiate(int argc, char *argv[])
-{
-
-	if (argc > 0) {
-		PX4_WARN("Command 'start' takes no arguments.");
-		return nullptr;
-	}
-
 	UUVAttitudeControl *instance = new UUVAttitudeControl();
 
-	if (instance == nullptr) {
-		PX4_ERR("Failed to instantiate UUVAttitudeControl object");
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
+
+		if (instance->init()) {
+			return PX4_OK;
+		}
+
+	} else {
+		PX4_ERR("alloc failed");
 	}
 
-	return instance;
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
 }
 
 int UUVAttitudeControl::custom_command(int argc, char *argv[])

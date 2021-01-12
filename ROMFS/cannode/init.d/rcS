@@ -14,7 +14,7 @@ set +e
 # NOTE: COMMENT LINES ARE REMOVED BEFORE STORED IN ROMFS.
 #
 #------------------------------------------------------------------------------
-
+set R /
 #
 # Mount the procfs.
 #
@@ -51,17 +51,17 @@ fi
 param select $PARAM_FILE
 if ! param load
 then
-	param reset
+	param reset_all
 fi
 
 #
 # Optional board defaults: rc.board_defaults
 #
-set BOARD_RC_DEFAULTS /etc/init.d/rc.board_defaults
+set BOARD_RC_DEFAULTS ${R}etc/init.d/rc.board_defaults
 if [ -f $BOARD_RC_DEFAULTS ]
 then
 	echo "Board defaults: ${BOARD_RC_DEFAULTS}"
-	sh $BOARD_RC_DEFAULTS
+	. $BOARD_RC_DEFAULTS
 fi
 unset BOARD_RC_DEFAULTS
 
@@ -72,7 +72,7 @@ rgbled start -X -q
 rgbled_ncp5623c start -X -q
 rgbled_pwm start
 
-if param greater LIGHT_EN_BLINKM 0
+if param greater -s LIGHT_EN_BLINKM 0
 then
 	if blinkm start -X
 	then
@@ -83,11 +83,11 @@ fi
 #
 # board sensors: rc.sensors
 #
-set BOARD_RC_SENSORS /etc/init.d/rc.board_sensors
+set BOARD_RC_SENSORS ${R}etc/init.d/rc.board_sensors
 if [ -f $BOARD_RC_SENSORS ]
 then
 	echo "Board sensors: ${BOARD_RC_SENSORS}"
-	sh $BOARD_RC_SENSORS
+	. $BOARD_RC_SENSORS
 fi
 unset BOARD_RC_SENSORS
 
@@ -95,7 +95,7 @@ unset BOARD_RC_SENSORS
 # Start UART/Serial device drivers.
 # Note: rc.serial is auto-generated from Tools/serial/generate_config.py
 #
-sh /etc/init.d/rc.serial
+. ${R}etc/init.d/rc.serial
 
 # Check for flow sensor
 if param compare SENS_EN_PX4FLOW 1
@@ -104,3 +104,4 @@ then
 fi
 
 uavcannode start
+unset R

@@ -64,7 +64,7 @@ void ISM330DLC::exit_and_cleanup()
 {
 	if (_drdy_gpio != 0) {
 		// Disable data ready callback
-		px4_arch_gpiosetevent(_drdy_gpio, false, false, false, nullptr, nullptr);
+		//px4_arch_gpiosetevent(_drdy_gpio, false, false, false, nullptr, nullptr);
 
 		RegisterWrite(Register::INT1_CTRL, 0);
 	}
@@ -190,10 +190,10 @@ int ISM330DLC::DataReadyInterruptCallback(int irq, void *context, void *arg)
 
 void ISM330DLC::DataReady()
 {
-	_time_data_ready = hrt_absolute_time();
+	// _time_data_ready = hrt_absolute_time();
 
-	perf_count(_drdy_count_perf);
-	perf_count(_drdy_interval_perf);
+	// perf_count(_drdy_count_perf);
+	// perf_count(_drdy_interval_perf);
 
 	// make another measurement
 	ScheduleNow();
@@ -205,7 +205,7 @@ void ISM330DLC::Start()
 
 	if (_drdy_gpio != 0 && false) { // TODO: enable
 		// Setup data ready on rising edge
-		px4_arch_gpiosetevent(_drdy_gpio, true, true, false, &ISM330DLC::DataReadyInterruptCallback, this);
+		//px4_arch_gpiosetevent(_drdy_gpio, true, true, false, &ISM330DLC::DataReadyInterruptCallback, this);
 
 		// FIFO threshold level setting
 		// FIFO_CTRL1: FTH_[7:0]

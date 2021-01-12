@@ -21,7 +21,7 @@
 # @board bitcraze_crazyflie exclude
 #
 
-sh /etc/init.d/rc.rover_defaults
+. ${R}etc/init.d/rc.rover_defaults
 
 #
 # This section can be enabled once tuning parameters for this particular

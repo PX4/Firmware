@@ -39,10 +39,12 @@
 #ifndef MAG_CALIBRATION_H_
 #define MAG_CALIBRATION_H_
 
+#include <math.h>
 #include <stdint.h>
 #include <uORB/uORB.h>
 
 int do_mag_calibration(orb_advert_t *mavlink_log_pub);
-int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radians = 0);
+int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radians = 0, float latitude = NAN,
+			     float longitude = NAN);
 
 #endif /* MAG_CALIBRATION_H_ */

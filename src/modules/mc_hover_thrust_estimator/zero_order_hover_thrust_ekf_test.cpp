@@ -47,13 +47,22 @@ using namespace matrix;
 class ZeroOrderHoverThrustEkfTest : public ::testing::Test
 {
 public:
+	struct Status {
+		float hover_thrust;
+		float hover_thrust_var;
+		float innov;
+		float innov_var;
+		float innov_test_ratio;
+		float accel_noise_var;
+	};
+
 	ZeroOrderHoverThrustEkfTest()
 	{
 		_random_generator.seed(42);
 	}
 	float computeAccelFromThrustAndHoverThrust(float thrust, float hover_thrust);
-	ZeroOrderHoverThrustEkf::status runEkf(float hover_thrust_true, float thrust, float time, float accel_noise = 0.f,
-					       float thr_noise = 0.f);
+	Status runEkf(float hover_thrust_true, float thrust, float time, float accel_noise = 0.f,
+		      float thr_noise = 0.f);
 
 private:
 	ZeroOrderHoverThrustEkf _ekf{};
@@ -71,18 +80,27 @@ float ZeroOrderHoverThrustEkfTest::computeAccelFromThrustAndHoverThrust(float th
 	return CONSTANTS_ONE_G * thrust / hover_thrust - CONSTANTS_ONE_G;
 }
 
-ZeroOrderHoverThrustEkf::status ZeroOrderHoverThrustEkfTest::runEkf(float hover_thrust_true, float thrust, float time,
+ZeroOrderHoverThrustEkfTest::Status ZeroOrderHoverThrustEkfTest::runEkf(float hover_thrust_true, float thrust,
+		float time,
 		float accel_noise, float thr_noise)
 {
-	ZeroOrderHoverThrustEkf::status status{};
+	Status status{};
 
 	for (float t = 0.f; t <= time; t += _dt) {
 		_ekf.predict(_dt);
 		float noisy_thrust =  thrust + thr_noise * _standard_normal_distribution(_random_generator);
 		float accel_theory = computeAccelFromThrustAndHoverThrust(thrust, hover_thrust_true);
 		float noisy_accel =  accel_theory + accel_noise * _standard_normal_distribution(_random_generator);
-		_ekf.fuseAccZ(noisy_accel, noisy_thrust, status);
+		_ekf.fuseAccZ(noisy_accel, noisy_thrust);
 	}
+
+	status.hover_thrust = _ekf.getHoverThrustEstimate();
+	status.hover_thrust_var = _ekf.getHoverThrustEstimateVar();
+
+	status.innov = _ekf.getInnovation();
+	status.innov_var = _ekf.getInnovationVar();
+	status.innov_test_ratio = _ekf.getInnovationTestRatio();
+	status.accel_noise_var = _ekf.getAccelNoiseVar();
 
 	return status;
 }
@@ -94,7 +112,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testStaticCase)
 	const float hover_thrust_true = 0.5f;
 
 	// WHEN: we input noiseless data and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, 2.f);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, 2.f);
 
 	// THEN: The estimate should not move and its variance decrease quickly
 	EXPECT_NEAR(status.hover_thrust, hover_thrust_true, 1e-4f);
@@ -110,7 +128,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testStaticConvergence)
 	const float hover_thrust_true = 0.72f;
 
 	// WHEN: we input noiseless data and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, 2.f);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, 2.f);
 
 	// THEN: the state should converge to the true value and its variance decrease
 	EXPECT_NEAR(status.hover_thrust, hover_thrust_true, 1e-2f);
@@ -129,7 +147,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testStaticConvergenceWithNoise)
 	const float t_sim = 10.f;
 
 	// WHEN: we input noisy accel data and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, t_sim, sigma_noise);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, t_sim, sigma_noise);
 
 	// THEN: the estimate should converge and the accel noise variance should be close to the true noise value
 	EXPECT_NEAR(status.hover_thrust, hover_thrust_true, 5e-2f);
@@ -147,7 +165,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testLargeAccelNoiseAndBias)
 	const float t_sim = 15.f;
 
 	// WHEN: we input noisy accel data and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, t_sim, sigma_noise);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, t_sim, sigma_noise);
 
 	// THEN: the estimate should converge and the accel noise variance should be close to the true noise value
 	EXPECT_NEAR(status.hover_thrust, hover_thrust_true, 7e-2);
@@ -167,7 +185,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testThrustAndAccelNoise)
 	const float t_sim = 15.f;
 
 	// WHEN: we input noisy accel and thrust data, and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, t_sim, accel_noise, thr_noise);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, t_sim, accel_noise, thr_noise);
 
 	// THEN: the estimate should converge and the accel noise variance should be close to the true noise value
 	EXPECT_NEAR(status.hover_thrust, hover_thrust_true, 5e-2f);
@@ -188,7 +206,7 @@ TEST_F(ZeroOrderHoverThrustEkfTest, testHoverThrustJump)
 	float t_sim = 10.f;
 
 	// WHEN: we input noisy accel and thrust data, and run the filter
-	ZeroOrderHoverThrustEkf::status status = runEkf(hover_thrust_true, thrust, t_sim, accel_noise, thr_noise);
+	ZeroOrderHoverThrustEkfTest::Status status = runEkf(hover_thrust_true, thrust, t_sim, accel_noise, thr_noise);
 	// THEN: change the hover thrust and the current thrust (the velocity controller responds quickly)
 	// Note that this is an extreme jump in hover thrust
 	thrust = 0.3;

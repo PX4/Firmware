@@ -40,6 +40,7 @@
 #include "Landingslope.hpp"
 
 #include <mathlib/mathlib.h>
+#include <matrix/math.hpp>
 
 void
 Landingslope::update(float landing_slope_angle_rad_new,
@@ -77,7 +78,7 @@ Landingslope::getLandingSlopeRelativeAltitudeSave(float wp_landing_distance, flo
 		float bearing_airplane_currwp)
 {
 	/* If airplane is in front of waypoint return slope altitude, else return waypoint altitude */
-	if (fabsf(bearing_airplane_currwp - bearing_lastwp_currwp) < math::radians(90.0f)) {
+	if (fabsf(matrix::wrap_pi(bearing_airplane_currwp - bearing_lastwp_currwp)) < math::radians(90.0f)) {
 		return getLandingSlopeRelativeAltitude(wp_landing_distance);
 
 	}
@@ -90,7 +91,7 @@ Landingslope::getFlareCurveRelativeAltitudeSave(float wp_landing_distance, float
 		float bearing_airplane_currwp)
 {
 	/* If airplane is in front of waypoint return flare curve altitude, else return waypoint altitude */
-	if (fabsf(bearing_airplane_currwp - bearing_lastwp_currwp) < math::radians(90.0f)) {
+	if (fabsf(matrix::wrap_pi(bearing_airplane_currwp - bearing_lastwp_currwp)) < math::radians(90.0f)) {
 		return _H0 * expf(-math::max(0.0f, _flare_length - wp_landing_distance) / _flare_constant) - _H1_virt;
 
 	}

@@ -12,15 +12,15 @@
 	branch = master
 [submodule "Tools/sitl_gazebo"]
 	path = Tools/sitl_gazebo
-	url = https://github.com/PX4/sitl_gazebo.git
+	url = https://github.com/PX4/PX4-SITL_gazebo.git
 	branch = master
 [submodule "src/lib/matrix"]
 	path = src/lib/matrix
-	url = https://github.com/PX4/Matrix.git
+	url = https://github.com/PX4/PX4-Matrix
 	branch = master
 [submodule "src/lib/ecl"]
 	path = src/lib/ecl
-	url = https://github.com/PX4/ecl.git
+	url = https://github.com/PX4/PX4-ECL
 	branch = master
 [submodule "boards/atlflight/cmake_hexagon"]
 	path = boards/atlflight/cmake_hexagon
@@ -28,7 +28,7 @@
 	branch = px4
 [submodule "src/drivers/gps/devices"]
 	path = src/drivers/gps/devices
-	url = https://github.com/PX4/GpsDrivers.git
+	url = https://github.com/PX4/PX4-GPSDrivers
 	branch = master
 [submodule "src/modules/micrortps_bridge/micro-CDR"]
 	path = src/modules/micrortps_bridge/micro-CDR
@@ -37,14 +37,20 @@
 [submodule "platforms/nuttx/NuttX/nuttx"]
 	path = platforms/nuttx/NuttX/nuttx
 	url = https://github.com/PX4/NuttX.git
-	branch = px4_firmware_nuttx-8.2
+	branch = px4_firmware_nuttx-10.0.0+
 [submodule "platforms/nuttx/NuttX/apps"]
 	path = platforms/nuttx/NuttX/apps
 	url = https://github.com/PX4/NuttX-apps.git
-	branch = px4_firmware_nuttx-8.2
+	branch = px4_firmware_nuttx-10.0.0+
 [submodule "platforms/qurt/dspal"]
 	path = platforms/qurt/dspal
 	url = https://github.com/ATLFlight/dspal.git
 [submodule "Tools/flightgear_bridge"]
 	path = Tools/flightgear_bridge
 	url = https://github.com/PX4/PX4-FlightGear-Bridge.git
+[submodule "Tools/jsbsim_bridge"]
+	path = Tools/jsbsim_bridge
+	url = https://github.com/PX4/px4-jsbsim-bridge.git
+[submodule "src/examples/gyro_fft/CMSIS_5"]
+	path = src/examples/gyro_fft/CMSIS_5
+	url = https://github.com/ARM-software/CMSIS_5.git

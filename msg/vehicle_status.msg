@@ -114,3 +114,7 @@ uint8 ARM_DISARM_REASON_UNIT_TEST = 13
 
 uint8 latest_arming_reason
 uint8 latest_disarming_reason
+
+uint64 armed_time       # Arming timestamp (microseconds)
+
+uint64 takeoff_time     # Takeoff timestamp (microseconds)

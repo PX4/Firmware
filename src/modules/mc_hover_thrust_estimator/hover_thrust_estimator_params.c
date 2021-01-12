@@ -52,7 +52,7 @@
  * @unit normalized_thrust/s
  * @group Hover Thrust Estimator
  */
-PARAM_DEFINE_FLOAT(HTE_HT_NOISE, 0.0005);
+PARAM_DEFINE_FLOAT(HTE_HT_NOISE, 0.0036);
 
 /**
  * Gate size for acceleration fusion

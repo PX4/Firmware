@@ -99,8 +99,8 @@ class CanIface : public uavcan::ICanIface, uavcan::Noncopyable
 		bool abort_on_error;
 
 		TxItem()
-			: /*pending(false)
-			,*/ loopback(false)
+			: pending(false)
+			, loopback(false)
 			, abort_on_error(false)
 		{ }
 	};

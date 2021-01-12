@@ -39,13 +39,13 @@
  */
 
 #include <px4_platform_common/px4_config.h>
-#include "platform/cxxinitialize.h"
 
 #include <stdio.h>	// required for task_create
 #include <stdbool.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <malloc.h>
 #include <poll.h>
 #include <signal.h>
 #include <crc32.h>
@@ -283,20 +283,6 @@ user_start(int argc, char *argv[])
 {
 	/* configure the first 8 PWM outputs (i.e. all of them) */
 	up_pwm_servo_init(0xff);
-
-#if defined(CONFIG_HAVE_CXX) && defined(CONFIG_HAVE_CXXINITIALIZE)
-
-	/* run C++ ctors before we go any further */
-
-	up_cxxinitialize();
-
-#	if defined(CONFIG_SYSTEM_NSH_CXXINITIALIZE)
-#  		error CONFIG_SYSTEM_NSH_CXXINITIALIZE Must not be defined! Use CONFIG_HAVE_CXX and CONFIG_HAVE_CXXINITIALIZE.
-#	endif
-
-#else
-#  error platform is dependent on c++ both CONFIG_HAVE_CXX and CONFIG_HAVE_CXXINITIALIZE must be defined.
-#endif
 
 	/* reset all to zero */
 	memset(&system_state, 0, sizeof(system_state));

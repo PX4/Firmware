@@ -43,7 +43,7 @@ rtps:
     id: 19
   - msg: ekf_gps_drift
     id: 20
-  - msg: ekf_gps_position
+  - msg: sensor_gps
     id: 21
   - msg: esc_report
     id: 22
@@ -144,14 +144,12 @@ rtps:
     id: 67
   - msg: sensor_mag
     id: 68
-  - msg: sensor_preflight_imu
+  - msg: sensors_status_imu
     id: 69
   - msg: sensor_selection
     id: 70
   - msg: px4io_status
     id: 71
-  - msg: subsystem_info
-    id: 72
   - msg: system_power
     id: 73
   - msg: task_stack_info
@@ -277,10 +275,24 @@ rtps:
     id: 131
   - msg: yaw_estimator_status
     id: 132
-  - msg: telemetry_heartbeat
-    id: 133
   - msg: sensor_preflight_mag
+    id: 133
+  - msg: estimator_states
     id: 134
+  - msg: generator_status
+    id: 135
+  - msg: sensor_gyro_fft
+    id: 136
+  - msg: navigator_mission_item
+    id: 137
+  - msg: estimator_optical_flow_vel
+    id: 138
+  - msg: estimator_selector_status
+    id: 139
+  - msg: manual_control_switches
+    id: 140
+  - msg: estimator_status_flags
+    id: 141
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150
@@ -341,7 +353,7 @@ rtps:
   - msg: vehicle_angular_velocity_groundtruth
     id: 168
     alias: vehicle_angular_velocity
-  - msg: vehicle_visual_odometry_aligned
+  - msg: estimator_visual_odometry_aligned
     id: 169
     alias: vehicle_odometry
   - msg: estimator_innovation_variances
@@ -362,4 +374,19 @@ rtps:
   - msg: orb_test_medium_queue_poll
     id: 175
     alias: orb_test_medium
+  - msg: orb_test_medium_wrap_around
+    id: 176
+    alias: orb_test_medium
+  - msg: estimator_local_position
+    id: 177
+    alias: vehicle_local_position
+  - msg: estimator_global_position
+    id: 178
+    alias: vehicle_global_position
+  - msg: estimator_attitude
+    id: 179
+    alias: vehicle_attitude
+  - msg: estimator_odometry
+    id: 180
+    alias: vehicle_odometry
   ########## multi topics: end ##########

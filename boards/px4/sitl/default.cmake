@@ -3,7 +3,9 @@ px4_add_board(
 	PLATFORM posix
 	VENDOR px4
 	MODEL sitl
+	ROMFSROOT px4fmu_common
 	LABEL default
+	EMBEDDED_METADATA parameters
 	TESTING
 	DRIVERS
 		#barometer # all available barometer drivers
@@ -15,6 +17,7 @@ px4_add_board(
 		gps
 		#imu # all available imu drivers
 		#magnetometer # all available magnetometer drivers
+		#protocol_splitter
 		pwm_out_sim
 		rpm/rpm_simulator
 		#telemetry # all available telemetry drivers
@@ -29,11 +32,12 @@ px4_add_board(
 		dataman
 		ekf2
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
 		landing_target_estimator
-		#load_mon
+		load_mon
 		local_position_estimator
 		logger
 		mavlink
@@ -41,6 +45,7 @@ px4_add_board(
 		mc_hover_thrust_estimator
 		mc_pos_control
 		mc_rate_control
+		#micrortps_bridge
 		navigator
 		rc_update
 		replay
@@ -49,15 +54,16 @@ px4_add_board(
 		#sih
 		simulator
 		temperature_compensation
+		uuv_att_control
 		vmount
 		vtol_att_control
-		uuv_att_control
-
 	SYSTEMCMDS
 		#dumpfile
 		dyn
 		esc_calib
+		failure
 		led_control
+		#mft
 		mixer
 		motor_ramp
 		motor_test
@@ -68,6 +74,7 @@ px4_add_board(
 		pwm
 		sd_bench
 		shutdown
+		system_time
 		tests # tests and test runner
 		#top
 		topic_listener
@@ -100,5 +107,9 @@ set(REPLAY_FILE "$ENV{replay}")
 if(REPLAY_FILE)
 	message(STATUS "Building with uorb publisher rules support")
 	add_definitions(-DORB_USE_PUBLISHER_RULES)
+
+	message(STATUS "Building without lockstep for replay")
+	set(ENABLE_LOCKSTEP_SCHEDULER no)
+else()
+	set(ENABLE_LOCKSTEP_SCHEDULER yes)
 endif()
-set(ENABLE_LOCKSTEP_SCHEDULER yes)

@@ -165,6 +165,8 @@ public:
 
 	unsigned			get_multirotor_count();
 
+	void 				set_dt_once(float dt);
+
 private:
 	List<Mixer *>			_mixers;	/**< linked list of mixers */
 };

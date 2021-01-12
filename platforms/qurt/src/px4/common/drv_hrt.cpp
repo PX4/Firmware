@@ -156,12 +156,10 @@ hrt_abstime hrt_elapsed_time_atomic(const volatile hrt_abstime *then)
  *
  * This function ensures that the timestamp cannot be seen half-written by an interrupt handler.
  */
-hrt_abstime hrt_store_absolute_time(volatile hrt_abstime *now)
+void hrt_store_absolute_time(volatile hrt_abstime *t)
 {
-	hrt_abstime ts = hrt_absolute_time();
-	return ts;
+	*t = hrt_absolute_time();
 }
-
 
 /*
  * If this returns true, the entry has been invoked and removed from the callout list,

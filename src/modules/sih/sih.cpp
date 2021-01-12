@@ -229,16 +229,16 @@ void Sih::init_variables()
 
 void Sih::init_sensors()
 {
-	_vehicle_gps_pos.fix_type = 3;  // 3D fix
-	_vehicle_gps_pos.satellites_used = 8;
-	_vehicle_gps_pos.heading = NAN;
-	_vehicle_gps_pos.heading_offset = NAN;
-	_vehicle_gps_pos.s_variance_m_s = 0.5f;
-	_vehicle_gps_pos.c_variance_rad = 0.1f;
-	_vehicle_gps_pos.eph = 0.9f;
-	_vehicle_gps_pos.epv = 1.78f;
-	_vehicle_gps_pos.hdop = 0.7f;
-	_vehicle_gps_pos.vdop = 1.1f;
+	_sensor_gps.fix_type = 3;  // 3D fix
+	_sensor_gps.satellites_used = 8;
+	_sensor_gps.heading = NAN;
+	_sensor_gps.heading_offset = NAN;
+	_sensor_gps.s_variance_m_s = 0.5f;
+	_sensor_gps.c_variance_rad = 0.1f;
+	_sensor_gps.eph = 0.9f;
+	_sensor_gps.epv = 1.78f;
+	_sensor_gps.hdop = 0.7f;
+	_sensor_gps.vdop = 1.1f;
 }
 
 // read the motor signals outputted from the mixer
@@ -351,21 +351,21 @@ void Sih::send_IMU()
 
 void Sih::send_gps()
 {
-	_vehicle_gps_pos.timestamp = _now;
-	_vehicle_gps_pos.lat = (int32_t)(_gps_lat * 1e7);       // Latitude in 1E-7 degrees
-	_vehicle_gps_pos.lon = (int32_t)(_gps_lon * 1e7); // Longitude in 1E-7 degrees
-	_vehicle_gps_pos.alt = (int32_t)(_gps_alt * 1000.0f); // Altitude in 1E-3 meters above MSL, (millimetres)
-	_vehicle_gps_pos.alt_ellipsoid = (int32_t)(_gps_alt * 1000); // Altitude in 1E-3 meters bove Ellipsoid, (millimetres)
-	_vehicle_gps_pos.vel_ned_valid = true;              // True if NED velocity is valid
-	_vehicle_gps_pos.vel_m_s = sqrtf(_gps_vel(0) * _gps_vel(0) + _gps_vel(1) * _gps_vel(
-			1)); // GPS ground speed, (metres/sec)
-	_vehicle_gps_pos.vel_n_m_s = _gps_vel(0);           // GPS North velocity, (metres/sec)
-	_vehicle_gps_pos.vel_e_m_s = _gps_vel(1);           // GPS East velocity, (metres/sec)
-	_vehicle_gps_pos.vel_d_m_s = _gps_vel(2);           // GPS Down velocity, (metres/sec)
-	_vehicle_gps_pos.cog_rad = atan2(_gps_vel(1),
-					 _gps_vel(0)); // Course over ground (NOT heading, but direction of movement), -PI..PI, (radians)
+	_sensor_gps.timestamp = _now;
+	_sensor_gps.lat = (int32_t)(_gps_lat * 1e7);       // Latitude in 1E-7 degrees
+	_sensor_gps.lon = (int32_t)(_gps_lon * 1e7); // Longitude in 1E-7 degrees
+	_sensor_gps.alt = (int32_t)(_gps_alt * 1000.0f); // Altitude in 1E-3 meters above MSL, (millimetres)
+	_sensor_gps.alt_ellipsoid = (int32_t)(_gps_alt * 1000); // Altitude in 1E-3 meters bove Ellipsoid, (millimetres)
+	_sensor_gps.vel_ned_valid = true;              // True if NED velocity is valid
+	_sensor_gps.vel_m_s = sqrtf(_gps_vel(0) * _gps_vel(0) + _gps_vel(1) * _gps_vel(
+					    1)); // GPS ground speed, (metres/sec)
+	_sensor_gps.vel_n_m_s = _gps_vel(0);           // GPS North velocity, (metres/sec)
+	_sensor_gps.vel_e_m_s = _gps_vel(1);           // GPS East velocity, (metres/sec)
+	_sensor_gps.vel_d_m_s = _gps_vel(2);           // GPS Down velocity, (metres/sec)
+	_sensor_gps.cog_rad = atan2(_gps_vel(1),
+				    _gps_vel(0)); // Course over ground (NOT heading, but direction of movement), -PI..PI, (radians)
 
-	_vehicle_gps_pos_pub.publish(_vehicle_gps_pos);
+	_sensor_gps_pub.publish(_sensor_gps);
 }
 
 void Sih::publish_sih()

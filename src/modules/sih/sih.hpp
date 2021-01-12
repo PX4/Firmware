@@ -48,12 +48,15 @@
 #include <perf/perf_counter.h>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/actuator_outputs.h>
+#include <uORB/topics/sensor_gps.h>
 #include <uORB/topics/vehicle_angular_velocity.h>   // to publish groundtruth
 #include <uORB/topics/vehicle_attitude.h>           // to publish groundtruth
 #include <uORB/topics/vehicle_global_position.h>    // to publish groundtruth
-#include <uORB/topics/vehicle_gps_position.h>
+
+using namespace time_literals;
 
 extern "C" __EXPORT int sih_main(int argc, char *argv[]);
 
@@ -98,14 +101,14 @@ private:
 	void parameters_updated();
 
 	// simulated sensor instances
-	PX4Accelerometer _px4_accel{1311244}; // 1311244: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
-	PX4Gyroscope     _px4_gyro{1311244};  // 1311244: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 2, TYPE: SIMULATION
+	PX4Accelerometer _px4_accel{1310988}; // 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+	PX4Gyroscope     _px4_gyro{1310988};  // 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
 	PX4Magnetometer  _px4_mag{197388};    //  197388: DRV_MAG_DEVTYPE_MAGSIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
 	PX4Barometer     _px4_baro{6620172};  // 6620172: DRV_BARO_DEVTYPE_BAROSIM, BUS: 1, ADDR: 4, TYPE: SIMULATION
 
 	// to publish the gps position
-	vehicle_gps_position_s				_vehicle_gps_pos{};
-	uORB::Publication<vehicle_gps_position_s>	_vehicle_gps_pos_pub{ORB_ID(vehicle_gps_position)};
+	sensor_gps_s			_sensor_gps{};
+	uORB::Publication<sensor_gps_s>	_sensor_gps_pub{ORB_ID(sensor_gps)};
 
 	// angular velocity groundtruth
 	vehicle_angular_velocity_s			_vehicle_angular_velocity_gt{};
@@ -119,7 +122,7 @@ private:
 	vehicle_global_position_s			_gpos_gt{};
 	uORB::Publication<vehicle_global_position_s>	_gpos_gt_pub{ORB_ID(vehicle_global_position_groundtruth)};
 
-	uORB::Subscription _parameter_update_sub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _actuator_out_sub{ORB_ID(actuator_outputs)};
 
 	// hard constants

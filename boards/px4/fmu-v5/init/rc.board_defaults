@@ -6,7 +6,25 @@
 
 if [ $AUTOCNF = yes ]
 then
+	if ver hwtypecmp V550 V560
+	then
+		# CUAV V5+ (V550) and V5nano (V560) have 3 IMUs
+		# Multi-EKF (IMUs only)
+		param set EKF2_MULTI_IMU 3
+		param set SENS_IMU_MODE 0
+	else
+		# Multi-EKF
+		param set EKF2_MULTI_IMU 2
+		param set SENS_IMU_MODE 0
+		param set EKF2_MULTI_MAG 2
+		param set SENS_MAG_MODE 0
+	fi
+fi
 
+# disable px4io on HolyBro mini (V540) and CUAV V5nano (V560)
+if ver hwtypecmp V540 V560
+then
+	param set SYS_USE_IO 0
 fi
 
 set LOGGER_BUF 64

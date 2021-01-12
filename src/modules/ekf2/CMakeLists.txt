@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015-2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,13 +37,17 @@ px4_add_module(
 	MODULE modules__ekf2
 	MAIN ekf2
 	COMPILE_FLAGS
-	STACK_MAX 2400
+		${MAX_CUSTOM_OPT_LEVEL}
 	SRCS
-		ekf2_main.cpp
+		EKF2.cpp
+		EKF2.hpp
+		EKF2Selector.cpp
+		EKF2Selector.hpp
 	DEPENDS
 		git_ecl
 		ecl_EKF
 		ecl_geo
 		perf
-		Ekf2Utility
+		EKF2Utility
+		px4_work_queue
 	)

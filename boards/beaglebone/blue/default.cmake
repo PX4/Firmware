@@ -10,10 +10,11 @@ px4_add_board(
 	LABEL default
 	PLATFORM posix
 	ARCHITECTURE cortex-a8
+	ROMFSROOT px4fmu_common
 	TOOLCHAIN arm-linux-gnueabihf
 	TESTING
 	DRIVERS
-		adc
+		adc/board_adc
 		#barometer # all available barometer drivers
 		barometer/bmp280
 		batt_smbus
@@ -39,6 +40,7 @@ px4_add_board(
 		dataman
 		ekf2
 		events
+		flight_mode_manager
 		fw_att_control
 		fw_pos_control_l1
 		land_detector
@@ -72,6 +74,7 @@ px4_add_board(
 		pwm
 		sd_bench
 		shutdown
+		system_time
 		tests # tests and test runner
 		#top
 		topic_listener

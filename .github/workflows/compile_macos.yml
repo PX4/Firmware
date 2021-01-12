@@ -15,8 +15,7 @@ jobs:
       matrix:
         config: [
           px4_fmu-v5_default,
-          px4_sitl_default,
-          #tests, # includes px4_sitl
+          tests, # includes px4_sitl
           ]
     steps:
     - uses: actions/checkout@v1
@@ -24,7 +23,7 @@ jobs:
         token: ${{secrets.ACCESS_TOKEN}}
 
     - name: setup
-      run: ./Tools/setup/macos.sh
+      run: ./Tools/setup/macos.sh; ./Tools/setup/macos.sh
 
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp

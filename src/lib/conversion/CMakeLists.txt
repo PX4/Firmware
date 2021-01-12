@@ -31,6 +31,11 @@
 #
 ############################################################################
 
-px4_add_library(conversion rotation.cpp)
+px4_add_library(conversion
+	rotation.cpp
+	rotation.h
+)
+
+target_compile_options(conversion PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
 
 px4_add_unit_gtest(SRC RotationTest.cpp LINKLIBS conversion)

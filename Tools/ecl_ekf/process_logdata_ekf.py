@@ -90,6 +90,21 @@ def process_logdata_ekf(
     except:
         raise PreconditionError('could not open {:s}'.format(filename))
 
+    ekf_instances = 1
+
+    try:
+        estimator_selector_status = ulog.get_dataset('estimator_selector_status',).data
+        print('found estimator_selector_status (multi-ekf) data')
+
+        for instances_available in estimator_selector_status['instances_available']:
+            if instances_available > ekf_instances:
+                ekf_instances = instances_available
+
+        print(ekf_instances, 'ekf instances')
+
+    except:
+        print('could not find estimator_selector_status data')
+
     try:
         # get the dictionary of fail and warning test thresholds from a csv file
         with open(check_level_dict_filename, 'r') as file:
@@ -100,30 +115,35 @@ def process_logdata_ekf(
         raise PreconditionError('could not find {:s}'.format(check_level_dict_filename))
 
     in_air_margin = 5.0 if sensor_safety_margins else 0.0
-    # perform the ekf analysis
-    master_status, check_status, metrics, airtime_info = analyse_ekf(
-        ulog, check_levels, red_thresh=1.0, amb_thresh=0.5, min_flight_duration_seconds=5.0,
-        in_air_margin_seconds=in_air_margin)
 
-    test_results = create_results_table(
-        check_table_filename, master_status, check_status, metrics, airtime_info)
+    for multi_instance in range(ekf_instances):
 
-    # write metadata to a .csv file
-    with open('{:s}.mdat.csv'.format(filename), "w") as file:
+        print('\nestimator instance:', multi_instance)
 
-        file.write("name,value,description\n")
+        # perform the ekf analysis
+        master_status, check_status, metrics, airtime_info = analyse_ekf(
+            ulog, check_levels, multi_instance, red_thresh=1.0, amb_thresh=0.5, min_flight_duration_seconds=5.0,
+            in_air_margin_seconds=in_air_margin)
 
-        # loop through the test results dictionary and write each entry on a separate row, with data comma separated
-        # save data in alphabetical order
-        key_list = list(test_results.keys())
-        key_list.sort()
-        for key in key_list:
-            file.write(key + "," + str(test_results[key][0]) + "," + test_results[key][1] + "\n")
-    print('Test results written to {:s}.mdat.csv'.format(filename))
+        test_results = create_results_table(
+            check_table_filename, master_status, check_status, metrics, airtime_info)
 
-    if plot:
-        create_pdf_report(ulog, '{:s}.pdf'.format(filename))
-        print('Plots saved to {:s}.pdf'.format(filename))
+        # write metadata to a .csv file
+        with open('{:s}-{:d}.mdat.csv'.format(filename, multi_instance), "w") as file:
+
+            file.write("name,value,description\n")
+
+            # loop through the test results dictionary and write each entry on a separate row, with data comma separated
+            # save data in alphabetical order
+            key_list = list(test_results.keys())
+            key_list.sort()
+            for key in key_list:
+                file.write(key + "," + str(test_results[key][0]) + "," + test_results[key][1] + "\n")
+        print('Test results written to {:s}-{:d}.mdat.csv'.format(filename, multi_instance))
+
+        if plot:
+            create_pdf_report(ulog, multi_instance, '{:s}-{:d}.pdf'.format(filename, multi_instance))
+            print('Plots saved to {:s}-{:d}.pdf'.format(filename, multi_instance))
 
     return test_results
 

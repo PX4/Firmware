@@ -15,7 +15,7 @@
 # @maintainer Lorenz Meier <lorenz@px4.io>
 #
 
-sh /etc/init.d/rc.fw_defaults
+. ${R}etc/init.d/rc.fw_defaults
 
 if [ $AUTOCNF = yes ]
 then

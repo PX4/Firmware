@@ -18,7 +18,7 @@ set OUTPUT_DEV none
 # If mount (gimbal) control is enabled and output mode is AUX, set the aux
 # mixer to mount (override the airframe-specific MIXER_AUX setting).
 #
-if ! param compare -s MNT_MODE_IN -1
+if param greater -s MNT_MODE_IN -1
 then
         if param compare -s MNT_MODE_OUT 0
         then
@@ -43,13 +43,13 @@ then
 		if [ $IO_PRESENT = yes ]
 		then
 			set OUTPUT_MODE io
-			if param greater DSHOT_CONFIG 0
+			if param greater -s DSHOT_CONFIG 0
 			then
 				set OUTPUT_CMD dshot
 			fi
 		fi
 	else
-		if param greater DSHOT_CONFIG 0
+		if param greater -s DSHOT_CONFIG 0
 		then
 			set OUTPUT_MODE dshot
 			set OUTPUT_CMD dshot
@@ -77,8 +77,7 @@ then
 
 		if ! mkblctrl $MKBLCTRL_ARG
 		then
-			# Error tune.
-			tune_control play -t 2
+			tune_control play error
 		fi
 	fi
 
@@ -86,8 +85,7 @@ then
 	then
 		if ! pwm_out_sim start -m $OUTPUT_MODE
 		then
-			# Error tune.
-			tune_control play -t 2
+			tune_control play error
 		fi
 	fi
 
@@ -95,9 +93,8 @@ then
 	then
 		if ! $OUTPUT_CMD mode_$FMU_MODE
 		then
-			echo "$OUTPUT_CMD start failed" >> $LOG_FILE
-			# Error tune.
-			tune_control play -t 2
+			echo "$OUTPUT_CMD start failed"
+			tune_control play error
 		fi
 	fi
 
@@ -111,7 +108,7 @@ then
 
 	if [ $OUTPUT_MODE = io ]
 	then
-		sh /etc/init.d/rc.io
+		. ${R}etc/init.d/rc.io
 	fi
 
 	#
@@ -121,7 +118,7 @@ then
 	then
 		if [ $OUTPUT_MODE != io ]
 		then
-			sh /etc/init.d/rc.io
+			. ${R}etc/init.d/rc.io
 		fi
 	fi
 fi
@@ -175,16 +172,14 @@ then
 		echo "INFO  [init] Mixer: ${MIXER_FILE} on ${OUTPUT_DEV}"
 	else
 		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE}"
-		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE}" >> $LOG_FILE
-		tune_control play -t 20
+		tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 	fi
 
 else
 	if [ $MIXER != skip ]
 	then
 		echo "ERROR  [init] Mixer undefined"
-		echo "ERROR  [init] Mixer undefined" >> $LOG_FILE
-		tune_control play -t 20
+		tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 	fi
 fi
 
@@ -216,7 +211,6 @@ then
 					echo "INFO  [init] Mixer: ${MIXER_AUX_FILE} appended to ${OUTPUT_DEV}"
 				else
 					echo "ERROR  [init] Failed appending mixer: ${MIXER_AUX_FILE}"
-					echo "ERROR  [init] Failed appending mixer: ${MIXER_AUX_FILE}" >> $LOG_FILE
 				fi
 			fi
 			if [ -e $OUTPUT_AUX_DEV -a $OUTPUT_MODE != hil ]
@@ -226,15 +220,14 @@ then
 					echo "INFO  [init] Mixer: ${MIXER_AUX_FILE} on ${OUTPUT_AUX_DEV}"
 				else
 					echo "ERROR  [init] Failed loading mixer: ${MIXER_AUX_FILE}"
-					echo "ERROR  [init] Failed loading mixer: ${MIXER_AUX_FILE}" >> $LOG_FILE
 				fi
 			else
 				set PWM_AUX_OUT none
 				set FAILSAFE_AUX none
 			fi
 		else
-			echo "ERROR: Could not start: pwm_out mode_pwm" >> $LOG_FILE
-			tune_control play -t 20
+			echo "ERROR: Could not start: pwm_out mode_pwm"
+			tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 			set PWM_AUX_OUT none
 			set FAILSAFE_AUX none
 		fi

@@ -15,14 +15,13 @@ SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 # shellcheck disable=SC2154
 if [ "$replay_mode" = "ekf2" ]
 then
-	sh etc/init.d-posix/rc.replay
+	. ${R}etc/init.d-posix/rc.replay
 	exit 0
 fi
 
 # initialize script variables
 set AUX_MODE                    none
 set IO_PRESENT                  no
-set LOG_FILE                    bootlog.txt
 set MAV_TYPE                    none
 set MIXER                       none
 set MIXER_AUX                   none
@@ -44,16 +43,14 @@ else
 	# Find the matching Autostart ID (file name has the form: [0-9]+_${PX4_SIM_MODEL})
 	# TODO: unify with rc.autostart generation
 	# shellcheck disable=SC2012
-	REQUESTED_AUTOSTART=$(ls "$SCRIPT_DIR" | sed -n 's/^\([0-9][0-9]*\)_'${PX4_SIM_MODEL}'$/\1/p')
+	REQUESTED_AUTOSTART=$(ls "$SCRIPT_DIR/airframes" | sed -n 's/^\([0-9][0-9]*\)_'${PX4_SIM_MODEL}'$/\1/p')
 	if [ -z "$REQUESTED_AUTOSTART" ]; then
-		echo "Error: Unknown model '$PX4_SIM_MODEL'"
+		echo "Error: Unknown model $PX4_SIM_MODEL (not found by name on $SCRIPT_DIR/airframes)"
 		exit 1
+	else
+		echo "Info: found model autostart file as SYS_AUTOSTART=$REQUESTED_AUTOSTART"
 	fi
 fi
-
-# clear bootlog
-[ -f $LOG_FILE ] && rm $LOG_FILE
-
 
 uorb start
 
@@ -101,7 +98,7 @@ then
 	set AUTOCNF yes
 
 	# Wipe out params except RC*, flight modes, total flight time, accel cal, gyro cal, next flight UUID
-	param reset_nostart RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
+	param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
 fi
 
 # multi-instance setup
@@ -119,11 +116,16 @@ if [ $AUTOCNF = yes ]
 then
 	param set SYS_AUTOSTART $REQUESTED_AUTOSTART
 
-	param set BAT_N_CELLS 3
+	param set BAT_N_CELLS 4
 
-	param set CAL_ACC0_ID 1311244
-	param set CAL_GYRO0_ID 1311244
+	param set CAL_ACC0_ID 1310988 # 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+	param set CAL_ACC1_ID 1310996 # 1310996: DRV_IMU_DEVTYPE_SIM, BUS: 2, ADDR: 1, TYPE: SIMULATION
+	param set CAL_ACC2_ID 1311004 # 1311004: DRV_IMU_DEVTYPE_SIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
+	param set CAL_GYRO0_ID 1310988 # 1310988: DRV_IMU_DEVTYPE_SIM, BUS: 1, ADDR: 1, TYPE: SIMULATION
+	param set CAL_GYRO1_ID 1310996 # 1310996: DRV_IMU_DEVTYPE_SIM, BUS: 2, ADDR: 1, TYPE: SIMULATION
+	param set CAL_GYRO2_ID 1311004 # 1311004: DRV_IMU_DEVTYPE_SIM, BUS: 3, ADDR: 1, TYPE: SIMULATION
 	param set CAL_MAG0_ID 197388
+	param set CAL_MAG1_ID 197644
 
 	param set CBRK_AIRSPD_CHK 0
 	param set CBRK_SUPPLY_CHK 894281
@@ -131,31 +133,14 @@ then
 	# Don't require RC calibration and configuration
 	param set COM_RC_IN_MODE 1
 
-	param set EKF2_ANGERR_INIT 0.01
-	param set EKF2_GBIAS_INIT 0.01
-
-	# Prevent high accel bias
-	param set COM_ARM_EKF_AB 0.005
-
 	# Speedup SITL startup
 	param set EKF2_REQ_GPS_H 0.5
 
-	# LPE: GPS only mode
-	param set LPE_FUSION 145
-
-	param set MC_PITCH_P 6
-	param set MC_PITCHRATE_P 0.2
-	param set MC_ROLL_P 6
-	param set MC_ROLLRATE_P 0.2
-
-	param set MPC_Z_VEL_P_ACC 12.0
-	param set MPC_Z_VEL_I_ACC 3.0
-	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_P_ACC 4.0
-	param set MPC_XY_VEL_I_ACC 0.4
-	param set MPC_XY_VEL_D_ACC 0.32
-
-	param set RTL_RETURN_ALT 30
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
+	param set EKF2_MULTI_MAG 2
+	param set SENS_MAG_MODE 0
 
 	# By default log from boot until first disarm.
 	param set SDLOG_MODE 1
@@ -192,7 +177,8 @@ fi
 
 # Autostart ID
 autostart_file=''
-for f in etc/init.d-posix/"$(param show -q SYS_AUTOSTART)"_*
+# shellcheck disable=SC2231
+for f in ${R}etc/init.d-posix/airframes/"$(param show -q SYS_AUTOSTART)"_*
 do
 	filename=$(basename "$f")
 	case "$filename" in
@@ -209,7 +195,7 @@ if [ ! -e "$autostart_file" ]; then
 	exit 1
 fi
 
-sh "$autostart_file"
+. "$autostart_file"
 
 #
 # If autoconfig parameter was set, reset it and save parameters.
@@ -225,6 +211,7 @@ if ! replay tryapplyparams
 then
 	simulator start -c $simulator_tcp_port
 fi
+load_mon start
 battery_simulator start
 tone_alarm start
 rc_update start
@@ -233,7 +220,7 @@ commander start
 navigator start
 
 
-if ! param compare -s MNT_MODE_IN -1
+if param greater -s MNT_MODE_IN -1
 then
 	vmount start
 fi
@@ -248,7 +235,7 @@ fi
 # Note: rc.vehicle_setup is the entry point for rc.interface,
 #       rc.fw_apps, rc.mc_apps, rc.rover_apps, and rc.vtol_apps.
 #
-sh etc/init.d/rc.vehicle_setup
+. ${R}etc/init.d/rc.vehicle_setup
 
 # GCS link
 mavlink start -x -u $udp_gcs_port_local -r 4000000
@@ -269,7 +256,7 @@ mavlink start -x -u $udp_offboard_port_local -r 4000000 -m onboard -o $udp_offbo
 mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $udp_onboard_payload_port_remote
 
 # execute autostart post script if any
-[ -e "$autostart_file".post ] && sh "$autostart_file".post
+[ -e "$autostart_file".post ] && . "$autostart_file".post
 
 # Run script to start logging
 if param compare SYS_MC_EST_GROUP 2
@@ -278,7 +265,7 @@ then
 else
 	set LOGGER_ARGS "-p vehicle_attitude"
 fi
-sh etc/init.d/rc.logging
+. ${R}etc/init.d/rc.logging
 
 mavlink boot_complete
 replay trystart

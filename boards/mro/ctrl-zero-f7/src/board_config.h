@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -105,9 +105,7 @@
 /* CAN Silence: Silent mode control \ ESC Mux select */
 #define GPIO_CAN1_SILENT_S0  /* PF5  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTF|GPIO_PIN5)
 
-/* PWM
- *
- */
+/* PWM */
 #define DIRECT_PWM_OUTPUT_CHANNELS  8
 #define DIRECT_INPUT_TIMER_CHANNELS  8
 
@@ -118,12 +116,10 @@
 #define BOARD_NUMBER_BRICKS             1
 
 #define GPIO_VDD_3V3_SPEKTRUM_POWER_EN  /* PE4  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN4)
-#define GPIO_VDD_3V3_SENSORS_EN         /* PE3  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN3)
-
 
 /* Define True logic Power Control in arch agnostic form */
-#define VDD_3V3_SPEKTRUM_POWER_EN(on_true) px4_arch_gpiowrite(GPIO_VDD_3V3_SPEKTRUM_POWER_EN, (on_true))
-#define READ_VDD_3V3_SPEKTRUM_POWER_EN()   px4_arch_gpioread(GPIO_VDD_3V3_SPEKTRUM_POWER_EN)
+#define VDD_3V3_SPEKTRUM_POWER_EN(on_true) px4_arch_gpiowrite(GPIO_VDD_3V3_SPEKTRUM_POWER_EN, (!on_true))
+#define READ_VDD_3V3_SPEKTRUM_POWER_EN()   (px4_arch_gpioread(GPIO_VDD_3V3_SPEKTRUM_POWER_EN) == 0)
 
 /* Tone alarm output */
 #define TONE_ALARM_TIMER        2  /* timer 2 */
@@ -134,22 +130,18 @@
 #define GPIO_TONE_ALARM_IDLE    GPIO_BUZZER_1
 #define GPIO_TONE_ALARM         GPIO_TIM2_CH1OUT_2
 
-/* USB OTG FS
- *
- * PA9  OTG_FS_VBUS VBUS sensing
- */
+/* USB OTG FS */
 #define GPIO_OTGFS_VBUS         /* PA9 */ (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_100MHz|GPIO_PORTA|GPIO_PIN9)
 
 /* High-resolution timer */
 #define HRT_TIMER               3  /* use timer3 for the HRT */
-#define HRT_TIMER_CHANNEL       3  /* use capture/compare channel 3 */
+#define HRT_TIMER_CHANNEL       2  /* use capture/compare channel 2 */
 
-#define HRT_PPM_CHANNEL         /* T3C2 */  2  /* use capture/compare channel 1 */
-#define GPIO_PPM_IN             /* PC7 T3C2 */ GPIO_TIM3_CH2IN_3
+#define HRT_PPM_CHANNEL         /* T3C3 */  3  /* use capture/compare channel 3 */
+#define GPIO_PPM_IN             /* PB0 T3C3 */ GPIO_TIM3_CH3IN_1
 
 /* RC Serial port */
 #define RC_SERIAL_PORT                     "/dev/ttyS3"
-#define RC_SERIAL_SINGLEWIRE
 
 #define GPIO_RSSI_IN                       /* PC1  */ (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTC|GPIO_PIN1)
 
@@ -162,12 +154,11 @@
 #define SPEKTRUM_POWER(_on_true)           VDD_3V3_SPEKTRUM_POWER_EN(_on_true)
 
 /*
- * FMUv5 has a separate RC_IN
+ * Board has a separate RC_IN
  *
- * GPIO PPM_IN on PC7 T3CH2
- * SPEKTRUM_RX (it's TX or RX in Bind) on UART6 PG9 (NOT FMUv5 test HW ONLY)
- *   In version is possible in the UART
- * and can drive  GPIO PPM_IN as an output
+ * GPIO PPM_IN on PB0 T3CH3
+ * SPEKTRUM_RX (it's TX or RX in Bind) on UART6 PC7
+ *   Inversion is possible in the UART and can drive GPIO_PPM_IN as an output
  */
 #define GPIO_PPM_IN_AS_OUT             (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN0)
 #define SPEKTRUM_RX_AS_GPIO_OUTPUT()   px4_arch_configgpio(GPIO_PPM_IN_AS_OUT)
@@ -201,7 +192,6 @@
 		GPIO_CAN1_SILENT_S0,              \
 		GPIO_nPOWER_IN_A,                 \
 		GPIO_VDD_3V3_SPEKTRUM_POWER_EN,   \
-		GPIO_VDD_3V3_SENSORS_EN,          \
 		GPIO_TONE_ALARM_IDLE,             \
 		GPIO_SAFETY_SWITCH_IN,            \
 	}

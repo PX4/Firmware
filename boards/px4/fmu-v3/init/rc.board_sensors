@@ -4,8 +4,9 @@
 #------------------------------------------------------------------------------
 
 rgbled start -I
+rgbled_ncp5623c start -I
 
-adc start
+board_adc start
 
 # Internal I2C bus
 hmc5883 -T -I -R 4 start

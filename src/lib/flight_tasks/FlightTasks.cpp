@@ -82,7 +82,7 @@ FlightTaskError FlightTasks::switchTask(FlightTaskIndex new_task_index)
 		return FlightTaskError::InvalidTask;
 	}
 
-	if (!_current_task.task) {
+	if (!isAnyTaskActive()) {
 		// no task running
 		return FlightTaskError::NoError;
 	}
@@ -132,7 +132,7 @@ const char *FlightTasks::errorToString(const FlightTaskError error)
 
 void FlightTasks::reActivate()
 {
-	if (_current_task.task) {
+	if (isAnyTaskActive()) {
 		_current_task.task->reActivate();
 	}
 }

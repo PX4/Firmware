@@ -47,6 +47,7 @@
 #include <parameters/param.h>
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_local_position.h>
@@ -59,6 +60,7 @@
 #include <matrix/Matrix.hpp>
 #include "KalmanFilter.h"
 
+using namespace time_literals;
 
 namespace landing_target_estimator
 {
@@ -96,7 +98,7 @@ protected:
 	uORB::Publication<landing_target_innovations_s> _targetInnovationsPub{ORB_ID(landing_target_innovations)};
 	landing_target_innovations_s _target_innovations{};
 
-	uORB::Subscription _parameterSub{ORB_ID(parameter_update)};
+	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 private:
 

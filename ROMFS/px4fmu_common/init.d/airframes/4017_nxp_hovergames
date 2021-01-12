@@ -1,0 +1,39 @@
+#!/bin/sh
+#
+# @name NXP HoverGames
+#
+# @type Quadrotor x
+# @class Copter
+#
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+# @maintainer Iain Galloway <iain.galloway@nxp.com>
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+
+set MIXER quad_x
+set PWM_OUT 1234
+
+if [ $AUTOCNF = yes ]
+then
+
+	param set IMU_GYRO_CUTOFF 40
+	param set IMU_DGYRO_CUTOFF 20
+	param set IMU_GYRO_RATEMAX 400
+
+	param set MC_ROLLRATE_P 0.18
+	param set MC_ROLLRATE_I 0.15
+	param set MC_ROLLRATE_D 0.003
+
+	param set MC_PITCHRATE_P 0.18
+	param set MC_PITCHRATE_I 0.15
+	param set MC_PITCHRATE_D 0.003
+
+fi

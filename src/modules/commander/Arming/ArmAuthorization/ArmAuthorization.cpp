@@ -43,12 +43,17 @@
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_command_ack.h>
 
+using namespace time_literals;
+
 static orb_advert_t *mavlink_log_pub;
 static int command_ack_sub = -1;
 
-static param_t param_arm_parameters;
-
 static hrt_abstime auth_timeout;
+static hrt_abstime auth_req_time;
+
+static hrt_abstime _param_com_arm_auth_timout;
+static enum arm_auth_methods _param_com_arm_auth_method;
+static int32_t _param_com_arm_auth_id;
 
 static enum {
 	ARM_AUTH_IDLE = 0,
@@ -56,18 +61,6 @@ static enum {
 	ARM_AUTH_WAITING_AUTH_WITH_ACK,
 	ARM_AUTH_MISSION_APPROVED
 } state = ARM_AUTH_IDLE;
-
-union {
-	struct {
-		uint8_t authorizer_system_id;
-		union {
-			uint16_t auth_method_arm_timeout_msec;
-			uint16_t auth_method_two_arm_timeout_msec;
-		} auth_method_param;
-		uint8_t authentication_method;
-	} __attribute__((packed)) struct_value;
-	int32_t param_value;
-} arm_parameters;
 
 static uint8_t *system_id;
 
@@ -79,14 +72,33 @@ static uint8_t (*arm_check_method[ARM_AUTH_METHOD_LAST])() = {
 	_auth_method_two_arm_check,
 };
 
+void arm_auth_param_update()
+{
+	float timeout = 0;
+	param_get(param_find("COM_ARM_AUTH_TO"), &timeout);
+	_param_com_arm_auth_timout = timeout * 1_s;
+
+	int32_t auth_method = ARM_AUTH_METHOD_ARM_REQ;
+	param_get(param_find("COM_ARM_AUTH_MET"), &auth_method);
+
+	if (auth_method >= 0 && auth_method < ARM_AUTH_METHOD_LAST) {
+		_param_com_arm_auth_method = (arm_auth_methods)auth_method;
+
+	} else {
+		_param_com_arm_auth_method = ARM_AUTH_METHOD_ARM_REQ;
+	}
+
+	param_get(param_find("COM_ARM_AUTH_ID"), &_param_com_arm_auth_id);
+}
+
 static void arm_auth_request_msg_send()
 {
 	vehicle_command_s vcmd{};
 	vcmd.timestamp = hrt_absolute_time();
 	vcmd.command = vehicle_command_s::VEHICLE_CMD_ARM_AUTHORIZATION_REQUEST;
-	vcmd.target_system = arm_parameters.struct_value.authorizer_system_id;
+	vcmd.target_system = _param_com_arm_auth_id;
 
-	uORB::PublicationQueued<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
+	uORB::Publication<vehicle_command_s> vcmd_pub{ORB_ID(vehicle_command)};
 	vcmd_pub.publish(vcmd);
 }
 
@@ -108,7 +120,8 @@ static uint8_t _auth_method_arm_req_check()
 	arm_auth_request_msg_send();
 
 	hrt_abstime now = hrt_absolute_time();
-	auth_timeout = now + (arm_parameters.struct_value.auth_method_param.auth_method_arm_timeout_msec * 1000);
+	auth_req_time = now;
+	auth_timeout = now + _param_com_arm_auth_timout;
 	state = ARM_AUTH_WAITING_AUTH;
 
 	while (now < auth_timeout) {
@@ -160,18 +173,19 @@ static uint8_t _auth_method_two_arm_check()
 	arm_auth_request_msg_send();
 
 	hrt_abstime now = hrt_absolute_time();
-	auth_timeout = now + (arm_parameters.struct_value.auth_method_param.auth_method_arm_timeout_msec * 1000);
+	auth_req_time = now;
+	auth_timeout = now + _param_com_arm_auth_timout;
 	state = ARM_AUTH_WAITING_AUTH;
 
-	mavlink_log_critical(mavlink_log_pub, "Arm auth: Requesting authorization...");
+	mavlink_log_info(mavlink_log_pub, "Arm auth: Requesting authorization...");
 
 	return vehicle_command_ack_s::VEHICLE_RESULT_TEMPORARILY_REJECTED;
 }
 
 uint8_t arm_auth_check()
 {
-	if (arm_parameters.struct_value.authentication_method < ARM_AUTH_METHOD_LAST) {
-		return arm_check_method[arm_parameters.struct_value.authentication_method]();
+	if (_param_com_arm_auth_method < ARM_AUTH_METHOD_LAST) {
+		return arm_check_method[_param_com_arm_auth_method]();
 	}
 
 	return vehicle_command_ack_s::VEHICLE_RESULT_DENIED;
@@ -180,7 +194,7 @@ uint8_t arm_auth_check()
 void arm_auth_update(hrt_abstime now, bool param_update)
 {
 	if (param_update) {
-		param_get(param_arm_parameters, &arm_parameters.param_value);
+		arm_auth_param_update();
 	}
 
 	switch (state) {
@@ -215,18 +229,19 @@ void arm_auth_update(hrt_abstime now, bool param_update)
 
 	if (updated
 	    && command_ack.command == vehicle_command_s::VEHICLE_CMD_ARM_AUTHORIZATION_REQUEST
-	    && command_ack.target_system == *system_id) {
+	    && command_ack.target_system == *system_id
+	    && command_ack.timestamp > auth_req_time) {
 		switch (command_ack.result) {
 		case vehicle_command_ack_s::VEHICLE_RESULT_IN_PROGRESS:
 			state = ARM_AUTH_WAITING_AUTH_WITH_ACK;
 			break;
 
 		case vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED:
-			mavlink_log_critical(mavlink_log_pub,
-					     "Arm auth: Authorized for the next %u seconds",
-					     command_ack.result_param2);
+			mavlink_log_info(mavlink_log_pub,
+					 "Arm auth: Authorized for the next %u seconds",
+					 command_ack.result_param2);
 			state = ARM_AUTH_MISSION_APPROVED;
-			auth_timeout = now + (command_ack.result_param2 * 1000000);
+			auth_timeout = command_ack.timestamp + (command_ack.result_param2 * 1000000);
 			return;
 
 		case vehicle_command_ack_s::VEHICLE_RESULT_TEMPORARILY_REJECTED:
@@ -275,13 +290,8 @@ void arm_auth_update(hrt_abstime now, bool param_update)
 
 void arm_auth_init(orb_advert_t *mav_log_pub, uint8_t *sys_id)
 {
+	arm_auth_param_update();
 	system_id = sys_id;
-	param_arm_parameters = param_find("COM_ARM_AUTH");
 	command_ack_sub = orb_subscribe(ORB_ID(vehicle_command_ack));
 	mavlink_log_pub = mav_log_pub;
-}
-
-enum arm_auth_methods arm_auth_method_get()
-{
-	return (enum arm_auth_methods) arm_parameters.struct_value.authentication_method;
 }

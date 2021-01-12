@@ -3,9 +3,10 @@
 # PX4FMU startup script for test hackery.
 #
 set +e
+set R /
 set unit_test_failure 0
 
-set BOARD_RC /etc/init.d/rc.board
+set BOARD_RC ${R}etc/init.d/rc.board
 
 uorb start
 
@@ -30,11 +31,10 @@ if [ $? = 0 ]
 then
 	echo "[i] card mounted at /fs/microsd"
 	# Start playing the startup tune
-	tune_control play -t 1
+	tune_control play -t 1 # tune 1 = STARTUP
 else
 	echo "[i] no microSD card found"
-	# Play SOS
-	tune_control play -t 2
+	tune_control play error
 fi
 
 #
@@ -69,7 +69,7 @@ fi
 if [ -f $BOARD_RC ]
 then
 	echo "Board init: ${BOARD_RC}"
-	sh $BOARD_RC
+	. $BOARD_RC
 fi
 
 if [ -f /etc/extras/px4_io-v2_default.bin ]
@@ -90,22 +90,22 @@ then
 	echo "PX4IO CRC OK"
 else
 	echo "PX4IO CRC failure"
-	tune_control play -t  18
+	tune_control play -t 16 # tune 16 = PROG_PX4IO
 	if px4io forceupdate 14662 $io_file
 	then
 		if px4io start
 		then
 			echo "PX4IO restart OK"
-			tune_control play -t  19
+			tune_control play-t 17 # tune 17 = PROG_PX4IO_OK
 		else
 			echo "PX4IO restart failed"
-			tune_control play -t  20
+			tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 			set unit_test_failure 1
 			set unit_test_failure_list "${unit_test_failure_list} px4io_flash"
 		fi
 	else
 		echo "PX4IO update failed"
-		tune_control play -t  20
+		tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 		set unit_test_failure 1
 		set unit_test_failure_list "${unit_test_failure_list} px4io_flash"
 	fi
@@ -119,7 +119,7 @@ then
 	tests mount
 fi
 
-sh /etc/init.d/rc.sensors
+. ${R}etc/init.d/rc.sensors
 
 ver all
 

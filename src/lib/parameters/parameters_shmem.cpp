@@ -991,7 +991,7 @@ param_save_default()
 		goto do_exit;
 	}
 
-	res = param_export(fd, false);
+	res = param_export(fd, false, nullptr);
 
 	if (res != OK) {
 		PX4_ERR("failed to write parameters to file: %s", filename);
@@ -1073,7 +1073,7 @@ param_load_default_no_notify()
 		return 1;
 	}
 
-	int result = param_import(fd_load);
+	int result = param_import(fd_load, true);
 
 	close(fd_load);
 
@@ -1088,7 +1088,7 @@ param_load_default_no_notify()
 }
 
 int
-param_export(int fd, bool only_unsaved)
+param_export(int fd, bool only_unsaved, param_filter_func filter)
 {
 	perf_begin(param_export_perf);
 
@@ -1126,6 +1126,10 @@ param_export(int fd, bool only_unsaved)
 		 * one hasn't, then skip it
 		 */
 		if (only_unsaved && !s->unsaved) {
+			continue;
+		}
+
+		if (filter && !filter(s->param)) {
 			continue;
 		}
 
@@ -1347,10 +1351,10 @@ param_import_internal(int fd, bool mark_saved)
 }
 
 int
-param_import(int fd)
+param_import(int fd, bool mark_saved)
 {
 #if !defined(FLASH_BASED_PARAMS)
-	return param_import_internal(fd, false);
+	return param_import_internal(fd, mark_saved);
 #else
 	(void)fd; // unused
 	// no need for locking here

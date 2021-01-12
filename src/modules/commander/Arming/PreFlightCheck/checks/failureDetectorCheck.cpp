@@ -56,6 +56,14 @@ bool PreFlightCheck::failureDetectorCheck(orb_advert_t *mavlink_log_pub, const v
 			if (status.failure_detector_status & vehicle_status_s::FAILURE_ALT) {
 				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Altitude failure detected");
 			}
+
+			if (status.failure_detector_status & vehicle_status_s::FAILURE_EXT) {
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Parachute failure detected");
+			}
+
+			if (status.failure_detector_status & vehicle_status_s::FAILURE_ARM_ESC) {
+				mavlink_log_critical(mavlink_log_pub, "Preflight Fail: ESC failure detected");
+			}
 		}
 
 		return false;

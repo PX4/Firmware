@@ -49,35 +49,23 @@
 #include <px4_platform_common/module.h>
 
 #include <lib/tunes/tunes.h>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/tune_control.h>
 
 #include <drivers/drv_hrt.h>
 
 #define MAX_NOTE_ITERATION 50
 
-static void	usage();
-
-static orb_advert_t tune_control_pub = nullptr;
-
-extern "C" {
-	__EXPORT int tune_control_main(int argc, char *argv[]);
-}
+static void usage();
 
 static void publish_tune_control(tune_control_s &tune_control)
 {
+	uORB::Publication<tune_control_s> tune_control_pub{ORB_ID(tune_control)};
 	tune_control.timestamp = hrt_absolute_time();
-
-	if (tune_control_pub == nullptr) {
-		// We have a minimum of 3 so that tune, stop, tune will fit
-		tune_control_pub = orb_advertise_queue(ORB_ID(tune_control), &tune_control, tune_control_s::ORB_QUEUE_LENGTH);
-
-	} else {
-		orb_publish(ORB_ID(tune_control), tune_control_pub, &tune_control);
-	}
+	tune_control_pub.publish(tune_control);
 }
 
-int
-tune_control_main(int argc, char *argv[])
+extern "C" __EXPORT int tune_control_main(int argc, char *argv[])
 {
 	Tunes tunes;
 	bool string_input = false;
@@ -86,8 +74,7 @@ tune_control_main(int argc, char *argv[])
 	int ch;
 	const char *myoptarg = nullptr;
 	unsigned int value;
-	tune_control_s tune_control = {};
-	tune_control.tune_id = 0;
+	tune_control_s tune_control{};
 	tune_control.volume = tune_control_s::VOLUME_LEVEL_DEFAULT;
 
 	while ((ch = px4_getopt(argc, argv, "f:d:t:m:s:", &myoptind, &myoptarg)) != EOF) {
@@ -163,11 +150,15 @@ tune_control_main(int argc, char *argv[])
 	int exit_counter = 0;
 
 	if (!strcmp(argv[myoptind], "play")) {
-		if (string_input) {
+		if (argc >= 2 && !strcmp(argv[2], "error")) {
+			tune_control.tune_id = tune_control_s::TUNE_ID_ERROR;
+			publish_tune_control(tune_control);
+
+		} else if (string_input) {
 			PX4_INFO("Start playback...");
 			tunes.set_string(tune_string, tune_control.volume);
 
-			while (tunes.get_next_note(frequency, duration, silence, volume) > 0) {
+			while (tunes.get_next_note(frequency, duration, silence, volume) == Tunes::Status::Continue) {
 				tune_control.tune_id = 0;
 				tune_control.frequency = (uint16_t)frequency;
 				tune_control.duration = (uint32_t)duration;
@@ -185,23 +176,24 @@ tune_control_main(int argc, char *argv[])
 
 			PX4_INFO("Playback finished.");
 
-		} else {  // tune id instead of string has been provided
+		} else {
+			// tune id instead of string has been provided
 			if (tune_control.tune_id == 0) {
 				tune_control.tune_id = 1;
 			}
 
-			PX4_INFO("Publishing standard tune %d", tune_control.tune_id);
+			PX4_DEBUG("Publishing standard tune %d", tune_control.tune_id);
 			publish_tune_control(tune_control);
 		}
 
 	} else if (!strcmp(argv[myoptind], "libtest")) {
-		int ret = tunes.set_control(tune_control);
+		Tunes::ControlResult ret = tunes.set_control(tune_control);
 
-		if (ret == -EINVAL) {
+		if (ret == Tunes::ControlResult::InvalidTune) {
 			PX4_WARN("Tune ID not recognized.");
 		}
 
-		while (tunes.get_next_note(frequency, duration, silence, volume) > 0) {
+		while (tunes.get_next_note(frequency, duration, silence, volume) == Tunes::Status::Continue) {
 			PX4_INFO("frequency: %d, duration %d, silence %d, volume %d",
 				 frequency, duration, silence, volume);
 
@@ -235,10 +227,8 @@ tune_control_main(int argc, char *argv[])
 	return 0;
 }
 
-static void
-usage()
+static void usage()
 {
-
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
@@ -258,14 +248,13 @@ $ tune_control play -t 2
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("tune_control", "system");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("play","Play system tune or single note.");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("play", "Play system tune or single note.");
+	PRINT_MODULE_USAGE_ARG("error", "Play error tune", false);
 	PRINT_MODULE_USAGE_PARAM_INT('t', 1, 1, 21, "Play predefined system tune", true);
 	PRINT_MODULE_USAGE_PARAM_INT('f', -1, 0, 22, "Frequency of note in Hz (0-22kHz)", true);
 	PRINT_MODULE_USAGE_PARAM_INT('d', -1, 1, 21, "Duration of note in us", true);
 	PRINT_MODULE_USAGE_PARAM_INT('s', 40, 0, 100, "Volume level (loudness) of the note (0-100)", true);
-	PRINT_MODULE_USAGE_PARAM_STRING('m', nullptr,  R"(<string> - e.g. "MFT200e8a8a")",
-					 "Melody in string form", true);
-	PRINT_MODULE_USAGE_COMMAND_DESCR("libtest","Test library");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("stop","Stop playback (use for repeated tunes)");
-
+	PRINT_MODULE_USAGE_PARAM_STRING('m', nullptr, R"(<string> - e.g. "MFT200e8a8a")", "Melody in string form", true);
+	PRINT_MODULE_USAGE_COMMAND_DESCR("libtest", "Test library");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop playback (use for repeated tunes)");
 }

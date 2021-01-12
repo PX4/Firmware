@@ -97,7 +97,7 @@ private:
 				      const bool optional, int32_t &device_id, const bool report_fail);
 	static bool magConsistencyCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const bool report_status);
 	static bool accelerometerCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,
-				       const bool optional, const bool dynamic, int32_t &device_id, const bool report_fail);
+				       const bool optional, int32_t &device_id, const bool report_fail);
 	static bool gyroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,
 			      const bool optional, int32_t &device_id, const bool report_fail);
 	static bool baroCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status, const uint8_t instance,
@@ -110,6 +110,9 @@ private:
 			       const bool prearm);
 	static bool ekf2Check(orb_advert_t *mavlink_log_pub, vehicle_status_s &vehicle_status, const bool optional,
 			      const bool report_fail, const bool enforce_gps_required);
+
+	static bool ekf2CheckSensorBias(orb_advert_t *mavlink_log_pub, const bool report_fail);
+
 	static bool failureDetectorCheck(orb_advert_t *mavlink_log_pub, const vehicle_status_s &status, const bool report_fail,
 					 const bool prearm);
 

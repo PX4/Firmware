@@ -33,7 +33,7 @@
 
 /**
  * @file AirspeedValidator.cpp
- * Estimates airspeed scale error (from indicated to equivalent airspeed), performes
+ * Estimates airspeed scale error (from indicated to calibrated airspeed), performes
  * checks on airspeed measurement input and reports airspeed valid or invalid.
  */
 
@@ -52,8 +52,8 @@ AirspeedValidator::update_airspeed_validator(const airspeed_validator_update_dat
 		_previous_airspeed_timestamp = input_data.airspeed_timestamp;
 	}
 
-	update_EAS_scale();
-	update_EAS_TAS(input_data.air_pressure_pa, input_data.air_temperature_celsius);
+	update_CAS_scale();
+	update_CAS_TAS(input_data.air_pressure_pa, input_data.air_temperature_celsius);
 	update_wind_estimator(input_data.timestamp, input_data.airspeed_true_raw, input_data.lpos_valid, input_data.lpos_vx,
 			      input_data.lpos_vy,
 			      input_data.lpos_vz, input_data.lpos_evh, input_data.lpos_evv, input_data.att_q);
@@ -77,12 +77,14 @@ AirspeedValidator::update_wind_estimator(const uint64_t time_now_usec, float air
 		Vector3f vI(lpos_vx, lpos_vy, lpos_vz);
 		Quatf q(att_q);
 
-		// sideslip fusion
-		_wind_estimator.fuse_beta(time_now_usec, vI, q);
-
 		// airspeed fusion (with raw TAS)
 		const Vector3f vel_var{Dcmf(q) *Vector3f{lpos_evh, lpos_evh, lpos_evv}};
 		_wind_estimator.fuse_airspeed(time_now_usec, airspeed_true_raw, vI, Vector2f{vel_var(0), vel_var(1)});
+
+		// sideslip fusion
+		_wind_estimator.fuse_beta(time_now_usec, vI, q);
+
+
 	}
 }
 
@@ -117,22 +119,22 @@ AirspeedValidator::set_airspeed_scale_manual(float airspeed_scale_manual)
 }
 
 void
-AirspeedValidator::update_EAS_scale()
+AirspeedValidator::update_CAS_scale()
 {
 	if (_wind_estimator.is_estimate_valid()) {
-		_EAS_scale = 1.0f / math::constrain(_wind_estimator.get_tas_scale(), 0.5f, 2.0f);
+		_CAS_scale = 1.0f / math::constrain(_wind_estimator.get_tas_scale(), 0.5f, 2.0f);
 
 	} else {
-		_EAS_scale = _airspeed_scale_manual;
+		_CAS_scale = _airspeed_scale_manual;
 	}
 
 }
 
 void
-AirspeedValidator::update_EAS_TAS(float air_pressure_pa, float air_temperature_celsius)
+AirspeedValidator::update_CAS_TAS(float air_pressure_pa, float air_temperature_celsius)
 {
-	_EAS = calc_EAS_from_IAS(_IAS, _EAS_scale);
-	_TAS = calc_TAS_from_EAS(_EAS, air_pressure_pa, air_temperature_celsius);
+	_CAS = calc_CAS_from_IAS(_IAS, _CAS_scale);
+	_TAS = calc_TAS_from_CAS(_CAS, air_pressure_pa, air_temperature_celsius);
 }
 
 void
@@ -204,7 +206,7 @@ AirspeedValidator::check_load_factor(float accel_z)
 	if (_in_fixed_wing_flight) {
 
 		if (!bad_number_fail) {
-			float max_lift_ratio = fmaxf(_EAS, 0.7f) / fmaxf(_airspeed_stall, 1.0f);
+			float max_lift_ratio = fmaxf(_CAS, 0.7f) / fmaxf(_airspeed_stall, 1.0f);
 			max_lift_ratio *= max_lift_ratio;
 
 			_load_factor_ratio = 0.95f * _load_factor_ratio + 0.05f * (fabsf(accel_z) / 9.81f) / max_lift_ratio;

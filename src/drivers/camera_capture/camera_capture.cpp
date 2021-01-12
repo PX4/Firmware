@@ -68,9 +68,6 @@ CameraCapture::CameraCapture() :
 
 CameraCapture::~CameraCapture()
 {
-	/* free any existing reports */
-	delete _trig_buffer;
-
 	camera_capture::g_camera_capture = nullptr;
 }
 
@@ -295,13 +292,6 @@ CameraCapture::reset_statistics(bool reset_seq)
 int
 CameraCapture::start()
 {
-	/* allocate basic report buffers */
-	_trig_buffer = new ringbuffer::RingBuffer(2, sizeof(_trig_s));
-
-	if (_trig_buffer == nullptr) {
-		return PX4_ERROR;
-	}
-
 	// run every 100 ms (10 Hz)
 	ScheduleOnInterval(100000, 10000);
 

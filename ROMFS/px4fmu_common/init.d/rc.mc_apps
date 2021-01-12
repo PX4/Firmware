@@ -40,7 +40,7 @@ else
 		# EKF2
 		#
 		param set SYS_MC_EST_GROUP 2
-		ekf2 start
+		ekf2 start &
 	fi
 fi
 
@@ -62,6 +62,7 @@ mc_att_control start
 # Start Multicopter Position Controller.
 #
 mc_hover_thrust_estimator start
+flight_mode_manager start
 mc_pos_control start
 
 #

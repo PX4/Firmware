@@ -66,36 +66,52 @@ namespace Register
 {
 
 enum class BANK_0 : uint8_t {
-	DEVICE_CONFIG     = 0x11,
+	DEVICE_CONFIG      = 0x11,
 
-	INT_CONFIG        = 0x14,
+	INT_CONFIG         = 0x14,
 
-	FIFO_CONFIG       = 0x16,
+	FIFO_CONFIG        = 0x16,
 
-	TEMP_DATA1        = 0x1D,
-	TEMP_DATA0        = 0x1E,
+	TEMP_DATA1         = 0x1D,
+	TEMP_DATA0         = 0x1E,
 
-	INT_STATUS        = 0x2D,
-	FIFO_COUNTH       = 0x2E,
-	FIFO_COUNTL       = 0x2F,
-	FIFO_DATA         = 0x30,
+	INT_STATUS         = 0x2D,
+	FIFO_COUNTH        = 0x2E,
+	FIFO_COUNTL        = 0x2F,
+	FIFO_DATA          = 0x30,
 
-	SIGNAL_PATH_RESET = 0x4B,
+	SIGNAL_PATH_RESET  = 0x4B,
+	INTF_CONFIG0       = 0x4C,
+	INTF_CONFIG1       = 0x4D,
+	PWR_MGMT0          = 0x4E,
+	GYRO_CONFIG0       = 0x4F,
+	ACCEL_CONFIG0      = 0x50,
+	GYRO_CONFIG1       = 0x51,
+	GYRO_ACCEL_CONFIG0 = 0x52,
+	ACCEL_CONFIG1      = 0x53,
 
-	PWR_MGMT0         = 0x4E,
-	GYRO_CONFIG0      = 0x4F,
-	ACCEL_CONFIG0     = 0x50,
+	FIFO_CONFIG1       = 0x5F,
+	FIFO_CONFIG2       = 0x60,
+	FIFO_CONFIG3       = 0x61,
 
-	FIFO_CONFIG1      = 0x5F,
-	FIFO_CONFIG2      = 0x60,
-	FIFO_CONFIG3      = 0x61,
+	INT_CONFIG0        = 0x63,
 
-	INT_CONFIG0       = 0x63,
-	INT_CONFIG1       = 0x64,
-	INT_SOURCE0       = 0x65,
+	INT_SOURCE0        = 0x65,
 
-	WHO_AM_I          = 0x75,
-	REG_BANK_SEL      = 0x76,
+	SELF_TEST_CONFIG   = 0x70,
+
+	WHO_AM_I           = 0x75,
+	REG_BANK_SEL       = 0x76,
+};
+
+enum class BANK_1 : uint8_t {
+	GYRO_CONFIG_STATIC2 = 0x0B,
+
+	INTF_CONFIG5        = 0x7B,
+};
+
+enum class BANK_2 : uint8_t {
+	ACCEL_CONFIG_STATIC2 = 0x03,
 };
 
 };
@@ -144,10 +160,6 @@ enum PWR_MGMT0_BIT : uint8_t {
 enum GYRO_CONFIG0_BIT : uint8_t {
 	// 7:5 GYRO_FS_SEL
 	GYRO_FS_SEL_2000_DPS = 0,            // 0b000 = ±2000dps (default)
-	GYRO_FS_SEL_1000_DPS = Bit5,         // 0b001 = ±1000 dps
-	GYRO_FS_SEL_500_DPS  = Bit6,         // 0b010 = ±500 dps
-	GYRO_FS_SEL_250_DPS  = Bit6 | Bit5,  // 0b011 = ±250 dps
-	GYRO_FS_SEL_125_DPS  = Bit7,         // 0b100 = ±125 dps
 
 	// 3:0 GYRO_ODR
 	GYRO_ODR_32kHz       = Bit0,         // 0001: 32kHz
@@ -162,9 +174,6 @@ enum GYRO_CONFIG0_BIT : uint8_t {
 enum ACCEL_CONFIG0_BIT : uint8_t {
 	// 7:5 ACCEL_FS_SEL
 	ACCEL_FS_SEL_16G = 0,           // 000: ±16g (default)
-	ACCEL_FS_SEL_8G  = Bit5,        // 001: ±8g
-	ACCEL_FS_SEL_4G  = Bit6,        // 010: ±4g
-	ACCEL_FS_SEL_2G  = Bit6 | Bit5, // 011: ±2g
 
 	// 3:0 ACCEL_ODR
 	ACCEL_ODR_32kHz  = Bit0,        // 0001: 32kHz
@@ -175,11 +184,30 @@ enum ACCEL_CONFIG0_BIT : uint8_t {
 	ACCEL_ODR_1kHz   = Bit2 | Bit1, // 0110: 1kHz (default)
 };
 
+// GYRO_CONFIG1
+enum GYRO_CONFIG1_BIT : uint8_t {
+	GYRO_UI_FILT_ORD = Bit3 | Bit2, // 00: 1st Order
+};
+
+// GYRO_ACCEL_CONFIG0
+enum GYRO_ACCEL_CONFIG0_BIT : uint8_t {
+	// 7:4 ACCEL_UI_FILT_BW
+	ACCEL_UI_FILT_BW = Bit7 | Bit6 | Bit5 | Bit4, // 0: BW=ODR/2
+
+	// 3:0 GYRO_UI_FILT_BW
+	GYRO_UI_FILT_BW  = Bit3 | Bit2 | Bit1 | Bit0, // 0: BW=ODR/2
+};
+
+// ACCEL_CONFIG1
+enum ACCEL_CONFIG1_BIT : uint8_t {
+	ACCEL_UI_FILT_ORD = Bit4 | Bit3, // 00: 1st Order
+};
+
 // FIFO_CONFIG1
 enum FIFO_CONFIG1_BIT : uint8_t {
 	FIFO_RESUME_PARTIAL_RD = Bit6,
 	FIFO_WM_GT_TH          = Bit5,
-
+	FIFO_HIRES_EN          = Bit4,
 	FIFO_TEMP_EN           = Bit2,
 	FIFO_GYRO_EN           = Bit1,
 	FIFO_ACCEL_EN          = Bit0,
@@ -189,11 +217,6 @@ enum FIFO_CONFIG1_BIT : uint8_t {
 enum INT_CONFIG0_BIT : uint8_t {
 	// 3:2 FIFO_THS_INT_CLEAR
 	CLEAR_ON_FIFO_READ = Bit3,
-};
-
-// INT_CONFIG1
-enum INT_CONFIG1_BIT : uint8_t {
-	INT_TPULSE_DURATION = Bit6, // 0: Interrupt pulse duration is 100μs
 };
 
 // INT_SOURCE0
@@ -215,41 +238,62 @@ enum REG_BANK_SEL_BIT : uint8_t {
 	USER_BANK_3 = Bit5 | Bit4, // 3: Select USER BANK 3.
 };
 
+
+//---------------- BANK1 Register bits
+
+// GYRO_CONFIG_STATIC2
+enum GYRO_CONFIG_STATIC2_BIT : uint8_t {
+	GYRO_AAF_DIS = Bit1,
+	GYRO_NF_DIS  = Bit0,
+};
+
+
+//---------------- BANK2 Register bits
+
+// ACCEL_CONFIG_STATIC2
+enum ACCEL_CONFIG_STATIC2_BIT : uint8_t {
+	ACCEL_AAF_DIS = Bit0,
+};
+
 namespace FIFO
 {
 static constexpr size_t SIZE = 2048;
 
 // FIFO_DATA layout when FIFO_CONFIG1 has FIFO_GYRO_EN and FIFO_ACCEL_EN set
 
-// Packet 3
+// Packet 4
 struct DATA {
 	uint8_t FIFO_Header;
-	uint8_t ACCEL_DATA_X1;
-	uint8_t ACCEL_DATA_X0;
-	uint8_t ACCEL_DATA_Y1;
-	uint8_t ACCEL_DATA_Y0;
-	uint8_t ACCEL_DATA_Z1;
-	uint8_t ACCEL_DATA_Z0;
-	uint8_t GYRO_DATA_X1;
-	uint8_t GYRO_DATA_X0;
-	uint8_t GYRO_DATA_Y1;
-	uint8_t GYRO_DATA_Y0;
-	uint8_t GYRO_DATA_Z1;
-	uint8_t GYRO_DATA_Z0;
-	uint8_t temperature;  // Temperature[7:0]
-	uint8_t timestamp_l;
-	uint8_t timestamp_h;
+	uint8_t ACCEL_DATA_X1; // Accel X [19:12]
+	uint8_t ACCEL_DATA_X0; // Accel X [11:4]
+	uint8_t ACCEL_DATA_Y1; // Accel Y [19:12]
+	uint8_t ACCEL_DATA_Y0; // Accel Y [11:4]
+	uint8_t ACCEL_DATA_Z1; // Accel Z [19:12]
+	uint8_t ACCEL_DATA_Z0; // Accel Z [11:4]
+	uint8_t GYRO_DATA_X1;  // Gyro X [19:12]
+	uint8_t GYRO_DATA_X0;  // Gyro X [11:4]
+	uint8_t GYRO_DATA_Y1;  // Gyro Y [19:12]
+	uint8_t GYRO_DATA_Y0;  // Gyro Y [11:4]
+	uint8_t GYRO_DATA_Z1;  // Gyro Z [19:12]
+	uint8_t GYRO_DATA_Z0;  // Gyro Z [11:4]
+	uint8_t TEMP_DATA1;    // Temperature[15:8]
+	uint8_t TEMP_DATA0;    // Temperature[7:0]
+	uint8_t TimeStamp_h;   // TimeStamp[15:8]
+	uint8_t TimeStamp_l;   // TimeStamp[7:0]
+	uint8_t Ext_Accel_X_Gyro_X; // Accel X [3:0] Gyro X [3:0]
+	uint8_t Ext_Accel_Y_Gyro_Y; // Accel Y [3:0] Gyro Y [3:0]
+	uint8_t Ext_Accel_Z_Gyro_Z; // Accel Z [3:0] Gyro Z [3:0]
 };
 
 // With FIFO_ACCEL_EN and FIFO_GYRO_EN header should be 8’b_0110_10xx
 enum FIFO_HEADER_BIT : uint8_t {
 	HEADER_MSG             = Bit7, // 1: FIFO is empty
-	HEADER_ACCEL           = Bit6,
-	HEADER_GYRO            = Bit5,
-	HEADER_20              = Bit4,
+	HEADER_ACCEL           = Bit6, // 1: Packet is sized so that accel data have location in the packet, FIFO_ACCEL_EN must be 1
+	HEADER_GYRO            = Bit5, // 1: Packet is sized so that gyro data have location in the packet, FIFO_GYRO_EN must be1
+	HEADER_20              = Bit4, // 1: Packet has a new and valid sample of extended 20-bit data for gyro and/or accel
 	HEADER_TIMESTAMP_FSYNC = Bit3 | Bit2,
-	HEADER_ODR_ACCEL       = Bit1,
-	HEADER_ODR_GYRO        = Bit0,
+	HEADER_ODR_ACCEL       = Bit1, // 1: The ODR for accel is different for this accel data packet compared to the previous accel packet
+	HEADER_ODR_GYRO        = Bit0, // 1: The ODR for gyro is different for this gyro data packet compared to the previous gyro packet
 };
 
 }
