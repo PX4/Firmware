@@ -203,17 +203,18 @@ void Battery::estimateRemaining(const float voltage_v, const float current_a, co
 	// remaining battery capacity based on voltage
 	float cell_voltage = voltage_v / _params.n_cells;
 
-	if (_params.r_in_enabled == 1){
+	if (_params.r_in_enabled == 1) {
 
-		if(_internal_resistance_sub.updated()) {
-			_internal_resistance_sub.copy(&inter_res);
+		if (_internal_resistance_sub.updated()) {
+			_internal_resistance_sub.copy(&_inter_res);
 		}
 
-		if (inter_res.best_r_internal_est >= 0.f && inter_res.best_r_internal_est <= 0.2f) {
+		if (_inter_res.best_r_internal_est >= 0.f && _inter_res.best_r_internal_est <= 0.2f) {
 			//assumes each cell has the same resistance and battery cells are in series
-			cell_voltage += (inter_res.best_r_internal_est/_params.n_cells) * current_a;
+			cell_voltage += (_inter_res.best_r_internal_est / _params.n_cells) * current_a;
+
 		} else {
-			// used when initial value of inter_res.best_r_internal_est is zero or undefined
+			// used when initial value of _inter_res.best_r_internal_est is zero or undefined
 			cell_voltage += throttle * _params.v_load_drop;
 		}
 
@@ -221,6 +222,7 @@ void Battery::estimateRemaining(const float voltage_v, const float current_a, co
 		// correct battery voltage locally for load drop to avoid estimation fluctuations
 		if (_params.r_internal >= 0.f) {
 			cell_voltage += _params.r_internal * current_a;
+
 		} else {
 			// assume linear relation between throttle and voltage drop
 			cell_voltage += throttle * _params.v_load_drop;

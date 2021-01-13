@@ -209,7 +209,7 @@ private:
 
 	uORB::Subscription _internal_resistance_sub{ORB_ID(internal_resistance)};
 
-	internal_resistance_s inter_res;
+	internal_resistance_s _inter_res;
 
 	bool _battery_initialized{false};
 	AlphaFilter<float> _voltage_filter_v;

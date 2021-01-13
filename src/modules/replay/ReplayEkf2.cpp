@@ -73,7 +73,7 @@ ReplayEkf2::handleTopicUpdate(Subscription &sub, void *data, std::ifstream &repl
 		return true;
 
 	} else if (sub.orb_meta == ORB_ID(vehicle_status) || sub.orb_meta == ORB_ID(vehicle_land_detected)
-		   || sub.orb_meta == ORB_ID(vehicle_gps_position) || sub.orb_meta == ORB_ID(battery_status) ) {
+		   || sub.orb_meta == ORB_ID(vehicle_gps_position) || sub.orb_meta == ORB_ID(battery_status)) {
 		return publishTopic(sub, data);
 	} // else: do not publish
 

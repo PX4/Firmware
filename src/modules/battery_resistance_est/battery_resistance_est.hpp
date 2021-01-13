@@ -78,28 +78,28 @@ public:
 
 	int print_status() override;
 
-	void update_internal_resistance(const float _voltage_estimation_error, const Vector<float,4> _esm_params_est);
+	void update_internal_resistance(const float voltage_estimation_error, const Vector<float, 4> esm_params_est);
 
-	Vector<float,4> extract_ecm_parameters();
+	Vector<float, 4> extract_ecm_parameters();
 
 	float predict_voltage(const float dt);
 
 private:
 	void Run() override;
 
-	internal_resistance_s inter_res;
-	battery_status_s battery_status;
-	vehicle_status_s vehicle_status;
+	internal_resistance_s _inter_res;
+	battery_status_s _battery_status;
+	vehicle_status_s _vehicle_status;
 
 	hrt_abstime _battery_time_prev;
 	hrt_abstime _battery_time;
 
-	hrt_abstime last_param_update_time;
+	hrt_abstime _last_param_update_time;
 
 	Vector<float, 4> _param_est;
 	Vector<float, 4> _adaptation_gain;
-	Vector<float, 4> signal;
-	Vector<float,4> _best_ecm_params_est;
+	Vector<float, 4> _signal;
+	Vector<float, 4> _best_ecm_params_est;
 
 	float _lambda = 0.8f;
 	float _voltage_estimation;
@@ -108,8 +108,8 @@ private:
 	float _voltage_filtered_v;
 	float _current_filtered_a_prev;
 
-	float best_prediction_error;
-	bool best_prediction_error_reset = true;
+	float _best_prediction_error;
+	bool _best_prediction_error_reset = true;
 
 	//used to save estimated ecm params on disarm
 	bool _armed = false;
@@ -124,14 +124,14 @@ private:
 	uORB::Publication<internal_resistance_s> _internal_res_pub{ORB_ID(internal_resistance)};
 
 	DEFINE_PARAMETERS(
-	(ParamFloat<px4::params::BAT1_R_INTERNAL>) _param_bat1_r_internal,
-	(ParamFloat<px4::params::BAT1_V_CHARGED>) _param_bat1_v_charged,
-	(ParamInt<px4::params::BAT1_N_CELLS>) _param_bat1_n_cells,
-	(ParamFloat<px4::params::BAT_VOC_INIT>) _param_v_oc_init,
-	(ParamFloat<px4::params::BAT_R_S_INIT>) _param_r_s_init,
-	(ParamFloat<px4::params::BAT_R_T_INIT>) _param_r_t_init,
-	(ParamFloat<px4::params::BAT_C_T_INIT>) _param_c_t_init,
-	(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period
-    	)
+		(ParamFloat<px4::params::BAT1_R_INTERNAL>) _param_bat1_r_internal,
+		(ParamFloat<px4::params::BAT1_V_CHARGED>) _param_bat1_v_charged,
+		(ParamInt<px4::params::BAT1_N_CELLS>) _param_bat1_n_cells,
+		(ParamFloat<px4::params::BAT_VOC_INIT>) _param_v_oc_init,
+		(ParamFloat<px4::params::BAT_R_S_INIT>) _param_r_s_init,
+		(ParamFloat<px4::params::BAT_R_T_INIT>) _param_r_t_init,
+		(ParamFloat<px4::params::BAT_C_T_INIT>) _param_c_t_init,
+		(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period
+	)
 
 };
