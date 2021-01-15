@@ -105,7 +105,13 @@ UWB_R4::~UWB_R4()
 void UWB_R4::run()
 {
 	_check_params(false);
-	//uint8_t Distance_cmd[20] = {0};
+
+	// Subscribe to parameter_update message
+	int parameter_update_sub = orb_subscribe(ORB_ID(parameter_update));
+
+	parameters_update(parameter_update_sub);
+
+		//uint8_t Distance_cmd[20] = {0};
 	//memcpy(&Distance_cmd, &CMD_DISTANCE_RESULT_CMD, sizeof(CMD_DISTANCE_RESULT_CMD));
 
 	/* Grid Survey*/
@@ -423,6 +429,10 @@ int UWB_R4::distance()
 	_uart_timeout.tv_sec = MESSAGE_TIMEOUT_S ;
 	_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> c9f96c924111fd5d5d84a9f42e51abdb7a34e94e
 	size_t buffer_location = 0;
 	// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
 	// Messages are only delimited by time. There is a chance that this driver starts up in the middle
@@ -821,7 +831,6 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 
 	return UWB_OK;
 }
-
 
 
 int uwb_r4_main(int argc, char *argv[])

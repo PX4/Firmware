@@ -293,8 +293,10 @@ rtps:
     id: 140
   - msg: estimator_status_flags
     id: 141
-  - msg: uwb_report
+  - msg: uwb_distance
     id: 142
+  - msg: uwb_grid
+    id: 143
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150

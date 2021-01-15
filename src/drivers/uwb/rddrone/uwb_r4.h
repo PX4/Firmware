@@ -214,7 +214,6 @@ private:
 		param_t uwb_uuid_on_sd;
 		param_t uwb_pos_debug;
 	} _param_handles ;
-
 	void _check_params(const bool force);
 
 
@@ -224,10 +223,6 @@ private:
 	fd_set _uart_set;
 	struct timeval _uart_timeout {};
 
-	perf_counter_t _read_count_perf;
-	perf_counter_t _read_err_perf;
-
-	uORB::Publication<uwb_grid_s> _uwb_grid_pub{ORB_ID(uwb_grid)};
 	uwb_grid_s _uwb_grid{};
 
 	uORB::Publication<uwb_distance_s> _uwb_distance_pub{ORB_ID(uwb_distance)};
