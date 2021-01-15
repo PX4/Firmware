@@ -99,7 +99,6 @@ set(msg_files
 	position_setpoint_triplet.msg
 	power_button_state.msg
 	power_monitor.msg
-	uwb_report.msg
 	pwm_input.msg
 	px4io_status.msg
 	qshell_req.msg
