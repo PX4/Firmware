@@ -64,7 +64,6 @@
 #define UWB_CMD_START  0x01
 #define UWB_CMD_STOP  0x00
 #define UWB_CMD_DEBUG  0x02
-#define UWB_CMD_DEBUG  0x02
 #define STOP_B 0x1b
 
 const uint8_t CMD_STOP_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_STOP};
@@ -81,8 +80,7 @@ const uint8_t CMD_GRID_SURVEY[5] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00, STOP_B};
 #define CONF_FILE "/fs/microsd/etc/uwb_r4_config.txt"
 
 typedef struct {  //needs higher accuracy?
-	float lat, lon, alt;
-	float yaw; //offset to true North
+	float lat, lon, alt,yaw;//offset to true North
 } gps_pos_t;
 
 typedef struct {
@@ -92,14 +90,15 @@ typedef struct {
 typedef union {
 	uint8_t all_flags; /**/
 	struct {
-		uint8_t spare7 : 1, /* Unused */
-			grid_moving : 1, /* grid is Moving y/n? */
-			yaw_data : 1, /* yaw y/n */
-			gps_data : 1, /* gps data y/n*/
-			spare3 : 1, /*  */
-			spare2 : 1, /* */
-			grid_found : 1, /* Grid found*/
-			uwb_flag_status : 1; /* Correctly send Grid info */
+		uint8_t check_uuid :1, /* weather devices check UUID of UWB request */
+        	send_payload :1, /* Send Payload with Timestamps */
+        	groupdelay :1, /* do groupdelay on startup and send  it with payload */
+        	grid_moving :1, /* grid is moving object */
+        	/* payload flags */
+        	gps_calc :1, /* calculate GPS ; if set to False Responder will send static GPS */
+        	gps_data :1, /* Send GPS */
+        	gps_vel :1, /* Send GPS_Velocity*/
+        	spare7 :1; /* Correctly send Grid info */
 	};
 } uwb_grid_flags;
 
@@ -121,9 +120,9 @@ typedef struct {
 	uwb_grid_flags	flag; 	//grid info flags ()
 	uint8_t	grid_uuid[16];// Same UUID as for anchor 0
 	uint8_t	num_anchors;	//number of anchors
-	uint8_t preamble_id; 	//TODO Do this
-	uint8_t	channel_id; 	//TODO Do this
-	gps_pos_t gps_data;  	// GPS Position of grid
+	uint8_t preamble_id; 	//UWB Preamble
+	uint8_t	channel_id; 	//UWB Channel
+	gps_pos_t target_gps; //GPS position of Landing Point
 	position_t target_pos; //target position
 	position_t anchor_pos[MAX_ANCHORS]; // Position of each anchor
 	uint8_t stop; 		// Should be 27
@@ -137,9 +136,10 @@ typedef struct {
 	uint8_t data_len; 	// Should be 0x30 for distance result message
 	uint8_t status;   	// 0x00 is no error
 	uint16_t counter;	// Number of Ranges since last Start of Ranging
-	uint8_t time_offset;	// time measured between ranging
-	float yaw_offset; 	// Yaw offset in degrees
+	uint16_t flags;
 	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM 2*9
+	uint8_t time_offset;	// time measured between ranging
+	gps_pos_t gps_data;  	// GPS Position of grid
 	uint8_t stop; 		// Should be 0x1B
 } __attribute__((packed)) distance_msg_t;
 

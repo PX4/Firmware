@@ -8,8 +8,8 @@ uint8[16] grid_uuid	# UUID of Anchor 0 of the Grid
 uint8 num_anchors	 	# Number of anchors
 
 # GPS:
-#Latitude of the point (0, 0, 0) of the UWB system
-float32[4] gps_data #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
+#GPS position of target_pos of the UWB system
+float32[4] target_gps #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
 		#todo Improve accuracy to float64
 		#yaw offset does not need this accuracy
 

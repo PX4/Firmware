@@ -127,7 +127,7 @@ void UWB_R4::run()
 
 	//Param to decide on wich UUID to Range.
 	if (_param_uwb_uuid_on_sd.get()) {
-
+		//use Internal Grid UUID
 		PX4_INFO("Reading UWB GRID from SD... \t\n");
 		uint8_t string[32] = {0};
 		FILE *file;
@@ -152,7 +152,7 @@ void UWB_R4::run()
 
 		fclose(file);
 
-	} else {
+	} else { //use UUID from Grid survey
 		memcpy(&Distance_cmd[4], &_uwb_grid.grid_uuid, sizeof(_uwb_grid.grid_uuid));
 	}
 
@@ -325,7 +325,7 @@ int UWB_R4::grid_survey()
 	bool grid_found = false;
 
 
-	int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY));
+	int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY)); //TODO insert grid you want to range with
 
 	if (written < (int) sizeof(CMD_GRID_SURVEY)) {
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_GRID_SURVEY));
@@ -351,7 +351,7 @@ int UWB_R4::grid_survey()
 		//  - Once receiving a message, keep going until EITHER:
 		//    - There is too large of a gap between bytes (Currently set to 5ms).
 		//      This means the message is incomplete. Throw it out and start over.
-		//    - 165 bytes are received (the size of the whole message).
+		//    - 200 bytes are received (the size of the whole message).
 
 		while (grid_buffer_location < sizeof(_grid_survey_msg)
 		       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
@@ -381,7 +381,7 @@ int UWB_R4::grid_survey()
 		}
 
 		// All of the following criteria must be met for the message to be acceptable:
-		//  - Size of message == sizeof(grid_msg_t) (165)
+		//  - Size of message == sizeof(grid_msg_t) (196)
 		//  - Data Len == 0xA1
 		//  - status == 0x00
 		//  - Stop Byte == 0x1b
@@ -398,7 +398,7 @@ int UWB_R4::grid_survey()
 	memcpy(&_uwb_grid.grid_uuid, &_grid_survey_msg.grid_uuid, sizeof(_uwb_grid.grid_uuid));
 	_uwb_grid.initator_time = _grid_survey_msg.initator_time;
 	_uwb_grid.num_anchors = _grid_survey_msg.num_anchors;
-	memcpy(&_uwb_grid.gps_data, &_grid_survey_msg.gps_data, sizeof(gps_pos_t));
+	memcpy(&_uwb_grid.target_gps, &_grid_survey_msg.target_gps, sizeof(gps_pos_t));
 	memcpy(&_uwb_grid.target_pos, &_grid_survey_msg.target_pos, sizeof(position_t));
 
 	//for (int i = 0; i < MAX_ANCHORS; i++) {
@@ -492,8 +492,8 @@ int UWB_R4::distance()
 		_attitude_sub.update(&_vehicle_attitude);
 		_uwb_distance.status = _distance_result_msg.status;
 		_uwb_distance.counter = _distance_result_msg.counter;
-		_uwb_distance.yaw_offset = _distance_result_msg.yaw_offset;
 		_uwb_distance.time_offset = _distance_result_msg.time_offset;
+		memcpy(&_uwb_distance.gps_data , &_distance_result_msg.gps_data, sizeof(gps_pos_t));
 
 		for (int i = 0; i < MAX_ANCHORS; i++) {
 			_uwb_distance.anchor_distance[i] = _distance_result_msg.anchor_distance[i];
@@ -814,7 +814,7 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 	// Construct the rotation from the RDDrone frame to the NWU frame.
 	// The RDDrone frame is just NWU, rotated by some amount about the Z (up) axis.
 	// To get back to NWU, just rotate by negative this amount about Z.
-	_uwb_r4_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_uwb_distance.yaw_offset * M_PI_F / 180.0f)));
+	_uwb_r4_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_uwb_distance.gps_data[3]  * M_PI_F / 180.0f)));
 	// The actual conversion:
 	//  - Subtract _landing_point to get the position relative to the landing point, in RDDrone frame
 	//  - Rotate by _rddrone_to_nwu to get into the NWU frame
