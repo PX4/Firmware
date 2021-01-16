@@ -133,7 +133,7 @@ const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x84 : not user-modifiable */
 	0x01, /* 0x85 : not user-modifiable */
 	0x00, /* 0x86 : clear interrupt, use ClearInterrupt() */
-	0x00  /* 0x87 : start ranging, use StartRanging() or StopRanging(), If you want an automatic start after VL53L1X_init() call, put 0x40 in location 0x87 */
+	0x40  /* 0x87 : start ranging, use StartRanging() or StopRanging(), If you want an automatic start after VL53L1X_init() call, put 0x40 in location 0x87 */
 };
 
 static const uint8_t status_rtn[24] = { 255, 255, 255, 5, 2, 4, 1, 7, 3, 0,
@@ -198,6 +198,10 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
 	if (pub_rngval == NULL){
                 return PX4_ERROR;
 	}
+	else {
+		orb_publish(ORB_ID(distance_sensor), pub_rngval, rngval);
+
+	}
 	perf_end(_sample_perf);
 
 	float distance_m = distance_mm / 1000.f;
@@ -234,7 +238,6 @@ void VL53L1X::RunImpl()
 	VL53L1X_CheckForDataReady(&dataReady);
 
 	if (dataReady == 1) {
-		//collect();
                 collect(&range_value);
 	}
 
@@ -253,7 +256,7 @@ int VL53L1X::init()
 	}
 
 	ret |= VL53L1X_SensorInit();
-	ret |= VL53L1X_ConfigBig(2, VL53L1X_SAMPLE_RATE);
+	ret |= VL53L1X_ConfigBig(1, VL53L1X_SAMPLE_RATE);
 	ret |= VL53L1X_SetInterMeasurementInMs(VL53L1X_SAMPLE_RATE);
 	ret |= VL53L1X_StartRanging();
 
@@ -687,7 +690,6 @@ extern "C" __EXPORT int vl53l1x_main(int argc, char *argv[])
 
 	if (!strcmp(verb, "start")) {
 		return ThisDriver::module_start(cli, iterator);
-		//ret = init()
 
 	}
 
