@@ -42,7 +42,7 @@ px4_add_module(
 		MulticopterPositionControl.hpp
 	DEPENDS
 		PositionControl
-		controllib
 		git_ecl
 		ecl_geo
+		mathlib
 	)

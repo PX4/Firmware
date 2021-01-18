@@ -38,6 +38,7 @@ px4_add_module(
 	SRCS
 		controllib_test_main.cpp
 	DEPENDS
+		controllib
 	)
 
 
