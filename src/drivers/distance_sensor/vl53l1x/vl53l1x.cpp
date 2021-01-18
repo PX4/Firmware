@@ -199,6 +199,9 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
                 return PX4_ERROR;
 	}
 	else {
+                //debug print
+	        PX4_INFO("uOrb message advertise success");
+		//publish the orb message
 		orb_publish(ORB_ID(distance_sensor), pub_rngval, rngval);
 
 	}
