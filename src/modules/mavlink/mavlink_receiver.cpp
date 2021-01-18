@@ -1723,7 +1723,6 @@ MavlinkReceiver::handle_message_battery_status(mavlink_message_t *msg)
 	battery_status.remaining = (float)battery_mavlink.battery_remaining / 100.0f;
 	battery_status.discharged_mah = (float)battery_mavlink.current_consumed;
 	battery_status.cell_count = cell_count;
-	battery_status.connected = true;
 
 	// Set the battery warning based on remaining charge.
 	//  Note: Smallest values must come first in evaluation.

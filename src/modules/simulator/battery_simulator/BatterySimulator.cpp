@@ -99,8 +99,7 @@ void BatterySimulator::Run()
 	float vbatt = math::gradual(_battery_percentage, 0.f, 1.f, _battery.empty_cell_voltage(), _battery.full_cell_voltage());
 	vbatt *= _battery.cell_count();
 
-	const float throttle = 0.0f; // simulate no throttle compensation to make the estimate predictable
-	_battery.updateBatteryStatus(now_us, vbatt, ibatt, true, battery_status_s::BATTERY_SOURCE_POWER_MODULE, 0, throttle);
+	_battery.updateBatteryStatus(vbatt, ibatt);
 
 	perf_end(_loop_perf);
 }

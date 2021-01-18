@@ -219,18 +219,7 @@ BatteryStatus::adc_poll()
 		}
 
 		for (int b = 0; b < BOARD_NUMBER_BRICKS; b++) {
-
-			actuator_controls_s ctrl{};
-			_actuator_ctrl_0_sub.copy(&ctrl);
-
-			_analogBatteries[b]->updateBatteryStatusADC(
-				hrt_absolute_time(),
-				bat_voltage_adc_readings[b],
-				bat_current_adc_readings[b],
-				battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-				b,
-				ctrl.control[actuator_controls_s::INDEX_THROTTLE]
-			);
+			_analogBatteries[b]->updateBatteryStatusADC(bat_voltage_adc_readings[b], bat_current_adc_readings[b]);
 		}
 	}
 }

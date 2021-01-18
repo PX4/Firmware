@@ -44,7 +44,6 @@
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/esc_status.h>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/actuator_controls.h>
 #include <battery/battery.h>
 
 using namespace time_literals;
@@ -72,7 +71,6 @@ private:
 	void parameters_updated();
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
-	uORB::Subscription _actuator_ctrl_0_sub{ORB_ID(actuator_controls_0)};
 	uORB::SubscriptionCallbackWorkItem _esc_status_sub{this, ORB_ID(esc_status)};
 
 	static constexpr uint32_t ESC_BATTERY_INTERVAL_US = 20_ms; // assume higher frequency esc feedback than 50Hz

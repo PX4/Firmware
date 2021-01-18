@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <uORB/SubscriptionMultiArray.hpp>
 #include <uORB/Publication.hpp>
 #include <uORB/topics/uORBTopics.hpp>
 #include <uORB/topics/parameter_update.h>
@@ -959,17 +960,20 @@ void Logger::publish_logger_status()
 bool Logger::get_disable_boot_logging()
 {
 	if (_param_sdlog_boot_bat.get()) {
-		battery_status_s battery_status;
-		uORB::Subscription battery_status_sub{ORB_ID(battery_status)};
 
-		if (battery_status_sub.copy(&battery_status)) {
-			if (!battery_status.connected) {
-				return true;
+		uORB::SubscriptionMultiArray<battery_status_s, battery_status_s::MAX_INSTANCES> battery_status_subs{ORB_ID::battery_status};
+
+		for (auto &sub : battery_status_subs) {
+			battery_status_s battery_status;
+
+			if (sub.copy(&battery_status)) {
+				if ((hrt_elapsed_time(&battery_status.timestamp) < 2_s) && (battery_status.voltage_v > 0.f)) {
+					return true;
+				}
 			}
-
-		} else {
-			PX4_WARN("battery_status not published. Logging anyway");
 		}
+
+		PX4_WARN("battery_status not available. Logging anyway");
 	}
 
 	return false;

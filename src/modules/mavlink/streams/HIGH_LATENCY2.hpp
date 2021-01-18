@@ -274,7 +274,6 @@ private:
 
 			if (_batteries[i].subscription.update(&battery)) {
 				updated = true;
-				_batteries[i].connected = battery.connected;
 
 				if (battery.warning > battery_status_s::BATTERY_WARNING_LOW) {
 					msg->failure_flags |= HL_FAILURE_FLAG_BATTERY;
@@ -535,7 +534,7 @@ private:
 
 		for (int i = 0; i < battery_status_s::MAX_INSTANCES; i++) {
 			if (_batteries[i].subscription.update(&battery)) {
-				_batteries[i].connected = battery.connected;
+				_batteries[i].connected = (hrt_elapsed_time(&battery.timestamp) < 2_s);
 				_batteries[i].analyzer.add_value(battery.remaining, _update_rate_filtered);
 			}
 		}

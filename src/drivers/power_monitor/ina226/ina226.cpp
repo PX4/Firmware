@@ -45,12 +45,15 @@ INA226::INA226(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int
 	I2C(DRV_POWER_DEVTYPE_INA226, MODULE_NAME, bus, address, bus_frequency),
 	ModuleParams(nullptr),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus, address),
-	_sample_perf(perf_alloc(PC_ELAPSED, "ina226_read")),
-	_comms_errors(perf_alloc(PC_COUNT, "ina226_com_err")),
-	_collection_errors(perf_alloc(PC_COUNT, "ina226_collection_err")),
-	_measure_errors(perf_alloc(PC_COUNT, "ina226_measurement_err")),
+	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": read")),
+	_comms_errors(perf_alloc(PC_COUNT, MODULE_NAME": com_err")),
+	_collection_errors(perf_alloc(PC_COUNT, MODULE_NAME": collection_err")),
+	_measure_errors(perf_alloc(PC_COUNT, MODULE_NAME": measurement_err")),
 	_battery(battery_index, this, INA226_SAMPLE_INTERVAL_US)
 {
+	// We need to advertise immediately, to guarantee that the first instance of the driver publishes to uORB instance 0
+	_battery.advertise();
+
 	float fvalue = MAX_CURRENT;
 	_max_current = fvalue;
 	param_t ph = param_find("INA226_CURRENT");
@@ -81,17 +84,6 @@ INA226::INA226(I2CSPIBusOption bus_option, const int bus, int bus_frequency, int
 
 	_current_lsb = _max_current / DN_MAX;
 	_power_lsb = 25 * _current_lsb;
-
-	// We need to publish immediately, to guarantee that the first instance of the driver publishes to uORB instance 0
-	_battery.updateBatteryStatus(
-		hrt_absolute_time(),
-		0.0,
-		0.0,
-		false,
-		battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-		0,
-		0.0
-	);
 }
 
 INA226::~INA226()
@@ -220,37 +212,17 @@ INA226::collect()
 
 	// read from the sensor
 	// Note: If the power module is connected backwards, then the values of _power, _current, and _shunt will be negative but otherwise valid.
-	bool success{true};
-	success = success && (read(INA226_REG_BUSVOLTAGE, _bus_voltage) == PX4_OK);
-	// success = success && (read(INA226_REG_POWER, _power) == PX4_OK);
-	success = success && (read(INA226_REG_CURRENT, _current) == PX4_OK);
-	// success = success && (read(INA226_REG_SHUNTVOLTAGE, _shunt) == PX4_OK);
+	int16_t bus_voltage = 0;
+	int16_t current = 0;
 
-	if (!success) {
-		PX4_DEBUG("error reading from sensor");
-		_bus_voltage = _power = _current = _shunt = 0;
+	if ((read(INA226_REG_BUSVOLTAGE, bus_voltage) == PX4_OK) && (read(INA226_REG_CURRENT, current) == PX4_OK)) {
+		_battery.updateBatteryStatus(bus_voltage * INA226_VSCALE, current * _current_lsb);
+		perf_end(_sample_perf);
+		return PX4_OK;
 	}
-
-	_actuators_sub.copy(&_actuator_controls);
-
-	_battery.updateBatteryStatus(
-		hrt_absolute_time(),
-		(float) _bus_voltage * INA226_VSCALE,
-		(float) _current * _current_lsb,
-		success,
-		battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-		0,
-		_actuator_controls.control[actuator_controls_s::INDEX_THROTTLE]
-	);
 
 	perf_end(_sample_perf);
-
-	if (success) {
-		return PX4_OK;
-
-	} else {
-		return PX4_ERROR;
-	}
+	return PX4_ERROR;
 }
 
 void
@@ -304,16 +276,6 @@ INA226::RunImpl()
 		ScheduleDelayed(INA226_CONVERSION_INTERVAL);
 
 	} else {
-		_battery.updateBatteryStatus(
-			hrt_absolute_time(),
-			0.0f,
-			0.0f,
-			false,
-			battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-			0,
-			0.0f
-		);
-
 		if (init() != PX4_OK) {
 			ScheduleDelayed(INA226_INIT_RETRY_INTERVAL_US);
 		}

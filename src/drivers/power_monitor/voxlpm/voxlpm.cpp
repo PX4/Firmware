@@ -70,18 +70,6 @@ VOXLPM::init()
 	_initialized = false;
 	int ret = PX4_ERROR;
 
-	if (_ch_type == VOXLPM_CH_TYPE_VBATT) {
-		_battery.updateBatteryStatus(
-			hrt_absolute_time(),
-			0.0,
-			0.0,
-			false,
-			battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-			0,
-			0.0
-		);
-	}
-
 	/* do I2C init, it will probe the bus for two possible configurations, LTC2946 or INA231 */
 	if (I2C::init() != OK) {
 		return ret;
@@ -345,17 +333,8 @@ VOXLPM::measure()
 
 	if (ret == PX4_OK) {
 		switch (_ch_type) {
-		case VOXLPM_CH_TYPE_VBATT: {
-				_actuators_sub.copy(&_actuator_controls);
-
-				_battery.updateBatteryStatus(tnow,
-							     _voltage,
-							     _amperage,
-							     true,
-							     battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-							     0,
-							     _actuator_controls.control[actuator_controls_s::INDEX_THROTTLE]);
-			}
+		case VOXLPM_CH_TYPE_VBATT:
+			_battery.updateBatteryStatus(_voltage, _amperage);
 
 		// fallthrough
 		case VOXLPM_CH_TYPE_P5VDC:
@@ -374,22 +353,6 @@ VOXLPM::measure()
 
 	} else {
 		perf_count(_comms_errors);
-
-		switch (_ch_type) {
-		case VOXLPM_CH_TYPE_VBATT: {
-				_battery.updateBatteryStatus(tnow,
-							     0.0,
-							     0.0,
-							     true,
-							     battery_status_s::BATTERY_SOURCE_POWER_MODULE,
-							     0,
-							     0.0);
-			}
-			break;
-
-		default:
-			break;
-		}
 	}
 
 	perf_end(_sample_perf);

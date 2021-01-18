@@ -3838,21 +3838,11 @@ void Commander::battery_status_check()
 		return;
 	}
 
-	battery_status_s batteries[_battery_status_subs.size()];
-	size_t num_connected_batteries = 0;
-
-	for (auto &battery_sub : _battery_status_subs) {
-		if (battery_sub.copy(&batteries[num_connected_batteries])) {
-			if (batteries[num_connected_batteries].connected) {
-				num_connected_batteries++;
-			}
-		}
-	}
-
 	// There are possibly multiple batteries, and we can't know which ones serve which purpose. So the safest
 	// option is to check if ANY of them have a warning, and specifically find which one has the most
 	// urgent warning.
 	uint8_t worst_warning = battery_status_s::BATTERY_WARNING_NONE;
+
 	// To make sure that all connected batteries are being regularly reported, we check which one has the
 	// oldest timestamp.
 	hrt_abstime oldest_update = hrt_absolute_time();
@@ -3860,22 +3850,31 @@ void Commander::battery_status_check()
 	_battery_current = 0.0f;
 	float battery_level = 0.0f;
 
+	size_t num_connected_batteries = 0;
 
 	// Only iterate over connected batteries. We don't care if a disconnected battery is not regularly publishing.
-	for (size_t i = 0; i < num_connected_batteries; i++) {
-		if (batteries[i].warning > worst_warning) {
-			worst_warning = batteries[i].warning;
+	for (auto &battery_sub : _battery_status_subs) {
+		battery_status_s battery_status;
+
+		if (battery_sub.copy(&battery_status)) {
+			if (hrt_elapsed_time(&battery_status.timestamp) < 5_s) {
+				num_connected_batteries++;
+
+				if (battery_status.warning > worst_warning) {
+					worst_warning = battery_status.warning;
+				}
+
+				if (hrt_elapsed_time(&battery_status.timestamp) > hrt_elapsed_time(&oldest_update)) {
+					oldest_update = battery_status.timestamp;
+				}
+
+				// Sum up current from all batteries.
+				_battery_current += battery_status.current_filtered_a;
+
+				// average levels from all batteries
+				battery_level += battery_status.remaining;
+			}
 		}
-
-		if (hrt_elapsed_time(&batteries[i].timestamp) > hrt_elapsed_time(&oldest_update)) {
-			oldest_update = batteries[i].timestamp;
-		}
-
-		// Sum up current from all batteries.
-		_battery_current += batteries[i].current_filtered_a;
-
-		// average levels from all batteries
-		battery_level += batteries[i].remaining;
 	}
 
 	battery_level /= num_connected_batteries;
@@ -3893,7 +3892,7 @@ void Commander::battery_status_check()
 		float battery_at_home = battery_level - battery_usage_to_home;
 
 		if (battery_at_home < _param_bat_crit_thr.get()) {
-			battery_range_warning =  battery_status_s::BATTERY_WARNING_CRITICAL;
+			battery_range_warning = battery_status_s::BATTERY_WARNING_CRITICAL;
 
 		} else if (battery_at_home < _param_bat_low_thr.get()) {
 			battery_range_warning = battery_status_s::BATTERY_WARNING_LOW;
@@ -3922,7 +3921,6 @@ void Commander::battery_status_check()
 	if (update_internal_battery_state) {
 		_battery_warning = worst_warning;
 	}
-
 
 	_status_flags.condition_battery_healthy =
 		// All connected batteries are regularly being published

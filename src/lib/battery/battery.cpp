@@ -103,75 +103,76 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us) 
 	updateParams();
 }
 
-void Battery::reset()
+void Battery::updateBatteryStatus(float voltage_v, float current_a, int source)
 {
-	memset(&_battery_status, 0, sizeof(_battery_status));
-	_battery_status.current_a = -1.f;
-	_battery_status.remaining = 1.f;
-	_battery_status.scale = 1.f;
-	_battery_status.cell_count = _params.n_cells;
-	// TODO: check if it is sane to reset warning to NONE
-	_battery_status.warning = battery_status_s::BATTERY_WARNING_NONE;
-	_battery_status.connected = false;
-	_battery_status.capacity = _params.capacity > 0.0f ? (uint16_t)_params.capacity : 0;
-	_battery_status.temperature = NAN;
-	_battery_status.id = (uint8_t) _index;
-}
+	if (_actuator_controls_0_sub.updated()) {
+		actuator_controls_s actuator_controls;
 
-void Battery::updateBatteryStatus(const hrt_abstime &timestamp, float voltage_v, float current_a, bool connected,
-				  int source, int priority, float throttle_normalized)
-{
-	reset();
+		if (_actuator_controls_0_sub.copy(&actuator_controls)) {
+			if (_battery_initialized) {
+				_throttle_filter.update(actuator_controls.control[actuator_controls_s::INDEX_THROTTLE]);
 
-	if (!_battery_initialized) {
-		_voltage_filter_v.reset(voltage_v);
-		_current_filter_a.reset(current_a);
-		_throttle_filter.reset(throttle_normalized);
-	}
-
-	_voltage_filter_v.update(voltage_v);
-	_current_filter_a.update(current_a);
-	_throttle_filter.update(throttle_normalized);
-	sumDischarged(timestamp, current_a);
-	estimateRemaining(_voltage_filter_v.getState(), _current_filter_a.getState(), _throttle_filter.getState());
-	computeScale();
-
-	if (_battery_initialized) {
-		determineWarning(connected);
-	}
-
-	if (_voltage_filter_v.getState() > 2.1f) {
-		_battery_initialized = true;
-		_battery_status.voltage_v = voltage_v;
-		_battery_status.voltage_filtered_v = _voltage_filter_v.getState();
-		_battery_status.scale = _scale;
-		_battery_status.current_a = current_a;
-		_battery_status.current_filtered_a = _current_filter_a.getState();
-		_battery_status.discharged_mah = _discharged_mah;
-		_battery_status.warning = _warning;
-		_battery_status.remaining = _remaining;
-		_battery_status.connected = connected;
-		_battery_status.source = source;
-		_battery_status.priority = priority;
-
-		static constexpr int uorb_max_cells = sizeof(_battery_status.voltage_cell_v) / sizeof(
-				_battery_status.voltage_cell_v[0]);
-
-		// Fill cell voltages with average values to work around BATTERY_STATUS message not allowing to report just total voltage
-		for (int i = 0; (i < _battery_status.cell_count) && (i < uorb_max_cells); i++) {
-			_battery_status.voltage_cell_v[i] = _battery_status.voltage_filtered_v / _battery_status.cell_count;
+			} else {
+				_throttle_filter.reset(actuator_controls.control[actuator_controls_s::INDEX_THROTTLE]);
+			}
 		}
 	}
 
-	if (source == _params.source) {
-		publish();
-	}
-}
+	if (_battery_initialized) {
+		_voltage_filter_v.update(voltage_v);
+		_current_filter_a.update(current_a);
 
-void Battery::publish()
-{
-	_battery_status.timestamp = hrt_absolute_time();
-	_battery_status_pub.publish(_battery_status);
+	} else {
+		_voltage_filter_v.reset(voltage_v);
+		_current_filter_a.reset(current_a);
+	}
+
+	sumDischarged(hrt_absolute_time(), current_a);
+	estimateRemaining(_voltage_filter_v.getState(), _current_filter_a.getState(), _throttle_filter.getState());
+	computeScale();
+
+	if (_voltage_filter_v.getState() > 2.1f) {
+		_battery_initialized = true;
+
+		battery_status_s battery_status{};
+		battery_status.id = (uint8_t) _index;
+		battery_status.capacity = _params.capacity > 0.0f ? (uint16_t)_params.capacity : 0;
+		battery_status.temperature = NAN;
+		battery_status.cell_count = _params.n_cells;
+		battery_status.voltage_v = voltage_v;
+		battery_status.voltage_filtered_v = _voltage_filter_v.getState();
+		battery_status.scale = _scale;
+		battery_status.current_a = current_a;
+		battery_status.current_filtered_a = _current_filter_a.getState();
+		battery_status.discharged_mah = _discharged_mah;
+		battery_status.remaining = _remaining;
+		battery_status.source = source;
+
+		static constexpr int MAX_CELLS = sizeof(battery_status.voltage_cell_v) / sizeof(battery_status.voltage_cell_v[0]);
+
+		// Fill cell voltages with average values to work around BATTERY_STATUS message not allowing to report just total voltage
+		for (int i = 0; (i < battery_status.cell_count) && (i < MAX_CELLS); i++) {
+			battery_status.voltage_cell_v[i] = battery_status.voltage_filtered_v / battery_status.cell_count;
+		}
+
+		if (_remaining < _params.emergen_thr) {
+			battery_status.warning = battery_status_s::BATTERY_WARNING_EMERGENCY;
+
+		} else if (_remaining < _params.crit_thr) {
+			battery_status.warning = battery_status_s::BATTERY_WARNING_CRITICAL;
+
+		} else if (_remaining < _params.low_thr) {
+			battery_status.warning = battery_status_s::BATTERY_WARNING_LOW;
+
+		} else {
+			battery_status.warning = battery_status_s::BATTERY_WARNING_NONE;
+		}
+
+		if (source == _params.source) {
+			battery_status.timestamp = hrt_absolute_time();
+			_battery_status_pub.publish(battery_status);
+		}
+	}
 }
 
 void Battery::sumDischarged(const hrt_abstime &timestamp, float current_a)
@@ -233,25 +234,6 @@ void Battery::estimateRemaining(const float voltage_v, const float current_a, co
 	}
 }
 
-void Battery::determineWarning(bool connected)
-{
-	if (connected) {
-		// propagate warning state only if the state is higher, otherwise remain in current warning state
-		if (_remaining < _params.emergen_thr) {
-			_warning = battery_status_s::BATTERY_WARNING_EMERGENCY;
-
-		} else if (_remaining < _params.crit_thr) {
-			_warning = battery_status_s::BATTERY_WARNING_CRITICAL;
-
-		} else if (_remaining < _params.low_thr) {
-			_warning = battery_status_s::BATTERY_WARNING_LOW;
-
-		} else {
-			_warning = battery_status_s::BATTERY_WARNING_NONE;
-		}
-	}
-}
-
 void Battery::computeScale()
 {
 	const float voltage_range = (_params.v_charged - _params.v_empty);
@@ -259,14 +241,8 @@ void Battery::computeScale()
 	// reusing capacity calculation to get single cell voltage before drop
 	const float bat_v = _params.v_empty + (voltage_range * _remaining_voltage);
 
-	_scale = _params.v_charged / bat_v;
-
-	if (_scale > 1.3f) { // Allow at most 30% compensation
-		_scale = 1.3f;
-
-	} else if (!PX4_ISFINITE(_scale) || _scale < 1.f) { // Shouldn't ever be more than the power at full battery
-		_scale = 1.f;
-	}
+	// Allow at most 30% compensation
+	_scale = math::constrain(_params.v_charged / bat_v, 1.f, 1.3f);
 }
 
 void Battery::updateParams()

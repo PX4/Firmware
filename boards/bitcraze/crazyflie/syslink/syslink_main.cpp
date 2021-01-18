@@ -268,8 +268,6 @@ Syslink::open_serial(const char *dev)
 	return fd;
 }
 
-
-
 int
 Syslink::task_main_trampoline(int argc, char *argv[])
 {
@@ -286,11 +284,6 @@ Syslink::task_main()
 	_memory = new SyslinkMemory(this);
 	_memory->init();
 
-	_battery.reset();
-
-
-	//	int ret;
-
 	/* Open serial port */
 	const char *dev = "/dev/ttyS2";
 	_fd = open_serial(dev);
@@ -299,7 +292,6 @@ Syslink::task_main()
 		err(1, "can't open %s", dev);
 		return;
 	}
-
 
 	/* Set non-blocking */
 	/*
@@ -408,9 +400,7 @@ Syslink::handle_message(syslink_message_t *msg)
 		memcpy(&vbat, &msg->data[1], sizeof(float));
 		//memcpy(&iset, &msg->data[5], sizeof(float));
 
-		_battery.updateBatteryStatus(t, vbat, -1, true,
-					     battery_status_s::BATTERY_SOURCE_POWER_MODULE, 0, 0);
-
+		_battery.updateBatteryStatus(vbat);
 
 		// Update battery charge state
 		if (charging) {

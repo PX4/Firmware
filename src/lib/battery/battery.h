@@ -54,6 +54,8 @@
 #include <lib/parameters/param.h>
 #include <lib/ecl/AlphaFilter/AlphaFilter.hpp>
 #include <uORB/PublicationMulti.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/battery_status.h>
 
 /**
@@ -93,13 +95,12 @@ public:
 	 *
 	 * @param voltage_raw: Battery voltage, in Volts
 	 * @param current_raw: Battery current, in Amps
-	 * @param timestamp: Time at which the ADC was read (use hrt_absolute_time())
 	 * @param source: Source type in relation to BAT%d_SOURCE param.
-	 * @param priority: The brick number -1. The term priority refers to the Vn connection on the LTC4417
-	 * @param throttle_normalized: Throttle of the vehicle, between 0 and 1
 	 */
-	void updateBatteryStatus(const hrt_abstime &timestamp, float voltage_v, float current_a, bool connected,
-				 int source, int priority, float throttle_normalized);
+	void updateBatteryStatus(float voltage_v, float current_a = -1.f,
+				 int source = battery_status_s::BATTERY_SOURCE_POWER_MODULE);
+
+	bool advertise() { return _battery_status_pub.advertise(); }
 
 protected:
 	struct {
@@ -148,8 +149,6 @@ protected:
 		int source_old;
 	} _params{};
 
-	battery_status_s _battery_status{};
-
 	const int _index;
 
 	bool _first_parameter_update{true};
@@ -197,12 +196,14 @@ protected:
 private:
 	void sumDischarged(const hrt_abstime &timestamp, float current_a);
 	void estimateRemaining(const float voltage_v, const float current_a, const float throttle);
-	void determineWarning(bool connected);
 	void computeScale();
 
 	uORB::PublicationMulti<battery_status_s> _battery_status_pub{ORB_ID(battery_status)};
 
 	bool _battery_initialized{false};
+
+	uORB::Subscription _actuator_controls_0_sub{ORB_ID(actuator_controls_0)};
+
 	AlphaFilter<float> _voltage_filter_v;
 	AlphaFilter<float> _current_filter_a;
 	AlphaFilter<float> _throttle_filter;
@@ -211,6 +212,5 @@ private:
 	float _remaining_voltage{-1.f};		///< normalized battery charge level remaining based on voltage
 	float _remaining{-1.f};			///< normalized battery charge level, selected based on config param
 	float _scale{1.f};
-	uint8_t _warning{battery_status_s::BATTERY_WARNING_NONE};
 	hrt_abstime _last_timestamp{0};
 };

@@ -321,19 +321,14 @@ int
 OSDatxxxx::update_topics()
 {
 	/* update battery subscription */
-	if (_battery_sub.updated()) {
-		battery_status_s battery{};
-		_battery_sub.copy(&battery);
+	battery_status_s battery{};
 
-		if (battery.connected) {
-			_battery_voltage_filtered_v = battery.voltage_filtered_v;
-			_battery_discharge_mah = battery.discharged_mah;
-			_battery_valid = true;
-
-		} else {
-			_battery_valid = false;
-		}
+	if (_battery_sub.copy(&battery)) {
+		_battery_voltage_filtered_v = battery.voltage_filtered_v;
+		_battery_discharge_mah = battery.discharged_mah;
 	}
+
+	_battery_valid = (hrt_elapsed_time(&battery.timestamp) < 1_s);
 
 	/* update vehicle local position subscription */
 	if (_local_position_sub.updated()) {

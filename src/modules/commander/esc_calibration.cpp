@@ -49,30 +49,36 @@
 #include <px4_platform_common/posix.h>
 #include <px4_platform_common/time.h>
 #include <systemlib/mavlink_log.h>
-#include <uORB/Subscription.hpp>
+#include <uORB/SubscriptionMultiArray.hpp>
 #include <uORB/topics/battery_status.h>
 
 using namespace time_literals;
 
+static bool battery_connected()
+{
+	uORB::SubscriptionMultiArray<battery_status_s, battery_status_s::MAX_INSTANCES> battery_status_subs{ORB_ID::battery_status};
+
+	for (auto &sub : battery_status_subs) {
+		battery_status_s battery_status;
+
+		if (sub.copy(&battery_status)) {
+			if ((hrt_elapsed_time(&battery_status.timestamp) < 2_s) && (battery_status.voltage_v > 0.f)) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool check_battery_disconnected(orb_advert_t *mavlink_log_pub)
 {
-	uORB::SubscriptionData<battery_status_s> batt_sub{ORB_ID(battery_status)};
-	const battery_status_s &battery = batt_sub.get();
-	batt_sub.update();
-
-	if (battery.timestamp == 0) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "battery unavailable");
+	if (battery_connected()) {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
 		return false;
 	}
 
-	// Make sure battery is disconnected
-	// battery is not connected if the connected flag is not set and we have a recent battery measurement
-	if (!battery.connected && (hrt_elapsed_time(&battery.timestamp) < 500_ms)) {
-		return true;
-	}
-
-	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
-	return false;
+	return true;
 }
 
 int do_esc_calibration(orb_advert_t *mavlink_log_pub)
@@ -81,10 +87,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub)
 	hrt_abstime timeout_start = 0;
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
 
-	uORB::SubscriptionData<battery_status_s> batt_sub{ORB_ID(battery_status)};
-	const battery_status_s &battery = batt_sub.get();
-	batt_sub.update();
-	bool batt_connected = battery.connected;
+	bool batt_connected = battery_connected();
 
 	int fd = px4_open(PWM_OUTPUT0_DEVICE_PATH, 0);
 
@@ -138,15 +141,15 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub)
 		}
 
 		if (!batt_connected) {
-			if (batt_sub.update()) {
-				if (battery.connected) {
-					// Battery is connected, signal to user and start waiting again
-					batt_connected = true;
-					timeout_start = hrt_absolute_time();
-					calibration_log_info(mavlink_log_pub, "[cal] Battery connected");
-				}
+			batt_connected = battery_connected();
+
+			if (batt_connected) {
+				// Battery is connected, signal to user and start waiting again
+				timeout_start = hrt_absolute_time();
+				calibration_log_info(mavlink_log_pub, "[cal] Battery connected");
 			}
 		}
+
 
 		px4_usleep(50000);
 	}

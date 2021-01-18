@@ -106,8 +106,6 @@ void BATT_SMBUS::RunImpl()
 	// Set time of reading.
 	new_report.timestamp = hrt_absolute_time();
 
-	new_report.connected = true;
-
 	ret |= _interface->read_word(BATT_SMBUS_VOLTAGE, result);
 
 	ret |= get_cell_voltages();

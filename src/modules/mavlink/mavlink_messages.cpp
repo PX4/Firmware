@@ -604,7 +604,8 @@ protected:
 			int lowest_battery_index = 0;
 
 			for (int i = 0; i < _battery_status_subs.size(); i++) {
-				if (battery_status[i].connected && (battery_status[i].remaining < battery_status[lowest_battery_index].remaining)) {
+				if ((hrt_elapsed_time(&battery_status[i].timestamp) < 2_s)
+				    && (battery_status[i].remaining < battery_status[lowest_battery_index].remaining)) {
 					lowest_battery_index = i;
 				}
 			}
@@ -624,7 +625,7 @@ protected:
 			//  to determine which battery is more important at a given time.
 			const battery_status_s &lowest_battery = battery_status[lowest_battery_index];
 
-			if (lowest_battery.connected) {
+			if (hrt_elapsed_time(&lowest_battery.timestamp) < 2_s) {
 				msg.voltage_battery = lowest_battery.voltage_filtered_v * 1000.0f;
 				msg.current_battery = lowest_battery.current_filtered_a * 100.0f;
 				msg.battery_remaining = ceilf(lowest_battery.remaining * 100.0f);
@@ -698,17 +699,18 @@ protected:
 			battery_status_s battery_status;
 
 			if (battery_sub.update(&battery_status)) {
+				const bool connected = (battery_status.timestamp != 0);
 				/* battery status message with higher resolution */
 				mavlink_battery_status_t bat_msg{};
 				// TODO: Determine how to better map between battery ID within the firmware and in MAVLink
 				bat_msg.id = battery_status.id - 1;
 				bat_msg.battery_function = MAV_BATTERY_FUNCTION_ALL;
 				bat_msg.type = MAV_BATTERY_TYPE_LIPO;
-				bat_msg.current_consumed = (battery_status.connected) ? battery_status.discharged_mah : -1;
+				bat_msg.current_consumed = connected ? battery_status.discharged_mah : -1;
 				bat_msg.energy_consumed = -1;
-				bat_msg.current_battery = (battery_status.connected) ? battery_status.current_filtered_a * 100 : -1;
-				bat_msg.battery_remaining = (battery_status.connected) ? ceilf(battery_status.remaining * 100.0f) : -1;
-				bat_msg.time_remaining = (battery_status.connected) ? battery_status.run_time_to_empty * 60 : 0;
+				bat_msg.current_battery = connected ? battery_status.current_filtered_a * 100 : -1;
+				bat_msg.battery_remaining = connected ? ceilf(battery_status.remaining * 100.0f) : -1;
+				bat_msg.time_remaining = connected ? battery_status.run_time_to_empty * 60 : 0;
 
 				switch (battery_status.warning) {
 				case (battery_status_s::BATTERY_WARNING_NONE):
@@ -737,7 +739,7 @@ protected:
 				}
 
 				// check if temperature valid
-				if (battery_status.connected && PX4_ISFINITE(battery_status.temperature)) {
+				if (connected && PX4_ISFINITE(battery_status.temperature)) {
 					bat_msg.temperature = battery_status.temperature * 100.0f;
 
 				} else {
@@ -749,7 +751,7 @@ protected:
 					(sizeof(battery_status.voltage_cell_v) / sizeof(battery_status.voltage_cell_v[0]));
 
 				for (int cell = 0; cell < mavlink_cells_max; cell++) {
-					if (battery_status.connected && (cell < battery_status.cell_count) && (cell < uorb_cells_max)) {
+					if (connected && (cell < battery_status.cell_count) && (cell < uorb_cells_max)) {
 						bat_msg.voltages[cell] = battery_status.voltage_cell_v[cell] * 1000.0f;
 
 					} else {
