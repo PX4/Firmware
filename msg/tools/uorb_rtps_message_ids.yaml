@@ -295,8 +295,12 @@ rtps:
     id: 141
   - msg: uwb_distance
     id: 142
+    send: true
+    receive: true
   - msg: uwb_grid
     id: 143
+    send: true
+    receive: true
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 150

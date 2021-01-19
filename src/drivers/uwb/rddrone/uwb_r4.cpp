@@ -66,7 +66,6 @@ UWB_R4::UWB_R4(const char *device_name, speed_t baudrate, bool  uwb_pos_debug):
 	ModuleParams(nullptr),
 	_read_count_perf(perf_alloc(PC_COUNT, "uwb_r4_count")),
 	_read_err_perf(perf_alloc(PC_COUNT, "uwb_r4_err"))
-
 {
 	// start serial port
 	_uart = open(device_name, O_RDWR | O_NOCTTY);
@@ -104,9 +103,10 @@ UWB_R4::~UWB_R4()
 
 void UWB_R4::run()
 {
-	_check_params(false);
+
 
 	// Subscribe to parameter_update message
+
 	int parameter_update_sub = orb_subscribe(ORB_ID(parameter_update));
 
 	parameters_update(parameter_update_sub);
@@ -429,10 +429,6 @@ int UWB_R4::distance()
 	_uart_timeout.tv_sec = MESSAGE_TIMEOUT_S ;
 	_uart_timeout.tv_usec = MESSAGE_TIMEOUT_US;
 
-<<<<<<< HEAD
-=======
-
->>>>>>> c9f96c924111fd5d5d84a9f42e51abdb7a34e94e
 	size_t buffer_location = 0;
 	// There is a atleast 2000 clock cycles between 2 msg (20000/80mhz = 200uS)
 	// Messages are only delimited by time. There is a chance that this driver starts up in the middle
@@ -443,7 +439,7 @@ int UWB_R4::distance()
 	//  - Once receiving a message, keep going until EITHER:
 	//    - There is too large of a gap between bytes (Currently set to 5ms).
 	//      This means the message is incomplete. Throw it out and start over.
-	//    - 30 bytes are received (the size of the whole message).
+	//    - 46 bytes are received (the size of the whole message).
 
 	while (buffer_location < sizeof(_distance_result_msg)
 	       && select(_uart + 1, &_uart_set, nullptr, nullptr, &_uart_timeout) > 0) {
@@ -587,6 +583,7 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 
 	/* 		Algorithm used:
 	 *		Linear Least Sqaures to solve Multilateration
+listener uwb_distance-i 0 -n 1000
 	 * 		with a Special case if there are only 3 Anchors.
 	 * 		Output is the Coordinates of the Initiator in relation to Anchor 0 in NEU (North-East-Up) Framing
 	 */
@@ -838,20 +835,22 @@ int uwb_r4_main(int argc, char *argv[])
 	return UWB_R4::main(argc, argv);
 }
 
-void UWB_R4::_check_params(const bool force)
+void UWB_R4::parameters_update(int parameter_update_sub, bool force)
 {
-	bool updated = _parameterSub.updated();
+	bool updated;
+	struct parameter_update_s param_upd;
 
+	// Check if any parameter updated
+	orb_check(parameter_update_sub, &updated);
+
+	// If any parameter updated copy it to: param_upd
 	if (updated) {
-		parameter_update_s paramUpdate;
-		_parameterSub.copy(&paramUpdate);
+		orb_copy(ORB_ID(parameter_update), parameter_update_sub, &param_upd);
 	}
 
-	if (updated || force) {
-		_update_params();
+	if (force || updated) {
+		// If any parameter updated, call updateParams() to check if
+		// this class attributes need updating (and do so).
+		updateParams();
 	}
-}
-void UWB_R4::_update_params()
-{
-	param_get(_param_handles.uwb_uuid_on_sd, &_params.uwb_uuid_on_sd);
 }

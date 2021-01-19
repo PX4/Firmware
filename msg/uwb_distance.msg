@@ -2,7 +2,7 @@
 # such as Pozyx or NXP Rddrone.
 
 uint64 	timestamp		# time since system start (microseconds)
-uint16 	counter			# Number of Ranges since last Start of Ranging
+uint32 	counter			# Number of Ranges since last Start of Ranging
 uint16 	status			# status feedback
 uint16[9] anchor_distance	# distance in cm
 uint8 	time_offset		#  in Milie Seconds  //Populate with actual time of Range?

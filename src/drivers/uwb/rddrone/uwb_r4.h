@@ -135,7 +135,7 @@ typedef struct {
 	uint8_t sub_cmd;  	// Should be 0x0A for distance result message
 	uint8_t data_len; 	// Should be 0x30 for distance result message
 	uint8_t status;   	// 0x00 is no error
-	uint16_t counter;	// Number of Ranges since last Start of Ranging
+	uint32_t counter;	// Number of Ranges since last Start of Ranging
 	uint16_t flags;
 	uint16_t anchor_distance[MAX_ANCHORS]; //Raw anchor_distance distances in CM 2*9
 	uint8_t time_offset;	// time measured between ranging
@@ -196,26 +196,12 @@ protected:
 
 private:
 
+	void parameters_update(int parameter_update_sub, bool force = false);
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::UWB_UUID_ON_SD>) _param_uwb_uuid_on_sd,	/**< UUID on SD card  */
 		(ParamInt<px4::params::UWB_POS_DEBUG>) _param_uwb_pos_debug	/**< Debug POS */
 	)
-
-	uORB::Subscription _parameterSub{ORB_ID(parameter_update)};	/**< param update subscription */
-	/*
-	 *	Handle Params
-	 * */
-	struct {
-		bool uwb_uuid_on_sd;
-		bool uwb_pos_debug;
-	} _params ;
-	struct {
-		param_t uwb_uuid_on_sd;
-		param_t uwb_pos_debug;
-	} _param_handles ;
-	void _check_params(const bool force);
-
 
 
 
@@ -223,6 +209,7 @@ private:
 	fd_set _uart_set;
 	struct timeval _uart_timeout {};
 
+	uORB::Publication<uwb_grid_s> _uwb_grid_pub{ORB_ID(uwb_grid)};
 	uwb_grid_s _uwb_grid{};
 
 	uORB::Publication<uwb_distance_s> _uwb_distance_pub{ORB_ID(uwb_distance)};
@@ -242,6 +229,10 @@ private:
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};
 	matrix::Vector3f _current_position_uwb_r4;
 	matrix::Vector3f _current_position_ned;
+
+
+	perf_counter_t _read_count_perf;
+	perf_counter_t _read_err_perf;
 };
 
 
