@@ -170,10 +170,12 @@ MissionBlock::is_mission_item_reached()
 			}
 
 			/* require only altitude for takeoff for multicopter */
-			if (_navigator->get_global_position()->alt >
-			    altitude_amsl - altitude_acceptance_radius) {
-				_waypoint_position_reached = true;
-			}
+			const auto global_altitude_acceptable =
+				_navigator->get_global_position()->alt > altitude_amsl - altitude_acceptance_radius;
+			const auto local_altitude_acceptable =
+				-_navigator->get_local_position()->z > altitude_amsl - altitude_acceptance_radius;
+
+			_waypoint_position_reached = global_altitude_acceptable || local_altitude_acceptable;
 
 		} else if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF
 			   && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROVER) {
