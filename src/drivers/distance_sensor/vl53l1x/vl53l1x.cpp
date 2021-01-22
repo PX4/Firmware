@@ -40,7 +40,7 @@
 #include <uORB/topics/distance_sensor.h>
 
 #define VL53L1X_SAMPLE_RATE                                20  // ms, f = 50hz
-
+#define VL53L1X_INTER_MEAS_MS				   25  //ms
 /* ST */
 const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
@@ -169,7 +169,7 @@ VL53L1X::~VL53L1X()
 int VL53L1X::collect(struct distance_sensor_s *rngval)
 {
 	uint8_t ret = 0;
-	uint8_t rangeStatus;
+	uint8_t rangeStatus = 0;
 	uint16_t distance_mm = 0;
 
 	perf_begin(_sample_perf);
@@ -177,8 +177,9 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
 
 	ret = VL53L1X_GetRangeStatus(&rangeStatus);
+	//if ((ret != PX4_OK) | (rangeStatus != PX4_OK)) {
 
-	if ((ret != PX4_OK) | (rangeStatus != PX4_OK)) {
+	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 		return PX4_ERROR;
@@ -260,7 +261,7 @@ int VL53L1X::init()
 
 	ret |= VL53L1X_SensorInit();
 	ret |= VL53L1X_ConfigBig(1, VL53L1X_SAMPLE_RATE);
-	ret |= VL53L1X_SetInterMeasurementInMs(VL53L1X_SAMPLE_RATE);
+	ret |= VL53L1X_SetInterMeasurementInMs(VL53L1X_INTER_MEAS_MS);
 	ret |= VL53L1X_StartRanging();
 
 	if (ret != PX4_OK) {

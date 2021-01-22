@@ -834,9 +834,11 @@ MavlinkReceiver::handle_message_distance_sensor(mavlink_message_t *msg)
 
         mavlink_msg_distance_sensor_send(MAVLINK_COMM_1, ds.timestamp, ds.min_distance, ds.max_distance, ds.current_distance, ds.type, ds.id, ds.orientation, ds.variance, ds.h_fov, ds.v_fov, qt, ds.signal_quality);
 
+        mavlink_msg_distance_sensor_send(MAVLINK_COMM_2, ds.timestamp, ds.min_distance, ds.max_distance, ds.current_distance, ds.type, ds.id, ds.orientation, ds.variance, ds.h_fov, ds.v_fov, qt, ds.signal_quality);
 	//struct
         mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_0, &dist_sensor);
-        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_0, &dist_sensor);
+        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_1, &dist_sensor);
+        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_2, &dist_sensor);
 
 	_distance_sensor_pub.publish(ds);
 }
