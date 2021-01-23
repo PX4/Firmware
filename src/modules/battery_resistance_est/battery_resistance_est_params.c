@@ -87,5 +87,34 @@ PARAM_DEFINE_FLOAT(BAT_R_T_INIT, 0.05f);
  */
 PARAM_DEFINE_FLOAT(BAT_C_T_INIT, 500.0f);
 
+/**
+ * Battery internal resistance online estimator
+ *
+ * Max of estimation clamp
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_RIN_EST_MAX, 1.0f);
 
-//******TODO change to per cell estimates*****//
+/**
+ * Battery internal resistance online estimator
+ *
+ * Min of estimation clamp
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_RIN_EST_MIN, 0.01f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial estimate of battery internal resistance for all cells.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_RIN_EST_INIT, 0.01f);

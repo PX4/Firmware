@@ -51,14 +51,14 @@ bool InternalRes::init()
 	_param_est(2) = 1.0f / (_param_r_t_init.get() * _param_c_t_init.get());
 	_param_est(3) = _param_v_oc_init.get() / (_param_r_t_init.get() * _param_c_t_init.get());
 
-	_voltage_estimation = _param_bat1_v_charged.get() * _param_bat1_n_cells.get(); //assume fully charged?
+	_voltage_estimation = _param_bat1_v_charged.get() * _param_bat1_n_cells.get(); //assume fully charged
 
 	_adaptation_gain(0) = 0.0001f;
 	_adaptation_gain(1) = 0.0001f;
 	_adaptation_gain(2) = 0.0001f;
 	_adaptation_gain(3) = 0.0001f;
 
-	_inter_res.best_r_internal_est = 0.f;
+	_inter_res.best_r_internal_est = _param_inter_res_init.get();
 
 	return true;
 }
@@ -76,9 +76,9 @@ Vector<float, 4> InternalRes::extract_ecm_parameters()
 	ecm_params(3) = (_voltage_filtered_v - ecm_params(2)) / (-_current_filtered_a); //_internal_resistance_est
 
 	//logging
-	_inter_res.r_steady_state = ecm_params(0);
-	_inter_res.r_transient = ecm_params(1);
-	_inter_res.voltage_open_circuit = ecm_params(2);
+	_inter_res.r_s = ecm_params(0);
+	_inter_res.r_t = ecm_params(1);
+	_inter_res.v_oc = ecm_params(2);
 	_inter_res.r_internal_est = ecm_params(3);
 
 	return ecm_params;
@@ -101,11 +101,11 @@ void InternalRes::update_internal_resistance(const float voltage_estimation_erro
 	}
 
 	//clamp BAT1_R_INTERNAL
-	if (_best_ecm_params_est(3) > 1.f) { //TODO change to a generalizable upper bound
-		_best_ecm_params_est(3) = 0.2f;
+	if (_best_ecm_params_est(3) > _param_inter_res_est_max.get()) {
+		_best_ecm_params_est(3) = _param_inter_res_est_max.get();
 
-	} else if (_best_ecm_params_est(3) < 0.01f) {
-		_best_ecm_params_est(3) = 0.0001f;
+	} else if (_best_ecm_params_est(3) < _param_inter_res_est_min.get()) {
+		_best_ecm_params_est(3) = _param_inter_res_est_min.get();
 	}
 
 	const float time_since_param_update = (hrt_absolute_time() - _last_param_update_time) / 1e6f;
@@ -191,7 +191,7 @@ void InternalRes::Run()
 
 			//logging for debugging
 			_inter_res.timestamp = hrt_absolute_time();
-			_inter_res.voltage = _voltage_filtered_v; //for sync with ekfreplay //TODO remove
+			_inter_res.voltage_filtered_v = _voltage_filtered_v; //for sync with ekfreplay //TODO remove
 			_internal_res_pub.publish(_inter_res);
 
 			_was_armed = true;

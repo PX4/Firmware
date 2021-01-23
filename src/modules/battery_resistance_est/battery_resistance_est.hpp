@@ -111,7 +111,7 @@ private:
 	float _best_prediction_error;
 	bool _best_prediction_error_reset = true;
 
-	//used to save estimated ecm params on disarm
+//used to save estimated ecm params on disarm
 	bool _armed = false;
 	bool _was_armed = false;
 	bool _on_standby = false;
@@ -131,7 +131,9 @@ private:
 		(ParamFloat<px4::params::BAT_R_S_INIT>) _param_r_s_init,
 		(ParamFloat<px4::params::BAT_R_T_INIT>) _param_r_t_init,
 		(ParamFloat<px4::params::BAT_C_T_INIT>) _param_c_t_init,
-		(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period
+		(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period,
+		(ParamFloat<px4::params::BAT_RIN_EST_MAX>) _param_inter_res_est_max,
+		(ParamFloat<px4::params::BAT_RIN_EST_MIN>) _param_inter_res_est_min,
+		(ParamFloat<px4::params::BAT_RIN_EST_INIT>) _param_inter_res_init
 	)
-
 };

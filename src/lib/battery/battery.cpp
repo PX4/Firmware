@@ -209,7 +209,7 @@ void Battery::estimateRemaining(const float voltage_v, const float current_a, co
 			_internal_resistance_sub.copy(&_inter_res);
 		}
 
-		if (_inter_res.best_r_internal_est >= 0.f && _inter_res.best_r_internal_est <= 0.2f) {
+		if (_inter_res.best_r_internal_est >= 0.f) {
 			//assumes each cell has the same resistance and battery cells are in series
 			cell_voltage += (_inter_res.best_r_internal_est / _params.n_cells) * current_a;
 
