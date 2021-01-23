@@ -39,8 +39,8 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/distance_sensor.h>
 
-#define VL53L1X_SAMPLE_RATE                                20  // ms, f = 50hz
-#define VL53L1X_INTER_MEAS_MS				   25  //ms
+#define VL53L1X_SAMPLE_RATE                                20  // ms, default
+#define VL53L1X_INTER_MEAS_MS				   25  //ms, default
 /* ST */
 const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
@@ -133,7 +133,7 @@ const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x84 : not user-modifiable */
 	0x01, /* 0x85 : not user-modifiable */
 	0x00, /* 0x86 : clear interrupt, use ClearInterrupt() */
-	0x40  /* 0x87 : start ranging, use StartRanging() or StopRanging(), If you want an automatic start after VL53L1X_init() call, put 0x40 in location 0x87 */
+	0x00  /* 0x87 : start ranging, use StartRanging() or StopRanging(), If you want an automatic start after VL53L1X_init() call, put 0x40 in location 0x87 */
 };
 
 static const uint8_t status_rtn[24] = { 255, 255, 255, 5, 2, 4, 1, 7, 3, 0,
@@ -148,10 +148,19 @@ VL53L1X::VL53L1X(const I2CSPIDriverConfig &config) :
 	I2CSPIDriver(config),
 	_px4_rangefinder(get_device_id(), config.rotation)
 {
-	// VL53L1X typical range 0-2 meters with 25 degree field of view
+	//Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
+	distance_mode = 1;
+	// VL53L1X typical range 0-4 meters with 27 degree field of view
 	_px4_rangefinder.set_min_distance(0.f);
-	_px4_rangefinder.set_max_distance(2.f);
-	_px4_rangefinder.set_fov(math::radians(25.f));
+
+	if (distance_mode == 1) {
+	    _px4_rangefinder.set_max_distance(2.f);
+	}
+        else {
+	    _px4_rangefinder.set_max_distance(4.f);
+	}
+
+	_px4_rangefinder.set_fov(math::radians(27.f));
 
 	// Allow 3 retries as the device typically misses the first measure attempts.
 	I2C::_retries = 3;
@@ -177,7 +186,6 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
 	const hrt_abstime timestamp_sample = hrt_absolute_time();
 
 	ret = VL53L1X_GetRangeStatus(&rangeStatus);
-	//if ((ret != PX4_OK) | (rangeStatus != PX4_OK)) {
 
 	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
@@ -195,17 +203,7 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
 	}
 
 	rngval->current_distance = distance_mm;
-        orb_advert_t pub_rngval = orb_advertise(ORB_ID(distance_sensor), rngval);
-	if (pub_rngval == NULL){
-                return PX4_ERROR;
-	}
-	else {
-                //debug print
-	        PX4_INFO("uOrb message advertise success");
-		//publish the orb message
-		orb_publish(ORB_ID(distance_sensor), pub_rngval, rngval);
 
-	}
 	perf_end(_sample_perf);
 
 	float distance_m = distance_mm / 1000.f;
@@ -260,7 +258,7 @@ int VL53L1X::init()
 	}
 
 	ret |= VL53L1X_SensorInit();
-	ret |= VL53L1X_ConfigBig(1, VL53L1X_SAMPLE_RATE);
+	ret |= VL53L1X_ConfigBig(distance_mode, VL53L1X_SAMPLE_RATE);
 	ret |= VL53L1X_SetInterMeasurementInMs(VL53L1X_INTER_MEAS_MS);
 	ret |= VL53L1X_StartRanging();
 

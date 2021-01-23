@@ -117,6 +117,9 @@ public:
 	 */
 	void RunImpl();
 
+	//Distance mode member variable
+	uint16_t distance_mode;
+
 private:
 	int probe() override;
 
@@ -148,4 +151,5 @@ private:
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};
 	perf_counter_t _sample_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": read")};
+
 };
