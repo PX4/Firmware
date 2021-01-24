@@ -86,7 +86,7 @@ Vector<float, 4> InternalRes::extract_ecm_parameters()
 
 
 void InternalRes::update_internal_resistance(const float voltage_estimation_error,
-		const Vector<float, 4> esm_params_est)
+		const Vector<float, 4> &esm_params_est)
 {
 
 	//store best esimate

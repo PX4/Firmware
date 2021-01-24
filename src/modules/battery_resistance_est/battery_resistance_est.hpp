@@ -78,7 +78,7 @@ public:
 
 	int print_status() override;
 
-	void update_internal_resistance(const float voltage_estimation_error, const Vector<float, 4> esm_params_est);
+	void update_internal_resistance(const float voltage_estimation_error, const Vector<float, 4> &esm_params_est);
 
 	Vector<float, 4> extract_ecm_parameters();
 
