@@ -270,11 +270,11 @@ int InternalRes::print_usage(const char *reason)
 		R"DESCR_STR(
 ### Description
 module uses current and voltage data​ to online estimate the
-battery internal resistance. Implementation based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
-batteries in electric vehicles' by Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
+battery internal resistance. Based on 'Online estimation of internal resistance and open-circuit voltage of lithium-ion
+batteries in electric vehicles' Yi-Hsien Chiang , Wu-Yang Sean, Jia-Cheng Ke
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("battery_resistance_est", "custom_module");
+	PRINT_MODULE_USAGE_NAME("battery_resistance_est", "system");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
