@@ -78,12 +78,11 @@ PARAM_DEFINE_FLOAT(BAT_R_T_INIT, 0.05f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of capacitance in RC network of battery equivalent circuit model.
+ * Initial estimate of capacitance (in farad, F) in RC network of battery equivalent circuit model.
  *
  * @group Battery Calibration
  * @reboot_required true
  * @min 0
- * @unit F
  */
 PARAM_DEFINE_FLOAT(BAT_C_T_INIT, 500.0f);
 
