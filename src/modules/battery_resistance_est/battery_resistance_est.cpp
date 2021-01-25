@@ -53,10 +53,7 @@ bool InternalRes::init()
 
 	_voltage_estimation = _param_bat1_v_charged.get() * _param_bat1_n_cells.get(); //assume fully charged
 
-	_adaptation_gain(0) = 0.0001f;
-	_adaptation_gain(1) = 0.0001f;
-	_adaptation_gain(2) = 0.0001f;
-	_adaptation_gain(3) = 0.0001f;
+	_adaptation_gain.setAll(0.0001f);
 
 	_inter_res.best_r_internal_est = _param_inter_res_init.get();
 
