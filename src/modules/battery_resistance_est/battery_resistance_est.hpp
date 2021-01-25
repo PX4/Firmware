@@ -101,21 +101,21 @@ private:
 	Vector<float, 4> _signal;
 	Vector<float, 4> _best_ecm_params_est;
 
-	float _lambda = 0.8f;
-	float _voltage_estimation;
+	float _lambda{0.8f};
+	float _voltage_estimation{0.f};
 
-	float _current_filtered_a = 0.f;
-	float _voltage_filtered_v;
-	float _current_filtered_a_prev;
+	float _current_filtered_a{0.f};
+	float _voltage_filtered_v{0.f};
+	float _current_filtered_a_prev{0.f};
 
-	float _best_prediction_error;
-	bool _best_prediction_error_reset = true;
+	float _best_prediction_error{0.f};
+	bool _best_prediction_error_reset{true};
 
 //used to save estimated ecm params on disarm
-	bool _armed = false;
-	bool _was_armed = false;
-	bool _on_standby = false;
-	bool _param_bat_saved = false;
+	bool _armed{false};
+	bool _was_armed{false};
+	bool _on_standby{false};
+	bool _param_bat_saved{false};
 
 	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
