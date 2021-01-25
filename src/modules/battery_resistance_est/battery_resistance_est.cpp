@@ -146,10 +146,7 @@ float InternalRes::predict_voltage(const float dt)
 	_inter_res.param_est[2] = _param_est(2);
 	_inter_res.param_est[3] = _param_est(3);
 
-	_inter_res.signal[0] = _signal(0);
-	_inter_res.signal[1] = _signal(1);
-	_inter_res.signal[2] = _signal(2);
-	_inter_res.signal[3] = _signal(3);
+	_signal.copyTo(_inter_res.signal);
 
 	return voltage_estimation_error;
 }
