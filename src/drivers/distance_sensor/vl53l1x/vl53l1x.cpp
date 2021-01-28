@@ -35,9 +35,6 @@
 ***********/
 
 #include "vl53l1x.hpp"
-#include <px4_platform_common/px4_config.h>
-#include <uORB/uORB.h>
-#include <uORB/topics/distance_sensor.h>
 
 #define VL53L1X_SAMPLE_RATE                                20  // ms, default
 #define VL53L1X_INTER_MEAS_MS				   25  //ms, default
@@ -175,7 +172,7 @@ VL53L1X::~VL53L1X()
 	perf_free(_comms_errors);
 }
 
-int VL53L1X::collect(struct distance_sensor_s *rngval)
+int VL53L1X::collect()
 {
 	uint8_t ret = 0;
 	uint8_t rangeStatus = 0;
@@ -201,8 +198,6 @@ int VL53L1X::collect(struct distance_sensor_s *rngval)
 		perf_end(_sample_perf);
 		return PX4_ERROR;
 	}
-
-	rngval->current_distance = distance_mm;
 
 	perf_end(_sample_perf);
 
@@ -235,12 +230,11 @@ int VL53L1X::probe()
 void VL53L1X::RunImpl()
 {
 	uint8_t dataReady = 0;
-        struct distance_sensor_s range_value;
 
 	VL53L1X_CheckForDataReady(&dataReady);
 
 	if (dataReady == 1) {
-                collect(&range_value);
+                collect();
 	}
 
 	ScheduleDelayed(VL53L1X_SAMPLE_RATE);
