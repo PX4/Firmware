@@ -384,7 +384,7 @@ if(BUILD_TESTING)
 	include(gtest)
 
 	add_custom_target(test_results
-			COMMAND GTEST_COLOR=1 ${CMAKE_CTEST_COMMAND} --output-on-failure -T Test -R ${TESTFILTER} USES_TERMINAL
+			COMMAND GTEST_COLOR=1 ${CMAKE_CTEST_COMMAND} --output-on-failure --stop-on-failure --timeout=60 -T Test --schedule-random -R ${TESTFILTER}
 			DEPENDS
 				px4
 				examples__dyn_hello

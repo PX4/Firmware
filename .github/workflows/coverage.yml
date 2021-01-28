@@ -14,6 +14,7 @@ jobs:
     container:
       image: px4io/px4-dev-base-focal:2020-11-18
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
+    timeout-minutes: 30
     strategy:
       matrix:
         config: [

@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: macos-10.15
+    timeout-minutes: 60
     strategy:
       matrix:
         config: [

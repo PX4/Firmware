@@ -12,6 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: px4io/px4-dev-nuttx-focal:2020-11-18
+    timeout-minutes: 30
     strategy:
       matrix:
         config: [

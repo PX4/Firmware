@@ -19,6 +19,4 @@ ver all
 
 tests @test_name@
 
-dataman status
-
 shutdown
