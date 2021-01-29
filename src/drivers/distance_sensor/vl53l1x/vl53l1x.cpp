@@ -36,8 +36,8 @@
 
 #include "vl53l1x.hpp"
 
-#define VL53L1X_SAMPLE_RATE                                15  // ms, default
-#define VL53L1X_INTER_MEAS_MS				   18  //ms
+#define VL53L1X_SAMPLE_RATE                                20  // ms, default
+#define VL53L1X_INTER_MEAS_MS				   22  //ms
 /* ST */
 const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
@@ -193,7 +193,7 @@ int VL53L1X::collect()
 
 	ret = VL53L1X_GetRangeStatus(&rangeStatus);
 
-	if (ret != PX4_OK) {
+	if ((ret != PX4_OK) | (rangeStatus == 13)) {
 		perf_count(_comms_errors);
 		perf_end(_sample_perf);
 		return PX4_ERROR;
@@ -240,13 +240,8 @@ void VL53L1X::RunImpl()
 {
 	uint8_t dataReady = 0;
 
-<<<<<<< HEAD
-	uint8_t roiCenter[] = {239, 215, 191, 167, 151};
-        static uint8_t zone;
-=======
-	uint8_t roiCenter[] = {239, 215, 191, 167, 151};
+	uint8_t roiCenter[] = {247, 215, 183, 167, 151};
         static uint8_t zone = 0;
->>>>>>> lowered timing budget and inter measurement period, limited to 5 ROI's
 
 	VL53L1X_CheckForDataReady(&dataReady);
 
@@ -270,7 +265,7 @@ void VL53L1X::RunImpl()
 	zone++;
 
         //reset counter check
-	if(zone >= sizeof(roiCenter) - 1){
+	if(zone > sizeof(roiCenter) - 1){
 	        zone = 0;
 	}
 
