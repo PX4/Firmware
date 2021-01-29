@@ -37,7 +37,7 @@
 #include "vl53l1x.hpp"
 
 #define VL53L1X_SAMPLE_RATE                                20  // ms, default
-#define VL53L1X_INTER_MEAS_MS				   25  //ms, default
+#define VL53L1X_INTER_MEAS_MS				   22  //ms
 /* ST */
 const uint8_t VL51L1X_DEFAULT_CONFIGURATION[] = {
 	0x00, /* 0x2d : set bit 2 and 5 to 1 for fast plus mode (1MHz I2C), else don't touch */
@@ -140,13 +140,22 @@ static const uint8_t status_rtn[24] = { 255, 255, 255, 5, 2, 4, 1, 7, 3, 0,
 
 /* end ST */
 
+<<<<<<< HEAD
 VL53L1X::VL53L1X(const I2CSPIDriverConfig &config) :
 	I2C(config),
 	I2CSPIDriver(config),
 	_px4_rangefinder(get_device_id(), config.rotation)
 {
+=======
+VL53L1X::VL53L1X(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency, int address) :
+	I2C(DRV_DIST_DEVTYPE_VL53L1X, MODULE_NAME, bus, address, bus_frequency),
+	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
+	_px4_rangefinder(get_device_id(), rotation)
+{
+>>>>>>> cleaned up merge conflicts w/ upstream remote master, added region of interest center setting and size
 	//Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
 	distance_mode = 1;
+
 	// VL53L1X typical range 0-4 meters with 27 degree field of view
 	_px4_rangefinder.set_min_distance(0.f);
 
@@ -231,6 +240,9 @@ void VL53L1X::RunImpl()
 {
 	uint8_t dataReady = 0;
 
+	uint8_t roiCenter[] = {239, 215, 191, 167, 151};
+        static uint8_t zone;
+
 	VL53L1X_CheckForDataReady(&dataReady);
 
 	if (dataReady == 1) {
@@ -238,21 +250,36 @@ void VL53L1X::RunImpl()
 	}
 
 	ScheduleDelayed(VL53L1X_SAMPLE_RATE);
+
+	//zone modulus & change center
+	zone = zone% 5;
+	VL53L1X_SetROICenter(roiCenter[zone]);
+
+        //reset inf. counter check
+	if(zone >= sizeof(roiCenter)){
+	        zone = 0;
+	}
+        //increment
+	zone++;
 }
 
 int VL53L1X::init()
 {
 	int ret = PX4_OK;
-
+        uint8_t x, y;
 	ret = device::I2C::init();
 
 	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
 		return PX4_ERROR;
 	}
+	//Spad width (x) & height (y)
+        x = 4;
+	y = 16;
 
 	ret |= VL53L1X_SensorInit();
 	ret |= VL53L1X_ConfigBig(distance_mode, VL53L1X_SAMPLE_RATE);
+	ret |= VL53L1X_SetROI(x, y);
 	ret |= VL53L1X_SetInterMeasurementInMs(VL53L1X_INTER_MEAS_MS);
 	ret |= VL53L1X_StartRanging();
 
@@ -485,6 +512,23 @@ int8_t VL53L1X::VL53L1X_StopRanging()
 	int8_t status = 0;
 
 	status = VL53L1_WrByte(SYSTEM__MODE_START, 0x00);    /* Disable VL53L1X */
+	return status;
+}
+
+int8_t VL53L1X::VL53L1X_SetROI(uint16_t x, uint16_t y)
+{
+	int8_t status = 0;
+
+	status = VL53L1_WrByte(ROI_CONFIG__USER_ROI_REQUESTED_GLOBAL_XY_SIZE,  (y - 1) << 4 | (x - 1));    /* set ROI size x and y */
+
+	return status;
+}
+
+int8_t VL53L1X::VL53L1X_SetROICenter(uint8_t zone)
+{
+	int8_t status = 0;
+
+	status = VL53L1_WrByte(VL53L1_ROI_CONFIG__MODE_ROI_CENTRE_SPAD, zone);    /* Set ROI spad center */
 	return status;
 }
 
