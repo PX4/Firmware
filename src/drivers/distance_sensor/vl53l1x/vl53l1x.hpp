@@ -117,7 +117,7 @@ public:
 	 */
 	void RunImpl();
 
-	//Distance mode member variable
+	// Distance mode member variable
 	uint16_t distance_mode;
 
 private:

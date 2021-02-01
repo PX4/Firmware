@@ -801,8 +801,8 @@ MavlinkReceiver::handle_message_distance_sensor(mavlink_message_t *msg)
 {
 	mavlink_distance_sensor_t dist_sensor;
 	mavlink_msg_distance_sensor_decode(msg, &dist_sensor);
-        const float* qt;
-	distance_sensor_s ds{};
+
+    distance_sensor_s ds{};
 
 	device::Device::DeviceId device_id;
 	device_id.devid_s.bus = device::Device::DeviceBusType::DeviceBusType_MAVLINK;
@@ -828,15 +828,6 @@ MavlinkReceiver::handle_message_distance_sensor(mavlink_message_t *msg)
 	// quality value. Also it comes normalised between 1 and 100 while the uORB
 	// signal quality is normalised between 0 and 100.
 	ds.signal_quality = dist_sensor.signal_quality == 0 ? -1 : 100 * (dist_sensor.signal_quality - 1) / 99;
-        qt = const_cast<float*>(ds.q);
-	//mavlink clients
-        mavlink_msg_distance_sensor_send(MAVLINK_COMM_0, ds.timestamp, ds.min_distance, ds.max_distance, ds.current_distance, ds.type, ds.device_id, ds.orientation, ds.variance, ds.h_fov, ds.v_fov, qt, ds.signal_quality);
-
-        mavlink_msg_distance_sensor_send(MAVLINK_COMM_1, ds.timestamp, ds.min_distance, ds.max_distance, ds.current_distance, ds.type, ds.device_id, ds.orientation, ds.variance, ds.h_fov, ds.v_fov, qt, ds.signal_quality);
-
-        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_0, &dist_sensor);
-        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_1, &dist_sensor);
-        mavlink_msg_distance_sensor_send_struct(MAVLINK_COMM_2, &dist_sensor);
 
 	_distance_sensor_pub.publish(ds);
 }
