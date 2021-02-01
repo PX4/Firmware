@@ -146,8 +146,8 @@ private:
 	// Remove if config store
 	int8_t VL53L1X_ConfigBig(uint16_t DM, uint16_t TimingBudgetInMs);
 	int8_t VL53L1X_SetInterMeasurementInMs(uint32_t InterMeasurementInMs);
-        int8_t VL53L1X_SetROICenter(uint8_t data);
-        int8_t VL53L1X_SetROI(uint16_t x, uint16_t y);
+	int8_t VL53L1X_SetROICenter(uint8_t data);
+	int8_t VL53L1X_SetROI(uint16_t x, uint16_t y);
 	PX4Rangefinder    _px4_rangefinder;
 
 	perf_counter_t _comms_errors{perf_alloc(PC_COUNT, MODULE_NAME": com_err")};

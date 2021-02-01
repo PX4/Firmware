@@ -802,7 +802,7 @@ MavlinkReceiver::handle_message_distance_sensor(mavlink_message_t *msg)
 	mavlink_distance_sensor_t dist_sensor;
 	mavlink_msg_distance_sensor_decode(msg, &dist_sensor);
 
-    distance_sensor_s ds{};
+	distance_sensor_s ds{};
 
 	device::Device::DeviceId device_id;
 	device_id.devid_s.bus = device::Device::DeviceBusType::DeviceBusType_MAVLINK;

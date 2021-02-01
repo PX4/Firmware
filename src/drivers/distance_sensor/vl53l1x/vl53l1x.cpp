@@ -160,12 +160,16 @@ VL53L1X::VL53L1X(I2CSPIBusOption bus_option, const int bus, const uint8_t rotati
 	I2C(DRV_DIST_DEVTYPE_VL53L1X, MODULE_NAME, bus, address, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
 	_px4_rangefinder(get_device_id(), rotation)
+<<<<<<< HEAD
 {
 <<<<<<< HEAD
 >>>>>>> cleaned up merge conflicts w/ upstream remote master, added region of interest center setting and size
 	//Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
 	distance_mode = 1;
 =======
+=======
+{
+>>>>>>> format checks passed, ran 'make format'
 	// Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
 	distance_mode = VL53L1X_SHORT_RANGE;
 >>>>>>> removed unecessary whitespace in default.cmake, vl53l1x.*, replaced magic #'s with global constants
@@ -174,6 +178,7 @@ VL53L1X::VL53L1X(I2CSPIBusOption bus_option, const int bus, const uint8_t rotati
 	_px4_rangefinder.set_min_distance(0.f);
 
 	if (distance_mode == VL53L1X_SHORT_RANGE) {
+<<<<<<< HEAD
 	    _px4_rangefinder.set_max_distance(2.f);
 <<<<<<< HEAD
 	}
@@ -183,6 +188,12 @@ VL53L1X::VL53L1X(I2CSPIBusOption bus_option, const int bus, const uint8_t rotati
 	} else {
 >>>>>>> removed unecessary whitespace in default.cmake, vl53l1x.*, replaced magic #'s with global constants
 	    _px4_rangefinder.set_max_distance(4.f);
+=======
+		_px4_rangefinder.set_max_distance(2.f);
+
+	} else {
+		_px4_rangefinder.set_max_distance(4.f);
+>>>>>>> format checks passed, ran 'make format'
 	}
 
 	_px4_rangefinder.set_fov(math::radians(27.f));
@@ -260,12 +271,12 @@ void VL53L1X::RunImpl()
 	uint8_t dataReady = 0;
 
 	uint8_t roiCenter[] = {VL53L1X_ROI_FAR_RIGHT, VL53L1X_ROI_MID_RIGHT, VL53L1X_ROI_CENTER, VL53L1X_ROI_MID_LEFT, VL53L1X_ROI_FAR_LEFT};
-        static uint8_t zone = 0;
+	static uint8_t zone = 0;
 
 	VL53L1X_CheckForDataReady(&dataReady);
 
 	if (dataReady == 1) {
-	    collect();
+		collect();
 	}
 
 	ScheduleDelayed(VL53L1X_SAMPLE_RATE);
@@ -280,28 +291,40 @@ void VL53L1X::RunImpl()
 	}
 	VL53L1X_SetROICenter(roiCenter[zone]);
 
-        // increment
+	// increment
 	zone++;
 
-        // reset counter check
-	if(zone > sizeof(roiCenter) - 1){
-	        zone = 0;
+	// reset counter check
+	if (zone > sizeof(roiCenter) - 1) {
+		zone = 0;
 	}
 
 }
 
+<<<<<<< HEAD
+=======
+void VL53L1X::start()
+{
+
+	// Schedule the first cycle.
+	ScheduleNow();
+
+}
+
+>>>>>>> format checks passed, ran 'make format'
 int VL53L1X::init()
 {
 	int ret = PX4_OK;
-        uint8_t x, y;
+	uint8_t x, y;
 	ret = device::I2C::init();
 
 	if (ret != PX4_OK) {
 		perf_count(_comms_errors);
 		return PX4_ERROR;
 	}
+
 	// Spad width (x) & height (y)
-        x = 4;
+	x = 4;
 	y = 16;
 
 	ret |= VL53L1X_SensorInit();
@@ -546,7 +569,8 @@ int8_t VL53L1X::VL53L1X_SetROI(uint16_t x, uint16_t y)
 {
 	int8_t status = 0;
 
-	status = VL53L1_WrByte(ROI_CONFIG__USER_ROI_REQUESTED_GLOBAL_XY_SIZE,  (y - 1) << 4 | (x - 1));    /* set ROI size x and y */
+	status = VL53L1_WrByte(ROI_CONFIG__USER_ROI_REQUESTED_GLOBAL_XY_SIZE,
+			       (y - 1) << 4 | (x - 1));     /* set ROI size x and y */
 
 	return status;
 }
