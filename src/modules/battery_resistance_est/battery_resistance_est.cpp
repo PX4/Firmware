@@ -209,7 +209,7 @@ void InternalRes::Run()
 		_param_v_oc_init.set(_best_ecm_params_est(2));
 		_param_v_oc_init.commit_no_notification();
 
-		_param_bat1_r_internal.set(_best_ecm_params_est(3));
+		_param_bat1_r_internal.set(_best_ecm_params_est(3) / _param_bat1_n_cells.get());
 		_param_bat1_r_internal.commit_no_notification();
 
 		_param_bat_saved = true;
