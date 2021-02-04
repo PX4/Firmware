@@ -315,7 +315,6 @@ void VL53L1X::start()
 int VL53L1X::init()
 {
 	int ret = PX4_OK;
-	uint8_t x, y;
 	ret = device::I2C::init();
 
 	if (ret != PX4_OK) {
@@ -324,8 +323,8 @@ int VL53L1X::init()
 	}
 
 	// Spad width (x) & height (y)
-	x = 4;
-	y = 16;
+	uint8_t x = 4;
+	uint8_t y = 16;
 
 	ret |= VL53L1X_SensorInit();
 	ret |= VL53L1X_ConfigBig(distance_mode, VL53L1X_SAMPLE_RATE);
