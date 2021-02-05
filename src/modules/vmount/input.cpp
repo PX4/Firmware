@@ -60,6 +60,28 @@ int InputBase::update(unsigned int timeout_ms, ControlData **control_data, bool 
 		return 0;
 	}
 
+	// pitch 45 degrees up if failsafe is forced
+	if (_failsafe_action == MNT_FS_ACTION_PITCH_M45 && !_failsafe_triggered && _actuator_armed_sub.updated()) {
+		actuator_armed_s armed;
+
+		if (_actuator_armed_sub.copy(&armed)) {
+			if (armed.force_failsafe) {
+				_control_data.type = ControlData::Type::Angle;
+				_control_data.type_data.angle.frames[0] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
+				_control_data.type_data.angle.frames[1] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
+				_control_data.type_data.angle.frames[2] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
+				_control_data.type_data.angle.angles[0] = 0.f; // roll
+				_control_data.type_data.angle.angles[1] = -45.f * M_DEG_TO_RAD_F; // pitch
+				_control_data.type_data.angle.angles[2] = 0.f * M_DEG_TO_RAD_F; // yaw
+				*control_data = &_control_data;
+				// set this control data only once, so the user can still control the gimbal
+				_failsafe_triggered = true;
+				return 0;
+
+			}
+		}
+	}
+
 	return update_impl(timeout_ms, control_data, already_active);
 }
 

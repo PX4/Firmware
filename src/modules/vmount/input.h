@@ -40,10 +40,17 @@
 #pragma once
 
 #include "common.h"
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_armed.h>
 
 namespace vmount
 {
 
+/* Action, corresponding to the param MNT_FS_ACTION */
+enum FailsafeAction {
+	MNT_FS_ACTION_NONE = 0,
+	MNT_FS_ACTION_PITCH_M45 = 1
+};
 
 /**
  ** class InputBase
@@ -72,6 +79,9 @@ public:
 	/** report status to stdout */
 	virtual void print_status() = 0;
 
+
+	void set_failsafe_action(FailsafeAction action) { _failsafe_action = action; }
+
 protected:
 	virtual int update_impl(unsigned int timeout_ms, ControlData **control_data, bool already_active) = 0;
 
@@ -80,10 +90,14 @@ protected:
 	void control_data_set_lon_lat(double lon, double lat, float altitude, float roll_angle = 0.f,
 				      float pitch_fixed_angle = -10.f);
 
+
 	ControlData _control_data;
 
 private:
 	bool _initialized = false;
+	bool _failsafe_triggered = false;
+	FailsafeAction _failsafe_action{MNT_FS_ACTION_NONE};
+	uORB::Subscription					_actuator_armed_sub {ORB_ID(actuator_armed)};
 };
 
 

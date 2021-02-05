@@ -228,3 +228,17 @@ PARAM_DEFINE_FLOAT(MNT_OFF_ROLL, 0.0f);
 * @group Mount
 */
 PARAM_DEFINE_FLOAT(MNT_OFF_YAW, 0.0f);
+
+/**
+* Define the gimbal action if failsafe gets triggered
+* A value of 1 makes the gimbal rotate upwards
+* to prevent damage to the camera.
+*
+* @value 0 No action
+* @value 1 Pitch -45 degrees
+* @min 0
+* @max 1
+* @group Mount
+* @reboot_required true
+*/
+PARAM_DEFINE_INT32(MNT_FS_ACTION, 0);
