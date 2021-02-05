@@ -54,3 +54,7 @@
 [submodule "src/examples/gyro_fft/CMSIS_5"]
 	path = src/examples/gyro_fft/CMSIS_5
 	url = https://github.com/ARM-software/CMSIS_5.git
+[submodule "src/drivers/imu/bno055/BNO055_driver"]
+	path = src/drivers/imu/bno055/BNO055_driver
+	url = https://github.com/BoschSensortec/BNO055_driver
+	branch = changes-for-cpp-wrapper
