@@ -91,10 +91,10 @@ private:
 	battery_status_s _battery_status;
 	vehicle_status_s _vehicle_status;
 
-	hrt_abstime _battery_time_prev;
-	hrt_abstime _battery_time;
+	hrt_abstime _battery_time_prev{0};
+	hrt_abstime _battery_time{0};
 
-	hrt_abstime _last_param_update_time;
+	hrt_abstime _last_param_update_time{0};
 
 	Vector<float, 4> _param_est;
 	Vector<float, 4> _adaptation_gain;
@@ -134,6 +134,7 @@ private:
 		(ParamFloat<px4::params::BAT_RIN_UPDATE>) _param_inter_res_update_period,
 		(ParamFloat<px4::params::BAT_RIN_EST_MAX>) _param_inter_res_est_max,
 		(ParamFloat<px4::params::BAT_RIN_EST_MIN>) _param_inter_res_est_min,
-		(ParamFloat<px4::params::BAT_RIN_EST_INIT>) _param_inter_res_init
+		(ParamFloat<px4::params::BAT_RIN_EST_INIT>) _param_inter_res_init,
+		(ParamFloat<px4::params::BAT_PARAM_GAIN>) _param_param_gain
 	)
 };

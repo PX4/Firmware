@@ -49,11 +49,11 @@ bool InternalRes::init()
 	_param_est(0) = _param_r_s_init.get();
 	_param_est(1) = (_param_r_t_init.get() + _param_r_s_init.get()) / (_param_r_t_init.get() * _param_c_t_init.get());
 	_param_est(2) = 1.0f / (_param_r_t_init.get() * _param_c_t_init.get());
-	_param_est(3) = _param_v_oc_init.get() / (_param_r_t_init.get() * _param_c_t_init.get());
+	_param_est(3) = (_param_v_oc_init.get() * _param_bat1_n_cells.get()) / (_param_r_t_init.get() * _param_c_t_init.get());
 
 	_voltage_estimation = _param_bat1_v_charged.get() * _param_bat1_n_cells.get(); //assume fully charged
 
-	_adaptation_gain.setAll(0.0001f);
+	_adaptation_gain.setAll(_param_param_gain.get());
 
 	_inter_res.best_r_internal_est = _param_inter_res_init.get();
 
@@ -70,13 +70,13 @@ Vector<float, 4> InternalRes::extract_ecm_parameters()
 	ecm_params(2) = _param_est(3) / _param_est(2); //_voltage_open_circuit
 
 	//calculate bat1_r_internal
-	ecm_params(3) = (_voltage_filtered_v - ecm_params(2)) / (-_current_filtered_a); //_internal_resistance_est
+	ecm_params(3) = (ecm_params(2) - _voltage_filtered_v) / (_current_filtered_a); //_internal_resistance_est
 
 	//logging
 	_inter_res.r_s = ecm_params(0);
 	_inter_res.r_t = ecm_params(1);
 	_inter_res.v_oc = ecm_params(2);
-	_inter_res.r_internal_est = ecm_params(3);
+	_inter_res.r_internal_est = ecm_params(3) / _param_bat1_n_cells.get();
 
 	return ecm_params;
 }
@@ -87,7 +87,7 @@ void InternalRes::update_internal_resistance(const float voltage_estimation_erro
 {
 
 	//store best esimate
-	if ((abs(voltage_estimation_error)) <= abs(_best_prediction_error)) {
+	if ((fabs(voltage_estimation_error)) <= fabs(_best_prediction_error)) {
 		_best_ecm_params_est = esm_params_est;
 		_best_prediction_error = voltage_estimation_error;
 
@@ -98,23 +98,18 @@ void InternalRes::update_internal_resistance(const float voltage_estimation_erro
 	}
 
 	//clamp BAT1_R_INTERNAL
-	if (_best_ecm_params_est(3) > _param_inter_res_est_max.get()) {
-		_best_ecm_params_est(3) = _param_inter_res_est_max.get();
+	if (_best_ecm_params_est(3) > (_param_inter_res_est_max.get() *_param_bat1_n_cells.get())) {
+		_best_ecm_params_est(3) = _param_inter_res_est_max.get() * _param_bat1_n_cells.get();
 
-	} else if (_best_ecm_params_est(3) < _param_inter_res_est_min.get()) {
-		_best_ecm_params_est(3) = _param_inter_res_est_min.get();
+	} else if (_best_ecm_params_est(3) < (_param_inter_res_est_min.get() *_param_bat1_n_cells.get())) {
+		_best_ecm_params_est(3) = _param_inter_res_est_min.get() * _param_bat1_n_cells.get();
 	}
 
 	const float time_since_param_update = (hrt_absolute_time() - _last_param_update_time) / 1e6f;
 
 	// publish new bat1_r_internal only periodically
 	if (time_since_param_update >= _param_inter_res_update_period.get()) {
-
-		//BAT${i}_R_INTERNAL  increment: 0.01
-		_best_ecm_params_est(3) = round(_best_ecm_params_est(3) * 100) / 100;
-
-		//Set px4 Internal resistance using simplified Rint Model
-		_inter_res.best_r_internal_est = _best_ecm_params_est(3);
+		_inter_res.best_r_internal_est = _best_ecm_params_est(3) / _param_bat1_n_cells.get();
 		_last_param_update_time = hrt_absolute_time();
 		_best_prediction_error_reset = true;
 	}
@@ -139,7 +134,7 @@ float InternalRes::predict_voltage(const float dt)
 
 	//logging
 	_inter_res.voltage_estimation = _voltage_estimation;
-	_inter_res.voltage_estimation_error = abs(voltage_estimation_error);
+	_inter_res.voltage_estimation_error = fabs(voltage_estimation_error);
 
 	_param_est.copyTo(_inter_res.param_est);
 
@@ -162,8 +157,9 @@ void InternalRes::Run()
 		_on_standby = (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY);
 	}
 
+
 	if (_battery_sub.update(&_battery_status)
-	    && _armed) { //note: ekf replay won't work with armed in the if statement since _vehicle_status is not being published
+	    && _armed) {
 
 		if (_battery_time_prev != 0 && _battery_time != _battery_time_prev) {
 
@@ -182,7 +178,7 @@ void InternalRes::Run()
 
 			//logging for debugging
 			_inter_res.timestamp = hrt_absolute_time();
-			_inter_res.voltage_filtered_v = _voltage_filtered_v; //for sync with ekfreplay //TODO remove
+			_inter_res.voltage_filtered_v = _voltage_filtered_v; //for sync with ekfreplay
 			_internal_res_pub.publish(_inter_res);
 
 			_was_armed = true;
@@ -206,11 +202,14 @@ void InternalRes::Run()
 		_param_r_t_init.set(_best_ecm_params_est(1));
 		_param_r_t_init.commit_no_notification();
 
-		_param_v_oc_init.set(_best_ecm_params_est(2));
+		_param_v_oc_init.set(_best_ecm_params_est(2) / _param_bat1_n_cells.get());
 		_param_v_oc_init.commit_no_notification();
 
-		_param_bat1_r_internal.set(_best_ecm_params_est(3) / _param_bat1_n_cells.get());
+		_param_bat1_r_internal.set(round((_best_ecm_params_est(3) / _param_bat1_n_cells.get()) * 1000) / 1000);
 		_param_bat1_r_internal.commit_no_notification();
+
+		_param_inter_res_init.set(round((_best_ecm_params_est(3) / _param_bat1_n_cells.get()) * 1000) / 1000);
+		_param_inter_res_init.commit_no_notification();
 
 		_param_bat_saved = true;
 	}

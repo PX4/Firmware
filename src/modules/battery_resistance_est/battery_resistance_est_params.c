@@ -41,22 +41,22 @@
  * @min 0
  * @unit s
  */
-PARAM_DEFINE_FLOAT(BAT_RIN_UPDATE, 10.f);
+PARAM_DEFINE_FLOAT(BAT_RIN_UPDATE, 5.f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of voltage open circuit in battery equivalent circuit model.
+ * Initial per cell estimate of voltage open circuit in battery equivalent circuit model.
  *
  * @group Battery Calibration
  * @reboot_required true
  * @min 0
  * @unit V
  */
-PARAM_DEFINE_FLOAT(BAT_VOC_INIT, 22.1f);
+PARAM_DEFINE_FLOAT(BAT_VOC_INIT, 4.2f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of series ohmic resistor in battery equivalent circuit model.
+ * Initial estimate of series ohmic resistor in battery (all cells) equivalent circuit model.
  *
  * @group Battery Calibration
  * @reboot_required true
@@ -67,7 +67,7 @@ PARAM_DEFINE_FLOAT(BAT_R_S_INIT, 0.1f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of ohmic resistor in RC network of battery equivalent circuit model.
+ * Initial estimate of ohmic resistor in RC network of battery (all cells) equivalent circuit model.
  *
  * @group Battery Calibration
  * @reboot_required true
@@ -78,7 +78,7 @@ PARAM_DEFINE_FLOAT(BAT_R_T_INIT, 0.05f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of capacitance (in farad, F) in RC network of battery equivalent circuit model.
+ * Initial estimate of capacitance (in farad, F) in RC network of battery (all cells) equivalent circuit model.
  *
  * @group Battery Calibration
  * @reboot_required true
@@ -89,7 +89,7 @@ PARAM_DEFINE_FLOAT(BAT_C_T_INIT, 500.0f);
 /**
  * Battery internal resistance online estimator
  *
- * Max of estimation clamp
+ * Max of per cell estimation clamp
  *
  * @group Battery Calibration
  * @reboot_required true
@@ -100,20 +100,30 @@ PARAM_DEFINE_FLOAT(BAT_RIN_EST_MAX, 1.0f);
 /**
  * Battery internal resistance online estimator
  *
- * Min of estimation clamp
+ * Min of per cell estimation clamp
  *
  * @group Battery Calibration
  * @reboot_required true
  * @unit Ohm
  */
-PARAM_DEFINE_FLOAT(BAT_RIN_EST_MIN, 0.01f);
+PARAM_DEFINE_FLOAT(BAT_RIN_EST_MIN, 0.001f);
 /**
  * Battery internal resistance online estimator
  *
- * Initial estimate of battery internal resistance for all cells.
+ * Initial per cell estimate of battery internal resistance.
  *
  * @group Battery Calibration
  * @reboot_required true
  * @unit Ohm
  */
 PARAM_DEFINE_FLOAT(BAT_RIN_EST_INIT, 0.01f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Adaptation gain to update parameter vector of equivalent circuit model
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @unit Ohm
+ */
+PARAM_DEFINE_FLOAT(BAT_PARAM_GAIN, 0.001f);
