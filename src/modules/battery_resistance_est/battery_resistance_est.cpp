@@ -51,7 +51,7 @@ bool InternalRes::init()
 	_param_est(2) = 1.0f / (_param_r_t_init.get() * _param_c_t_init.get());
 	_param_est(3) = (_param_v_oc_init.get() * _param_bat1_n_cells.get()) / (_param_r_t_init.get() * _param_c_t_init.get());
 
-	_voltage_estimation = _param_bat1_v_charged.get() * _param_bat1_n_cells.get(); //assume fully charged
+	_voltage_estimation = _param_v_est_init.get() * _param_bat1_n_cells.get();
 
 	_adaptation_gain.setAll(_param_param_gain.get());
 
@@ -205,7 +205,7 @@ void InternalRes::Run()
 		_param_v_oc_init.set(_best_ecm_params_est(2) / _param_bat1_n_cells.get());
 		_param_v_oc_init.commit_no_notification();
 
-		_param_bat1_r_internal.set(round((_best_ecm_params_est(3) / _param_bat1_n_cells.get()) * 1000) / 1000);
+		_param_bat1_r_internal.set(round((_best_ecm_params_est(3) / _param_bat1_n_cells.get()) * 100) / 100);
 		_param_bat1_r_internal.commit_no_notification();
 
 		_param_inter_res_init.set(round((_best_ecm_params_est(3) / _param_bat1_n_cells.get()) * 1000) / 1000);

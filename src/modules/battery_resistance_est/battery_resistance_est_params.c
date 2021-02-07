@@ -127,3 +127,14 @@ PARAM_DEFINE_FLOAT(BAT_RIN_EST_INIT, 0.01f);
  * @unit Ohm
  */
 PARAM_DEFINE_FLOAT(BAT_PARAM_GAIN, 0.001f);
+/**
+ * Battery internal resistance online estimator
+ *
+ * Initial per cell estimate of voltage load in battery equivalent circuit model.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @unit V
+ */
+PARAM_DEFINE_FLOAT(BAT_V_EST_INIT, 4.05f);

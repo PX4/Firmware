@@ -135,6 +135,7 @@ private:
 		(ParamFloat<px4::params::BAT_RIN_EST_MAX>) _param_inter_res_est_max,
 		(ParamFloat<px4::params::BAT_RIN_EST_MIN>) _param_inter_res_est_min,
 		(ParamFloat<px4::params::BAT_RIN_EST_INIT>) _param_inter_res_init,
-		(ParamFloat<px4::params::BAT_PARAM_GAIN>) _param_param_gain
+		(ParamFloat<px4::params::BAT_PARAM_GAIN>) _param_param_gain,
+		(ParamFloat<px4::params::BAT_V_EST_INIT>) _param_v_est_init
 	)
 };
