@@ -58,7 +58,4 @@ private:
 
 	void _ekfResetHandlerPositionXY() override;
 	void _ekfResetHandlerVelocityXY() override;
-	void _ekfResetHandlerPositionZ() override;
-	void _ekfResetHandlerVelocityZ() override;
-	void _ekfResetHandlerHeading(float delta_psi) override;
 };

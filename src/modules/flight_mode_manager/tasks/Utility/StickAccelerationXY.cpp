@@ -51,12 +51,12 @@ StickAccelerationXY::StickAccelerationXY(ModuleParams *parent) :
 
 void StickAccelerationXY::resetPosition()
 {
-	_position.setNaN();
+	_position_setpoint.setNaN();
 }
 
 void StickAccelerationXY::resetVelocity(const matrix::Vector2f &velocity)
 {
-	_velocity = velocity;
+	_velocity_setpoint = velocity;
 }
 
 void StickAccelerationXY::resetAcceleration(const matrix::Vector2f &acceleration)
@@ -66,7 +66,7 @@ void StickAccelerationXY::resetAcceleration(const matrix::Vector2f &acceleration
 }
 
 void StickAccelerationXY::generateSetpoints(Vector2f stick_xy, const float yaw, const float yaw_sp, const Vector3f &pos,
-		const float dt)
+		const matrix::Vector2f &vel_sp_feedback, const float dt)
 {
 	// maximum commanded acceleration and velocity
 	Vector2f acceleration_scale(_param_mpc_acc_hor.get(), _param_mpc_acc_hor.get());
@@ -77,34 +77,44 @@ void StickAccelerationXY::generateSetpoints(Vector2f stick_xy, const float yaw, 
 	// Map stick input to acceleration
 	Sticks::limitStickUnitLengthXY(stick_xy);
 	Sticks::rotateIntoHeadingFrameXY(stick_xy, yaw, yaw_sp);
-	_acceleration = stick_xy.emult(acceleration_scale);
-	applyFeasibilityLimit(_acceleration, dt);
+	_acceleration_setpoint = stick_xy.emult(acceleration_scale);
+	applyFeasibilityLimit(dt);
 
 	// Add drag to limit speed and brake again
-	_acceleration -= calculateDrag(acceleration_scale.edivide(velocity_scale), dt, stick_xy, _velocity);
+	Vector2f drag = calculateDrag(acceleration_scale.edivide(velocity_scale), dt, stick_xy, _velocity_setpoint);
 
-	applyTiltLimit(_acceleration);
+	// Don't allow the drag to change the sign of the velocity, otherwise we might get into oscillations around 0, due
+	// to discretization
+	if (_acceleration_setpoint.norm_squared() < FLT_EPSILON
+	    && _velocity_setpoint.norm_squared() < drag.norm_squared() * dt * dt) {
+		drag.setZero();
+		_velocity_setpoint.setZero();
+	}
+
+	_acceleration_setpoint -= drag;
+
+	applyTiltLimit(_acceleration_setpoint);
 
 	// Generate velocity setpoint by forward integrating commanded acceleration
-	_velocity += Vector2f(_acceleration) * dt;
+	_velocity_setpoint += _acceleration_setpoint * dt;
 
-	lockPosition(_velocity, pos, dt, _position);
+	lockPosition(pos, vel_sp_feedback, dt);
 }
 
 void StickAccelerationXY::getSetpoints(Vector3f &pos_sp, Vector3f &vel_sp, Vector3f &acc_sp)
 {
-	pos_sp.xy() = _position;
-	vel_sp.xy() = _velocity;
-	acc_sp.xy() = _acceleration;
+	pos_sp.xy() = _position_setpoint;
+	vel_sp.xy() = _velocity_setpoint;
+	acc_sp.xy() = _acceleration_setpoint;
 }
 
-void StickAccelerationXY::applyFeasibilityLimit(Vector2f &acceleration, const float dt)
+void StickAccelerationXY::applyFeasibilityLimit(const float dt)
 {
 	// Apply jerk limit - acceleration slew rate
 	_acceleration_slew_rate_x.setSlewRate(_param_mpc_jerk_max.get());
 	_acceleration_slew_rate_y.setSlewRate(_param_mpc_jerk_max.get());
-	acceleration(0) = _acceleration_slew_rate_x.update(acceleration(0), dt);
-	acceleration(1) = _acceleration_slew_rate_y.update(acceleration(1), dt);
+	_acceleration_setpoint(0) = _acceleration_slew_rate_x.update(_acceleration_setpoint(0), dt);
+	_acceleration_setpoint(1) = _acceleration_slew_rate_y.update(_acceleration_setpoint(1), dt);
 }
 
 Vector2f StickAccelerationXY::calculateDrag(Vector2f drag_coefficient, const float dt, const Vector2f &stick_xy,
@@ -137,15 +147,18 @@ void StickAccelerationXY::applyTiltLimit(Vector2f &acceleration)
 	}
 }
 
-void StickAccelerationXY::lockPosition(const Vector2f &vel_sp, const Vector3f &pos, const float dt, Vector2f &pos_sp)
+void StickAccelerationXY::lockPosition(const Vector3f &pos, const matrix::Vector2f &vel_sp_feedback, const float dt)
 {
-	if (vel_sp.norm_squared() < FLT_EPSILON) {
-		if (!PX4_ISFINITE(pos_sp(0))) {
-			pos_sp = Vector2f(pos);
+	if (_velocity_setpoint.norm_squared() < FLT_EPSILON) {
+		if (!PX4_ISFINITE(_position_setpoint(0))) {
+			_position_setpoint = pos.xy();
 		}
 
 	} else {
-		pos_sp.setNaN();
-
+		if (PX4_ISFINITE(_position_setpoint(0))) {
+			_position_setpoint.setNaN();
+			// avoid velocity control jump because of remaining position error when unlocking
+			_velocity_setpoint = vel_sp_feedback;
+		}
 	}
 }

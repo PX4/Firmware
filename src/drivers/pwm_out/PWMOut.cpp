@@ -256,6 +256,22 @@ int PWMOut::set_mode(Mode mode)
 		break;
 #endif
 
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 12
+
+	case MODE_12PWM:
+		PX4_DEBUG("MODE_12PWM");
+		/* default output rates */
+		_pwm_default_rate = 50;
+		_pwm_alt_rate = 50;
+		_pwm_alt_rate_channels = 0;
+		_pwm_mask = 0xFFF;
+		_pwm_initialized = false;
+		_num_outputs = 12;
+		update_params();
+
+		break;
+#endif
+
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 14
 
 	case MODE_14PWM:
@@ -751,6 +767,9 @@ int PWMOut::ioctl(file *filp, int cmd, unsigned long arg)
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 8
 	case MODE_8PWM:
 #endif
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 12
+	case MODE_12PWM:
+#endif
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 14
 	case MODE_14PWM:
 #endif
@@ -1192,6 +1211,13 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 			break;
 #endif
 
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 12
+
+		case MODE_12PWM:
+			*(unsigned *)arg = 12;
+			break;
+#endif
+
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 8
 
 		case MODE_8PWM:
@@ -1290,6 +1316,10 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 			case PWM_SERVO_MODE_8PWM:
 				ret = set_mode(MODE_8PWM);
+				break;
+
+			case PWM_SERVO_MODE_12PWM:
+				ret = set_mode(MODE_12PWM);
 				break;
 
 			case PWM_SERVO_MODE_14PWM:
@@ -1546,6 +1576,9 @@ int PWMOut::fmu_new_mode(PortMode new_mode)
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM == 8
 		servo_mode = PWMOut::MODE_8PWM;
 #endif
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM == 12
+		servo_mode = PWMOut::MODE_12PWM;
+#endif
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM == 14
 		servo_mode = PWMOut::MODE_14PWM;
 #endif
@@ -1561,6 +1594,13 @@ int PWMOut::fmu_new_mode(PortMode new_mode)
 	case PORT_PWM14:
 		/* select 14-pin PWM mode */
 		servo_mode = PWMOut::MODE_14PWM;
+		break;
+#endif
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 12
+
+	case PORT_PWM12:
+		/* select 12-pin PWM mode */
+		servo_mode = PWMOut::MODE_12PWM;
 		break;
 #endif
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 8
@@ -1986,7 +2026,12 @@ int PWMOut::custom_command(int argc, char *argv[])
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 8
 
 	} else if (!strcmp(verb, "mode_pwm8")) {
-		new_mode = PORT_PWM14;
+		new_mode = PORT_PWM8;
+#endif
+#if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 12
+
+	} else if (!strcmp(verb, "mode_pwm12")) {
+		new_mode = PORT_PWM12;
 #endif
 #if defined(BOARD_HAS_PWM) && BOARD_HAS_PWM >= 14
 
@@ -2041,6 +2086,8 @@ int PWMOut::print_status()
 	case MODE_6PWM: mode_str = "pwm6"; break;
 
 	case MODE_8PWM: mode_str = "pwm8"; break;
+
+	case MODE_12PWM: mode_str = "pwm12"; break;
 
 	case MODE_14PWM: mode_str = "pwm14"; break;
 
@@ -2112,6 +2159,9 @@ mixer files.
 	PRINT_MODULE_USAGE_COMMAND_DESCR("mode_pwm", "Select all available pins as PWM");
 # if BOARD_HAS_PWM >= 14
 	PRINT_MODULE_USAGE_COMMAND("mode_pwm14");
+# endif
+# if BOARD_HAS_PWM >= 12
+	PRINT_MODULE_USAGE_COMMAND("mode_pwm12");
 # endif
 # if BOARD_HAS_PWM >= 8
 	PRINT_MODULE_USAGE_COMMAND("mode_pwm8");

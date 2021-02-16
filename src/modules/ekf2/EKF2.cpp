@@ -1477,9 +1477,11 @@ void EKF2::UpdateRangeSample(ekf2_timestamps_s &ekf2_timestamps)
 
 			if (distance_sensor_subs[i].copy(&distance_sensor)) {
 				// only use the first instace which has the correct orientation
-				if ((distance_sensor.timestamp != 0) && (distance_sensor.orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING)) {
+				if ((hrt_elapsed_time(&distance_sensor.timestamp) < 100_ms)
+				    && (distance_sensor.orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING)) {
+
 					if (_distance_sensor_sub.ChangeInstance(i)) {
-						PX4_INFO("%d - found range finder with instance %d", _instance, i);
+						PX4_INFO("%d - selected distance_sensor:%d", _instance, i);
 						_distance_sensor_selected = true;
 					}
 				}
@@ -1498,6 +1500,9 @@ void EKF2::UpdateRangeSample(ekf2_timestamps_s &ekf2_timestamps)
 				_distance_sensor_sub.get_last_generation());
 		}
 
+		ekf2_timestamps.distance_sensor_timestamp_rel = (int16_t)((int64_t)distance_sensor.timestamp / 100 -
+				(int64_t)ekf2_timestamps.timestamp / 100);
+
 		if (distance_sensor.orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING) {
 			rangeSample range_sample {
 				.time_us = distance_sensor.timestamp,
@@ -1508,10 +1513,14 @@ void EKF2::UpdateRangeSample(ekf2_timestamps_s &ekf2_timestamps)
 
 			// Save sensor limits reported by the rangefinder
 			_ekf.set_rangefinder_limits(distance_sensor.min_distance, distance_sensor.max_distance);
-		}
 
-		ekf2_timestamps.distance_sensor_timestamp_rel = (int16_t)((int64_t)distance_sensor.timestamp / 100 -
-				(int64_t)ekf2_timestamps.timestamp / 100);
+			_last_range_sensor_update = distance_sensor.timestamp;
+			return;
+		}
+	}
+
+	if (hrt_elapsed_time(&_last_range_sensor_update) > 1_s) {
+		_distance_sensor_selected = false;
 	}
 }
 

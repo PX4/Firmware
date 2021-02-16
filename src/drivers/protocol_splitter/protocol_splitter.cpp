@@ -55,6 +55,10 @@ class ReadBuffer;
 
 extern "C" __EXPORT int protocol_splitter_main(int argc, char *argv[]);
 
+
+const char *Sp2HeaderMagic = "SP2";
+const int   Sp2HeaderSize  = 8;
+
 struct StaticData {
 	Mavlink2Dev *mavlink2;
 	RtpsDev *rtps;
@@ -73,7 +77,8 @@ class ReadBuffer
 {
 public:
 	int read(int fd);
-	void move(void *dest, size_t pos, size_t n);
+	void copy(void *dest, size_t pos, size_t n);
+	void remove(size_t pos, size_t n);
 
 	uint8_t buffer[512] = {};
 	size_t buf_size = 0;
@@ -106,12 +111,21 @@ int ReadBuffer::read(int fd)
 	return r;
 }
 
-void ReadBuffer::move(void *dest, size_t pos, size_t n)
+void ReadBuffer::copy(void *dest, size_t pos, size_t n)
 {
 	ASSERT(pos < buf_size);
 	ASSERT(pos + n <= buf_size);
 
-	memmove(dest, buffer + pos, n); // send desired data
+	if (dest) {
+		memmove(dest, buffer + pos, n);        // send desired data
+	}
+}
+
+void ReadBuffer::remove(size_t pos, size_t n)
+{
+	ASSERT(pos < buf_size);
+	ASSERT(pos + n <= buf_size);
+
 	memmove(buffer + pos, buffer + (pos + n), sizeof(buffer) - pos - n);
 	buf_size -= n;
 }
@@ -130,6 +144,19 @@ public:
 	enum Operation {Read, Write};
 
 protected:
+
+	/*
+	struct Sp2Header {
+		char magic[3];
+		uint8_t type;
+		uint16_t payload_len;
+		uint16_t reserved (align)
+	}
+	*/
+
+	enum MessageType {Mavlink = 0, Rtps};
+
+	uint8_t _header[8] = {};
 
 	virtual pollevent_t poll_state(struct file *filp);
 
@@ -246,12 +273,15 @@ Mavlink2Dev::Mavlink2Dev(ReadBuffer *read_buffer)
 	: DevCommon("/dev/mavlink")
 	, _read_buffer{read_buffer}
 {
+	memcpy(_header, Sp2HeaderMagic, 3);
+	_header[3] = MessageType::Mavlink;
+	memset(&_header[4], 0, 4);
 }
 
 ssize_t Mavlink2Dev::read(struct file *filp, char *buffer, size_t buflen)
 {
 	int i, ret;
-	uint16_t packet_len = 0;
+	uint16_t packet_len, payload_len;
 
 	/* last reading was partial (i.e., buffer didn't fit whole message),
 	 * so now we'll just send remaining bytes */
@@ -286,36 +316,28 @@ ssize_t Mavlink2Dev::read(struct file *filp, char *buffer, size_t buflen)
 
 	ret = 0;
 
-	if (_read_buffer->buf_size < 3) {
+	if (_read_buffer->buf_size < Sp2HeaderSize) {
 		goto end;
 	}
 
 	// Search for a mavlink packet on buffer to send it
 	i = 0;
 
-	while ((unsigned)i < (_read_buffer->buf_size - 3)
-	       && _read_buffer->buffer[i] != 253
-	       && _read_buffer->buffer[i] != 254) {
+	while ((unsigned)i < (_read_buffer->buf_size - Sp2HeaderSize) &&
+	       (_read_buffer->buffer[i] != 'S'
+		|| _read_buffer->buffer[i + 1] != 'P'
+		|| _read_buffer->buffer[i + 2] != '2'
+		|| _read_buffer->buffer[i + 3] != (uint8_t) MessageType::Mavlink)) {
 		i++;
 	}
 
-	// We need at least the first three bytes to get packet len
-	if ((unsigned)i >= _read_buffer->buf_size - 3) {
+	// We need at least the first six bytes to get packet len
+	if ((unsigned)i >= _read_buffer->buf_size - Sp2HeaderSize) {
 		goto end;
 	}
 
-	if (_read_buffer->buffer[i] == 253) {
-		uint8_t payload_len = _read_buffer->buffer[i + 1];
-		uint8_t incompat_flags = _read_buffer->buffer[i + 2];
-		packet_len = payload_len + 12;
-
-		if (incompat_flags & 0x1) { //signing
-			packet_len += 13;
-		}
-
-	} else {
-		packet_len = _read_buffer->buffer[i + 1] + 8;
-	}
+	payload_len = ((uint16_t)_read_buffer->buffer[i + 4] << 8) | _read_buffer->buffer[i + 5];
+	packet_len = payload_len + Sp2HeaderSize;
 
 	// packet is bigger than what we've read, better luck next time
 	if ((unsigned)i + packet_len > _read_buffer->buf_size) {
@@ -324,16 +346,19 @@ ssize_t Mavlink2Dev::read(struct file *filp, char *buffer, size_t buflen)
 
 	/* if buffer doesn't fit message, send what's possible and copy remaining
 	 * data into a temporary buffer on this class */
-	if (packet_len > buflen) {
-		_read_buffer->move(buffer, i, buflen);
-		_read_buffer->move(_partial_buffer, i, packet_len - buflen);
-		_remaining_partial = packet_len - buflen;
+	if (payload_len > buflen) {
+		_read_buffer->copy(buffer, i + Sp2HeaderSize, buflen);
+		_read_buffer->copy(_partial_buffer, i + Sp2HeaderSize + buflen, payload_len - buflen);
+		_read_buffer->remove(i, packet_len);
+		_remaining_partial = payload_len - buflen;
 		ret = buflen;
 		goto end;
 	}
 
-	_read_buffer->move(buffer, i, packet_len);
-	ret = packet_len;
+	_read_buffer->copy(buffer, i + Sp2HeaderSize, payload_len);
+	_read_buffer->remove(i, packet_len);
+
+	ret = payload_len;
 
 end:
 	unlock(Read);
@@ -392,6 +417,9 @@ ssize_t Mavlink2Dev::write(struct file *filp, const char *buffer, size_t buflen)
 				ret = -1;
 
 			} else {
+				_header[4] = (uint8_t)((buflen >> 8) & 0xff);
+				_header[5] = (uint8_t)(buflen & 0xff);
+				::write(_fd, _header, 8);
 				ret = ::write(_fd, buffer, buflen);
 			}
 
@@ -426,6 +454,10 @@ RtpsDev::RtpsDev(ReadBuffer *read_buffer)
 	: DevCommon("/dev/rtps")
 	, _read_buffer{read_buffer}
 {
+	memcpy(_header, Sp2HeaderMagic, 3);
+	_header[3] = MessageType::Rtps;
+	memset(&_header[4], 0, 4);
+
 }
 
 ssize_t RtpsDev::read(struct file *filp, char *buffer, size_t buflen)
@@ -446,24 +478,28 @@ ssize_t RtpsDev::read(struct file *filp, char *buffer, size_t buflen)
 
 	ret = 0;
 
-	if (_read_buffer->buf_size < HEADER_SIZE) {
-		goto end;        // starting ">>>" + topic + seq + lenhigh + lenlow + crchigh + crclow
+	if (_read_buffer->buf_size < Sp2HeaderSize) {
+		goto end;
 	}
 
 	// Search for a rtps packet on buffer to send it
 	i = 0;
 
-	while ((unsigned)i < (_read_buffer->buf_size - HEADER_SIZE) && (memcmp(_read_buffer->buffer + i, ">>>", 3) != 0)) {
+	while ((unsigned)i < (_read_buffer->buf_size - Sp2HeaderSize) &&
+	       (_read_buffer->buffer[i] != 'S'
+		|| _read_buffer->buffer[i + 1] != 'P'
+		|| _read_buffer->buffer[i + 2] != '2'
+		|| _read_buffer->buffer[i + 3] != (uint8_t) MessageType::Rtps)) {
 		i++;
 	}
 
 	// We need at least the first six bytes to get packet len
-	if ((unsigned)i >= _read_buffer->buf_size - HEADER_SIZE) {
+	if ((unsigned)i >= _read_buffer->buf_size - Sp2HeaderSize) {
 		goto end;
 	}
 
-	payload_len = ((uint16_t)_read_buffer->buffer[i + 5] << 8) | _read_buffer->buffer[i + 6];
-	packet_len = payload_len + HEADER_SIZE;
+	payload_len = ((uint16_t)_read_buffer->buffer[i + 4] << 8) | _read_buffer->buffer[i + 5];
+	packet_len = payload_len + Sp2HeaderSize;
 
 	// packet is bigger than what we've read, better luck next time
 	if ((unsigned)i + packet_len > _read_buffer->buf_size) {
@@ -476,8 +512,9 @@ ssize_t RtpsDev::read(struct file *filp, char *buffer, size_t buflen)
 		goto end;
 	}
 
-	_read_buffer->move(buffer, i, packet_len);
-	ret = packet_len;
+	_read_buffer->copy(buffer, i + Sp2HeaderSize, payload_len);
+	_read_buffer->remove(i, packet_len);
+	ret = payload_len;
 
 end:
 	unlock(Read);
@@ -524,6 +561,9 @@ ssize_t RtpsDev::write(struct file *filp, const char *buffer, size_t buflen)
 				ret = -1;
 
 			} else {
+				_header[4] = (uint8_t)((buflen >> 8) & 0xff);
+				_header[5] = (uint8_t)(buflen & 0xff);
+				::write(_fd, _header, 8);
 				ret = ::write(_fd, buffer, buflen);
 			}
 

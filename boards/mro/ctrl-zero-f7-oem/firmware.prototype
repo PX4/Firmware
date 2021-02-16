@@ -1,0 +1,13 @@
+{
+    "board_id": 141,
+    "magic": "mRo-ctrl-zero-f7-oem",
+    "description": "Firmware for the mRo-ctrl-zero-f7-oem board",
+    "image": "",
+    "build_time": 0,
+    "summary": "mRo-ctrl-zero-f7-oem",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 2064384,
+    "git_identity": "",
+    "board_revision": 0
+}

@@ -3,12 +3,8 @@
 # UVify Core specific board defaults
 #------------------------------------------------------------------------------
 
+# Disable safety switch by default
+param set-default CBRK_IO_SAFETY 22027
 
-if [ $AUTOCNF = yes ]
-then
-	# Disable safety switch by default
-	param set CBRK_IO_SAFETY 22027
-
-	# don't probe external I2C
-	param set SENS_EXT_I2C_PRB 0
-fi
+# don't probe external I2C
+param set-default SENS_EXT_I2C_PRB 0

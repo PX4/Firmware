@@ -14,57 +14,56 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_N_CELLS 3
 
-	param set COM_RC_IN_MODE 1
+param set-default BAT_N_CELLS 3
 
-	param set EKF2_AID_MASK 1
-	param set EKF2_ANGERR_INIT 0.01
-	param set EKF2_GBIAS_INIT 0.01
-	param set EKF2_HGT_MODE 0
-	param set EKF2_MAG_TYPE 1
+param set-default COM_RC_IN_MODE 1
 
-	param set FW_AIRSPD_MAX 25
-	param set FW_AIRSPD_MIN 14
-	param set FW_AIRSPD_TRIM 16
+param set-default EKF2_AID_MASK 1
+param set-default EKF2_ANGERR_INIT 0.01
+param set-default EKF2_GBIAS_INIT 0.01
+param set-default EKF2_HGT_MODE 0
+param set-default EKF2_MAG_TYPE 1
 
-	param set MC_PITCH_P 6
-	param set MC_PITCHRATE_P 0.2
-	param set MC_ROLL_P 6
-	param set MC_ROLLRATE_P 0.3
-	param set MIS_LTRMIN_ALT 10
-	param set MIS_TAKEOFF_ALT 10
-	param set MIS_YAW_TMT 10
+param set-default FW_AIRSPD_MAX 25
+param set-default FW_AIRSPD_MIN 14
+param set-default FW_AIRSPD_TRIM 16
 
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_THR_MIN 0.1
-	param set MPC_TKO_SPEED 1
-	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_D_ACC 0.1
-	param set MPC_XY_VEL_I_ACC 4
-	param set MPC_XY_VEL_P_ACC 3
-	param set MPC_Z_VEL_P_ACC 12
-	param set MPC_Z_VEL_I_ACC 3
-	param set MPC_Z_VEL_MAX_DN 1.5
+param set-default MC_PITCH_P 6
+param set-default MC_PITCHRATE_P 0.2
+param set-default MC_ROLL_P 6
+param set-default MC_ROLLRATE_P 0.3
+param set-default MIS_LTRMIN_ALT 10
+param set-default MIS_TAKEOFF_ALT 10
+param set-default MIS_YAW_TMT 10
 
-	param set NAV_ACC_RAD 5
-	param set NAV_DLL_ACT 2
-	param set NAV_LOITER_RAD 80
+param set-default MPC_ACC_HOR_MAX 2
+param set-default MPC_ACC_HOR_MAX 2
+param set-default MPC_THR_MIN 0.1
+param set-default MPC_TKO_SPEED 1
+param set-default MPC_XY_P 0.8
+param set-default MPC_XY_VEL_D_ACC 0.1
+param set-default MPC_XY_VEL_I_ACC 4
+param set-default MPC_XY_VEL_P_ACC 3
+param set-default MPC_Z_VEL_P_ACC 12
+param set-default MPC_Z_VEL_I_ACC 3
+param set-default MPC_Z_VEL_MAX_DN 1.5
 
-	param set RTL_DESCEND_ALT 10
-	param set RTL_RETURN_ALT 30
+param set-default NAV_ACC_RAD 5
+param set-default NAV_DLL_ACT 2
+param set-default NAV_LOITER_RAD 80
 
-	param set SDLOG_DIRS_MAX 7
-	param set SYS_RESTART_TYPE 2
+param set-default RTL_DESCEND_ALT 10
+param set-default RTL_RETURN_ALT 30
 
-	param set VT_F_TRANS_THR 0.75
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-	param set VT_TYPE 2
-fi
+param set-default SDLOG_DIRS_MAX 7
+param set-default SYS_RESTART_TYPE 2
+
+param set-default VT_F_TRANS_THR 0.75
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
+param set-default VT_TYPE 2
+
 
 param set SYS_HITL 1
 

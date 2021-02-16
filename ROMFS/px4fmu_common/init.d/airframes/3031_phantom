@@ -24,33 +24,31 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_AIRSPD_MIN 13
-	param set FW_AIRSPD_TRIM 15
-	param set FW_AIRSPD_MAX 25
-	param set FW_R_TC 0.3
-	param set FW_P_TC 0.3
-	param set FW_L1_DAMPING 0.75
-	param set FW_L1_PERIOD 15
-	param set FW_PR_FF 0.2
-	param set FW_PR_IMAX 0.2
-	param set FW_PR_P 0.03
-	param set FW_P_LIM_MAX 50
-	param set FW_P_LIM_MIN -50
-	param set FW_P_ROLLFF 1
-	param set FW_RR_FF 0.5
-	param set FW_RR_IMAX 0.2
-	param set FW_RR_P 0.08
-	param set FW_R_LIM 50
-	param set FW_R_RMAX 50
+param set-default FW_AIRSPD_MIN 13
+param set-default FW_AIRSPD_TRIM 15
+param set-default FW_AIRSPD_MAX 25
+param set-default FW_R_TC 0.3
+param set-default FW_P_TC 0.3
+param set-default FW_L1_DAMPING 0.75
+param set-default FW_L1_PERIOD 15
+param set-default FW_PR_FF 0.2
+param set-default FW_PR_IMAX 0.2
+param set-default FW_PR_P 0.03
+param set-default FW_P_LIM_MAX 50
+param set-default FW_P_LIM_MIN -50
+param set-default FW_P_ROLLFF 1
+param set-default FW_RR_FF 0.5
+param set-default FW_RR_IMAX 0.2
+param set-default FW_RR_P 0.08
+param set-default FW_R_LIM 50
+param set-default FW_R_RMAX 50
 
-	param set PWM_MAIN_DISARM 1000
+param set-default PWM_MAIN_DISARM 1000
 
-	# Bottom of bay and nominal zero-pitch attitude differ
-	# the payload bay is pitched up about 7 degrees
-	param set SENS_BOARD_Y_OFF 7
-fi
+# Bottom of bay and nominal zero-pitch attitude differ
+# the payload bay is pitched up about 7 degrees
+param set-default SENS_BOARD_Y_OFF 7
+
 
 set MIXER phantom
 

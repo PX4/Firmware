@@ -28,169 +28,166 @@ echo "Executing 4250_teal script."
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	# First thing, reset all params to default... EXCEPT THIS LIST
-	param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* CAL_MAG* SENS_BOARD* EKF2_MAGBIAS*
 
-	# battery
-	param set BAT_CAPACITY 2750
-	param set BAT_CRIT_THR 0.15
-	param set BAT_EMERGEN_THR 0.075
-	param set BAT_LOW_THR 0.20
-	param set BAT_N_CELLS 4
-	param set BAT_R_INTERNAL 0.06
-	param set BAT_SOURCE 1
-	param set BAT_V_CHARGED 4.15
-	param set BAT_V_DIV 11.1625
-	param set BAT_V_EMPTY 3.65
-	param set BAT_V_OFFS_CURR -0.0045
+# First thing, reset all params to default... EXCEPT THIS LIST
+param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* CAL_MAG* SENS_BOARD* EKF2_MAGBIAS*
 
-	# sensor calibration
-	param set CAL_MAG_SIDES 63
-	param set SENS_BOARD_ROT 0
+# battery
+param set-default BAT_CAPACITY 2750
+param set-default BAT_CRIT_THR 0.15
+param set-default BAT_EMERGEN_THR 0.075
+param set-default BAT_LOW_THR 0.20
+param set-default BAT_N_CELLS 4
+param set-default BAT_R_INTERNAL 0.06
+param set-default BAT_SOURCE 1
+param set-default BAT_V_CHARGED 4.15
+param set-default BAT_V_DIV 11.1625
+param set-default BAT_V_EMPTY 3.65
+param set-default BAT_V_OFFS_CURR -0.0045
 
-	# circuit breakers
-	param set CBRK_IO_SAFETY 22027
-	param set CBRK_USB_CHK 197848
+# sensor calibration
+param set-default CAL_MAG_SIDES 63
+param set-default SENS_BOARD_ROT 0
 
-	# commander
-	param set COM_DISARM_LAND 0.1
-	# Return mode at critically low level, Land mode at current position if reaching dangerously low levels.
-	param set COM_LOW_BAT_ACT 3
+# circuit breakers
+param set-default CBRK_IO_SAFETY 22027
+param set-default CBRK_USB_CHK 197848
 
-	# ekf2
-	param set EKF2_AID_MASK 1
-	param set EKF2_MAG_TYPE 1
-	param set EKF2_GPS_CHECK 511
-	param set EKF2_GPS_POS_X -0.04
-	param set EKF2_IMU_POS_X -0.06
-	param set EKF2_PCOEF_XN 0.1
-	param set EKF2_PCOEF_XP -0.5
-	param set EKF2_RNG_AID 1
-	param set EKF2_RNG_A_VMAX 20
-	param set EKF2_RNG_NOISE 0.2
-	param set EKF2_MIN_RNG 0.07
+# commander
+param set-default COM_DISARM_LAND 0.1
+# Return mode at critically low level, Land mode at current position if reaching dangerously low levels.
+param set-default COM_LOW_BAT_ACT 3
 
-	# gps
-	param set GPS_UBX_DYNMODEL 7
+# ekf2
+param set-default EKF2_AID_MASK 1
+param set-default EKF2_MAG_TYPE 1
+param set-default EKF2_GPS_CHECK 511
+param set-default EKF2_GPS_POS_X -0.04
+param set-default EKF2_IMU_POS_X -0.06
+param set-default EKF2_PCOEF_XN 0.1
+param set-default EKF2_PCOEF_XP -0.5
+param set-default EKF2_RNG_AID 1
+param set-default EKF2_RNG_A_VMAX 20
+param set-default EKF2_RNG_NOISE 0.2
+param set-default EKF2_MIN_RNG 0.07
 
-	# geofence
-	# Geofence violation action -- Warning.
-	param set GF_ACTION 1
+# gps
+param set-default GPS_UBX_DYNMODEL 7
 
-	# land detector
-	param set LNDMC_XY_VEL_MAX 1
-	# This is set high because we have lots of vibrations while in contact with ground.
-	param set LNDMC_ROT_MAX 50
+# geofence
+# Geofence violation action -- Warning.
+param set-default GF_ACTION 1
 
-	# serial comms
-	param set SER_TEL1_BAUD 921600
-	param set SER_TEL2_BAUD 921600
+# land detector
+param set-default LNDMC_XY_VEL_MAX 1
+# This is set high because we have lots of vibrations while in contact with ground.
+param set-default LNDMC_ROT_MAX 50
 
-	# mavlink stream configuration
-	# TEL1 ttyS1 -- disabled. TX1 FTDI UART has issues.
-	param set MAV_0_CONFIG 0
-	param set MAV_0_RATE 800000
+# serial comms
+param set-default SER_TEL1_BAUD 921600
+param set-default SER_TEL2_BAUD 921600
 
-	# TEL2 ttyS2 -- Primary MAVLINK stream to companion computer.
-	param set MAV_1_CONFIG 102
-	param set MAV_1_RATE 800000
+# mavlink stream configuration
+# TEL1 ttyS1 -- disabled. TX1 FTDI UART has issues.
+param set-default MAV_0_CONFIG 0
+param set-default MAV_0_RATE 800000
 
-	# mc_att_control
-	param set MC_ACRO_P_MAX 360
-	param set MC_ACRO_R_MAX 360
-	param set MC_ACRO_Y_MAX 360
+# TEL2 ttyS2 -- Primary MAVLINK stream to companion computer.
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_RATE 800000
 
-	param set MC_ROLL_P 6
-	param set MC_ROLLRATE_P 0.055
-	param set MC_ROLLRATE_I 0.2
-	param set MC_ROLLRATE_D 0.0012
-	param set MC_ROLLRATE_MAX 180
+# mc_att_control
+param set-default MC_ACRO_P_MAX 360
+param set-default MC_ACRO_R_MAX 360
+param set-default MC_ACRO_Y_MAX 360
 
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0.06
-	param set MC_PITCHRATE_I 0.2
-	param set MC_PITCHRATE_D 0.0012
-	param set MC_PITCHRATE_MAX 180
+param set-default MC_ROLL_P 6
+param set-default MC_ROLLRATE_P 0.055
+param set-default MC_ROLLRATE_I 0.2
+param set-default MC_ROLLRATE_D 0.0012
+param set-default MC_ROLLRATE_MAX 180
 
-	param set MC_YAW_P 1
-	param set MC_YAWRATE_P 0.08
-	param set MC_YAWRATE_I 0.08
-	param set MC_YAWRATE_D 0
-	param set MC_YAWRATE_MAX 180
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.06
+param set-default MC_PITCHRATE_I 0.2
+param set-default MC_PITCHRATE_D 0.0012
+param set-default MC_PITCHRATE_MAX 180
 
-	# Set to reduce voltage transients as seen by battery management system.
-	param set MOT_SLEW_MAX 0.15
+param set-default MC_YAW_P 1
+param set-default MC_YAWRATE_P 0.08
+param set-default MC_YAWRATE_I 0.08
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAWRATE_MAX 180
 
-	#### CONTROLLER ###
-	param set MPC_LAND_ALT1 8
-	param set MPC_LAND_ALT2 5
-	param set MPC_TKO_RAMP_T 0.75
-	param set MPC_TKO_SPEED 0.75
-	param set MPC_TILTMAX_LND 18
-	param set MPC_TILTMAX_AIR 45
-	param set MPC_MAN_TILT_MAX 45
+# Set to reduce voltage transients as seen by battery management system.
+param set-default MOT_SLEW_MAX 0.15
 
-	param set MPC_MANTHR_MAX 0.85
-	param set MPC_MANTHR_MIN 0.15
-	# Full throttle can trip over current protection on BMS.
-	param set MPC_THR_MAX 0.85
-	param set MPC_THR_MIN 0.15
+#### CONTROLLER ###
+param set-default MPC_LAND_ALT1 8
+param set-default MPC_LAND_ALT2 5
+param set-default MPC_TKO_RAMP_T 0.75
+param set-default MPC_TKO_SPEED 0.75
+param set-default MPC_TILTMAX_LND 18
+param set-default MPC_TILTMAX_AIR 45
+param set-default MPC_MAN_TILT_MAX 45
 
-	param set MPC_VEL_MANUAL 26.5
-	# RTL speed, it was too fast and scaring people.
-	param set MPC_XY_CRUISE 15
+param set-default MPC_MANTHR_MAX 0.85
+param set-default MPC_MANTHR_MIN 0.15
+# Full throttle can trip over current protection on BMS.
+param set-default MPC_THR_MAX 0.85
+param set-default MPC_THR_MIN 0.15
 
-	param set MPC_MAN_Y_MAX 200
+param set-default MPC_VEL_MANUAL 26.5
+# RTL speed, it was too fast and scaring people.
+param set-default MPC_XY_CRUISE 15
 
-	param set MPC_JERK_MAX 5
-	param set MPC_ACC_UP_MAX 10
-	param set MPC_ACC_DOWN_MAX 10
-	param set MPC_ACC_HOR 10
-	param set MPC_ACC_HOR_MAX 15
+param set-default MPC_MAN_Y_MAX 200
 
-	param set MPC_XY_P 1.15
-	param set MPC_XY_VEL_P_ACC 2.8
-	param set MPC_XY_VEL_I_ACC 0.28
-	param set MPC_XY_VEL_D_ACC 0.28
-	param set MPC_XY_VEL_MAX 26.5
+param set-default MPC_JERK_MAX 5
+param set-default MPC_ACC_UP_MAX 10
+param set-default MPC_ACC_DOWN_MAX 10
+param set-default MPC_ACC_HOR 10
+param set-default MPC_ACC_HOR_MAX 15
 
-	param set MPC_Z_P 0.85
-	param set MPC_Z_VEL_P_ACC 5
-	param set MPC_Z_VEL_I_ACC 1.7
-	param set MPC_Z_VEL_D_ACC 0.4
-	# Documentation says limit is 8.0, but does not seem to be enforced in code.
-	param set MPC_Z_VEL_MAX_UP 20
-	param set MPC_Z_VEL_MAX_DN 2.5
-	#### CONTROLLER ###
+param set-default MPC_XY_P 1.15
+param set-default MPC_XY_VEL_P_ACC 2.8
+param set-default MPC_XY_VEL_I_ACC 0.28
+param set-default MPC_XY_VEL_D_ACC 0.28
+param set-default MPC_XY_VEL_MAX 26.5
 
-	# navigator
-	param set NAV_ACC_RAD 2.5
-	# RC loss failsafe behavior -- hold mode.
-	param set NAV_RCL_ACT 1
+param set-default MPC_Z_P 0.85
+param set-default MPC_Z_VEL_P_ACC 5
+param set-default MPC_Z_VEL_I_ACC 1.7
+param set-default MPC_Z_VEL_D_ACC 0.4
+# Documentation says limit is 8.0, but does not seem to be enforced in code.
+param set-default MPC_Z_VEL_MAX_UP 20
+param set-default MPC_Z_VEL_MAX_DN 2.5
+#### CONTROLLER ###
 
-	# pwm control
-	param set PWM_MAIN_DISARM 900
-	param set PWM_MAIN_MAX 1850
-	param set PWM_MAIN_MIN 1075
-	# Oneshot125
-	param set PWM_MAIN_RATE 0
+# navigator
+param set-default NAV_ACC_RAD 2.5
+# RC loss failsafe behavior -- hold mode.
+param set-default NAV_RCL_ACT 1
 
-	# rtl
-	param set RTL_DESCEND_ALT 5
-	param set RTL_LAND_DELAY 5
-	param set RTL_MIN_DIST 7.5
-	param set RTL_RETURN_ALT 25
+# pwm control
+param set-default PWM_MAIN_DISARM 900
+param set-default PWM_MAIN_MAX 1850
+param set-default PWM_MAIN_MIN 1075
+# Oneshot125
+param set-default PWM_MAIN_RATE 0
 
-	# calibration
-	param set CAL_ACC0_PRIO 255
-	param set CAL_ACC1_PRIO 0
+# rtl
+param set-default RTL_DESCEND_ALT 5
+param set-default RTL_LAND_DELAY 5
+param set-default RTL_MIN_DIST 7.5
+param set-default RTL_RETURN_ALT 25
 
-	param set CAL_GYRO0_PRIO 255
-	param set CAL_GYRO1_PRIO 0
-fi
+# calibration
+param set-default CAL_ACC0_PRIO 255
+param set-default CAL_ACC1_PRIO 0
 
+param set-default CAL_GYRO0_PRIO 255
+param set-default CAL_GYRO1_PRIO 0
 # Logger mode. Default(1) + estimator replay(2) + thermal calibration(4)
 param set SDLOG_PROFILE 6
 

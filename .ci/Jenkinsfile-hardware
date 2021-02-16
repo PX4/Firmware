@@ -17,6 +17,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -24,7 +25,7 @@ pipeline {
                 sh 'make cubepilot_cubeorange_console'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/cubepilot_cubeorange_console/cubepilot_cubeorange_console.elf', name: 'cubepilot_cubeorange_console'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'cubepilot_cubeorange_console'
               }
               post {
                 always {
@@ -93,6 +94,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -100,7 +102,7 @@ pipeline {
                 sh 'make cuav_x7pro_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/cuav_x7pro_default/cuav_x7pro_default.elf', name: 'cuav_x7pro_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'cuav_x7pro_default'
               }
               post {
                 always {
@@ -220,6 +222,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -227,7 +230,7 @@ pipeline {
                 sh 'make px4_fmu-v3_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v3_default/px4_fmu-v3_default.elf', name: 'px4_fmu-v3_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v3_default'
               }
               post {
                 always {
@@ -294,6 +297,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -301,7 +305,7 @@ pipeline {
                 sh 'make px4_fmu-v4_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v4_default/px4_fmu-v4_default.elf', name: 'px4_fmu-v4_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v4_default'
               }
               post {
                 always {
@@ -367,6 +371,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -374,7 +379,7 @@ pipeline {
                 sh 'make px4_fmu-v4pro_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v4pro_default/px4_fmu-v4pro_default.elf', name: 'px4_fmu-v4pro_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v4pro_default'
               }
               post {
                 always {
@@ -441,6 +446,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -448,7 +454,7 @@ pipeline {
                 sh 'make px4_fmu-v5_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v5_default/px4_fmu-v5_default.elf', name: 'px4_fmu-v5_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v5_default'
               }
               post {
                 always {
@@ -516,6 +522,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -523,7 +530,7 @@ pipeline {
                 sh 'make px4_fmu-v5_debug'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v5_debug/px4_fmu-v5_debug.elf', name: 'px4_fmu-v5_debug'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v5_debug'
               }
               post {
                 always {
@@ -593,6 +600,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -600,7 +608,7 @@ pipeline {
                 sh 'make px4_fmu-v5_optimized'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v5_optimized/px4_fmu-v5_optimized.elf', name: 'px4_fmu-v5_optimized'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v5_optimized'
               }
               post {
                 always {
@@ -666,6 +674,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -673,7 +682,7 @@ pipeline {
                 sh 'make px4_fmu-v5_stackcheck'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/px4_fmu-v5_stackcheck/px4_fmu-v5_stackcheck.elf', name: 'px4_fmu-v5_stackcheck'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'px4_fmu-v5_stackcheck'
               }
               post {
                 always {
@@ -743,6 +752,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -750,7 +760,7 @@ pipeline {
                 sh 'make modalai_fc-v1_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/modalai_fc-v1_default/modalai_fc-v1_default.elf', name: 'modalai_fc-v1_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'modalai_fc-v1_default'
               }
               post {
                 always {
@@ -816,6 +826,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -823,7 +834,7 @@ pipeline {
                 sh 'make holybro_durandal-v1_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/holybro_durandal-v1_default/holybro_durandal-v1_default.elf', name: 'holybro_durandal-v1_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'holybro_durandal-v1_default'
               }
               post {
                 always {
@@ -895,6 +906,7 @@ pipeline {
                 }
               }
               steps {
+                checkout scm
                 sh 'export'
                 sh 'make distclean'
                 sh 'ccache -s'
@@ -902,7 +914,7 @@ pipeline {
                 sh 'make nxp_fmuk66-v3_default'
                 sh 'make sizes'
                 sh 'ccache -s'
-                stash includes: 'build/nxp_fmuk66-v3_default/nxp_fmuk66-v3_default.elf', name: 'nxp_fmuk66-v3_default'
+                stash includes: 'build/*/*.elf, platforms/nuttx/Debug/upload_jlink_gdb.sh, Tools/HIL/*.py', name: 'nxp_fmuk66-v3_default'
               }
               post {
                 always {
@@ -968,6 +980,7 @@ pipeline {
   options {
     buildDiscarder(logRotator(numToKeepStr: '20', artifactDaysToKeepStr: '40'))
     timeout(time: 90, unit: 'MINUTES')
+    skipDefaultCheckout()
   }
 }
 
@@ -998,6 +1011,8 @@ void statusFTDI() {
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener estimator_status"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener estimator_status_flags"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener logger_status"'
+  sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener parameter_update"'
+  sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener px4io_status"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensor_accel"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensor_accel_fifo"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensor_baro"'
@@ -1006,7 +1021,6 @@ void statusFTDI() {
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensor_gyro_fifo"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensor_mag"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener sensors_status_imu"'
-  sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener px4io_status"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener system_power"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener telemetry_status"'
   sh './Tools/HIL/run_nsh_cmd.py --device `find /dev/serial -name *usb-*` --cmd "listener vehicle_air_data"'

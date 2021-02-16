@@ -26,29 +26,26 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_CAPACITY 2500
-	param set BAT_N_CELLS 3
 
-	param set PWM_AUX_RATE 50
-	param set PWM_MAIN_RATE 50
+param set-default BAT_CAPACITY 2500
+param set-default BAT_N_CELLS 3
 
-	param set SENS_BOARD_ROT 8
+param set-default PWM_AUX_RATE 50
+param set-default PWM_MAIN_RATE 50
 
-	param set FW_AIRSPD_MAX 20
-	param set FW_AIRSPD_MIN 7
-	param set FW_AIRSPD_TRIM 13
-	param set FW_THR_CRUISE 0.8
+param set-default SENS_BOARD_ROT 8
 
-	param set FW_MAN_P_MAX 25
-	param set FW_MAN_R_MAX 25
-	param set FW_PR_I 0.02
-	param set FW_R_LIM 40
-	param set FW_P_LIM_MAX 25
-	param set FW_P_LIM_MIN -5
-	param set FW_P_RMAX_NEG 20
-fi
+param set-default FW_AIRSPD_MAX 20
+param set-default FW_AIRSPD_MIN 7
+param set-default FW_AIRSPD_TRIM 13
+param set-default FW_THR_CRUISE 0.8
 
+param set-default FW_MAN_P_MAX 25
+param set-default FW_MAN_R_MAX 25
+param set-default FW_PR_I 0.02
+param set-default FW_R_LIM 40
+param set-default FW_P_LIM_MAX 25
+param set-default FW_P_LIM_MIN -5
+param set-default FW_P_RMAX_NEG 20
 set MIXER TF-AutoG2
 set MIXER_AUX pass

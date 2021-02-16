@@ -28,7 +28,7 @@ px4_add_board(
 		gps
 		heater
 		#imu # all available imu drivers
-		imu/adis16448
+		imu/analog_devices/adis16448
 		imu/adis16477
 		imu/adis16497
 		imu/invensense/icm20602
@@ -41,7 +41,6 @@ px4_add_board(
 		lights/rgbled
 		lights/rgbled_ncp5623c
 		magnetometer # all available magnetometer drivers
-		mkblctrl
 		optical_flow # all available optical flow drivers
 		#osd
 		pca9685

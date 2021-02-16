@@ -4,16 +4,9 @@
 #------------------------------------------------------------------------------
 
 # system_power unavailable
-param set CBRK_SUPPLY_CHK 894281
+param set-default CBRK_SUPPLY_CHK 894281
 
-if param compare SYS_AUTOSTART 0
-then
-	param set SYS_AUTOSTART 4901
-	set AUTOCNF yes
-fi
+param set-default SYS_AUTOSTART 4901
 
-if [ $AUTOCNF = yes ]
-then
-	# don't probe external I2C
-	param set SENS_EXT_I2C_PRB 0
-fi
+# don't probe external I2C
+param set-default SENS_EXT_I2C_PRB 0

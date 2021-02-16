@@ -67,22 +67,6 @@ fi
 #
 if [ $OUTPUT_MODE != none ]
 then
-	if [ $OUTPUT_MODE = mkblctrl ]
-	then
-		if [ $MKBLCTRL_MODE = x ]
-		then
-			set MKBLCTRL_ARG "-mkmode x"
-		fi
-		if [ $MKBLCTRL_MODE = + ]
-		then
-			set MKBLCTRL_ARG "-mkmode +"
-		fi
-
-		if ! mkblctrl $MKBLCTRL_ARG
-		then
-			tune_control play error
-		fi
-	fi
 
 	if [ $OUTPUT_MODE = hil -o $OUTPUT_MODE = sim ]
 	then
@@ -153,12 +137,7 @@ then
 		fi
 	fi
 
-	if [ $OUTPUT_MODE = mkblctrl ]
-	then
-		set OUTPUT_DEV /dev/mkblctrl0
-	else
-		set OUTPUT_DEV /dev/pwm_output0
-	fi
+	set OUTPUT_DEV /dev/pwm_output0
 
 	if [ $OUTPUT_MODE = uavcan_esc ]
 	then

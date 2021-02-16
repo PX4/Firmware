@@ -81,7 +81,7 @@ public:
 	/**
 	 * Update the control loop calculations
 	 */
-	void update_pitch_throttle(const matrix::Dcmf &rotMat, float pitch, float baro_altitude, float hgt_setpoint,
+	void update_pitch_throttle(float pitch, float baro_altitude, float hgt_setpoint,
 				   float EAS_setpoint, float equivalent_airspeed, float eas_to_tas, bool climb_out_setpoint, float pitch_min_climbout,
 				   float throttle_min, float throttle_setpoint_max, float throttle_cruise,
 				   float pitch_limit_min, float pitch_limit_max);
@@ -126,6 +126,7 @@ public:
 	void set_throttle_slewrate(float slewrate) { _throttle_slewrate = slewrate; }
 
 	void set_roll_throttle_compensation(float compensation) { _load_factor_correction = compensation; }
+	void set_load_factor(float load_factor) { _load_factor = load_factor; }
 
 	void set_ste_rate_time_const(float time_const) { _STE_rate_time_const = time_const; }
 	void set_speed_derivative_time_constant(float time_const) { _speed_derivative_time_const = time_const; }
@@ -212,6 +213,7 @@ private:
 	float _integrator_gain_throttle{0.0f};				///< integrator gain used by the throttle demand calculation
 	float _integrator_gain_pitch{0.0f};				///< integrator gain used by the pitch demand calculation
 	float _vert_accel_limit{0.0f};					///< magnitude of the maximum vertical acceleration allowed (m/sec**2)
+	float _load_factor{0.0f};					///< additional normal load factor
 	float _load_factor_correction{0.0f};				///< gain from normal load factor increase to total energy rate demand (m**2/sec**3)
 	float _pitch_speed_weight{1.0f};				///< speed control weighting used by pitch demand calculation
 	float _height_error_gain{0.2f};					///< height error inverse time constant [1/s]
@@ -324,7 +326,7 @@ private:
 	/**
 	 * Update throttle setpoint
 	 */
-	void _update_throttle_setpoint(float throttle_cruise, const matrix::Dcmf &rotMat);
+	void _update_throttle_setpoint(float throttle_cruise);
 
 	/**
 	 * Detect an uncommanded descent

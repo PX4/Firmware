@@ -23,66 +23,63 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set CBRK_AIRSPD_CHK 162128
 
-	param set FW_ARSP_MODE 1
+param set-default CBRK_AIRSPD_CHK 162128
 
-	param set FW_L1_PERIOD 17
-	param set FW_MAN_R_MAX 50
-	param set FW_ACRO_X_MAX   270
-	param set FW_ACRO_Y_MAX   270
-	param set FW_ACRO_Z_MAX   180
-	param set FW_PR_FF    0.5
-	param set FW_PR_P 0.08
-	param set FW_PSP_OFF  5
-	param set FW_P_LIM_MAX    30
-	param set FW_P_LIM_MIN    -30
-	param set FW_P_RMAX_NEG   60
-	param set FW_P_RMAX_POS   60
-	param set FW_RR_FF    0.33
-	param set FW_RR_P 0.11
-	param set FW_YR_FF    0.3
-	param set FW_YR_P 0.05
+param set-default FW_ARSP_MODE 1
 
-	param set MC_PITCHRATE_D  0.003
-	param set MC_PITCHRATE_P  0.15
-	param set MC_PITCH_P  6
-	param set MC_ROLLRATE_D   0.003
-	param set MC_ROLLRATE_P   0.15
-	param set MC_ROLL_P   6
-	param set MC_YAWRATE_MAX  120
-	param set MC_YAWRATE_P    0.27
-	param set MC_YAW_P    2.5
+param set-default FW_L1_PERIOD 17
+param set-default FW_MAN_R_MAX 50
+param set-default FW_ACRO_X_MAX   270
+param set-default FW_ACRO_Y_MAX   270
+param set-default FW_ACRO_Z_MAX   180
+param set-default FW_PR_FF    0.5
+param set-default FW_PR_P 0.08
+param set-default FW_PSP_OFF  5
+param set-default FW_P_LIM_MAX    30
+param set-default FW_P_LIM_MIN    -30
+param set-default FW_P_RMAX_NEG   60
+param set-default FW_P_RMAX_POS   60
+param set-default FW_RR_FF    0.33
+param set-default FW_RR_P 0.11
+param set-default FW_YR_FF    0.3
+param set-default FW_YR_P 0.05
 
-	param set MC_YAWRATE_P 0.3
-	param set MPC_LAND_SPEED 1.2
-	param set MPC_TKO_SPEED 2.5
-	param set MPC_Z_VEL_MAX_UP 3
+param set-default MC_PITCHRATE_D  0.003
+param set-default MC_PITCHRATE_P  0.15
+param set-default MC_PITCH_P  6
+param set-default MC_ROLLRATE_D   0.003
+param set-default MC_ROLLRATE_P   0.15
+param set-default MC_ROLL_P   6
+param set-default MC_YAWRATE_MAX  120
+param set-default MC_YAWRATE_P    0.27
+param set-default MC_YAW_P    2.5
 
-	param set PWM_MAIN_RATE 400
+param set-default MC_YAWRATE_P 0.3
+param set-default MPC_LAND_SPEED 1.2
+param set-default MPC_TKO_SPEED 2.5
+param set-default MPC_Z_VEL_MAX_UP 3
 
-	param set SENS_BOARD_ROT 8
+param set-default PWM_MAIN_RATE 400
 
-	param set VT_B_TRANS_DUR  1
-	param set VT_F_TRANS_DUR  1.2
-	param set VT_F_TR_OL_TM   4
-	param set VT_FW_DIFTHR_EN 1
-	param set VT_FW_DIFTHR_SC 0.17
-	param set VT_FW_MOT_OFFID 3
-	param set VT_FW_PERM_STAB 0
-	param set VT_IDLE_PWM_MC 1200
-	param set VT_MOT_ID 123
-	param set VT_TILT_FW  1
-	param set VT_TILT_MC  0
-	param set VT_TILT_TRANS   0.45
-	param set VT_TRANS_MIN_TM 1.2
-	param set VT_TRANS_P2_DUR 1.3
-	param set VT_ELEV_MC_LOCK 0
-	param set VT_TYPE 1
-fi
+param set-default SENS_BOARD_ROT 8
 
+param set-default VT_B_TRANS_DUR  1
+param set-default VT_F_TRANS_DUR  1.2
+param set-default VT_F_TR_OL_TM   4
+param set-default VT_FW_DIFTHR_EN 1
+param set-default VT_FW_DIFTHR_SC 0.17
+param set-default VT_FW_MOT_OFFID 3
+param set-default VT_FW_PERM_STAB 0
+param set-default VT_IDLE_PWM_MC 1200
+param set-default VT_MOT_ID 123
+param set-default VT_TILT_FW  1
+param set-default VT_TILT_MC  0
+param set-default VT_TILT_TRANS   0.45
+param set-default VT_TRANS_MIN_TM 1.2
+param set-default VT_TRANS_P2_DUR 1.3
+param set-default VT_ELEV_MC_LOCK 0
+param set-default VT_TYPE 1
 set MAV_TYPE 21
 
 set MIXER vtol_convergence

@@ -232,12 +232,13 @@ typedef uint16_t	servo_position_t;
 #define PWM_SERVO_MODE_5PWM1CAP    10
 #define PWM_SERVO_MODE_6PWM        11
 #define PWM_SERVO_MODE_8PWM        12
-#define PWM_SERVO_MODE_14PWM       13
-#define PWM_SERVO_MODE_4CAP        14
-#define PWM_SERVO_MODE_5CAP        15
-#define PWM_SERVO_MODE_6CAP        16
-#define PWM_SERVO_ENTER_TEST_MODE  17
-#define PWM_SERVO_EXIT_TEST_MODE   18
+#define PWM_SERVO_MODE_12PWM       13
+#define PWM_SERVO_MODE_14PWM       14
+#define PWM_SERVO_MODE_4CAP        15
+#define PWM_SERVO_MODE_5CAP        16
+#define PWM_SERVO_MODE_6CAP        17
+#define PWM_SERVO_ENTER_TEST_MODE  18
+#define PWM_SERVO_EXIT_TEST_MODE   19
 #define PWM_SERVO_SET_MODE         _PX4_IOC(_PWM_SERVO_BASE, 34)
 
 /*

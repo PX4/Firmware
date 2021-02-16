@@ -23,137 +23,134 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_CAPACITY 23000
-	param set BAT_N_CELLS 4
-	param set BAT_R_INTERNAL 0.0025
 
-	param set CBRK_AIRSPD_CHK 162128
-	param set CBRK_IO_SAFETY 22027
+param set-default BAT_CAPACITY 23000
+param set-default BAT_N_CELLS 4
+param set-default BAT_R_INTERNAL 0.0025
 
-	param set EKF2_GPS_POS_X -0.12
-	param set EKF2_IMU_POS_X -0.12
-	param set EKF2_TAU_VEL 0.5
-	param set EKF2_GPS_P_GATE 10
-	param set EKF2_GPS_V_GATE 10
+param set-default CBRK_AIRSPD_CHK 162128
+param set-default CBRK_IO_SAFETY 22027
 
-	param set FW_ARSP_MODE 1
-	param set FW_L1_PERIOD 25
-	param set FW_PR_FF 0.7
-	param set FW_PR_I 0.18
-	param set FW_PR_P 0.15
-	param set FW_P_TC 0.5
-	param set FW_PSP_OFF 5
-	param set FW_R_LIM 35
-	param set FW_RR_FF 0.9
-	param set FW_RR_I 0.08
-	param set FW_RR_P 0.18
-	param set FW_T_HRATE_FF 0.5
-	param set FW_T_CLMB_MAX 3
-	param set FW_T_SINK_MAX 3
-	param set FW_T_SINK_MIN 1
-	param set FW_T_VERT_ACC 6
-	param set FW_THR_CRUISE 0.70
-	param set FW_THR_SLEW_MAX 1
-	param set FW_MAN_P_MAX 30
-	param set FW_P_LIM_MAX 15
-	param set FW_P_LIM_MIN -25
-	param set FW_P_RMAX_NEG 45
-	param set FW_P_RMAX_POS 45
-	param set FW_R_RMAX 50
-	param set FW_THR_MIN 0.55
-	param set FW_BAT_SCALE_EN 1
-	param set FW_THR_ALT_SCL 2.7
-	param set FW_T_RLL2THR 20
+param set-default EKF2_GPS_POS_X -0.12
+param set-default EKF2_IMU_POS_X -0.12
+param set-default EKF2_TAU_VEL 0.5
+param set-default EKF2_GPS_P_GATE 10
+param set-default EKF2_GPS_V_GATE 10
 
-	param set LNDMC_ALT_MAX 9999
-	param set LNDMC_XY_VEL_MAX 1
-	param set LNDMC_Z_VEL_MAX 0.7
+param set-default FW_ARSP_MODE 1
+param set-default FW_L1_PERIOD 25
+param set-default FW_PR_FF 0.7
+param set-default FW_PR_I 0.18
+param set-default FW_PR_P 0.15
+param set-default FW_P_TC 0.5
+param set-default FW_PSP_OFF 5
+param set-default FW_R_LIM 35
+param set-default FW_RR_FF 0.9
+param set-default FW_RR_I 0.08
+param set-default FW_RR_P 0.18
+param set-default FW_T_HRATE_FF 0.5
+param set-default FW_T_CLMB_MAX 3
+param set-default FW_T_SINK_MAX 3
+param set-default FW_T_SINK_MIN 1
+param set-default FW_T_VERT_ACC 6
+param set-default FW_THR_CRUISE 0.70
+param set-default FW_THR_SLEW_MAX 1
+param set-default FW_MAN_P_MAX 30
+param set-default FW_P_LIM_MAX 15
+param set-default FW_P_LIM_MIN -25
+param set-default FW_P_RMAX_NEG 45
+param set-default FW_P_RMAX_POS 45
+param set-default FW_R_RMAX 50
+param set-default FW_THR_MIN 0.55
+param set-default FW_BAT_SCALE_EN 1
+param set-default FW_THR_ALT_SCL 2.7
+param set-default FW_T_RLL2THR 20
 
-	param set MC_ROLL_P 6.5
-	param set MC_ROLLRATE_P 0.16
-	param set MC_ROLLRATE_I 0.01
-	param set MC_ROLLRATE_D 0.003
-	param set MC_ROLLRATE_FF 0
-	param set MC_ROLLRATE_MAX 80
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0.15
-	param set MC_PITCHRATE_I 0.05
-	param set MC_PITCHRATE_D 0.003
-	param set MC_PITCHRATE_FF 0
-	param set MC_PITCHRATE_MAX 80
-	param set MC_YAW_P 3.5
-	param set MC_YAWRATE_P 0.2
-	param set MC_YAWRATE_I 0.1
-	param set MC_YAWRATE_D 0
-	param set MC_YAWRATE_FF 0
-	param set MC_YAWRATE_MAX 20
-	param set MC_AIRMODE 1
+param set-default LNDMC_ALT_MAX 9999
+param set-default LNDMC_XY_VEL_MAX 1
+param set-default LNDMC_Z_VEL_MAX 0.7
 
-	param set MIS_DIST_1WP 100
-	param set MIS_DIST_WPS 100000
-	param set MIS_TAKEOFF_ALT 15
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.16
+param set-default MC_ROLLRATE_I 0.01
+param set-default MC_ROLLRATE_D 0.003
+param set-default MC_ROLLRATE_FF 0
+param set-default MC_ROLLRATE_MAX 80
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.15
+param set-default MC_PITCHRATE_I 0.05
+param set-default MC_PITCHRATE_D 0.003
+param set-default MC_PITCHRATE_FF 0
+param set-default MC_PITCHRATE_MAX 80
+param set-default MC_YAW_P 3.5
+param set-default MC_YAWRATE_P 0.2
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAWRATE_FF 0
+param set-default MC_YAWRATE_MAX 20
+param set-default MC_AIRMODE 1
 
-	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_P_ACC 2
-	param set MPC_XY_VEL_MAX 5
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_LAND_SPEED 1.2
-	param set MPC_TILTMAX_LND 35
-	param set MPC_Z_VEL_MAX_UP 1.5
-	param set MPC_Z_VEL_MAX_DN 1.5
-	param set MPC_HOLD_MAX_XY 0.5
-	param set MPC_HOLD_MAX_Z 0.5
-	param set MPC_TKO_RAMP_T 0.8
-	param set MPC_XY_CRUISE 5
-	param set MPC_TILTMAX_AIR 25
-	param set MPC_TILTMAX_LND 25
-	param set MPC_YAWRAUTO_MAX 20
+param set-default MIS_DIST_1WP 100
+param set-default MIS_DIST_WPS 100000
+param set-default MIS_TAKEOFF_ALT 15
 
-	param set NAV_DLL_ACT 0
-	param set NAV_LOITER_RAD 100
+param set-default MPC_XY_P 0.8
+param set-default MPC_XY_VEL_P_ACC 2
+param set-default MPC_XY_VEL_MAX 5
+param set-default MPC_ACC_HOR_MAX 2
+param set-default MPC_LAND_SPEED 1.2
+param set-default MPC_TILTMAX_LND 35
+param set-default MPC_Z_VEL_MAX_UP 1.5
+param set-default MPC_Z_VEL_MAX_DN 1.5
+param set-default MPC_HOLD_MAX_XY 0.5
+param set-default MPC_HOLD_MAX_Z 0.5
+param set-default MPC_TKO_RAMP_T 0.8
+param set-default MPC_XY_CRUISE 5
+param set-default MPC_TILTMAX_AIR 25
+param set-default MPC_TILTMAX_LND 25
+param set-default MPC_YAWRAUTO_MAX 20
 
-	param set PWM_AUX_DISARMED 950
+param set-default NAV_DLL_ACT 0
+param set-default NAV_LOITER_RAD 100
 
-	param set PWM_MAIN_DIS5 1500
-	param set PWM_MAIN_DIS6 1500
-	param set PWM_MAIN_DIS7 900
-	param set PWM_MAIN_DIS8 900
+param set-default PWM_AUX_DISARMED 950
 
-	param set PWM_MAIN_RATE 400
+param set-default PWM_MAIN_DIS5 1500
+param set-default PWM_MAIN_DIS6 1500
+param set-default PWM_MAIN_DIS7 900
+param set-default PWM_MAIN_DIS8 900
 
-	param set SENS_BOARD_ROT 18
+param set-default PWM_MAIN_RATE 400
 
-	# TELEM2 config
-	param set MAV_1_CONFIG 102
-	param set MAV_1_RATE 5000
-	param set MAV_1_FORWARD 1
-	param set SER_TEL2_BAUD 57600
+param set-default SENS_BOARD_ROT 18
 
-	param set VT_TYPE 2
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-	param set VT_F_TRANS_THR 1
-	param set VT_DWN_PITCH_MAX 8
-	param set VT_FW_QC_P 55
-	param set VT_FW_QC_R 55
-	param set VT_TRANS_MIN_TM 15
-	param set VT_B_TRANS_DUR 8
-	param set VT_WV_LND_EN 1
-	param set VT_WV_LTR_EN 1
-	param set VT_FWD_THRUST_SC 4
-	param set VT_F_TRANS_DUR 1
-	param set VT_IDLE_PWM_MC 1025
-	param set VT_B_REV_OUT 0.5
-	param set VT_B_TRANS_THR 0.7
-	param set VT_FW_PERM_STAB 1
-	param set VT_TRANS_TIMEOUT 22
-	param set VT_F_TRANS_RAMP 4
+# TELEM2 config
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_RATE 5000
+param set-default MAV_1_FORWARD 1
+param set-default SER_TEL2_BAUD 57600
 
-	param set COM_RC_OVERRIDE 0
-fi
+param set-default VT_TYPE 2
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
+param set-default VT_F_TRANS_THR 1
+param set-default VT_DWN_PITCH_MAX 8
+param set-default VT_FW_QC_P 55
+param set-default VT_FW_QC_R 55
+param set-default VT_TRANS_MIN_TM 15
+param set-default VT_B_TRANS_DUR 8
+param set-default VT_WV_LND_EN 1
+param set-default VT_WV_LTR_EN 1
+param set-default VT_FWD_THRUST_SC 4
+param set-default VT_F_TRANS_DUR 1
+param set-default VT_IDLE_PWM_MC 1025
+param set-default VT_B_REV_OUT 0.5
+param set-default VT_B_TRANS_THR 0.7
+param set-default VT_FW_PERM_STAB 1
+param set-default VT_TRANS_TIMEOUT 22
+param set-default VT_F_TRANS_RAMP 4
 
+param set-default COM_RC_OVERRIDE 0
 set MAV_TYPE 22
 
 set MIXER deltaquad

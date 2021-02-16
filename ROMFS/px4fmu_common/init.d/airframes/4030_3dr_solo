@@ -19,77 +19,73 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	# tuning
-	param set MC_PITCHRATE_P    0.11
-	param set MC_ROLLRATE_P     0.11
-	param set MPC_MANTHR_MIN    0.08
-	param set MPC_XY_VEL_MAX    3
-	param set MPC_Z_VEL_MAX_DN     2
 
-	# takeoff, land and RTL settings
-	param set MIS_TAKEOFF_ALT   4
-	param set RTL_LAND_DELAY    1
-	param set RTL_DESCEND_ALT   5
-	param set RTL_RETURN_ALT    15
-	param set MPC_TILTMAX_LND   8
-	param set MPC_LAND_SPEED    0.4
-	param set MPC_HOLD_MAX_Z    1.5
-	param set MPC_TKO_JMPSPD    2
-	param set MPC_TKO_SPEED     1.5
+# tuning
+param set-default MC_PITCHRATE_P    0.11
+param set-default MC_ROLLRATE_P     0.11
+param set-default MPC_MANTHR_MIN    0.08
+param set-default MPC_XY_VEL_MAX    3
+param set-default MPC_Z_VEL_MAX_DN     2
 
-	# setup
-	# main board rotation: pitch 180
-	param set SENS_BOARD_ROT    12
-	# solo external mag rotation
-	param set CAL_MAG0_ROT      38
-	# no safety switch
-	param set CBRK_IO_SAFETY    22027
-	# battery voltage not available yet
-	param set CBRK_SUPPLY_CHK   894281
+# takeoff, land and RTL settings
+param set-default MIS_TAKEOFF_ALT   4
+param set-default RTL_LAND_DELAY    1
+param set-default RTL_DESCEND_ALT   5
+param set-default RTL_RETURN_ALT    15
+param set-default MPC_TILTMAX_LND   8
+param set-default MPC_LAND_SPEED    0.4
+param set-default MPC_HOLD_MAX_Z    1.5
+param set-default MPC_TKO_JMPSPD    2
+param set-default MPC_TKO_SPEED     1.5
 
-	# RC configuration
-	param set RC_MAP_MODE_SW    5
-	param set RC_MAP_PITCH      2
-	param set RC_MAP_ROLL       1
-	param set RC_MAP_THROTTLE   3
-	param set RC_MAP_YAW        4
+# setup
+# main board rotation: pitch 180
+param set-default SENS_BOARD_ROT    12
+# solo external mag rotation
+param set-default CAL_MAG0_ROT      38
+# no safety switch
+param set-default CBRK_IO_SAFETY    22027
+# battery voltage not available yet
+param set-default CBRK_SUPPLY_CHK   894281
 
-	param set RC1_DZ            10
-	param set RC1_MAX           1988
-	param set RC1_MIN           1003
-	param set RC1_REV           1
-	param set RC1_TRIM          1499
-	param set RC2_DZ            10
-	param set RC2_MAX           1987
-	param set RC2_MIN           1023
-	param set RC2_REV           -1
-	param set RC2_TRIM          1499
-	param set RC3_DZ            10
-	param set RC3_MAX           1877
-	param set RC3_MIN           1023
-	param set RC3_REV           1
-	param set RC3_TRIM          1023
-	param set RC4_DZ            10
-	param set RC4_MAX           1998
-	param set RC4_MIN           1012
-	param set RC4_REV           1
-	param set RC4_TRIM          1500
-	param set RC5_DZ            10
-	param set RC5_MAX           2000
-	param set RC5_MIN           1000
-	param set RC5_REV           1
-	param set RC5_TRIM          1500
+# RC configuration
+param set-default RC_MAP_MODE_SW    5
+param set-default RC_MAP_PITCH      2
+param set-default RC_MAP_ROLL       1
+param set-default RC_MAP_THROTTLE   3
+param set-default RC_MAP_YAW        4
 
-	# enable high-speed link on telem 1
-	param set MAV_0_RATE 80000
-	param set MAV_0_MODE 2
-	param set SER_TEL1_BAUD 921600
-fi
+param set-default RC1_DZ            10
+param set-default RC1_MAX           1988
+param set-default RC1_MIN           1003
+param set-default RC1_REV           1
+param set-default RC1_TRIM          1499
+param set-default RC2_DZ            10
+param set-default RC2_MAX           1987
+param set-default RC2_MIN           1023
+param set-default RC2_REV           -1
+param set-default RC2_TRIM          1499
+param set-default RC3_DZ            10
+param set-default RC3_MAX           1877
+param set-default RC3_MIN           1023
+param set-default RC3_REV           1
+param set-default RC3_TRIM          1023
+param set-default RC4_DZ            10
+param set-default RC4_MAX           1998
+param set-default RC4_MIN           1012
+param set-default RC4_REV           1
+param set-default RC4_TRIM          1500
+param set-default RC5_DZ            10
+param set-default RC5_MAX           2000
+param set-default RC5_MIN           1000
+param set-default RC5_REV           1
+param set-default RC5_TRIM          1500
 
+# enable high-speed link on telem 1
+param set-default MAV_0_RATE 80000
+param set-default MAV_0_MODE 2
+param set-default SER_TEL1_BAUD 921600
 set MIXER quad_x
 
 set PWM_OUT 1234
 set MIXER_AUX none
-

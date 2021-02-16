@@ -118,6 +118,7 @@ PARAM_DEFINE_INT32(CAL_MAG0_ROT, -1);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_XOFF, 0.0f);
 
@@ -126,6 +127,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_XOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_YOFF, 0.0f);
 
@@ -134,6 +136,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_YOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_ZOFF, 0.0f);
 
@@ -142,6 +145,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_ZOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_XSCALE, 1.0f);
 
@@ -150,6 +154,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_XSCALE, 1.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_YSCALE, 1.0f);
 
@@ -158,6 +163,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_YSCALE, 1.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_ZSCALE, 1.0f);
 
@@ -166,6 +172,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_ZSCALE, 1.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_XODIAG, 0.0f);
 
@@ -174,6 +181,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_XODIAG, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_YODIAG, 0.0f);
 
@@ -182,6 +190,7 @@ PARAM_DEFINE_FLOAT(CAL_MAG0_YODIAG, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_MAG0_ZODIAG, 0.0f);
 

@@ -128,7 +128,6 @@ SECTIONS
 		*(.text.*_main)
 		*(.text.*GPSDriverAshtech*)
 		*(.rodata .rodata.*)
-		KEEP(*(__param*))
 		*(.fixup)
 		*(.gnu.warning)
 		*(.gnu.linkonce.t.*)

@@ -47,11 +47,11 @@
  * ioctl() definitions
  */
 
-#define IO_HEATER_DEVICE_PATH	"/dev/px4io"
+#define IO_HEATER_DEVICE_PATH "/dev/px4io"
 
-#define _IO_HEATER_BASE		(0x2e00)
+#define _IO_HEATER_BASE       (0x2e00)
 
-#define PX4IO_HEATER_CONTROL		_PX4_IOC(_IO_HEATER_BASE, 0)
+#define PX4IO_HEATER_CONTROL  _PX4_IOC(_IO_HEATER_BASE, 0)
 
 /* ... to IOX_SET_VALUE + 8 */
 

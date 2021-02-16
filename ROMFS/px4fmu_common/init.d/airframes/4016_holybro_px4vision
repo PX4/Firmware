@@ -19,121 +19,119 @@
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	# System parameters
-	# use FMU motor outputs for less delay in the rate control loop
-	param set SYS_USE_IO 0
 
-	# Commander Parameters
-	param set COM_OBS_AVOID 1
-	param set COM_DISARM_LAND 0.5
+# System parameters
+# use FMU motor outputs for less delay in the rate control loop
+param set-default SYS_USE_IO 0
 
-	# EKF2 parameters
-	param set EKF2_AID_MASK 35
-	param set EKF2_IMU_POS_X 0.02
-	param set EKF2_GPS_POS_X 0.055
-	param set EKF2_GPS_POS_Z -0.15
-	param set EKF2_HGT_MODE 0
-	param set EKF2_MIN_RNG 0.03
-	param set EKF2_OF_POS_X 0.055
-	param set EKF2_OF_POS_Y 0.02
-	param set EKF2_OF_POS_Z 0.065
-	param set EKF2_REQ_HDRIFT 0.3
-	param set EKF2_REQ_SACC 1
-	param set EKF2_REQ_VDRIFT 0.3
-	param set EKF2_RNG_AID 1
-	param set EKF2_RNG_A_HMAX 8
-	param set EKF2_RNG_A_VMAX 2
-	param set EKF2_RNG_POS_X 0.055
-	param set EKF2_RNG_POS_Y -0.01
-	param set EKF2_RNG_POS_Z 0.065
-	param set EKF2_PCOEF_XP -0.25
-	param set EKF2_PCOEF_YN -0.55
-	param set EKF2_PCOEF_YP -0.55
+# Commander Parameters
+param set-default COM_OBS_AVOID 1
+param set-default COM_DISARM_LAND 0.5
 
-	# MAVLink parameters
-	param set MAV_0_CONFIG 101
-	param set MAV_1_CONFIG 102
-	param set MAV_1_RATE 80000
-	param set MAV_1_MODE 9
-	param set SER_TEL1_BAUD 921600
+# EKF2 parameters
+param set-default EKF2_AID_MASK 35
+param set-default EKF2_IMU_POS_X 0.02
+param set-default EKF2_GPS_POS_X 0.055
+param set-default EKF2_GPS_POS_Z -0.15
+param set-default EKF2_HGT_MODE 0
+param set-default EKF2_MIN_RNG 0.03
+param set-default EKF2_OF_POS_X 0.055
+param set-default EKF2_OF_POS_Y 0.02
+param set-default EKF2_OF_POS_Z 0.065
+param set-default EKF2_REQ_HDRIFT 0.3
+param set-default EKF2_REQ_SACC 1
+param set-default EKF2_REQ_VDRIFT 0.3
+param set-default EKF2_RNG_AID 1
+param set-default EKF2_RNG_A_HMAX 8
+param set-default EKF2_RNG_A_VMAX 2
+param set-default EKF2_RNG_POS_X 0.055
+param set-default EKF2_RNG_POS_Y -0.01
+param set-default EKF2_RNG_POS_Z 0.065
+param set-default EKF2_PCOEF_XP -0.25
+param set-default EKF2_PCOEF_YN -0.55
+param set-default EKF2_PCOEF_YP -0.55
 
-	# Vehicle attitude PID tuning
-	param set MC_ACRO_EXPO 0
-	param set MC_ACRO_EXPO_Y 0
-	param set MC_ACRO_P_MAX 200
-	param set MC_ACRO_R_MAX 200
-	param set MC_ACRO_SUPEXPO 0
-	param set MC_ACRO_SUPEXPOY 0
-	param set MC_ACRO_Y_MAX 150
-	param set IMU_DGYRO_CUTOFF 30
-	param set MC_PITCHRATE_D 0.0015
-	param set MC_PITCHRATE_I 0.2
-	param set MC_PITCHRATE_K 1
-	param set MC_PITCHRATE_P 0.15
-	param set MC_ROLLRATE_D 0.0015
-	param set MC_ROLLRATE_I 0.2
-	param set MC_ROLLRATE_K 1
-	param set MC_ROLLRATE_P 0.15
-	param set MC_YAWRATE_P 0.3
+# MAVLink parameters
+param set-default MAV_0_CONFIG 101
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_RATE 80000
+param set-default MAV_1_MODE 9
+param set-default SER_TEL1_BAUD 921600
 
-	# Position Control Tuning
-	param set CP_DIST 6
-	param set MPC_ACC_DOWN_MAX 5
-	param set MPC_ACC_HOR_MAX 10
-	param set MPC_ACC_UP_MAX 4
-	param set MPC_MANTHR_MIN 0
-	param set MPC_MAN_Y_MAX 120
-	param set MPC_TILTMAX_AIR 45
-	param set MPC_THR_HOVER 0.3
-	param set MPC_THR_MIN 0.12
-	param set MPC_TKO_SPEED 1
-	param set MPC_VEL_MANUAL 5
-	param set MPC_XY_CRUISE 5
-	param set MPC_XY_VEL_MAX 5
-	param set MPC_XY_VEL_P_ACC 1.58
-	param set MPC_XY_TRAJ_P 0.3
-	param set MPC_Z_TRAJ_P 0.3
-	param set MPC_Z_VEL_P_ACC 5
-	param set MPC_Z_VEL_I_ACC 3
-	param set MPC_LAND_ALT1 3
-	param set MPC_LAND_ALT2 1
+# Vehicle attitude PID tuning
+param set-default MC_ACRO_EXPO 0
+param set-default MC_ACRO_EXPO_Y 0
+param set-default MC_ACRO_P_MAX 200
+param set-default MC_ACRO_R_MAX 200
+param set-default MC_ACRO_SUPEXPO 0
+param set-default MC_ACRO_SUPEXPOY 0
+param set-default MC_ACRO_Y_MAX 150
+param set-default IMU_DGYRO_CUTOFF 30
+param set-default MC_PITCHRATE_D 0.0015
+param set-default MC_PITCHRATE_I 0.2
+param set-default MC_PITCHRATE_K 1
+param set-default MC_PITCHRATE_P 0.15
+param set-default MC_ROLLRATE_D 0.0015
+param set-default MC_ROLLRATE_I 0.2
+param set-default MC_ROLLRATE_K 1
+param set-default MC_ROLLRATE_P 0.15
+param set-default MC_YAWRATE_P 0.3
 
-	# Navigator Parameters
-	param set NAV_ACC_RAD 2
+# Position Control Tuning
+param set-default CP_DIST 6
+param set-default MPC_ACC_DOWN_MAX 5
+param set-default MPC_ACC_HOR_MAX 10
+param set-default MPC_ACC_UP_MAX 4
+param set-default MPC_MANTHR_MIN 0
+param set-default MPC_MAN_Y_MAX 120
+param set-default MPC_TILTMAX_AIR 45
+param set-default MPC_THR_HOVER 0.3
+param set-default MPC_THR_MIN 0.12
+param set-default MPC_TKO_SPEED 1
+param set-default MPC_VEL_MANUAL 5
+param set-default MPC_XY_CRUISE 5
+param set-default MPC_XY_VEL_MAX 5
+param set-default MPC_XY_VEL_P_ACC 1.58
+param set-default MPC_XY_TRAJ_P 0.3
+param set-default MPC_Z_TRAJ_P 0.3
+param set-default MPC_Z_VEL_P_ACC 5
+param set-default MPC_Z_VEL_I_ACC 3
+param set-default MPC_LAND_ALT1 3
+param set-default MPC_LAND_ALT2 1
 
-	# PWM and RC Parameters
-	param set PWM_MAIN_MAX 1950
-	param set PWM_MAIN_MIN 1075
+# Navigator Parameters
+param set-default NAV_ACC_RAD 2
 
-	# use oneshot motor output protocol
-	param set PWM_MAIN_RATE 0
+# PWM and RC Parameters
+param set-default PWM_MAIN_MAX 1950
+param set-default PWM_MAIN_MIN 1075
 
-	# RTL Parameters
-	param set RTL_DESCEND_ALT 5
-	param set RTL_RETURN_ALT 5
-	param set RTL_CONE_ANG 45
+# use oneshot motor output protocol
+param set-default PWM_MAIN_RATE 0
 
-	# Logging Parameters
-	param set SDLOG_PROFILE 131
+# RTL Parameters
+param set-default RTL_DESCEND_ALT 5
+param set-default RTL_RETURN_ALT 5
+param set-default RTL_CONE_ANG 45
 
-	# Sensors Parameters
-	param set SENS_BOARD_ROT 0
-	param set SENS_CM8JL65_CFG 104
-	param set SENS_FLOW_MAXHGT 25
-	param set SENS_FLOW_MINHGT 0.5
-	param set SENS_FLOW_ROT 0
-	param set IMU_GYRO_CUTOFF 100
-	param set SENS_EN_PMW3901 1
+# Logging Parameters
+param set-default SDLOG_PROFILE 131
 
-	# Power Parameters
-	param set BAT_N_CELLS 4
-	param set BAT_A_PER_V 36.364
-	param set BAT_V_DIV 18.182
+# Sensors Parameters
+param set-default SENS_BOARD_ROT 0
+param set-default SENS_CM8JL65_CFG 104
+param set-default SENS_FLOW_MAXHGT 25
+param set-default SENS_FLOW_MINHGT 0.5
+param set-default SENS_FLOW_ROT 0
+param set-default IMU_GYRO_CUTOFF 100
+param set-default SENS_EN_PMW3901 1
 
-	# Circuit breakers
-	param set CBRK_IO_SAFETY 22027
+# Power Parameters
+param set-default BAT_N_CELLS 4
+param set-default BAT_A_PER_V 36.364
+param set-default BAT_V_DIV 18.182
 
-	param set THR_MDL_FAC 0.3
-fi
+# Circuit breakers
+param set-default CBRK_IO_SAFETY 22027
+
+param set-default THR_MDL_FAC 0.3

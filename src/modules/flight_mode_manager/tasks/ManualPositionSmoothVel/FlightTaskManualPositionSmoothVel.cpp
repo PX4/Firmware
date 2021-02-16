@@ -69,7 +69,7 @@ void FlightTaskManualPositionSmoothVel::reActivate()
 	FlightTaskManualPosition::reActivate();
 	// The task is reacivated while the vehicle is on the ground. To detect takeoff in mc_pos_control_main properly
 	// using the generated jerk, reset the z derivatives to zero
-	_smoothing_xy.reset(Vector2f(), Vector2f(_velocity), Vector2f(_position));
+	_smoothing_xy.reset(Vector2f(), _velocity.xy(), _position.xy());
 	_smoothing_z.reset(0.f, 0.f, _position(2));
 }
 
@@ -136,19 +136,19 @@ void FlightTaskManualPositionSmoothVel::_updateTrajConstraintsZ()
 
 void FlightTaskManualPositionSmoothVel::_updateTrajVelFeedback()
 {
-	_smoothing_xy.setVelSpFeedback(Vector2f(_velocity_setpoint_feedback));
+	_smoothing_xy.setVelSpFeedback(_velocity_setpoint_feedback.xy());
 	_smoothing_z.setVelSpFeedback(_velocity_setpoint_feedback(2));
 }
 
 void FlightTaskManualPositionSmoothVel::_updateTrajCurrentPositionEstimate()
 {
-	_smoothing_xy.setCurrentPositionEstimate(Vector2f(_position));
+	_smoothing_xy.setCurrentPositionEstimate(_position.xy());
 	_smoothing_z.setCurrentPositionEstimate(_position(2));
 }
 
 void FlightTaskManualPositionSmoothVel::_updateTrajectories(Vector3f vel_target)
 {
-	_smoothing_xy.update(_deltatime, Vector2f(vel_target));
+	_smoothing_xy.update(_deltatime, vel_target.xy());
 	_smoothing_z.update(_deltatime, vel_target(2));
 }
 

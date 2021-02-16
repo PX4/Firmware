@@ -30,18 +30,22 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__imu__adis16448
-	MAIN adis16448
-	COMPILE_FLAGS
-		-Wno-cast-align # TODO: fix and enable
-	SRCS
-		ADIS16448.cpp
-		adis16448_main.cpp
-	DEPENDS
-		px4_work_queue
-		drivers_accelerometer
-		drivers_barometer
-		drivers_gyroscope
-		drivers_magnetometer
-	)
+
+add_library(drivers_board
+	init.c
+	i2c.cpp
+	led.c
+	sdio.c
+	spi.cpp
+	timer_config.cpp
+	usb.c
+)
+
+target_link_libraries(drivers_board
+	PRIVATE
+		arch_spi
+		drivers__led # drv_led_start
+		nuttx_arch # sdio
+		nuttx_drivers # sdio
+		px4_layer
+)

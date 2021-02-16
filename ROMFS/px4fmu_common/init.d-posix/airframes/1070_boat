@@ -8,16 +8,16 @@
 if [ $AUTOCNF = yes ]
 then
 	param set GND_L1_DIST 5
+	param set GND_L1_PERIOD 100
 	param set GND_SP_CTRL_MODE 1
 	param set GND_SPEED_D 0.001
-	param set GND_SPEED_I 3
+	param set GND_SPEED_I 8
 	param set GND_SPEED_IMAX 0.125
-	param set GND_SPEED_P 0.25
+	param set GND_SPEED_P 2
 	param set GND_SPEED_THR_SC 1
-	param set GND_SPEED_TRIM 4
-	param set GND_THR_CRUISE 0.3
-	param set GND_THR_IDLE 0
-	param set GND_THR_MAX 0.5
+	param set GND_SPEED_TRIM 1
+	param set GND_THR_CRUISE 0.85
+	param set GND_THR_MAX 1
 	param set GND_THR_MIN 0
 
 	param set MIS_LTRMIN_ALT 0.01

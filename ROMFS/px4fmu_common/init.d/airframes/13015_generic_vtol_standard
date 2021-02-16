@@ -24,35 +24,32 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set PWM_MAIN_RATE 400
 
-	param set PWM_MAIN_MIN1 1100
-	param set PWM_MAIN_MIN2 1100
-	param set PWM_MAIN_MIN3 1100
-	param set PWM_MAIN_MIN4 1100
+param set-default PWM_MAIN_RATE 400
 
-	param set PWM_MAIN_MAX1 1900
-	param set PWM_MAIN_MAX2 1900
-	param set PWM_MAIN_MAX3 1900
-	param set PWM_MAIN_MAX4 1900
+param set-default PWM_MAIN_MIN1 1100
+param set-default PWM_MAIN_MIN2 1100
+param set-default PWM_MAIN_MIN3 1100
+param set-default PWM_MAIN_MIN4 1100
 
-	param set PWM_MAIN_DIS1 900
-	param set PWM_MAIN_DIS2 900
-	param set PWM_MAIN_DIS3 900
-	param set PWM_MAIN_DIS4 900
-	param set PWM_MAIN_DIS5 1500
-	param set PWM_MAIN_DIS6 1500
-	param set PWM_MAIN_DIS7 1500
-	param set PWM_MAIN_DIS8 1500
-	param set PWM_MAIN_DIS9 900
+param set-default PWM_MAIN_MAX1 1900
+param set-default PWM_MAIN_MAX2 1900
+param set-default PWM_MAIN_MAX3 1900
+param set-default PWM_MAIN_MAX4 1900
 
-	param set VT_TYPE 2
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-fi
+param set-default PWM_MAIN_DIS1 900
+param set-default PWM_MAIN_DIS2 900
+param set-default PWM_MAIN_DIS3 900
+param set-default PWM_MAIN_DIS4 900
+param set-default PWM_MAIN_DIS5 1500
+param set-default PWM_MAIN_DIS6 1500
+param set-default PWM_MAIN_DIS7 1500
+param set-default PWM_MAIN_DIS8 1500
+param set-default PWM_MAIN_DIS9 900
 
+param set-default VT_TYPE 2
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
 set MAV_TYPE 22
 
 set MIXER quad_x_vtol_AAERT

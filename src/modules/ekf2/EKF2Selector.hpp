@@ -104,7 +104,12 @@ private:
 		uORB::Subscription estimator_global_position_sub;
 		uORB::Subscription estimator_odometry_sub;
 
-		estimator_status_s status{};
+		uint64_t timestamp_sample_last{0};
+
+		uint32_t accel_device_id{0};
+		uint32_t gyro_device_id{0};
+		uint32_t baro_device_id{0};
+		uint32_t mag_device_id{0};
 
 		hrt_abstime time_last_selected{0};
 
@@ -113,6 +118,7 @@ private:
 
 		bool healthy{false};
 		bool filter_fault{false};
+		bool timeout{false};
 
 		const uint8_t instance;
 	};

@@ -162,11 +162,11 @@ class Parameter(object):
         """
         Return value of the given bitmask code or None if not found.
         """
-        fv =  self.bitmask.get(index)
+        fv = self.bitmask.get(index)
         if not fv:
                 # required because python 3 sorted does not accept None
                 return ""
-        return fv
+        return fv.strip()
 
 class SourceParser(object):
     """

@@ -1,20 +1,22 @@
 #!/bin/sh
 #
-# CUAV X7Pro specific board sensors init
+# board specific sensors init
 #------------------------------------------------------------------------------
 board_adc start
 
-# SPI1 (internal)
+# SPI1
 #adis16470 -s start
-rm3100 -s start
-icm20689 -s -R 2 start
+icm20689 -s -b 1 -R 2 start
 
-# SPI4 (internal)
-bmi088 -A -s -R 10 start
-bmi088 -G -s -R 10 start
+# SPI2
+rm3100 -s -b 2 start
+
+# SPI4
+bmi088 -s -b 4 -A -R 2 start
+bmi088 -s -b 4 -G -R 2 start
 ms5611 -s -b 4 start
 
-# SPI6 (internal)
+# SPI6
 icm20649 -s -b 6 -R 2 start
 ms5611 -s -b 6 start
 

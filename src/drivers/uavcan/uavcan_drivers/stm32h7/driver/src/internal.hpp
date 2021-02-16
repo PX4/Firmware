@@ -22,7 +22,7 @@
 #ifndef UAVCAN_STM32H7_LOG
 // syslog() crashes the system in this context
 // # if UAVCAN_STM32H7_NUTTX && CONFIG_ARCH_LOWPUTC
-# if 1
+# if 0
 #  define UAVCAN_STM32H7_LOG(fmt, ...)  printf("uavcan_stm32: \n" fmt "\n", ##__VA_ARGS__)
 # else
 #  define UAVCAN_STM32H7_LOG(...)       ((void)0)

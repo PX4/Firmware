@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,13 +30,41 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__mkblctrl
-	MAIN mkblctrl
-	COMPILE_FLAGS
-	SRCS
-		mkblctrl.cpp
+
+set(component_version_extra_args)
+# We disable parameter support if the metadata is not in the ROMFS. This can be
+# removed once it is stored on a server
+list(FIND config_romfs_extra_dependencies "parameters_xml" index)
+if (${index} EQUAL -1)
+	set(component_version_extra_args "--no-parameters")
+endif()
+
+set(component_version_json ${PX4_BINARY_DIR}/component_version.json)
+add_custom_command(OUTPUT ${component_version_json} ${component_version_json}.xz
+	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_component_version.py
+		${component_version_json}
+		--compress
+		${component_version_extra_args}
 	DEPENDS
-		mixer
-	)
+		generate_component_version.py
+	COMMENT "Generating component_version.json"
+)
+add_custom_target(component_version_json DEPENDS ${component_version_json})
+
+
+set(component_information_header ${CMAKE_CURRENT_BINARY_DIR}/hashes.h)
+add_custom_command(OUTPUT ${component_information_header}
+	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_hashes.py
+		${PX4_BINARY_DIR}/params.json.xz
+		${component_version_json}
+		--output ${component_information_header}
+	DEPENDS
+		generate_hashes.py
+		parameters_xml
+		${PX4_BINARY_DIR}/params.json.xz
+		${component_version_json}
+	COMMENT "Generating component_information/hashes.h"
+)
+add_custom_target(component_information_header DEPENDS ${component_information_header})
+
 

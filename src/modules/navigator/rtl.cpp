@@ -642,27 +642,27 @@ void RTL::get_rtl_xy_z_speed(float &xy, float &z)
 
 		switch (vehicle_type) {
 		case vehicle_status_s::VEHICLE_TYPE_ROTARY_WING:
-			_rtl_xy_speed = param_find("MPC_XY_CRUISE");
-			_rtl_descent_speed = param_find("MPC_Z_VEL_MAX_DN");
+			_param_rtl_xy_speed = param_find("MPC_XY_CRUISE");
+			_param_rtl_descent_speed = param_find("MPC_Z_VEL_MAX_DN");
 			break;
 
 		case vehicle_status_s::VEHICLE_TYPE_FIXED_WING:
-			_rtl_xy_speed = param_find("FW_AIRSPD_TRIM");
-			_rtl_descent_speed = param_find("FW_T_SINK_MIN");
+			_param_rtl_xy_speed = param_find("FW_AIRSPD_TRIM");
+			_param_rtl_descent_speed = param_find("FW_T_SINK_MIN");
 			break;
 
 		case vehicle_status_s::VEHICLE_TYPE_ROVER:
-			_rtl_xy_speed = param_find("GND_SPEED_THR_SC");
-			_rtl_descent_speed = 65535;
+			_param_rtl_xy_speed = param_find("GND_SPEED_THR_SC");
+			_param_rtl_descent_speed = PARAM_INVALID;
 			break;
 		}
 	}
 
-	if (param_get(_rtl_xy_speed, &xy) != 0) {
+	if ((_param_rtl_xy_speed == PARAM_INVALID) || param_get(_param_rtl_xy_speed, &xy) != PX4_OK) {
 		xy = 1e6f;
 	}
 
-	if (param_get(_rtl_descent_speed, &z) != 0) {
+	if ((_param_rtl_descent_speed == PARAM_INVALID) || param_get(_param_rtl_descent_speed, &z) != PX4_OK) {
 		z = 1e6f;
 	}
 

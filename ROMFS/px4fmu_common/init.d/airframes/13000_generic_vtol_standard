@@ -24,16 +24,13 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set PWM_AUX_DIS5 950
-	param set PWM_MAIN_RATE 400
 
-	param set VT_TYPE 2
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-fi
+param set-default PWM_AUX_DIS5 950
+param set-default PWM_MAIN_RATE 400
 
+param set-default VT_TYPE 2
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
 set MAV_TYPE 22
 
 set MIXER quad_x

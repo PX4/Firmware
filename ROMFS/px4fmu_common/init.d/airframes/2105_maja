@@ -26,25 +26,23 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_AIRSPD_MIN 10
-	param set FW_AIRSPD_TRIM 15
-	param set FW_AIRSPD_MAX 20
+param set-default FW_AIRSPD_MIN 10
+param set-default FW_AIRSPD_TRIM 15
+param set-default FW_AIRSPD_MAX 20
 
-	param set FW_MAN_P_MAX 55
-	param set FW_MAN_R_MAX 55
-	param set FW_R_LIM 55
+param set-default FW_MAN_P_MAX 55
+param set-default FW_MAN_R_MAX 55
+param set-default FW_R_LIM 55
 
-	param set FW_WR_FF 0.2
-	param set FW_WR_I 0.2
-	param set FW_WR_IMAX 0.8
-	param set FW_WR_P 1
-	param set FW_W_RMAX 0
+param set-default FW_WR_FF 0.2
+param set-default FW_WR_I 0.2
+param set-default FW_WR_IMAX 0.8
+param set-default FW_WR_P 1
+param set-default FW_W_RMAX 0
 
-	# set disarmed value for the ESC
-	param set PWM_MAIN_DISARM 1000
-fi
+# set disarmed value for the ESC
+param set-default PWM_MAIN_DISARM 1000
+
 
 set MIXER AAERTWF
 

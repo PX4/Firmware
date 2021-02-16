@@ -1,7 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2015 PX4 Development Team. All rights reserved.
- *   Author: Marco Bauer <marco@wtns.de>
+ *   Copyright (C) 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,22 +31,24 @@
  *
  ****************************************************************************/
 
-/**
- * @file mkblctrl_params.c
- *
- * Parameters defined by the mkblctrl driver.
- *
- * @author Marco Bauer <marco@wtns.de>
- */
+#include <px4_arch/io_timer_hw_description.h>
 
-#include <px4_platform_common/px4_config.h>
-#include <parameters/param.h>
+constexpr io_timers_t io_timers[MAX_IO_TIMERS] = {
+	initIOTimer(Timer::Timer1),
+	initIOTimer(Timer::Timer4),
+	initIOTimer(Timer::Timer8),
+};
 
-/**
- * Test mode (Identify) of MKBLCTRL Driver
- *
- * @boolean
- * @group MKBLCTRL Testmode
- */
-PARAM_DEFINE_INT32(MKBLCTRL_TEST, 0);
+constexpr timer_io_channels_t timer_io_channels[MAX_TIMER_IO_CHANNELS] = {
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel4}, {GPIO::PortE, GPIO::Pin14}),
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel3}, {GPIO::PortE, GPIO::Pin13}),
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel2}, {GPIO::PortE, GPIO::Pin11}),
+	initIOTimerChannel(io_timers, {Timer::Timer1, Timer::Channel1}, {GPIO::PortE, GPIO::Pin9}),
+	initIOTimerChannel(io_timers, {Timer::Timer4, Timer::Channel2}, {GPIO::PortD, GPIO::Pin13}),
+	initIOTimerChannel(io_timers, {Timer::Timer4, Timer::Channel3}, {GPIO::PortD, GPIO::Pin14}),
+	initIOTimerChannel(io_timers, {Timer::Timer8, Timer::Channel1}, {GPIO::PortI, GPIO::Pin5}),
+	initIOTimerChannel(io_timers, {Timer::Timer8, Timer::Channel2}, {GPIO::PortI, GPIO::Pin6}),
+};
 
+constexpr io_timers_channel_mapping_t io_timers_channel_mapping =
+	initIOTimerChannelMapping(io_timers, timer_io_channels);

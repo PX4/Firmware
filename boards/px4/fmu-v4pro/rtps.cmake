@@ -37,7 +37,6 @@ px4_add_board(
 		lights/rgbled
 		lights/rgbled_ncp5623c
 		magnetometer # all available magnetometer drivers
-		mkblctrl
 		#optical_flow # all available optical flow drivers
 		optical_flow/px4flow
 		#osd
@@ -84,6 +83,7 @@ px4_add_board(
 		sih
 		temperature_compensation
 		uuv_att_control
+		uuv_pos_control
 		vmount
 		vtol_att_control
 	SYSTEMCMDS

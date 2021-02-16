@@ -116,7 +116,7 @@ protected:
 	/**
 	 * Set a takeoff mission item
 	 */
-	void set_takeoff_item(struct mission_item_s *item, float abs_altitude, float min_pitch = 0.0f);
+	void set_takeoff_item(struct mission_item_s *item, float abs_altitude);
 
 	/**
 	 * Set a land mission item

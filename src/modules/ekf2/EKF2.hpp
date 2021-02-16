@@ -232,6 +232,7 @@ private:
 	bool _standby{false}; // standby arming state
 
 	hrt_abstime _last_status_flag_update{0};
+	hrt_abstime _last_range_sensor_update{0};
 
 	uint32_t _filter_control_status{0};
 	uint32_t _filter_fault_status{0};

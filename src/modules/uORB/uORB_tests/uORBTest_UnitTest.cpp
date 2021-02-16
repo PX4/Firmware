@@ -146,7 +146,7 @@ int uORBTest::UnitTest::pubsublatency_main()
 
 	pubsubtest_passed = true;
 
-	if (static_cast<float>(latency_integral / MAX_RUNS) > 100.0f) {
+	if (mean > 150.0f) {
 		pubsubtest_res = PX4_ERROR;
 
 	} else {
@@ -461,7 +461,7 @@ int uORBTest::UnitTest::test_multi2()
 	char *const args[1] = { nullptr };
 	int pubsub_task = px4_task_spawn_cmd("uorb_test_multi",
 					     SCHED_DEFAULT,
-					     SCHED_PRIORITY_MAX - 5,
+					     SCHED_PRIORITY_MAX - 2,
 					     2000,
 					     (px4_main_t)&uORBTest::UnitTest::pub_test_multi2_entry,
 					     args);
@@ -986,7 +986,7 @@ int uORBTest::UnitTest::test_queue_poll_notify()
 	char *const args[1] = { nullptr };
 	int pubsub_task = px4_task_spawn_cmd("uorb_test_queue",
 					     SCHED_DEFAULT,
-					     SCHED_PRIORITY_MIN + 5,
+					     SCHED_PRIORITY_DEFAULT,
 					     2000,
 					     (px4_main_t)&uORBTest::UnitTest::pub_test_queue_entry,
 					     args);

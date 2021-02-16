@@ -7,34 +7,31 @@
 
 set VEHICLE_TYPE vtol
 
-if [ $AUTOCNF = yes ]
-then
-	# to minimize cpu usage on older boards limit inner loop to 400 Hz
-	param set IMU_GYRO_RATEMAX 400
+# to minimize cpu usage on older boards limit inner loop to 400 Hz
+param set-default IMU_GYRO_RATEMAX 400
 
-	param set MIS_TAKEOFF_ALT 20
-	param set MIS_YAW_TMT 10
+param set-default MIS_TAKEOFF_ALT 20
+param set-default MIS_YAW_TMT 10
 
-	param set EKF2_ARSP_THR 10
-	param set EKF2_FUSE_BETA 1
+param set-default EKF2_ARSP_THR 10
+param set-default EKF2_FUSE_BETA 1
 
-	param set MIS_DIST_WPS 5000
+param set-default MIS_DIST_WPS 5000
 
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_TKO_SPEED 1
-	param set MPC_VEL_MANUAL 3
-	param set MPC_XY_CRUISE 3
-	param set MPC_XY_ERR_MAX 5
-	param set MPC_XY_VEL_MAX 4
-	param set MPC_Z_VEL_MAX_DN 1.5
-	param set MPC_JERK_MAX 4.5
+param set-default MPC_ACC_HOR_MAX 2
+param set-default MPC_TKO_SPEED 1
+param set-default MPC_VEL_MANUAL 3
+param set-default MPC_XY_CRUISE 3
+param set-default MPC_XY_ERR_MAX 5
+param set-default MPC_XY_VEL_MAX 4
+param set-default MPC_Z_VEL_MAX_DN 1.5
+param set-default MPC_JERK_MAX 4.5
 
-	param set NAV_ACC_RAD 3
+param set-default NAV_ACC_RAD 3
 
-	param set PWM_AUX_RATE 50
-	param set PWM_MAIN_RATE 400
+param set-default PWM_AUX_RATE 50
+param set-default PWM_MAIN_RATE 400
 
-	param set RTL_TYPE 1
+param set-default RTL_TYPE 1
 
-	param set WV_EN 1
-fi
+param set-default WV_EN 1

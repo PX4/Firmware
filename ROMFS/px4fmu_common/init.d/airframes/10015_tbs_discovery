@@ -26,22 +26,19 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_ROLL_P 6.5
-	param set MC_ROLLRATE_P 0.1
-	param set MC_ROLLRATE_I 0.05
-	param set MC_ROLLRATE_D 0.0017
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0.14
-	param set MC_PITCHRATE_I 0.1
-	param set MC_PITCHRATE_D 0.0025
-	param set MC_YAW_P 2.8
-	param set MC_YAWRATE_P 0.28
-	param set MC_YAWRATE_I 0.1
-	param set MC_YAWRATE_D 0
-fi
 
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.1
+param set-default MC_ROLLRATE_I 0.05
+param set-default MC_ROLLRATE_D 0.0017
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.14
+param set-default MC_PITCHRATE_I 0.1
+param set-default MC_PITCHRATE_D 0.0025
+param set-default MC_YAW_P 2.8
+param set-default MC_YAWRATE_P 0.28
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
 set MIXER quad_w
 
 set PWM_OUT 1234

@@ -24,26 +24,23 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	# TODO tune roll/pitch separately
-	param set MC_ROLL_P 7
-	param set MC_ROLLRATE_P 0.15
-	param set MC_ROLLRATE_I 0.05
-	param set MC_ROLLRATE_D 0.004
-	param set MC_PITCH_P 7
-	param set MC_PITCHRATE_P 0.15
-	param set MC_PITCHRATE_I 0.05
-	param set MC_PITCHRATE_D 0.004
-	param set MC_YAW_P 2.5
-	param set MC_YAWRATE_P 0.25
-	param set MC_YAWRATE_I 0.25
-	param set MC_YAWRATE_D 0
 
-	param set BAT_V_DIV 12.27559
-	param set BAT_A_PER_V 15.39103
-fi
+# TODO tune roll/pitch separately
+param set-default MC_ROLL_P 7
+param set-default MC_ROLLRATE_P 0.15
+param set-default MC_ROLLRATE_I 0.05
+param set-default MC_ROLLRATE_D 0.004
+param set-default MC_PITCH_P 7
+param set-default MC_PITCHRATE_P 0.15
+param set-default MC_PITCHRATE_I 0.05
+param set-default MC_PITCHRATE_D 0.004
+param set-default MC_YAW_P 2.5
+param set-default MC_YAWRATE_P 0.25
+param set-default MC_YAWRATE_I 0.25
+param set-default MC_YAWRATE_D 0
 
+param set-default BAT_V_DIV 12.27559
+param set-default BAT_A_PER_V 15.39103
 set MIXER quad_w
 
 set PWM_OUT 1234

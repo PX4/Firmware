@@ -153,7 +153,6 @@ struct mission_item_s {
 		struct {
 			union {
 				float time_inside;		/**< time that the MAV should stay inside the radius before advancing in seconds */
-				float pitch_min;		/**< minimal pitch angle for fixed wing takeoff waypoints */
 				float circle_radius;		/**< geofence circle radius in meters (only used for NAV_CMD_NAV_FENCE_CIRCLE*) */
 			};
 			float acceptance_radius;		/**< default radius in which the mission is accepted as reached in meters */

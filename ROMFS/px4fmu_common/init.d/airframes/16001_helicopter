@@ -27,34 +27,32 @@ set MIXER blade130
 
 #set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	param set ATT_BIAS_MAX 0
 
-	param set CBRK_IO_SAFETY 22027
+param set-default ATT_BIAS_MAX 0
 
-	param set MC_ROLL_P 5
-	param set MC_ROLLRATE_P 0
-	param set MC_ROLLRATE_I 0
-	param set MC_ROLLRATE_D 0
-	param set MC_ROLLRATE_FF 0.15
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0
-	param set MC_PITCHRATE_I 0
-	param set MC_PITCHRATE_D 0
-	param set MC_PITCHRATE_FF 0.15
-	param set MC_YAW_P 3
-	param set MC_YAWRATE_P 0.1
-	param set MC_YAWRATE_I 0
-	param set MC_YAWRATE_D 0
-	param set MC_ROLLRATE_MAX 720
-	param set MC_PITCHRATE_MAX 720
-	param set MC_YAWRATE_MAX 400
-	param set MC_ACRO_R_MAX 360
-	param set MC_ACRO_P_MAX 360
+param set-default CBRK_IO_SAFETY 22027
 
-	param set MPC_THR_MIN 0.06
-	param set MPC_MANTHR_MIN 0.06
+param set-default MC_ROLL_P 5
+param set-default MC_ROLLRATE_P 0
+param set-default MC_ROLLRATE_I 0
+param set-default MC_ROLLRATE_D 0
+param set-default MC_ROLLRATE_FF 0.15
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0
+param set-default MC_PITCHRATE_I 0
+param set-default MC_PITCHRATE_D 0
+param set-default MC_PITCHRATE_FF 0.15
+param set-default MC_YAW_P 3
+param set-default MC_YAWRATE_P 0.1
+param set-default MC_YAWRATE_I 0
+param set-default MC_YAWRATE_D 0
+param set-default MC_ROLLRATE_MAX 720
+param set-default MC_PITCHRATE_MAX 720
+param set-default MC_YAWRATE_MAX 400
+param set-default MC_ACRO_R_MAX 360
+param set-default MC_ACRO_P_MAX 360
 
-	param set PWM_MAIN_MIN 1075
-fi
+param set-default MPC_THR_MIN 0.06
+param set-default MPC_MANTHR_MIN 0.06
+
+param set-default PWM_MAIN_MIN 1075

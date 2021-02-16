@@ -45,6 +45,7 @@
 #include <mavsdk/plugins/param/param.h>
 #include "catch2/catch.hpp"
 #include <chrono>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -53,6 +54,17 @@ extern std::string connection_url;
 
 using namespace mavsdk;
 using namespace mavsdk::geometry;
+
+
+inline std::string time_str()
+{
+	time_t rawtime;
+	time(&rawtime);
+	struct tm *timeinfo = localtime(&rawtime);
+	char time_buffer[18];
+	strftime(time_buffer, 18, "[%I:%M:%S|Info ] ", timeinfo);
+	return time_buffer;
+}
 
 class AutopilotTester
 {
@@ -114,30 +126,36 @@ private:
 	bool ground_truth_horizontal_position_far_from(const Telemetry::GroundTruth &target_pos, float min_distance_m);
 	bool estimated_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
 	bool estimated_horizontal_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
-
-	std::chrono::milliseconds adjust_to_lockstep_speed(std::chrono::milliseconds duration_ms);
+	void start_and_wait_for_first_mission_item();
+	void wait_for_flight_mode(Telemetry::FlightMode flight_mode, std::chrono::seconds timeout);
+	void wait_for_landed_state(Telemetry::LandedState landed_state, std::chrono::seconds timeout);
+	void wait_for_mission_finished(std::chrono::seconds timeout);
 
 	template<typename Rep, typename Period>
 	bool poll_condition_with_timeout(
 		std::function<bool()> fun, std::chrono::duration<Rep, Period> duration)
 	{
-		const std::chrono::milliseconds duration_ms(duration);
+		static constexpr unsigned check_resolution = 100;
 
-		if (_info && _info->get_flight_information().first == mavsdk::Info::Result::Success) {
+		const std::chrono::microseconds duration_us(duration);
+
+		if (_telemetry && _telemetry->attitude_quaternion().timestamp_us != 0) {
 			// A system is connected. We can base the timeouts on the autopilot time.
-			uint32_t start_time = _info->get_flight_information().second.time_boot_ms;
+			const int64_t start_time_us = _telemetry->attitude_quaternion().timestamp_us;
 
 			while (!fun()) {
-				std::this_thread::sleep_for(duration_ms / 100);
+				std::this_thread::sleep_for(duration_us / check_resolution);
 
 				// This might potentially loop forever and the test needs to be killed by a watchdog outside.
 				// The reason not to include an absolute timeout here is that it can happen if the host is
 				// busy and PX4 doesn't run fast enough.
-				const int64_t elapsed_time_ms = _info->get_flight_information().second.time_boot_ms - start_time;
+				const int64_t elapsed_time_us = _telemetry->attitude_quaternion().timestamp_us - start_time_us;
 
-				if (elapsed_time_ms > duration_ms.count()) {
-					std::cout << "Timeout, connected to vehicle but waiting for test for " << elapsed_time_ms / 1000.0 << " seconds" <<
-						  std::endl;
+				std::cout << time_str() << "start_time_us: " << start_time_us << ", elapsed_time_us: " << elapsed_time_us << '\n';
+
+				if (elapsed_time_us > duration_us.count()) {
+					std::cout << time_str() << "Timeout, connected to vehicle but waiting for test for " << static_cast<double>
+						  (elapsed_time_us) / 1e6 << " seconds\n";
 					return false;
 				}
 			}
@@ -147,18 +165,46 @@ private:
 			const auto start_time = std::chrono::steady_clock::now();
 
 			while (!fun()) {
-				std::this_thread::sleep_for(duration_ms / 100);
-				const int64_t elapsed_time_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() -
-								start_time).count();
+				std::this_thread::sleep_for(duration_us / check_resolution);
+				const auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() -
+							     start_time);
 
-				if (elapsed_time_us > duration_ms.count() * 1000) {
-					std::cout << "Timeout, waiting for the vehicle for " << elapsed_time_us / 1000000.0 << " seconds" << std::endl;
+				if (elapsed_time_us > duration_us) {
+					std::cout << time_str() << "Timeout, waiting for the vehicle for "
+						  << elapsed_time_us.count() * std::chrono::steady_clock::period::num
+						  / static_cast<double>(std::chrono::steady_clock::period::den)
+						  << " seconds\n";
 					return false;
 				}
 			}
 		}
 
 		return true;
+	}
+
+	template<typename Rep, typename Period>
+	void sleep_for(std::chrono::duration<Rep, Period> duration)
+	{
+		const std::chrono::microseconds duration_us(duration);
+
+		if (_telemetry && _telemetry->attitude_quaternion().timestamp_us != 0) {
+
+			const int64_t start_time_us = _telemetry->attitude_quaternion().timestamp_us;
+
+			while (true) {
+				// Hopefully this is often enough not to have PX4 time out on us.
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+				const int64_t elapsed_time_us = _telemetry->attitude_quaternion().timestamp_us - start_time_us;
+
+				if (elapsed_time_us > duration_us.count()) {
+					return;
+				}
+			}
+
+		} else {
+			std::this_thread::sleep_for(duration);
+		}
 	}
 
 	mavsdk::Mavsdk _mavsdk{};

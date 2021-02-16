@@ -17,19 +17,17 @@
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_PITCHRATE_P 0.087
-	param set MC_PITCHRATE_I 0.037
-	param set MC_PITCHRATE_D 0.0044
-	param set MC_PITCH_P 8.5
-	param set MC_ROLLRATE_P 0.087
-	param set MC_ROLLRATE_I 0.037
-	param set MC_ROLLRATE_D 0.0044
-	param set MC_ROLL_P 8.5
-	param set MPC_XY_VEL_P_ACC 2.2
-	param set MPC_XY_VEL_D_ACC 0.26
-	param set MPC_XY_P 1.1
-	param set MPC_Z_VEL_P_ACC 4.8
-	param set MPC_Z_P 1.2
-fi
+
+param set-default MC_PITCHRATE_P 0.087
+param set-default MC_PITCHRATE_I 0.037
+param set-default MC_PITCHRATE_D 0.0044
+param set-default MC_PITCH_P 8.5
+param set-default MC_ROLLRATE_P 0.087
+param set-default MC_ROLLRATE_I 0.037
+param set-default MC_ROLLRATE_D 0.0044
+param set-default MC_ROLL_P 8.5
+param set-default MPC_XY_VEL_P_ACC 2.2
+param set-default MPC_XY_VEL_D_ACC 0.26
+param set-default MPC_XY_P 1.1
+param set-default MPC_Z_VEL_P_ACC 4.8
+param set-default MPC_Z_P 1.2

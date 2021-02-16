@@ -64,6 +64,7 @@ px4_add_module(
 		module.yaml
 	DEPENDS
 		airspeed
+		component_information_header
 		drivers_accelerometer
 		drivers_barometer
 		drivers_gyroscope

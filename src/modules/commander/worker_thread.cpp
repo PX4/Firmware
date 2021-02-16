@@ -67,7 +67,7 @@ void WorkerThread::startTask(Request request)
 	/* initialize low priority thread */
 	pthread_attr_t low_prio_attr;
 	pthread_attr_init(&low_prio_attr);
-	pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3304));
+	pthread_attr_setstacksize(&low_prio_attr, PX4_STACK_ADJUSTED(3804));
 
 #ifndef __PX4_QURT
 	// This is not supported by QURT (yet).

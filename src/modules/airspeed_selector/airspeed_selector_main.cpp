@@ -357,7 +357,7 @@ AirspeedModule::Run()
 
 				_time_last_airspeed_update[i] = _time_now_usec;
 
-			} else if (_time_last_airspeed_update[i] - _time_now_usec > 1_s) {
+			} else if (_time_now_usec - _time_last_airspeed_update[i] > 1_s) {
 				// declare airspeed invalid if more then 1s since last raw airspeed update
 				_airspeed_validator[i].reset_airspeed_to_invalid(_time_now_usec);
 

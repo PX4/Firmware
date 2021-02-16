@@ -434,6 +434,7 @@
 
 #define BOARD_NUM_IO_TIMERS 5
 
+
 #define PX4_I2C_BUS_MTD      4,5
 
 __BEGIN_DECLS

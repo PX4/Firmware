@@ -16,40 +16,38 @@
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_ROLL_P 8
-	param set MC_ROLLRATE_P 0.08
-	param set MC_ROLLRATE_I 0.25
-	param set MC_ROLLRATE_D 0.001
-	param set MC_PITCH_P 8
-	param set MC_PITCHRATE_P 0.08
-	param set MC_PITCHRATE_I 0.25
-	param set MC_PITCHRATE_D 0.001
-	param set MC_YAW_P 4
-	param set MC_YAWRATE_P 0.2
-	param set MC_YAWRATE_I 0.1
-	param set MC_YAWRATE_D 0
 
-	param set MC_ROLLRATE_MAX 1600
-	param set MC_PITCHRATE_MAX 1600
-	param set MC_YAWRATE_MAX 1000
+param set-default MC_ROLL_P 8
+param set-default MC_ROLLRATE_P 0.08
+param set-default MC_ROLLRATE_I 0.25
+param set-default MC_ROLLRATE_D 0.001
+param set-default MC_PITCH_P 8
+param set-default MC_PITCHRATE_P 0.08
+param set-default MC_PITCHRATE_I 0.25
+param set-default MC_PITCHRATE_D 0.001
+param set-default MC_YAW_P 4
+param set-default MC_YAWRATE_P 0.2
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
 
-	param set MPC_MANTHR_MIN 0
-	param set MPC_MAN_TILT_MAX 60
+param set-default MC_ROLLRATE_MAX 1600
+param set-default MC_PITCHRATE_MAX 1600
+param set-default MC_YAWRATE_MAX 1000
 
-	# use thrust curve factor (instead of TPA)
-	param set THR_MDL_FAC 0.3
+param set-default MPC_MANTHR_MIN 0
+param set-default MPC_MAN_TILT_MAX 60
 
-	param set PWM_MAIN_MIN 1075
-	# enable one-shot
-	param set PWM_MAIN_RATE 0
+# use thrust curve factor (instead of TPA)
+param set-default THR_MDL_FAC 0.3
 
-	# enable high-rate logging profile (helps with tuning)
-	param set SDLOG_PROFILE 19
+param set-default PWM_MAIN_MIN 1075
+# enable one-shot
+param set-default PWM_MAIN_RATE 0
 
-	param set IMU_DGYRO_CUTOFF 50
-	param set IMU_GYRO_CUTOFF 90
+# enable high-rate logging profile (helps with tuning)
+param set-default SDLOG_PROFILE 19
 
-	param set CBRK_IO_SAFETY 22027
-fi
+param set-default IMU_DGYRO_CUTOFF 50
+param set-default IMU_GYRO_CUTOFF 90
+
+param set-default CBRK_IO_SAFETY 22027

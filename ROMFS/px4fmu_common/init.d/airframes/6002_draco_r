@@ -30,109 +30,106 @@
 set MIXER hexa_x
 set PWM_OUT 12345678
 
-if [ $AUTOCNF = yes ]
-then
-	###############################################
-	# Attitude & rate gains
-	###############################################
-	# Roll
-	param set MC_ROLL_P 6.5
-	param set MC_ROLLRATE_P 0.15
-	param set MC_ROLLRATE_I 0.05
-	param set MC_ROLLRATE_D 0.0013
-	param set MC_ROLLRATE_MAX 800
-	# Pitch
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0.15
-	param set MC_PITCHRATE_I 0.05
-	param set MC_PITCHRATE_D 0.0016
-	param set MC_PITCHRATE_MAX 800
-	# Yaw
-	param set MC_YAW_P 2.8
-	param set MC_YAWRATE_P 0.2
-	param set MC_YAWRATE_I 0.1
-	param set MC_YAWRATE_D 0
-	param set MC_YAW_FF 0
-	param set MC_YAWRATE_MAX 700
 
-	###############################################
-	# Multirotor Position Gains
-	###############################################
-	param set MPC_ACC_HOR 8
-	param set MPC_THR_MIN 0.06
-	param set MPC_THR_HOVER 0.3
-	# altitude control gains
-	param set MPC_Z_P 1
-	param set MPC_Z_VEL_P_ACC 4
-	param set MPC_Z_VEL_I_ACC 0.4
-	# position control gains
-	param set MPC_XY_P 0.9500
-	param set MPC_XY_VEL_P_ACC 1.8
-	param set MPC_XY_VEL_I_ACC 0.4
-	param set MPC_XY_VEL_D_ACC 0.2
-	# etc gains
-	param set MPC_TKO_RAMP_T 0.4
-	param set MPC_TKO_SPEED 1.5
-	param set MPC_VEL_MANUAL 5
+###############################################
+# Attitude & rate gains
+###############################################
+# Roll
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.15
+param set-default MC_ROLLRATE_I 0.05
+param set-default MC_ROLLRATE_D 0.0013
+param set-default MC_ROLLRATE_MAX 800
+# Pitch
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.15
+param set-default MC_PITCHRATE_I 0.05
+param set-default MC_PITCHRATE_D 0.0016
+param set-default MC_PITCHRATE_MAX 800
+# Yaw
+param set-default MC_YAW_P 2.8
+param set-default MC_YAWRATE_P 0.2
+param set-default MC_YAWRATE_I 0.1
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAW_FF 0
+param set-default MC_YAWRATE_MAX 700
 
-	# Filter settings
-	param set IMU_DGYRO_CUTOFF 90
-	param set IMU_GYRO_CUTOFF 100
+###############################################
+# Multirotor Position Gains
+###############################################
+param set-default MPC_ACC_HOR 8
+param set-default MPC_THR_MIN 0.06
+param set-default MPC_THR_HOVER 0.3
+# altitude control gains
+param set-default MPC_Z_P 1
+param set-default MPC_Z_VEL_P_ACC 4
+param set-default MPC_Z_VEL_I_ACC 0.4
+# position control gains
+param set-default MPC_XY_P 0.9500
+param set-default MPC_XY_VEL_P_ACC 1.8
+param set-default MPC_XY_VEL_I_ACC 0.4
+param set-default MPC_XY_VEL_D_ACC 0.2
+# etc gains
+param set-default MPC_TKO_RAMP_T 0.4
+param set-default MPC_TKO_SPEED 1.5
+param set-default MPC_VEL_MANUAL 5
 
-	# Thrust curve (avoids the need for TPA)
-	param set THR_MDL_FAC 0.25
+# Filter settings
+param set-default IMU_DGYRO_CUTOFF 90
+param set-default IMU_GYRO_CUTOFF 100
 
-	# System
-	param set PWM_MAIN_MAX 1950
-	param set PWM_MAIN_MIN 1100
-	param set PWM_MAIN_DIS5 980
-	param set PWM_MAIN_DIS6 980
+# Thrust curve (avoids the need for TPA)
+param set-default THR_MDL_FAC 0.25
 
-	# DSHOT
-	param set DSHOT_CONFIG 600
+# System
+param set-default PWM_MAIN_MAX 1950
+param set-default PWM_MAIN_MIN 1100
+param set-default PWM_MAIN_DIS5 980
+param set-default PWM_MAIN_DIS6 980
 
-	param set MIS_TAKEOFF_ALT 1.1
+# DSHOT
+param set-default DSHOT_CONFIG 600
 
-	#####################################
-	# EKF
-	#####################################
-	# Height mode as GPS
-	param set EKF2_HGT_MODE 1
-	# Enable optical flow and GPS
-	param set EKF2_AID_MASK 1
-	param set EKF2_RNG_AID 1
-	param set EKF2_MAG_TYPE 1
-	param set EKF2_OF_QMIN 80
+param set-default MIS_TAKEOFF_ALT 1.1
 
-	# default horizontal stablization sensors
-	param set SENS_EN_PMW3901 1
-	param set SENS_EN_PX4FLOW 1
-	param set SENS_EN_LL40LS 2
-	param set SENS_FLOW_ROT 2
+#####################################
+# EKF
+#####################################
+# Height mode as GPS
+param set-default EKF2_HGT_MODE 1
+# Enable optical flow and GPS
+param set-default EKF2_AID_MASK 1
+param set-default EKF2_RNG_AID 1
+param set-default EKF2_MAG_TYPE 1
+param set-default EKF2_OF_QMIN 80
 
-	#
-	param set CBRK_IO_SAFETY 22027
-	param set COM_DISARM_LAND 3
+# default horizontal stablization sensors
+param set-default SENS_EN_PMW3901 1
+param set-default SENS_EN_PX4FLOW 1
+param set-default SENS_EN_LL40LS 2
+param set-default SENS_FLOW_ROT 2
 
-	# PWM ONESHOT
-	param set PWM_MAIN_RATE 0
+#
+param set-default CBRK_IO_SAFETY 22027
+param set-default COM_DISARM_LAND 3
 
-	# Battery
-	param set BAT_SOURCE 0
-	param set BAT_N_CELLS 4
-	param set BAT_V_DIV 10.133
+# PWM ONESHOT
+param set-default PWM_MAIN_RATE 0
 
-	# TELEM1 ttyS1
-	param set MAV_0_CONFIG 101
-	param set MAV_0_MODE 0	# onboard
-	param set MAV_0_FORWARD 1
-	param set SER_TEL1_BAUD 57600
+# Battery
+param set-default BAT_SOURCE 0
+param set-default BAT_N_CELLS 4
+param set-default BAT_V_DIV 10.133
 
-	# TELEM2 ttyS2
-	param set MAV_1_CONFIG 102
-	param set MAV_1_MODE 2
-	param set MAV_1_FORWARD 1
-	param set MAV_1_RATE 800000
-	param set SER_TEL2_BAUD 921600
-fi
+# TELEM1 ttyS1
+param set-default MAV_0_CONFIG 101
+param set-default MAV_0_MODE 0	# onboard
+param set-default MAV_0_FORWARD 1
+param set-default SER_TEL1_BAUD 57600
 
+# TELEM2 ttyS2
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_MODE 2
+param set-default MAV_1_FORWARD 1
+param set-default MAV_1_RATE 800000
+param set-default SER_TEL2_BAUD 921600

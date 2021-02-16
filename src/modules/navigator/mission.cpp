@@ -752,11 +752,6 @@ Mission::set_mission_items()
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					/* ignore yaw here, otherwise it might yaw before heading_sp_update takes over */
 					_mission_item.yaw = NAN;
-					/* since _mission_item.time_inside and and _mission_item.pitch_min build a union, we need to set time_inside to zero
-					 * since in NAV_CMD_TAKEOFF mode there is currently no time_inside.
-					 * Note also that resetting time_inside to zero will cause pitch_min to be zero as well.
-					 */
-					_mission_item.time_inside = 0.0f;
 
 				} else if (_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF
 					   && _work_item_type == WORK_ITEM_TYPE_DEFAULT
@@ -783,10 +778,6 @@ Mission::set_mission_items()
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					/* ignore yaw here, otherwise it might yaw before heading_sp_update takes over */
 					_mission_item.yaw = NAN;
-					/* since _mission_item.time_inside and and _mission_item.pitch_min build a union, we need to set time_inside to zero
-					 * since in NAV_CMD_TAKEOFF mode there is currently no time_inside.
-					 */
-					_mission_item.time_inside = 0.0f;
 				}
 
 				/* if we just did a VTOL takeoff, prepare transition */
@@ -1864,7 +1855,6 @@ bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const posit
 		(p1->yawspeed_valid == p2->yawspeed_valid) &&
 		(fabsf(p1->loiter_radius - p2->loiter_radius) < FLT_EPSILON) &&
 		(p1->loiter_direction == p2->loiter_direction) &&
-		(fabsf(p1->pitch_min - p2->pitch_min) < FLT_EPSILON) &&
 		(fabsf(p1->a_x - p2->a_x) < FLT_EPSILON) &&
 		(fabsf(p1->a_y - p2->a_y) < FLT_EPSILON) &&
 		(fabsf(p1->a_z - p2->a_z) < FLT_EPSILON) &&

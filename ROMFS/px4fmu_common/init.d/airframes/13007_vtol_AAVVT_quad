@@ -14,37 +14,34 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_ROLL_P 7
-	param set MC_ROLLRATE_P 0.15
-	param set MC_ROLLRATE_I 0.002
-	param set MC_ROLLRATE_D 0.003
-	param set MC_ROLLRATE_FF 0
-	param set MC_PITCH_P 7
-	param set MC_PITCHRATE_P 0.12
-	param set MC_PITCHRATE_I 0.002
-	param set MC_PITCHRATE_D 0.003
-	param set MC_PITCHRATE_FF 0
-	param set MC_YAW_P 2.8
-	param set MC_YAWRATE_P 0.22
-	param set MC_YAWRATE_I 0.02
-	param set MC_YAWRATE_D 0
-	param set MC_YAWRATE_FF 0
-	param set MC_YAWRATE_MAX 40
 
-	param set MPC_YAWRAUTO_MAX 40
+param set-default MC_ROLL_P 7
+param set-default MC_ROLLRATE_P 0.15
+param set-default MC_ROLLRATE_I 0.002
+param set-default MC_ROLLRATE_D 0.003
+param set-default MC_ROLLRATE_FF 0
+param set-default MC_PITCH_P 7
+param set-default MC_PITCHRATE_P 0.12
+param set-default MC_PITCHRATE_I 0.002
+param set-default MC_PITCHRATE_D 0.003
+param set-default MC_PITCHRATE_FF 0
+param set-default MC_YAW_P 2.8
+param set-default MC_YAWRATE_P 0.22
+param set-default MC_YAWRATE_I 0.02
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAWRATE_FF 0
+param set-default MC_YAWRATE_MAX 40
 
-	param set PWM_AUX_DIS5 950
-	param set PWM_MAIN_RATE 400
+param set-default MPC_YAWRAUTO_MAX 40
 
-	param set VT_F_TRANS_THR 0.75
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-	param set VT_IDLE_PWM_MC 1080
-	param set VT_TYPE 2
-fi
+param set-default PWM_AUX_DIS5 950
+param set-default PWM_MAIN_RATE 400
 
+param set-default VT_F_TRANS_THR 0.75
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
+param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_TYPE 2
 set MAV_TYPE 22
 
 set MIXER quad_x

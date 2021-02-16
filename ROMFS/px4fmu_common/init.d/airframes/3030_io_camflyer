@@ -22,30 +22,28 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_AIRSPD_MAX 15
-	param set FW_AIRSPD_MIN 10
-	param set FW_AIRSPD_TRIM 13
-	param set FW_R_TC 0.3
-	param set FW_P_TC 0.3
-	param set FW_L1_DAMPING 0.74
-	param set FW_L1_PERIOD 16
-	param set FW_LND_ANG 15
-	param set FW_LND_FLALT 5
-	param set FW_LND_HHDIST 15
-	param set FW_LND_HVIRT 13
-	param set FW_LND_TLALT 5
-	param set FW_THR_LND_MAX 0
-	param set FW_PR_FF 0.35
-	param set FW_PR_IMAX 0.4
-	param set FW_PR_P 0.08
-	param set FW_RR_FF 0.6
-	param set FW_RR_IMAX 0.2
-	param set FW_RR_P 0.04
+param set-default FW_AIRSPD_MAX 15
+param set-default FW_AIRSPD_MIN 10
+param set-default FW_AIRSPD_TRIM 13
+param set-default FW_R_TC 0.3
+param set-default FW_P_TC 0.3
+param set-default FW_L1_DAMPING 0.74
+param set-default FW_L1_PERIOD 16
+param set-default FW_LND_ANG 15
+param set-default FW_LND_FLALT 5
+param set-default FW_LND_HHDIST 15
+param set-default FW_LND_HVIRT 13
+param set-default FW_LND_TLALT 5
+param set-default FW_THR_LND_MAX 0
+param set-default FW_PR_FF 0.35
+param set-default FW_PR_IMAX 0.4
+param set-default FW_PR_P 0.08
+param set-default FW_RR_FF 0.6
+param set-default FW_RR_IMAX 0.2
+param set-default FW_RR_P 0.04
 
-	param set PWM_MAIN_DISARM 1000
-fi
+param set-default PWM_MAIN_DISARM 1000
+
 
 set MIXER fw_generic_wing
 

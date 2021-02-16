@@ -23,70 +23,65 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
+####################################
+# Airspeed
+####################################
+param set-default FW_AIRSPD_MIN  15 # = 29 knots
+param set-default FW_AIRSPD_TRIM 20 # = 39 knots
+param set-default FW_AIRSPD_MAX  27 # = 52 knots
 
-	####################################
-	# Airspeed
-	####################################
+####################################
+# The Main L1 Controller
+####################################
+param set-default FW_L1_PERIOD 20 #units of meters
 
-	param set FW_AIRSPD_MIN  15 # = 29 knots
-	param set FW_AIRSPD_TRIM 20 # = 39 knots
-	param set FW_AIRSPD_MAX  27 # = 52 knots
+# Damping factor for L1 control (def = 0.75)
+param set-default FW_L1_DAMPING 0.75
 
-	####################################
-	# The Main L1 Controller
-	####################################
+####################################
+# Pitch
+####################################
 
-	param set FW_L1_PERIOD 20 #units of meters
+# Basic limits (def = +/- 45 deg)
+param set-default FW_P_LIM_MAX  45
+param set-default FW_P_LIM_MIN -45
 
-	# Damping factor for L1 control (def = 0.75)
-	param set FW_L1_DAMPING 0.75
+# Time Constant (def = 0.4s)
+param set-default FW_P_TC 0.4
 
-	####################################
-	# Pitch
-	####################################
+# Pitch rate feed forward (def = 0.5 %/rad/sec)
+param set-default FW_PR_FF 0.35
 
-	# Basic limits (def = +/- 45 deg)
-	param set FW_P_LIM_MAX  45
-	param set FW_P_LIM_MIN -45
+# Pitch rate integrator limit (def = 0.4)
+param set-default FW_PR_IMAX 0.4
 
-	# Time Constant (def = 0.4s)
-	param set FW_P_TC 0.4
+# Pitch rate proportional gain (def = 0.08 %/rad/sec)
+param set-default FW_PR_P 0.08
 
-	# Pitch rate feed forward (def = 0.5 %/rad/sec)
-	param set FW_PR_FF 0.35
+####################################
+# Roll
+####################################
 
-	# Pitch rate integrator limit (def = 0.4)
-	param set FW_PR_IMAX 0.4
+# Basic limits (def = 50 deg)
+param set-default FW_R_LIM 40
 
-	# Pitch rate proportional gain (def = 0.08 %/rad/sec)
-	param set FW_PR_P 0.08
+# Roll rate upper limit (def = 70 deg/s)
+param set-default FW_R_RMAX 50
 
-	####################################
-	# Roll
-	####################################
+# Roll Time Constant (def = 0.4 s)
+param set-default FW_R_TC 0.4
 
-	# Basic limits (def = 50 deg)
-	param set FW_R_LIM 40
+# Roll rate feed forward (def = 0.5 %/rad/sec)
+param set-default FW_RR_FF 0.5
 
-	# Roll rate upper limit (def = 70 deg/s)
-	param set FW_R_RMAX 50
+# Roll rate proportional Gain (def = 0.05 %/rad/sec)
+param set-default FW_RR_P 0.05
 
-	# Roll Time Constant (def = 0.4 s)
-	param set FW_R_TC 0.4
+# Roll Integrator Anti-Windup
+param set-default FW_RR_IMAX 0.2
 
-	# Roll rate feed forward (def = 0.5 %/rad/sec)
-	param set FW_RR_FF 0.5
+param set-default PWM_MAIN_DISARM 1000
 
-	# Roll rate proportional Gain (def = 0.05 %/rad/sec)
-	param set FW_RR_P 0.05
-
-	# Roll Integrator Anti-Windup
-	param set FW_RR_IMAX 0.2
-
-	param set PWM_MAIN_DISARM 1000
-fi
 
 set MIXER fw_generic_wing.main.mix
 

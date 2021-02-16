@@ -14,75 +14,72 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_AIRSPD_MAX   22
-	param set FW_AIRSPD_MIN   14
-	param set FW_AIRSPD_TRIM  16
-	param set FW_L1_PERIOD    25
-	param set FW_PR_P 0.060
-	param set FW_P_RMAX_NEG   40
-	param set FW_P_RMAX_POS   40
-	param set FW_RR_FF    0.4
-	param set FW_RR_P 0.04
-	param set FW_R_RMAX   40
 
-	param set MC_PITCHRATE_D 0.004
-	param set MC_PITCHRATE_I 0
-	param set MC_PITCHRATE_MAX 60
-	param set MC_PITCHRATE_P 0.21
-	param set MC_PITCH_P 4
-	param set MC_ROLLRATE_D 0.004
-	param set MC_ROLLRATE_I 0.002
-	param set MC_ROLLRATE_MAX 60
-	param set MC_ROLLRATE_P 0.24
-	param set MC_ROLL_P 4
-	param set MC_YAWRATE_I 0.02
-	param set MC_YAWRATE_MAX 40
-	param set MC_YAWRATE_P 0.18
+param set-default FW_AIRSPD_MAX   22
+param set-default FW_AIRSPD_MIN   14
+param set-default FW_AIRSPD_TRIM  16
+param set-default FW_L1_PERIOD    25
+param set-default FW_PR_P 0.060
+param set-default FW_P_RMAX_NEG   40
+param set-default FW_P_RMAX_POS   40
+param set-default FW_RR_FF    0.4
+param set-default FW_RR_P 0.04
+param set-default FW_R_RMAX   40
 
-	param set MIS_TAKEOFF_ALT 2.5
-	param set MIS_YAW_TMT 20
+param set-default MC_PITCHRATE_D 0.004
+param set-default MC_PITCHRATE_I 0
+param set-default MC_PITCHRATE_MAX 60
+param set-default MC_PITCHRATE_P 0.21
+param set-default MC_PITCH_P 4
+param set-default MC_ROLLRATE_D 0.004
+param set-default MC_ROLLRATE_I 0.002
+param set-default MC_ROLLRATE_MAX 60
+param set-default MC_ROLLRATE_P 0.24
+param set-default MC_ROLL_P 4
+param set-default MC_YAWRATE_I 0.02
+param set-default MC_YAWRATE_MAX 40
+param set-default MC_YAWRATE_P 0.18
 
-	param set MPC_ACC_HOR_MAX 1
-	param set MPC_HOLD_MAX_XY 0.5
-	param set MPC_HOLD_MAX_Z  0.5
-	param set MPC_LAND_SPEED  1
-	param set MPC_MANTHR_MIN  0.05
-	param set MPC_MAN_Y_MAX   120
-	param set MPC_THR_MIN 0.07
-	param set MPC_TILTMAX_AIR 35
-	param set MPC_TILTMAX_LND 20
-	param set MPC_TKO_SPEED   1
-	param set MPC_XY_P    0.3
-	param set MPC_XY_VEL_MAX  3
-	param set MPC_XY_VEL_P_ACC 1
-	param set MPC_Z_P 0.5
-	param set MPC_Z_VEL_P_ACC 2
-	param set MPC_YAWRAUTO_MAX 40
+param set-default MIS_TAKEOFF_ALT 2.5
+param set-default MIS_YAW_TMT 20
 
-	param set NAV_ACC_RAD 3
+param set-default MPC_ACC_HOR_MAX 1
+param set-default MPC_HOLD_MAX_XY 0.5
+param set-default MPC_HOLD_MAX_Z  0.5
+param set-default MPC_LAND_SPEED  1
+param set-default MPC_MANTHR_MIN  0.05
+param set-default MPC_MAN_Y_MAX   120
+param set-default MPC_THR_MIN 0.07
+param set-default MPC_TILTMAX_AIR 35
+param set-default MPC_TILTMAX_LND 20
+param set-default MPC_TKO_SPEED   1
+param set-default MPC_XY_P    0.3
+param set-default MPC_XY_VEL_MAX  3
+param set-default MPC_XY_VEL_P_ACC 1
+param set-default MPC_Z_P 0.5
+param set-default MPC_Z_VEL_P_ACC 2
+param set-default MPC_YAWRAUTO_MAX 40
 
-	param set PWM_AUX_REV1    1
-	param set PWM_AUX_REV2    1
-	param set PWM_AUX_REV3    1
-	param set PWM_AUX_REV4    1
+param set-default NAV_ACC_RAD 3
 
-	param set PWM_AUX_DIS5 950
+param set-default PWM_AUX_REV1    1
+param set-default PWM_AUX_REV2    1
+param set-default PWM_AUX_REV3    1
+param set-default PWM_AUX_REV4    1
 
-	param set PWM_MAIN_RATE 400
+param set-default PWM_AUX_DIS5 950
 
-	param set VT_ARSP_TRANS   15
-	param set VT_B_TRANS_DUR  4
-	param set VT_F_TRANS_THR    0.6
-	param set VT_IDLE_PWM_MC 1180
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-	param set VT_TRANS_MIN_TM 5
-	param set VT_TRANS_TIMEOUT    30
-	param set VT_TYPE 2
+param set-default PWM_MAIN_RATE 400
 
-fi
+param set-default VT_ARSP_TRANS   15
+param set-default VT_B_TRANS_DUR  4
+param set-default VT_F_TRANS_THR    0.6
+param set-default VT_IDLE_PWM_MC 1180
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
+param set-default VT_TRANS_MIN_TM 5
+param set-default VT_TRANS_TIMEOUT    30
+param set-default VT_TYPE 2
 
 set MAV_TYPE 22
 

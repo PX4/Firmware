@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# mRo Control Zero specific board sensors init
+#------------------------------------------------------------------------------
+
+board_adc start
+
+# Internal ICM-20602
+icm20602 -s -b 1 -R 8 start
+
+# Internal SPI bus BMI088 accel & gyro
+bmi088 -A -s -b 5 -R 8 start
+bmi088 -G -s -b 5 -R 8 start
+
+# Internal ICM-20948 (with magnetometer)
+icm20948 -s -b 1 -R 8 -M start
+
+# Interal DPS310 (barometer)
+dps310 -s -b 2 start

@@ -24,37 +24,34 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_ROLL_P 7
-	param set MC_ROLLRATE_P 0.19
-	param set MC_ROLLRATE_I 0.002
-	param set MC_ROLLRATE_D 0.005
-	param set MC_ROLLRATE_FF 0
-	param set MC_PITCH_P 7
-	param set MC_PITCHRATE_P 0.14
-	param set MC_PITCHRATE_I 0.002
-	param set MC_PITCHRATE_D 0.004
-	param set MC_PITCHRATE_FF 0
-	param set MC_YAW_P 4
-	param set MC_YAWRATE_P 0.22
-	param set MC_YAWRATE_I 0.02
-	param set MC_YAWRATE_D 0
-	param set MC_YAWRATE_FF 0
 
-	param set PWM_MAIN_RATE 400
+param set-default MC_ROLL_P 7
+param set-default MC_ROLLRATE_P 0.19
+param set-default MC_ROLLRATE_I 0.002
+param set-default MC_ROLLRATE_D 0.005
+param set-default MC_ROLLRATE_FF 0
+param set-default MC_PITCH_P 7
+param set-default MC_PITCHRATE_P 0.14
+param set-default MC_PITCHRATE_I 0.002
+param set-default MC_PITCHRATE_D 0.004
+param set-default MC_PITCHRATE_FF 0
+param set-default MC_YAW_P 4
+param set-default MC_YAWRATE_P 0.22
+param set-default MC_YAWRATE_I 0.02
+param set-default MC_YAWRATE_D 0
+param set-default MC_YAWRATE_FF 0
 
-	param set VT_FW_MOT_OFFID 34
-	param set VT_IDLE_PWM_MC 1080
-	param set VT_MOT_ID 123456
-	param set VT_FW_MOT_OFFID 56
-	param set VT_TILT_MC 0.08
-	param set VT_TILT_TRANS 0.5
-	param set VT_TILT_FW 0.9
-	param set VT_ELEV_MC_LOCK 0
-	param set VT_TYPE 1
-fi
+param set-default PWM_MAIN_RATE 400
 
+param set-default VT_FW_MOT_OFFID 34
+param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_MOT_ID 123456
+param set-default VT_FW_MOT_OFFID 56
+param set-default VT_TILT_MC 0.08
+param set-default VT_TILT_TRANS 0.5
+param set-default VT_TILT_FW 0.9
+param set-default VT_ELEV_MC_LOCK 0
+param set-default VT_TYPE 1
 set MAV_TYPE 21
 
 set MIXER firefly6

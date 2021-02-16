@@ -313,8 +313,10 @@ rtps:
     id: 148
   - msg: takeoff_status
     id: 149
-  - msg: internal_resistance
+  - msg: heater_status
     id: 150
+  - msg: internal_resistance
+    id: 151
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 170

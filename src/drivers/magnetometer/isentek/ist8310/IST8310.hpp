@@ -109,7 +109,7 @@ private:
 		// Register               | Set bits, Clear bits
 		{ Register::CNTL2,        0, CNTL2_BIT::SRST },
 		{ Register::CNTL3,        CNTL3_BIT::Z_16BIT | CNTL3_BIT::Y_16BIT | CNTL3_BIT::X_16BIT, 0 },
-		{ Register::AVGCNTL,      AVGCNTL_BIT::Y_16TIMES | AVGCNTL_BIT::XZ_16TIMES, 0 },
+		{ Register::AVGCNTL,      AVGCNTL_BIT::Y_16TIMES_SET | AVGCNTL_BIT::XZ_16TIMES_SET, AVGCNTL_BIT::Y_16TIMES_CLEAR | AVGCNTL_BIT::XZ_16TIMES_CLEAR },
 		{ Register::PDCNTL,       PDCNTL_BIT::PULSE_NORMAL, 0 },
 	};
 };

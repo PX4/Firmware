@@ -56,9 +56,7 @@ static constexpr float DT_MAX = 1.0f;	///< max value of _dt allowed before a fil
  * which is used by the airspeed complimentary filter.
  */
 void TECS::update_vehicle_state_estimates(float equivalent_airspeed, const float speed_deriv_forward,
-		bool altitude_lock,
-		bool in_air,
-		float altitude, float vz)
+		bool altitude_lock, bool in_air, float altitude, float vz)
 {
 	// calculate the time lapsed since the last update
 	uint64_t now = hrt_absolute_time();
@@ -265,7 +263,7 @@ void TECS::_update_energy_estimates()
 	_SKE_rate = _tas_state * _speed_derivative;// kinetic energy rate of change
 }
 
-void TECS::_update_throttle_setpoint(const float throttle_cruise, const matrix::Dcmf &rotMat)
+void TECS::_update_throttle_setpoint(const float throttle_cruise)
 {
 	// Calculate demanded rate of change of total energy, respecting vehicle limits.
 	// We will constrain the value below.
@@ -287,8 +285,7 @@ void TECS::_update_throttle_setpoint(const float throttle_cruise, const matrix::
 		// Adjust the demanded total energy rate to compensate for induced drag rise in turns.
 		// Assume induced drag scales linearly with normal load factor.
 		// The additional normal load factor is given by (1/cos(bank angle) - 1)
-		const float cosPhi = constrain(sqrtf((rotMat(0, 1) * rotMat(0, 1)) + (rotMat(1, 1) * rotMat(1, 1))), 0.1f, 1.0f);
-		STE_rate_setpoint = STE_rate_setpoint + _load_factor_correction * (1.0f / cosPhi - 1.0f);
+		STE_rate_setpoint = STE_rate_setpoint + _load_factor_correction * (_load_factor - 1.f);
 
 		STE_rate_setpoint = constrain(STE_rate_setpoint, _STE_rate_min, _STE_rate_max);
 
@@ -533,7 +530,7 @@ void TECS::_update_STE_rate_lim()
 	_STE_rate_min = - _min_sink_rate * CONSTANTS_ONE_G;
 }
 
-void TECS::update_pitch_throttle(const matrix::Dcmf &rotMat, float pitch, float baro_altitude, float hgt_setpoint,
+void TECS::update_pitch_throttle(float pitch, float baro_altitude, float hgt_setpoint,
 				 float EAS_setpoint, float equivalent_airspeed, float eas_to_tas, bool climb_out_setpoint, float pitch_min_climbout,
 				 float throttle_min, float throttle_max, float throttle_cruise, float pitch_limit_min, float pitch_limit_max)
 {
@@ -580,7 +577,7 @@ void TECS::update_pitch_throttle(const matrix::Dcmf &rotMat, float pitch, float 
 	_update_energy_estimates();
 
 	// Calculate the throttle demand
-	_update_throttle_setpoint(throttle_cruise, rotMat);
+	_update_throttle_setpoint(throttle_cruise);
 
 	// Calculate the pitch demand
 	_update_pitch_setpoint();

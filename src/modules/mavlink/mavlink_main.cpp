@@ -747,7 +747,11 @@ Mavlink::get_free_tx_buf()
 
 	// if we are using network sockets, return max length of one packet
 	if (get_protocol() == Protocol::UDP) {
+# if defined(__PX4_POSIX)
+		return  1500 * 10; // Speed up FTP transfers
+# else
 		return  1500;
+# endif /* defined(__PX4_POSIX) */
 
 	} else
 #endif // MAVLINK_UDP

@@ -3,14 +3,11 @@
 # PX4 FMUv4pro specific board defaults
 #------------------------------------------------------------------------------
 
+# Multi-EKF
+param set-default EKF2_MULTI_IMU 3
+param set-default SENS_IMU_MODE 0
 
-if [ $AUTOCNF = yes ]
-then
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
+param set-default UAVCAN_ENABLE 2
 
-	param set UAVCAN_ENABLE 2
-fi
 
 set LOGGER_BUF 64

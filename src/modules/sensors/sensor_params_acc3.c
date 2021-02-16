@@ -118,6 +118,7 @@ PARAM_DEFINE_INT32(CAL_ACC3_ROT, -1);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_XOFF, 0.0f);
 
@@ -126,6 +127,7 @@ PARAM_DEFINE_FLOAT(CAL_ACC3_XOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_YOFF, 0.0f);
 
@@ -134,6 +136,7 @@ PARAM_DEFINE_FLOAT(CAL_ACC3_YOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_ZOFF, 0.0f);
 
@@ -142,6 +145,7 @@ PARAM_DEFINE_FLOAT(CAL_ACC3_ZOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_XSCALE, 1.0f);
 
@@ -150,6 +154,7 @@ PARAM_DEFINE_FLOAT(CAL_ACC3_XSCALE, 1.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_YSCALE, 1.0f);
 
@@ -158,5 +163,6 @@ PARAM_DEFINE_FLOAT(CAL_ACC3_YSCALE, 1.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC3_ZSCALE, 1.0f);

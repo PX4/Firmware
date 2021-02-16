@@ -104,6 +104,7 @@ using matrix::wrap_2pi;
 #include "streams/ATTITUDE_TARGET.hpp"
 #include "streams/AUTOPILOT_VERSION.hpp"
 #include "streams/COLLISION.hpp"
+#include "streams/COMPONENT_INFORMATION.hpp"
 #include "streams/DISTANCE_SENSOR.hpp"
 #include "streams/ESC_INFO.hpp"
 #include "streams/ESC_STATUS.hpp"
@@ -3151,6 +3152,9 @@ static const StreamListItem streams_list[] = {
 #if defined(STORAGE_INFORMATION_HPP)
 	create_stream_list_item<MavlinkStreamStorageInformation>(),
 #endif // STORAGE_INFORMATION_HPP
+#if defined(COMPONENT_INFORMATION_HPP)
+	create_stream_list_item<MavlinkStreamComponentInformation>(),
+#endif // COMPONENT_INFORMATION_HPP
 #if defined(RAW_RPM_HPP)
 	create_stream_list_item<MavlinkStreamRawRpm>()
 #endif // RAW_RPM_HPP

@@ -13,6 +13,7 @@ exec find boards msg src platforms test \
     -path platforms/qurt/dspal -prune -o \
     -path src/drivers/uavcan/libuavcan -prune -o \
     -path src/drivers/uavcan_v1/libcanard -prune -o \
+    -path src/drivers/uavcannode_gps_demo/libcanard -prune -o \
     -path src/drivers/uavcan/uavcan_drivers/kinetis/driver/include/uavcan_kinetis -prune -o \
     -path src/lib/ecl -prune -o \
     -path src/lib/matrix -prune -o \

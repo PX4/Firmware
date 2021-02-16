@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# mRo Control Zero specific board defaults
+#------------------------------------------------------------------------------
+
+
+if [ $AUTOCNF = yes ]
+then
+	# Multi-EKF
+	param set EKF2_MULTI_IMU 3
+	param set SENS_IMU_MODE 0
+
+	param set UAVCAN_ENABLE 2
+fi
+
+set LOGGER_BUF 64
+set MIXER_AUX none
+
+safety_button start

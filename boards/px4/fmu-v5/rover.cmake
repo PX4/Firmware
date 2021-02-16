@@ -22,7 +22,7 @@ px4_add_board(
 		camera_trigger
 		distance_sensor # all available distance sensor drivers
 		gps
-		imu/adis16448
+		imu/analog_devices/adis16448
 		imu/adis16477
 		imu/adis16497
 		imu/bosch/bmi055
@@ -33,7 +33,6 @@ px4_add_board(
 		lights/rgbled_ncp5623c
 		lights/rgbled_pwm
 		magnetometer # all available magnetometer drivers
-		mkblctrl
 		optical_flow # all available optical flow drivers
 		pca9685
 		pwm_input

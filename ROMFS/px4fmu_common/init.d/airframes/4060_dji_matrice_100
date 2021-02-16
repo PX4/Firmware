@@ -17,21 +17,19 @@
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_N_CELLS 6
 
-	param set MC_ROLL_P 6.5
-	param set MC_ROLLRATE_P 0.05
-	param set MC_ROLLRATE_I 0.05
-	param set MC_ROLLRATE_D 0.001
-	param set MC_PITCH_P 6.5
-	param set MC_PITCHRATE_P 0.05
-	param set MC_PITCHRATE_I 0.05
-	param set MC_PITCHRATE_D 0.001
-	param set MC_YAWRATE_P 0.2
-	param set MC_YAWRATE_I 0
-	param set MC_YAWRATE_D 0
+param set-default BAT_N_CELLS 6
 
-	param set PWM_MAIN_MIN 1200
-fi
+param set-default MC_ROLL_P 6.5
+param set-default MC_ROLLRATE_P 0.05
+param set-default MC_ROLLRATE_I 0.05
+param set-default MC_ROLLRATE_D 0.001
+param set-default MC_PITCH_P 6.5
+param set-default MC_PITCHRATE_P 0.05
+param set-default MC_PITCHRATE_I 0.05
+param set-default MC_PITCHRATE_D 0.001
+param set-default MC_YAWRATE_P 0.2
+param set-default MC_YAWRATE_I 0
+param set-default MC_YAWRATE_D 0
+
+param set-default PWM_MAIN_MIN 1200

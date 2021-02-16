@@ -1329,7 +1329,7 @@ void PX4IO::update_params()
 
 			if (param_get(param_find(str), &pwm_rev) == PX4_OK) {
 				if (pwm_rev >= 1) {
-					reverse_pwm_mask |= (2 << i);
+					reverse_pwm_mask |= (1 << i);
 				}
 
 			}

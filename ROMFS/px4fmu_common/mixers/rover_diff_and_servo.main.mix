@@ -13,25 +13,28 @@ Inputs to the mixer come from channel group 0 (vehicle attitude), channels 0 (ro
 See the README for more information on the scaler format.
 
 
-Output 0
+Output 1 - Empty
 -----------------------------------------
 Z:
 
-Steering mixer using roll on output 1
+Output 2 - Steering mixer using yaw
 ------------------------------------------
 M: 1
+O: 10000 10000 0 -10000 10000 5000
 S: 0 2  10000   10000     0 -10000  10000
 
 
-Output 2
+Output 3 - Left row of wheels using yaw and throttle (1s rise time)
 ------------------------------------------
 M: 2
+O: 10000 10000 0 -10000 10000 10000
 S: 0 2   -500   -500      0      0  10000
 S: 0 3  10000  10000      0 -10000  10000
 
 
-Output 3
+Output 4 - Right row of wheels using yaw and throttle (1s rise time)
 ------------------------------------------
 M: 2
+O: 10000 10000 0 -10000 10000 10000
 S: 0 2    500    500      0      0  10000
 S: 0 3  10000  10000      0 -10000  10000

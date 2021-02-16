@@ -1,3 +1,5 @@
+# workaround for syslink parameter PARAM_DEFINE_INT32(SLNK_RADIO_ADDR2, 3890735079); // 0xE7E7E7E7
+add_compile_options(-Wno-narrowing)
 
 px4_add_board(
 	PLATFORM nuttx

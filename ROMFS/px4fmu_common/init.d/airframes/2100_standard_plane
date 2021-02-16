@@ -24,11 +24,8 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set PWM_AUX_RATE 50
-	param set PWM_MAIN_RATE 50
-fi
+param set-default PWM_AUX_RATE 50
+param set-default PWM_MAIN_RATE 50
 
 set MIXER AETRFG
 

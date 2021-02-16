@@ -37,8 +37,6 @@ set MIXER none
 set MIXER_AUX none
 set MIXER_FILE none
 set MIXER_EXTRA none
-set MK_MODE none
-set MKBLCTRL_ARG ""
 set OUTPUT_MODE none
 set PARAM_FILE /fs/microsd/params
 set PWM_OUT none
@@ -272,6 +270,57 @@ else
 	fi
 
 	#
+	# Check if PX4IO present and update firmware if needed.
+	# Assumption IOFW set to firmware file and IO_PRESENT = no
+	#
+
+	if [ -f $IOFW ]
+	then
+		# Check for the mini using build with px4io fw file
+		# but not a px4IO
+		if ver hwtypecmp V540 V560
+		then
+			param set SYS_USE_IO 0
+		else
+			if px4io checkcrc ${IOFW}
+			then
+				set IO_PRESENT yes
+			else
+				# tune Program PX4IO
+				tune_control play -t 16 # tune 16 = PROG_PX4IO
+
+				if px4io start
+				then
+					# Try to safety px4 io so motor outputs don't go crazy.
+					if ! px4io safety_on
+					then
+						# px4io did not respond to the safety command.
+						px4io stop
+					fi
+				fi
+
+				if px4io forceupdate 14662 ${IOFW}
+				then
+					usleep 10000
+					tune_control stop
+					if px4io checkcrc ${IOFW}
+					then
+						echo "PX4IO CRC OK after updating"
+						tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
+						set IO_PRESENT yes
+					fi
+				fi
+
+				if [ $IO_PRESENT = no ]
+				then
+					echo "PX4IO update failed"
+					tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
+				fi
+			fi
+		fi
+	fi
+
+	#
 	# Set USE_IO flag.
 	#
 	if param compare -s SYS_USE_IO 1
@@ -279,54 +328,10 @@ else
 		set USE_IO yes
 	fi
 
-	#
-	# Check if PX4IO present and update firmware if needed.
-	# Assumption IOFW set to firmware file and IO_PRESENT = no
-	#
-
-	if [ -f $IOFW -a $USE_IO = yes ]
+	if [ $USE_IO = yes -a $IO_PRESENT = no ]
 	then
-		if px4io checkcrc ${IOFW}
-		then
-			set IO_PRESENT yes
-		else
-			# tune Program PX4IO
-			tune_control play -t 16 # tune 16 = PROG_PX4IO
-
-			if px4io start
-			then
-				# Try to safety px4 io so motor outputs don't go crazy.
-				if ! px4io safety_on
-				then
-					# px4io did not respond to the safety command.
-					px4io stop
-				fi
-			fi
-
-			if px4io forceupdate 14662 ${IOFW}
-			then
-				usleep 10000
-				tune_control stop
-				if px4io checkcrc ${IOFW}
-				then
-					echo "PX4IO CRC OK after updating"
-					tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
-					set IO_PRESENT yes
-				fi
-			fi
-
-			if [ $IO_PRESENT = no ]
-			then
-				echo "PX4IO update failed"
-				tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
-			fi
-		fi
-
-		if [ $USE_IO = yes -a $IO_PRESENT = no ]
-		then
-			echo "PX4IO not found"
-			tune_control play error
-		fi
+		echo "PX4IO not found"
+		tune_control play error
 	fi
 
 	#
@@ -588,8 +593,6 @@ unset MAV_TYPE
 unset MIXER
 unset MIXER_AUX
 unset MIXER_FILE
-unset MK_MODE
-unset MKBLCTRL_ARG
 unset OUTPUT_MODE
 unset PARAM_DEFAULTS_VER
 unset PARAM_FILE

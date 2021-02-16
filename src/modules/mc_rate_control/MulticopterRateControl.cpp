@@ -192,7 +192,7 @@ MulticopterRateControl::Run()
 					math::superexpo(_manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
 
 				_rates_sp = man_rate_sp.emult(_acro_rate_max);
-				_thrust_sp = _manual_control_setpoint.z;
+				_thrust_sp = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
 
 				// publish rate setpoint
 				vehicle_rates_setpoint_s v_rates_sp{};

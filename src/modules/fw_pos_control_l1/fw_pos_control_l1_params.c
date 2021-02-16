@@ -269,6 +269,18 @@ PARAM_DEFINE_FLOAT(FW_CLMBOUT_DIFF, 10.0f);
 PARAM_DEFINE_FLOAT(FW_LND_ANG, 5.0f);
 
 /**
+ * Minimum pitch during takeoff.
+ *
+ * @unit deg
+ * @min -5.0
+ * @max 30.0
+ * @decimal 1
+ * @increment 0.5
+ * @group FW L1 Control
+ */
+PARAM_DEFINE_FLOAT(FW_TKO_PITCH_MIN, 10.0f);
+
+/**
  *
  *
  * @unit m

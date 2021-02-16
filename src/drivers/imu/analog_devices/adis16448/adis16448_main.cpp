@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2018-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +31,12 @@
  *
  ****************************************************************************/
 
-#include "ADIS16448.h"
+#include "ADIS16448.hpp"
 
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 
-void
-ADIS16448::print_usage()
+void ADIS16448::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("adis16448", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("imu");
@@ -51,7 +50,7 @@ I2CSPIDriverBase *ADIS16448::instantiate(const BusCLIArguments &cli, const BusIn
 		int runtime_instance)
 {
 	ADIS16448 *instance = new ADIS16448(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
-					    cli.bus_frequency, cli.spi_mode);
+					    cli.bus_frequency, iterator.DRDYGPIO());
 
 	if (!instance) {
 		PX4_ERR("alloc failed");
@@ -71,7 +70,7 @@ extern "C" int adis16448_main(int argc, char *argv[])
 	int ch;
 	using ThisDriver = ADIS16448;
 	BusCLIArguments cli{false, true};
-	cli.default_spi_frequency = 1000000;
+	cli.default_spi_frequency = SPI_SPEED;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {
@@ -92,13 +91,11 @@ extern "C" int adis16448_main(int argc, char *argv[])
 
 	if (!strcmp(verb, "start")) {
 		return ThisDriver::module_start(cli, iterator);
-	}
 
-	if (!strcmp(verb, "stop")) {
+	} else if (!strcmp(verb, "stop")) {
 		return ThisDriver::module_stop(iterator);
-	}
 
-	if (!strcmp(verb, "status")) {
+	} else if (!strcmp(verb, "status")) {
 		return ThisDriver::module_status(iterator);
 	}
 

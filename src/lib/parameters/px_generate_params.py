@@ -50,9 +50,7 @@ def generate(xml_file, dest='.'):
         os.path.mkdir(dest)
 
     template_files = [
-        'px4_parameters.h.jinja',
-        'px4_parameters_public.h.jinja',
-        'px4_parameters.c.jinja',
+        'px4_parameters.hpp.jinja',
     ]
     for template_file in template_files:
         template = env.get_template(template_file)

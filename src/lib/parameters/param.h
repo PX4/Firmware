@@ -210,7 +210,6 @@ __EXPORT size_t		param_size(param_t param);
  *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @param val		Where to return the value, assumed to point to suitable storage for the parameter type.
- *			For structures, a bitwise copy of the structure is performed to this address.
  * @return		Zero if the parameter's value could be returned, nonzero otherwise.
  */
 __EXPORT int		param_get(param_t param, void *val);
@@ -220,7 +219,6 @@ __EXPORT int		param_get(param_t param, void *val);
  *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @param val		Where to return the value, assumed to point to suitable storage for the parameter type.
- *			For structures, a bitwise copy of the structure is performed to this address.
  * @return		Zero if the parameter's deafult value could be returned, nonzero otherwise.
  */
 __EXPORT int		param_get_default_value(param_t param, void *val);
@@ -230,10 +228,18 @@ __EXPORT int		param_get_default_value(param_t param, void *val);
  *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @param val		The value to set; assumed to point to a variable of the parameter type.
- *			For structures, the pointer is assumed to point to a structure to be copied.
  * @return		Zero if the parameter's value could be set from a scalar, nonzero otherwise.
  */
 __EXPORT int		param_set(param_t param, const void *val);
+
+/**
+ * Set the default value of a parameter.
+ *
+ * @param param		A handle returned by param_find or passed by param_foreach.
+ * @param val		The default value to set; assumed to point to a variable of the parameter type.
+ * @return		Zero if the parameter's default value could be set from a scalar, nonzero otherwise.
+ */
+__EXPORT int		param_set_default_value(param_t param, const void *val);
 
 /**
  * Mark a parameter as used. Only marked parameters will be sent to a GCS.
@@ -248,7 +254,6 @@ __EXPORT void		param_set_used(param_t param);
  *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @param val		The value to set; assumed to point to a variable of the parameter type.
- *			For structures, the pointer is assumed to point to a structure to be copied.
  * @return		Zero if the parameter's value could be set from a scalar, nonzero otherwise.
  */
 __EXPORT int		param_set_no_notification(param_t param, const void *val);
@@ -262,9 +267,6 @@ __EXPORT void		param_notify_changes(void);
 /**
  * Reset a parameter to its default value.
  *
- * This function frees any storage used by struct parameters, and returns the parameter
- * to its default value.
- *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @return		Zero on success, nonzero on failure
  */
@@ -273,9 +275,6 @@ __EXPORT int		param_reset(param_t param);
 /**
  * Reset a parameter to its default value, but do not notify the system about the change.
  *
- * This function frees any storage used by struct parameters, and returns the parameter
- * to its default value.
- *
  * @param param		A handle returned by param_find or passed by param_foreach.
  * @return		Zero on success, nonzero on failure
  */
@@ -283,15 +282,11 @@ __EXPORT int		param_reset_no_notification(param_t param);
 
 /**
  * Reset all parameters to their default values.
- *
- * This function also releases the storage used by struct parameters.
  */
 __EXPORT void		param_reset_all(void);
 
 /**
  * Reset all parameters to their default values except for excluded parameters.
- *
- * This function also releases the storage used by struct parameters.
  *
  * @param excludes			Array of param names to exclude from resetting. Use a wildcard
  *							at the end to exclude parameters with a certain prefix.
@@ -303,8 +298,6 @@ typedef bool(*param_filter_func)(param_t handle);
 
 /**
  * Reset only specific parameters to their default values.
- *
- * This function also releases the storage used by struct parameters.
  *
  * @param resets Array of param names to reset. Use a wildcard at the end to reset parameters with a certain prefix.
  * @param num_resets The number of passed reset conditions in the resets array.
@@ -435,25 +428,7 @@ union param_value_u {
  * instead.
  */
 struct param_info_s {
-	const char	*name
-
-// GCC 4.8 and higher don't implement proper alignment of static data on
-// 64-bit. This means that the 24-byte param_info_s variables are
-// 16 byte aligned by GCC and that messes up the assumption that
-// sequential items in the __param segment can be addressed as an array.
-// The assumption is that the address of the second parameter is at
-// &param[0]+sizeof(param[0]). When compiled with clang it is
-// true, with gcc is is not true.
-// See https://llvm.org/bugs/show_bug.cgi?format=multiple&id=18006
-// The following hack is for GCC >=4.8 only. Clang works fine without
-// this.
-#ifdef __PX4_POSIX
-	__attribute__((aligned(16)));
-#else
-	;
-#endif
-	param_type_t	type;
-	uint16_t		volatile_param: 1;
+	const char *name;
 	union param_value_u val;
 };
 

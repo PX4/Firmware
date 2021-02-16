@@ -22,7 +22,6 @@ then
 	param set GND_SPEED_TRIM 15
 	param set GND_SPEED_MAX 25
 	param set GND_THR_CRUISE 0.3
-	param set GND_THR_IDLE 0
 	param set GND_THR_MAX 0.5
 	param set GND_THR_MIN 0
 

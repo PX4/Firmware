@@ -7,14 +7,7 @@
 
 set VEHICLE_TYPE fw
 
-if [ $AUTOCNF = yes ]
-then
-	#
-	# Default parameters for balloon UAVs.
-	#
-	#
-	# FW takeoff acceleration can easily exceed ublox GPS 2G default.
-	#
-	param set GPS_UBX_DYNMODEL 8
-  param set SYS_MC_EST_GROUP 1
-fi
+#
+# Default parameters for balloon UAVs.
+#
+param set-default SYS_MC_EST_GROUP 1

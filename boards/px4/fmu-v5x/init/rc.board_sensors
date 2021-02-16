@@ -8,22 +8,52 @@ board_adc start
 ina226 -X -b 1 -t 1 -k start
 ina226 -X -b 2 -t 2 -k start
 
-# Internal SPI BMI088
-bmi088 -A -R 4 -s start
-bmi088 -G -R 4 -s start
+if ver hwtypecmp V5X90 V5X91 V5Xa0 V5Xa1
+then
+	#SKYNODE base fmu board orientation
 
-# Internal SPI bus ICM42688p
-icm42688p -R 6 -s start
+	# Internal SPI BMI088
+	bmi088 -A -R 2 -s start
+	bmi088 -G -R 2 -s start
 
-# Internal SPI bus ICM-20602 (hard-mounted)
-icm20602 -R 10 -s start
+	# Internal SPI bus ICM42688p
+	icm42688p -R 4 -s start
 
-# Internal magnetometer on I2c
-bmm150 -I start
+	# Internal SPI bus ICM-20602 (hard-mounted)
+	icm20602 -R 8 -s start
+
+	# Internal magnetometer on I2c
+	bmm150 -I -R 6 start
+
+else
+	#FMUv5Xbase board orientation
+
+	# Internal SPI BMI088
+	bmi088 -A -R 4 -s start
+	bmi088 -G -R 4 -s start
+
+	# Internal SPI bus ICM42688p
+	icm42688p -R 6 -s start
+
+	# Internal SPI bus ICM-20602 (hard-mounted)
+	icm20602 -R 10 -s start
+
+	# Internal magnetometer on I2c
+	bmm150 -I start
+
+fi
 
 # Possible internal Baro
-bmp388 -I -a 0x77 start
-bmp388 -I start
 
-# Baro on I2C3
-ms5611 -X start
+# Disable startup of internal baros if param is set to false
+if param compare SENS_INT_BARO_EN 1
+then
+	bmp388 -I -a 0x77 start
+	if ver hwtypecmp V5X91 V5Xa1
+	then
+		bmp388 -X -b 2 start
+	else
+		bmp388 -I start
+	fi
+
+fi

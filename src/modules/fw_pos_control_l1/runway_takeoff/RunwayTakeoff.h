@@ -86,9 +86,9 @@ public:
 	float getYaw(float navigatorYaw);
 	float getThrottle(const hrt_abstime &now, float tecsThrottle);
 	bool resetIntegrators();
-	float getMinPitch(float sp_min, float climbout_min, float min);
+	float getMinPitch(float climbout_min, float min);
 	float getMaxPitch(float max);
-	matrix::Vector2f getStartWP();
+	const matrix::Vector2d &getStartWP() const { return _start_wp; };
 
 	void reset();
 
@@ -99,7 +99,7 @@ private:
 	hrt_abstime _initialized_time{0};
 	float _init_yaw{0.f};
 	bool _climbout{false};
-	matrix::Vector2f _start_wp;
+	matrix::Vector2d _start_wp;
 
 	DEFINE_PARAMETERS(
 		(ParamBool<px4::params::RWTO_TKOFF>) _param_rwto_tkoff,

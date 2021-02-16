@@ -17,32 +17,30 @@
 set MIXER quad_x
 set PWM_OUT 1234
 
-if [ $AUTOCNF = yes ]
-then
-	param set CBRK_IO_SAFETY 22027
 
-	param set MC_ROLL_P 2.2
-	param set MC_ROLLRATE_P 0.06
-	param set MC_ROLLRATE_I 0.2
-	param set MC_ROLLRATE_D 0.0017
+param set-default CBRK_IO_SAFETY 22027
 
-	param set MC_PITCH_P 2.2
-	param set MC_PITCHRATE_P 0.06
-	param set MC_PITCHRATE_I 0.2
-	param set MC_PITCHRATE_D 0.0017
+param set-default MC_ROLL_P 2.2
+param set-default MC_ROLLRATE_P 0.06
+param set-default MC_ROLLRATE_I 0.2
+param set-default MC_ROLLRATE_D 0.0017
 
-	param set MC_YAW_P 1
-	param set MC_YAWRATE_P 0.15
-	param set MC_YAWRATE_I 0.2
-	param set MC_YAWRATE_D 0
+param set-default MC_PITCH_P 2.2
+param set-default MC_PITCHRATE_P 0.06
+param set-default MC_PITCHRATE_I 0.2
+param set-default MC_PITCHRATE_D 0.0017
 
-	param set MC_ACRO_R_MAX 1000
-	param set MC_ACRO_P_MAX 1000
-	param set MC_ACRO_Y_MAX 1000
+param set-default MC_YAW_P 1
+param set-default MC_YAWRATE_P 0.15
+param set-default MC_YAWRATE_I 0.2
+param set-default MC_YAWRATE_D 0
 
-	# param set NAV_RCL_ACT 6 # Lockdown
+param set-default MC_ACRO_R_MAX 1000
+param set-default MC_ACRO_P_MAX 1000
+param set-default MC_ACRO_Y_MAX 1000
 
-	param set PWM_MAIN_MIN 1075
-	param set PWM_MAIN_RATE 400
-	param set PWM_MAIN_DISARM 900
-fi
+# param set NAV_RCL_ACT 6 # Lockdown
+
+param set-default PWM_MAIN_MIN 1075
+param set-default PWM_MAIN_RATE 400
+param set-default PWM_MAIN_DISARM 900

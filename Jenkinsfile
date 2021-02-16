@@ -112,8 +112,8 @@ pipeline {
             sh 'make distclean'
             sh 'make parameters_metadata'
             dir('build/px4_sitl_default/docs') {
-              archiveArtifacts(artifacts: 'parameters.md, parameters.xml')
-              stash includes: 'parameters.md, parameters.xml', name: 'metadata_parameters'
+              archiveArtifacts(artifacts: 'parameters.md, parameters.xml, params.json.xz')
+              stash includes: 'parameters.md, parameters.xml, params.json.xz', name: 'metadata_parameters'
             }
           }
           post {
@@ -344,6 +344,7 @@ pipeline {
             withAWS(credentials: 'px4_aws_s3_key', region: 'us-east-1') {
               s3Upload(acl: 'PublicRead', bucket: 'px4-travis', file: 'airframes.xml', path: 'Firmware/master/')
               s3Upload(acl: 'PublicRead', bucket: 'px4-travis', file: 'parameters.xml', path: 'Firmware/master/')
+              s3Upload(acl: 'PublicRead', bucket: 'px4-travis', file: 'params.json.xz', path: 'Firmware/master/')
             }
           }
           when {

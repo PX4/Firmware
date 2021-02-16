@@ -51,7 +51,7 @@ bool FlightTaskManualAcceleration::activate(const vehicle_local_position_setpoin
 		_velocity_setpoint.xy() = Vector2f(last_setpoint.vx, last_setpoint.vy);
 
 	} else {
-		_velocity_setpoint.xy() = Vector2f(_velocity);
+		_velocity_setpoint.xy() = _velocity.xy();
 	}
 
 	_stick_acceleration_xy.resetPosition();
@@ -70,7 +70,7 @@ bool FlightTaskManualAcceleration::update()
 	_stick_yaw.generateYawSetpoint(_yawspeed_setpoint, _yaw_setpoint,
 				       _sticks.getPositionExpo()(3) * math::radians(_param_mpc_man_y_max.get()), _yaw, _deltatime);
 	_stick_acceleration_xy.generateSetpoints(_sticks.getPositionExpo().slice<2, 1>(0, 0), _yaw, _yaw_setpoint, _position,
-			_deltatime);
+			_velocity_setpoint_feedback.xy(), _deltatime);
 	_stick_acceleration_xy.getSetpoints(_position_setpoint, _velocity_setpoint, _acceleration_setpoint);
 
 	_constraints.want_takeoff = _checkTakeoff();
@@ -79,37 +79,10 @@ bool FlightTaskManualAcceleration::update()
 
 void FlightTaskManualAcceleration::_ekfResetHandlerPositionXY()
 {
-	if (PX4_ISFINITE(_position_setpoint(0))) {
-		_position_setpoint(0) = _position(0);
-		_position_setpoint(1) = _position(1);
-	}
+	_stick_acceleration_xy.resetPosition();
 }
 
 void FlightTaskManualAcceleration::_ekfResetHandlerVelocityXY()
 {
-	if (PX4_ISFINITE(_velocity_setpoint(0))) {
-		_velocity_setpoint(0) = _velocity(0);
-		_velocity_setpoint(1) = _velocity(1);
-	}
-}
-
-void FlightTaskManualAcceleration::_ekfResetHandlerPositionZ()
-{
-	if (PX4_ISFINITE(_position_setpoint(2))) {
-		_position_setpoint(2) = _position(2);
-	}
-}
-
-void FlightTaskManualAcceleration::_ekfResetHandlerVelocityZ()
-{
-	if (PX4_ISFINITE(_velocity_setpoint(2))) {
-		_velocity_setpoint(2) = _velocity(2);
-	}
-}
-
-void FlightTaskManualAcceleration::_ekfResetHandlerHeading(float delta_psi)
-{
-	if (PX4_ISFINITE(_yaw_setpoint)) {
-		_yaw_setpoint += delta_psi;
-	}
+	_stick_acceleration_xy.resetVelocity(_velocity.xy());
 }

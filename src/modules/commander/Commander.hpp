@@ -124,7 +124,8 @@ public:
 private:
 	void answer_command(const vehicle_command_s &cmd, uint8_t result);
 
-	transition_result_t arm_disarm(bool arm, bool run_preflight_checks, arm_disarm_reason_t calling_reason);
+	transition_result_t arm(arm_disarm_reason_t calling_reason, bool run_preflight_checks = true);
+	transition_result_t disarm(arm_disarm_reason_t calling_reason);
 
 	void battery_status_check();
 
@@ -153,7 +154,6 @@ private:
 
 	void offboard_control_update();
 
-	void print_reject_arm(const char *msg);
 	void print_reject_mode(const char *msg);
 
 	void reset_posvel_validity();
@@ -319,7 +319,8 @@ private:
 	hrt_abstime	_lvel_probation_time_us = POSVEL_PROBATION_MIN;
 
 	/* class variables used to check for navigation failure after takeoff */
-	hrt_abstime	_time_last_innov_pass{0};	/**< last time velocity or position innovations passed */
+	hrt_abstime	_time_last_innov_pass{0};	/**< last time velocity and position innovations passed */
+	hrt_abstime	_time_last_innov_fail{0};	/**< last time velocity and position innovations failed */
 	bool		_nav_test_passed{false};	/**< true if the post takeoff navigation test has passed */
 	bool		_nav_test_failed{false};	/**< true if the post takeoff navigation test has failed */
 
@@ -390,15 +391,18 @@ private:
 
 	main_state_t	_main_state_pre_offboard{commander_state_s::MAIN_STATE_MANUAL};
 
-	actuator_armed_s	_armed{};
-	commander_state_s	_internal_state{};
 	cpuload_s		_cpuload{};
 	geofence_result_s	_geofence_result{};
 	vehicle_land_detected_s	_land_detector{};
 	safety_s		_safety{};
-	vehicle_status_s	_status{};
-	vehicle_status_flags_s	_status_flags{};
 	vtol_vehicle_status_s	_vtol_status{};
+
+	// commander publications
+	actuator_armed_s        _armed{};
+	commander_state_s       _internal_state{};
+	vehicle_control_mode_s  _vehicle_control_mode{};
+	vehicle_status_s        _status{};
+	vehicle_status_flags_s  _status_flags{};
 
 	WorkerThread _worker_thread;
 

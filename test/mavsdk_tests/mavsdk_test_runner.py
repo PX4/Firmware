@@ -16,6 +16,16 @@ import process_helper as ph
 from typing import Any, Dict, List, NoReturn, TextIO, Optional
 from types import FrameType
 
+try:
+    import requests
+except ImportError as e:
+    print("Failed to import requests: " + str(e))
+    print("")
+    print("You may need to install it using:")
+    print("    pip3 install --user requests")
+    print("")
+    sys.exit(1)
+
 
 def main() -> NoReturn:
 
@@ -37,6 +47,8 @@ def main() -> NoReturn:
                              "(or multiple cases with wildcard '*')")
     parser.add_argument("--debugger", default="",
                         help="choice from valgrind, callgrind, gdb, lldb")
+    parser.add_argument("--upload", default=False, action='store_true',
+                        help="Upload logs to logs.px4.io")
     parser.add_argument("--verbose", default=False, action='store_true',
                         help="enable more verbose output")
     parser.add_argument("config_file", help="JSON config file to use")
@@ -67,7 +79,8 @@ def main() -> NoReturn:
         args.debugger,
         args.log_dir,
         args.gui,
-        args.verbose
+        args.verbose,
+        args.upload
     )
     signal.signal(signal.SIGINT, tester.sigint_handler)
 
@@ -124,7 +137,8 @@ class Tester:
                  debugger: str,
                  log_dir: str,
                  gui: bool,
-                 verbose: bool):
+                 verbose: bool,
+                 upload: bool):
         self.config = config
         self.active_runners: List[ph.Runner]
         self.iterations = iterations
@@ -135,6 +149,7 @@ class Tester:
         self.log_dir = log_dir
         self.gui = gui
         self.verbose = verbose
+        self.upload = upload
         self.start_time = datetime.datetime.now()
         self.log_fd: Any[TextIO] = None
 
@@ -364,6 +379,12 @@ class Tester:
             print("  - {}".format(logfile_path))
             for runner in self.active_runners:
                 print("  - {}".format(runner.get_log_filename()))
+
+        if self.upload:
+            ulog_file = self.parse_for_ulog_file(
+                self.get_combined_log(logfile_path))
+            self.upload_log(ulog_file, test['model'], case, is_success)
+
         return is_success
 
     def start_runners(self,
@@ -458,6 +479,66 @@ class Tester:
                 self.add_to_combined_log(line)
                 if self.verbose:
                     print(line, end="")
+
+    def parse_for_ulog_file(self, log: str) -> Optional[str]:
+
+        match = "[logger] Opened full log file: ./"
+        for line in log.splitlines():
+            found = line.find(match)
+            if found != -1:
+                return os.getcwd() \
+                    + "/build/px4_sitl_default/tmp_mavsdk_tests/rootfs/" \
+                    + line[found+len(match):]
+        return None
+
+    def upload_log(self, ulog_path: Optional[str],
+                   model: str, case: str, success: bool) -> None:
+        if not ulog_path:
+            print("    Could not find ulog log file to upload")
+            return
+
+        if not os.getenv('GITHUB_WORKFLOW'):
+            print("    Upload only implemented for GitHub Actions CI")
+            return
+
+        print("    Uploading logfile '{}' ...".format(ulog_path))
+
+        server = "https://logs.px4.io"
+
+        payload = {
+            "type": "flightreport",
+            "description": "SITL integration test with {} for {}: {}"
+            .format(model, case, "passing" if success else "failing"),
+            "feedback":
+                "workflow: {}, ".format(os.getenv("GITHUB_WORKFLOW")) +
+                "run_id: {}, ".format(os.getenv("GITHUB_RUN_ID")) +
+                "repository: {}, ".format(os.getenv("GITHUB_REPOSITORY")) +
+                "ref: {}, ".format(os.getenv("GITHUB_REF")) +
+                "model: {}, ".format(model) +
+                "case: {}, ".format(case) +
+                "pass: {}".format("true" if success else "false"),
+            "email": "",
+            "source": "CI",
+            "videoUrl": "",
+            "rating": "notset",
+            "windSpeed": -1,
+            "public": "true"
+        }
+
+        with open(ulog_path, 'rb') as f:
+            r = requests.post(server + "/upload",
+                              data=payload,
+                              files={'filearg': f},
+                              allow_redirects=False)
+            if r.status_code == 302:  # redirect
+                if 'Location' in r.headers:
+                    plot_url = r.headers['Location']
+                    if len(plot_url) > 0 and plot_url[0] == '/':
+                        plot_url = server + plot_url
+                    print("    Uploaded to: " + plot_url)
+            else:
+                print("    Upload failed with status_code: {}"
+                      .format(r.status_code))
 
     def start_combined_log(self, filename: str) -> None:
         self.log_fd = open(filename, 'w')

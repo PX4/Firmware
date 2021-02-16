@@ -21,23 +21,21 @@ then
 fi
 unset BL_FILE
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_V_DIV 10.1
-	param set BAT1_V_DIV 10.1
 
-	param set BAT_A_PER_V 17
-	param set BAT1_A_PER_V 17
+param set-default BAT_V_DIV 10.1
+param set-default BAT1_V_DIV 10.1
 
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
-	param set EKF2_MULTI_MAG 3
-	param set SENS_MAG_MODE 0
+param set-default BAT_A_PER_V 17
+param set-default BAT1_A_PER_V 17
 
-	param set UAVCAN_ENABLE 2
+# Multi-EKF
+param set-default EKF2_MULTI_IMU 3
+param set-default SENS_IMU_MODE 0
+param set-default EKF2_MULTI_MAG 3
+param set-default SENS_MAG_MODE 0
 
-fi
+param set-default UAVCAN_ENABLE 2
+
 
 set LOGGER_BUF 64
 set MIXER_AUX none

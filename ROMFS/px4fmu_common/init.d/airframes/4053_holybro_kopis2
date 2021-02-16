@@ -19,49 +19,46 @@ set PWM_OUT 1234
 
 set PARAM_DEFAULTS_VER 2
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_N_CELLS 4
 
-	param set GPS_1_CONFIG 0
-	param set RC_PORT_CONFIG 201
+param set-default BAT_N_CELLS 4
 
-	param set IMU_GYRO_CUTOFF 80
-	param set IMU_DGYRO_CUTOFF 50
-	param set IMU_GYRO_RATEMAX 2000
+param set-default GPS_1_CONFIG 0
+param set-default RC_PORT_CONFIG 201
 
-	param set MC_ROLLRATE_P 0.085
-	param set MC_ROLLRATE_I 0.25
-	param set MC_ROLLRATE_D 0.0008
-	param set MC_ROLLRATE_MAX 1600
-	param set MC_ROLL_P 10
+param set-default IMU_GYRO_CUTOFF 80
+param set-default IMU_DGYRO_CUTOFF 50
+param set-default IMU_GYRO_RATEMAX 2000
 
-	param set MC_PITCHRATE_P 0.085
-	param set MC_PITCHRATE_I 0.32
-	param set MC_PITCHRATE_D 0.0008
-	param set MC_PITCHRATE_MAX 1600
-	param set MC_PITCH_P 10
+param set-default MC_ROLLRATE_P 0.085
+param set-default MC_ROLLRATE_I 0.25
+param set-default MC_ROLLRATE_D 0.0008
+param set-default MC_ROLLRATE_MAX 1600
+param set-default MC_ROLL_P 10
 
-	param set MC_YAWRATE_MAX 1000
-	param set MC_YAWRATE_P 0.15
-	param set MC_YAW_P 4
+param set-default MC_PITCHRATE_P 0.085
+param set-default MC_PITCHRATE_I 0.32
+param set-default MC_PITCHRATE_D 0.0008
+param set-default MC_PITCHRATE_MAX 1600
+param set-default MC_PITCH_P 10
 
-	param set MOT_ORDERING 1
-	param set MPC_MANTHR_MIN 0
-	param set MPC_MAN_TILT_MAX 60
+param set-default MC_YAWRATE_MAX 1000
+param set-default MC_YAWRATE_P 0.15
+param set-default MC_YAW_P 4
 
-	param set DSHOT_CONFIG 1200
+param set-default MOT_ORDERING 1
+param set-default MPC_MANTHR_MIN 0
+param set-default MPC_MAN_TILT_MAX 60
 
-	param set OSD_ATXXXX_CFG 1
-	param set TEL_FRSKY_CONFIG 300
+param set-default DSHOT_CONFIG 1200
 
-	param set THR_MDL_FAC 0.35
+param set-default OSD_ATXXXX_CFG 1
+param set-default TEL_FRSKY_CONFIG 300
 
-	param set MPC_THR_CURVE 1
-	param set MPC_THR_HOVER 0.12
+param set-default THR_MDL_FAC 0.35
 
-	param set MC_AIRMODE 1
+param set-default MPC_THR_CURVE 1
+param set-default MPC_THR_HOVER 0.12
 
-	param set EV_TSK_RC_LOSS 1
-fi
+param set-default MC_AIRMODE 1
 
+param set-default EV_TSK_RC_LOSS 1
