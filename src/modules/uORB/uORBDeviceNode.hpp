@@ -169,9 +169,13 @@ public:
 	 *
 	 * This is used in the case of multi_pub/sub to check if it's valid to advertise
 	 * and publish to this node or if another node should be tried. */
-	bool is_advertised() const { return _advertised; }
+	bool is_advertised() const { return _publisher_count.load() != 0; }
 
-	void mark_as_advertised() { _advertised = true; }
+	void add_publisher();
+
+	void remove_publisher();
+
+	uint8_t publisher_count() const { return _publisher_count.load(); }
 
 	/**
 	 * Try to change the size of the queue. This can only be done as long as nobody published yet.
@@ -250,7 +254,7 @@ private:
 	List<uORB::SubscriptionCallback *>	_callbacks;
 
 	const uint8_t _instance; /**< orb multi instance identifier */
-	bool _advertised{false};  /**< has ever been advertised (not necessarily published data yet) */
 	uint8_t _queue_size; /**< maximum number of elements in the queue */
+	px4::atomic<uint8_t> _publisher_count{0};
 	int8_t _subscriber_count{0};
 };

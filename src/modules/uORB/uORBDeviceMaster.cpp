@@ -99,70 +99,68 @@ int uORB::DeviceMaster::advertise(const struct orb_metadata *meta, bool is_adver
 			*instance = group_tries;
 		}
 
-		/* driver wants a permanent copy of the path, so make one here */
-		const char *devpath = strdup(nodepath);
+		/* if the node exists already, get the existing one and check if it's advertised. */
+		uORB::DeviceNode *existing_node = getDeviceNodeLocked(meta, group_tries);
 
-		if (devpath == nullptr) {
-			return -ENOMEM;
-		}
+		/*
+		 * We can claim an existing node in these cases:
+		 * - The node is not advertised (yet). It means there is already one or more subscribers or it was
+		 *   unadvertised.
+		 * - We are a single-instance advertiser requesting the first instance.
+		 * - We are a subscriber requesting a certain instance.
+		 *   (we usually don't end up in that case, but we might in case of a race condtion
+		 *   between an advertiser and subscriber).
+		 */
+		bool is_single_instance_advertiser = is_advertiser && !instance;
 
-		/* construct the new node, passing the ownership of path to it */
-		uORB::DeviceNode *node = new uORB::DeviceNode(meta, group_tries, devpath);
-
-		/* if we didn't get a device, that's bad, free the path too */
-		if (node == nullptr) {
-			free((void *)devpath);
-			return -ENOMEM;
-		}
-
-		/* initialise the node - this may fail if e.g. a node with this name already exists */
-		ret = node->init();
-
-		/* if init failed, discard the node and its name */
-		if (ret != PX4_OK) {
-			delete node;
-
-			if (ret == -EEXIST) {
-				/* if the node exists already, get the existing one and check if it's advertised. */
-				uORB::DeviceNode *existing_node = getDeviceNodeLocked(meta, group_tries);
-
-				/*
-				 * We can claim an existing node in these cases:
-				 * - The node is not advertised (yet). It means there is already one or more subscribers or it was
-				 *   unadvertised.
-				 * - We are a single-instance advertiser requesting the first instance.
-				 *   (Usually we don't end up here, but we might in case of a race condition between 2
-				 *   advertisers).
-				 * - We are a subscriber requesting a certain instance.
-				 *   (Also we usually don't end up in that case, but we might in case of a race condtion
-				 *   between an advertiser and subscriber).
-				 */
-				bool is_single_instance_advertiser = is_advertiser && !instance;
-
-				if (existing_node != nullptr &&
-				    (!existing_node->is_advertised() || is_single_instance_advertiser || !is_advertiser)) {
-					if (is_advertiser) {
-						/* Set as advertised to avoid race conditions (otherwise 2 multi-instance advertisers
-						 * could get the same instance).
-						 */
-						existing_node->mark_as_advertised();
-					}
-
-					ret = PX4_OK;
-
-				} else {
-					/* otherwise: already advertised, keep looking */
+		if (existing_node != nullptr) {
+			if (!existing_node->is_advertised()
+			    || is_single_instance_advertiser
+			    || !is_advertiser) {
+				if (is_advertiser) {
+					existing_node->add_publisher();
 				}
+
+				ret = PX4_OK;
+				break; // Node has been found
+
+			} else {
+				/* otherwise: already advertised, keep looking */
 			}
 
-		} else {
-			if (is_advertiser) {
-				node->mark_as_advertised();
+		} else { // Node does not exist, try to create a new node
+
+			/* driver wants a permanent copy of the path, so make one here */
+			const char *devpath = strdup(nodepath);
+
+			if (devpath == nullptr) {
+				return -ENOMEM;
 			}
 
-			// add to the node map.
-			_node_list.add(node);
-			_node_exists[node->get_instance()].set((uint8_t)node->id(), true);
+			/* construct the new node, passing the ownership of path to it */
+			uORB::DeviceNode *node = new uORB::DeviceNode(meta, group_tries, devpath);
+
+			/* if we didn't get a device, that's bad, free the path too */
+			if (node == nullptr) {
+				free((void *)devpath);
+				return -ENOMEM;
+			}
+
+			ret = node->init();
+
+			/* if init failed, discard the node and its name */
+			if (ret != PX4_OK) {
+				delete node;
+
+			} else {
+				if (is_advertiser) {
+					node->add_publisher();
+				}
+
+				// add to the node map.
+				_node_list.add(node);
+				_node_exists[node->get_instance()].set((uint8_t)node->id(), true);
+			}
 		}
 
 		group_tries++;
@@ -193,7 +191,7 @@ void uORB::DeviceMaster::printStatistics()
 		return;
 	}
 
-	PX4_INFO_RAW("%-*s INST #SUB #Q SIZE PATH\n", (int)max_topic_name_length - 2, "TOPIC NAME");
+	PX4_INFO_RAW("%-*s INST #PUB #SUB #Q SIZE PATH\n", (int)max_topic_name_length - 2, "TOPIC NAME");
 
 	cur_node = first_node;
 
@@ -389,16 +387,17 @@ void uORB::DeviceMaster::showTop(char **topic_filter, int num_filters)
 			}
 
 			PX4_INFO_RAW(CLEAR_LINE "update: 1s, num topics: %i\n", num_topics);
-			PX4_INFO_RAW(CLEAR_LINE "%-*s INST #SUB RATE #Q SIZE\n", (int)max_topic_name_length - 2, "TOPIC NAME");
+			PX4_INFO_RAW(CLEAR_LINE "%-*s INST #PUB #SUB RATE #Q SIZE\n", (int)max_topic_name_length - 2, "TOPIC NAME");
 			cur_node = first_node;
 
 			while (cur_node) {
 
 				if (!print_active_only || (cur_node->pub_msg_delta > 0 && cur_node->node->subscriber_count() > 0)) {
-					PX4_INFO_RAW(CLEAR_LINE "%-*s %2i %4i %4i %2i %4i \n", (int)max_topic_name_length,
+					PX4_INFO_RAW(CLEAR_LINE "%-*s %2i %4i %4i %4i %2i %4i \n", (int)max_topic_name_length,
 						     cur_node->node->get_meta()->o_name, (int)cur_node->node->get_instance(),
-						     (int)cur_node->node->subscriber_count(), cur_node->pub_msg_delta,
-						     cur_node->node->get_queue_size(), cur_node->node->get_meta()->o_size);
+						     (int)cur_node->node->publisher_count(), (int)cur_node->node->subscriber_count(),
+						     cur_node->pub_msg_delta, cur_node->node->get_queue_size(),
+						     cur_node->node->get_meta()->o_size);
 				}
 
 				cur_node = cur_node->next;

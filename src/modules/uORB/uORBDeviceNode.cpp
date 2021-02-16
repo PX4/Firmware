@@ -102,10 +102,6 @@ uORB::DeviceNode::open(cdev::file_t *filp)
 	/* is this a publisher? */
 	if (filp->f_oflags == PX4_F_WRONLY) {
 
-		lock();
-		mark_as_advertised();
-		unlock();
-
 		/* now complete the open */
 		return CDev::open(filp);
 	}
@@ -300,7 +296,7 @@ uORB::DeviceNode::ioctl(cdev::file_t *filp, int cmd, unsigned long arg)
 		return PX4_OK;
 
 	case ORBIOCISADVERTISED:
-		*(unsigned long *)arg = _advertised;
+		*(unsigned long *)arg = is_advertised();
 
 		return PX4_OK;
 
@@ -378,7 +374,7 @@ int uORB::DeviceNode::unadvertise(orb_advert_t handle)
 	 * of subscribers and publishers. But we also do not have a leak since future
 	 * publishers reuse the same DeviceNode object.
 	 */
-	devnode->_advertised = false;
+	devnode->remove_publisher();
 
 	return PX4_OK;
 }
@@ -427,20 +423,21 @@ uORB::DeviceNode::poll_notify_one(px4_pollfd_struct_t *fds, px4_pollevent_t even
 bool
 uORB::DeviceNode::print_statistics(int max_topic_length)
 {
-	if (!_advertised) {
+	if (_publisher_count.load() == 0) {
 		return false;
 	}
 
 	lock();
 
 	const uint8_t instance = get_instance();
+	const uint8_t pub_count = publisher_count();
 	const int8_t sub_count = subscriber_count();
 	const uint8_t queue_size = get_queue_size();
 
 	unlock();
 
-	PX4_INFO_RAW("%-*s %2i %4i %2i %4i %s\n", max_topic_length, get_meta()->o_name, (int)instance, (int)sub_count,
-		     queue_size, get_meta()->o_size, get_devname());
+	PX4_INFO_RAW("%-*s %2i %4i %4i %2i %4i %s\n", max_topic_length, get_meta()->o_name, (int)instance,
+		     (int)pub_count, (int)sub_count, queue_size, get_meta()->o_size, get_devname());
 
 	return true;
 }
@@ -482,6 +479,16 @@ void uORB::DeviceNode::remove_internal_subscriber()
 	{
 		unlock();
 	}
+}
+
+void uORB::DeviceNode::add_publisher()
+{
+	_publisher_count.fetch_add(1);
+}
+
+void uORB::DeviceNode::remove_publisher()
+{
+	_publisher_count.fetch_sub(1);
 }
 
 #ifdef ORB_COMMUNICATOR

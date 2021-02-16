@@ -354,32 +354,27 @@ int uORB::Manager::node_open(const struct orb_metadata *meta, bool advertiser, i
 		*instance = 0;
 	}
 
-	/* we may need to advertise the node... */
-	if (fd < 0) {
+	/* Is a publisher or a new node */
+	if (advertiser || fd < 0) {
 
 		ret = PX4_ERROR;
 
 		if (get_device_master()) {
 			ret = _device_master->advertise(meta, advertiser, instance);
 		}
+	}
 
-		/* it's OK if it already exists */
-		if ((ret != PX4_OK) && (EEXIST == errno)) {
-			ret = PX4_OK;
-		}
+	if (fd < 0 && ret == PX4_OK) {
+		/* update the path, as it might have been updated during the node advertise call */
+		ret = uORB::Utils::node_mkpath(path, meta, instance);
 
+		/* on success, try to open again */
 		if (ret == PX4_OK) {
-			/* update the path, as it might have been updated during the node advertise call */
-			ret = uORB::Utils::node_mkpath(path, meta, instance);
+			fd = px4_open(path, (advertiser) ? PX4_F_WRONLY : PX4_F_RDONLY);
 
-			/* on success, try to open again */
-			if (ret == PX4_OK) {
-				fd = px4_open(path, (advertiser) ? PX4_F_WRONLY : PX4_F_RDONLY);
-
-			} else {
-				errno = -ret;
-				return PX4_ERROR;
-			}
+		} else {
+			errno = -ret;
+			return PX4_ERROR;
 		}
 	}
 

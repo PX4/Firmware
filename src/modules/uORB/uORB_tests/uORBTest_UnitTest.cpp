@@ -164,6 +164,12 @@ int uORBTest::UnitTest::test()
 		return ret;
 	}
 
+	ret = test_single_unadvertise();
+
+	if (ret != OK) {
+		return ret;
+	}
+
 	ret = test_SubscriptionMulti();
 
 	if (ret != OK) {
@@ -318,6 +324,66 @@ int uORBTest::UnitTest::test_single()
 	}
 
 	return test_note("PASS single-topic test");
+}
+
+int uORBTest::UnitTest::test_single_unadvertise()
+{
+	test_note("try single-topic unadvertise");
+
+	orb_test_s t{};
+	orb_test_s u{};
+	int ret;
+
+	orb_advert_t ptopic = orb_advertise(ORB_ID(orb_test), &t);
+	orb_advert_t ptopic_tmp = orb_advertise(ORB_ID(orb_test), &t);
+
+	if (!ptopic || !ptopic_tmp) {
+		return test_fail("advertise failed: %d", errno);
+	}
+
+	int sfd = orb_subscribe(ORB_ID(orb_test));
+
+	if (sfd < 0) {
+		return test_fail("subscribe failed: %d", errno);
+	}
+
+	t.val = 1;
+
+	if (PX4_OK != orb_publish(ORB_ID(orb_test), ptopic, &t)) {
+		return test_fail("publish failed");
+	}
+
+	if ((ret = orb_unadvertise(ptopic_tmp)) != PX4_OK) {
+		return test_fail("orb_unadvertise failed: %i", ret);
+	}
+
+	bool updated;
+
+	if (PX4_OK != orb_check(sfd, &updated)) {
+		return test_fail("check failed");
+	}
+
+	if (!updated) {
+		return test_fail("missing updated flag");
+	}
+
+	if (PX4_OK != orb_copy(ORB_ID(orb_test), sfd, &u)) {
+		return test_fail("copy failed: %d", errno);
+	}
+
+	if (u.val != t.val) {
+		return test_fail("copy mismatch: %d expected %d", u.val, t.val);
+	}
+
+	if ((ret = orb_unadvertise(ptopic)) != PX4_OK) {
+		return test_fail("orb_unadvertise failed: %i", ret);
+	}
+
+	if ((ret = orb_unsubscribe(sfd)) != PX4_OK) {
+		return test_fail("orb_unsubscribe failed: %i", ret);
+	}
+
+	return test_note("PASS single-topic unadvertise test");
 }
 
 int uORBTest::UnitTest::test_multi()

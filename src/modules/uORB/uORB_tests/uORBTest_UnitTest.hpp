@@ -96,6 +96,7 @@ private:
 	orb_advert_t _pfd[4] {}; ///< used for test_multi and test_multi_reversed
 
 	int test_single();
+	int test_single_unadvertise();
 
 	/* These 3 depend on each other and must be called in this order */
 	int test_multi();
