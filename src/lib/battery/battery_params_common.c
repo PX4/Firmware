@@ -56,6 +56,18 @@
 PARAM_DEFINE_FLOAT(BAT_LOW_THR, 0.15f);
 
 /**
+ * Battery internal resistance online estimator
+ *
+ * Enables battery_resistance_est module. Set 0 to disable.
+ *
+ * @group Battery Calibration
+ * @reboot_required true
+ * @min 0
+ * @max 1
+ */
+PARAM_DEFINE_INT32(RIN_ENABLED, 0);
+
+/**
  * Critical threshold
  *
  * Sets the threshold when the battery will be reported as critically low.

@@ -218,6 +218,10 @@ sensors start
 commander start
 navigator start
 
+if param greater -s RIN_ENABLED 0
+then
+	battery_resistance_est start
+fi
 
 if param greater -s MNT_MODE_IN -1
 then
