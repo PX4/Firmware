@@ -70,10 +70,10 @@ __EXPORT void	dsm_deinit(void);
 __EXPORT void	dsm_proto_init(void);
 __EXPORT int	dsm_config(int dsm_fd);
 __EXPORT bool	dsm_input(int dsm_fd, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, uint8_t *n_bytes,
-			  uint8_t **bytes, int8_t *rssi, unsigned *frame_drops, unsigned max_values);
+			  uint8_t **bytes, uint8_t *rssi, unsigned *frame_drops, unsigned max_values);
 
 __EXPORT bool	dsm_parse(const uint64_t now, const uint8_t *frame, const unsigned len, uint16_t *values,
-			  uint16_t *num_values, bool *dsm_11_bit, unsigned *frame_drops, int8_t *rssi_percent, uint16_t max_channels);
+			  uint16_t *num_values, bool *dsm_11_bit, unsigned *frame_drops, uint8_t *rssi_percent, uint16_t max_channels);
 
 #ifdef SPEKTRUM_POWER
 __EXPORT void	dsm_bind(uint16_t cmd, int pulses);

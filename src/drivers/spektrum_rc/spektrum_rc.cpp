@@ -74,7 +74,7 @@ void usage();
 void task_main(int argc, char *argv[]);
 
 void fill_input_rc(uint16_t raw_rc_count, uint16_t raw_rc_values[input_rc_s::RC_INPUT_MAX_CHANNELS],
-		   hrt_abstime now, bool frame_drop, bool failsafe, unsigned frame_drops, int rssi,
+		   hrt_abstime now, bool frame_drop, bool failsafe, unsigned frame_drops, uint8_t rssi,
 		   input_rc_s &input_rc);
 
 void task_main(int argc, char *argv[])
@@ -102,7 +102,7 @@ void task_main(int argc, char *argv[])
 		return;
 	}
 
-	orb_advert_t rc_pub = nullptr;
+	orb_advert_t input_rc_pub = nullptr;
 
 	// Use a buffer size of the double of the minimum, just to be safe.
 	uint8_t rx_buf[2 * DSM_BUFFER_SIZE];
@@ -129,7 +129,7 @@ void task_main(int argc, char *argv[])
 
 		bool dsm_11_bit;
 		unsigned frame_drops;
-		int8_t dsm_rssi;
+		uint8_t dsm_rssi;
 
 		// parse new data
 		bool rc_updated = dsm_parse(now, rx_buf, newbytes, &raw_rc_values[0], &raw_rc_count,
@@ -143,11 +143,11 @@ void task_main(int argc, char *argv[])
 			fill_input_rc(raw_rc_count, raw_rc_values, now, false, false, frame_drops, dsm_rssi,
 				      input_rc);
 
-			if (rc_pub == nullptr) {
-				rc_pub = orb_advertise(ORB_ID(input_rc), &input_rc);
+			if (input_input_rc_pub == nullptr) {
+				input_rc_pub = orb_advertise(ORB_ID(input_rc), &input_rc);
 
 			} else {
-				orb_publish(ORB_ID(input_rc), rc_pub, &input_rc);
+				orb_publish(ORB_ID(input_rc), input_rc_pub, &input_rc);
 			}
 		}
 
@@ -156,14 +156,14 @@ void task_main(int argc, char *argv[])
 
 	}
 
-	orb_unadvertise(rc_pub);
+	orb_unadvertise(input_rc_pub);
 	dsm_deinit();
 
 	_is_running = false;
 }
 
 void fill_input_rc(uint16_t raw_rc_count, uint16_t raw_rc_values[input_rc_s::RC_INPUT_MAX_CHANNELS],
-		   hrt_abstime now, bool frame_drop, bool failsafe, unsigned frame_drops, int rssi,
+		   hrt_abstime now, bool frame_drop, bool failsafe, unsigned frame_drops, uint8_t rssi,
 		   input_rc_s &input_rc)
 {
 	input_rc.input_source = input_rc_s::RC_INPUT_SOURCE_QURT;
@@ -188,17 +188,8 @@ void fill_input_rc(uint16_t raw_rc_count, uint16_t raw_rc_values[input_rc_s::RC_
 	input_rc.timestamp_last_signal = input_rc.timestamp;
 	input_rc.rc_ppm_frame_length = 0;
 
-	/* fake rssi if no value was provided */
-	if (rssi == -1) {
-
-		input_rc.rssi = 255;
-
-	} else {
-		input_rc.rssi = rssi;
-	}
-
 	if (valid_chans == 0) {
-		input_rc.rssi = 0;
+		input_rc.rssi = input_rc_s::RC_RSSI_NO_SIGNAL;
 	}
 
 	input_rc.rc_failsafe = failsafe;

@@ -60,7 +60,7 @@
 #define RC_CHANNEL_LOW_THRESH		-8000	/* 10% threshold */
 
 static bool	ppm_input(uint16_t *values, uint16_t *num_values, uint16_t *frame_len);
-static bool	dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated);
+static bool	dsm_port_input(uint8_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated);
 
 #if defined(PX4IO_PERF)
 static perf_counter_t c_gather_dsm;
@@ -79,10 +79,10 @@ static unsigned _rssi_adc_counts = 0;
 
 /* receive signal strenght indicator (RSSI). 0 = no connection, 100 (RC_INPUT_RSSI_MAX): perfect connection */
 /* Note: this is static because RC-provided telemetry does not occur every tick */
-static uint16_t _rssi = 0;
+static uint8_t _rssi = RC_INPUT_RSSI_MIN;
 static unsigned _frame_drops = 0;
 
-bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated)
+bool dsm_port_input(uint8_t *rssi, bool *dsm_updated, bool *st24_updated, bool *sumd_updated)
 {
 #if defined(PX4IO_PERF)
 	perf_begin(c_gather_dsm);
@@ -90,7 +90,7 @@ bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool 
 	uint8_t n_bytes = 0;
 	uint8_t *bytes;
 	bool dsm_11_bit;
-	int8_t spektrum_rssi;
+	uint8_t spektrum_rssi;
 	unsigned frame_drops;
 	*dsm_updated = dsm_input(_dsm_fd, r_raw_rc_values, &r_raw_rc_count, &dsm_11_bit, &n_bytes, &bytes,
 				 &spektrum_rssi, &frame_drops, PX4IO_RC_INPUT_CHANNELS);
@@ -114,7 +114,7 @@ bool dsm_port_input(uint16_t *rssi, bool *dsm_updated, bool *st24_updated, bool 
 		_frame_drops = frame_drops;
 		r_raw_rc_flags &= ~(PX4IO_P_RAW_RC_FLAGS_FAILSAFE);
 
-		if (spektrum_rssi >= 0 && spektrum_rssi <= 100) {
+		if (spektrum_rssi <= RC_INPUT_RSSI_MAX) {
 
 			/* ensure ADC RSSI is disabled */
 			r_setup_features &= ~(PX4IO_P_SETUP_FEATURES_ADC_RSSI);
@@ -256,7 +256,7 @@ controls_tick()
 
 	/* zero RSSI if signal is lost */
 	if (!(r_raw_rc_flags & (PX4IO_P_RAW_RC_FLAGS_RC_OK))) {
-		_rssi = 0;
+		_rssi = RC_INPUT_RSSI_MIN;
 	}
 
 #if defined(PX4IO_PERF)
@@ -270,7 +270,7 @@ controls_tick()
 	if (sbus_updated) {
 		atomic_modify_or(&r_status_flags, PX4IO_P_STATUS_FLAGS_RC_SBUS);
 
-		unsigned sbus_rssi = RC_INPUT_RSSI_MAX;
+		uint8_t sbus_rssi = RC_INPUT_RSSI_MAX;
 
 		if (sbus_frame_drop) {
 			r_raw_rc_flags |= PX4IO_P_RAW_RC_FLAGS_FRAME_DROP;

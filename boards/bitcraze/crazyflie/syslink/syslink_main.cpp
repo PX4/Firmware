@@ -96,7 +96,7 @@ Syslink::Syslink() :
 	_fd(0),
 	_queue(2, sizeof(syslink_message_t)),
 	_writebuffer(16, sizeof(crtp_message_t)),
-	_rssi(RC_INPUT_RSSI_MAX),
+	_rssi(input_rc_s::RC_RSSI_MAX),
 	_bstate(BAT_DISCHARGING)
 {
 	px4_sem_init(&memory_sem, 0, 0);
@@ -552,7 +552,7 @@ Syslink::handle_raw(syslink_message_t *sys)
 		rc.values[3] = cmd->thrust * 1000 / USHRT_MAX + 1000;
 		rc.values[4] = 1000; // Dummy channel as px4 needs at least 5
 
-		_rc_pub.publish(rc);
+		_input_rc_pub.publish(rc);
 
 	} else if (c->port == CRTP_PORT_MAVLINK) {
 		_count_in++;

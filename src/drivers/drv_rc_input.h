@@ -59,11 +59,6 @@
 #define RC_INPUT0_DEVICE_PATH	"/dev/input_rc0"
 
 /**
- * Maximum RSSI value
- */
-#define RC_INPUT_RSSI_MAX	100
-
-/**
  * Input signal type, value is a control position from zero to 100
  * percent.
  */

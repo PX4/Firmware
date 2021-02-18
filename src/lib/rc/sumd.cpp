@@ -308,7 +308,7 @@ int sumd_decode(uint8_t byte, uint8_t *rssi, uint8_t *rx_count, uint16_t *channe
 			uint8_t _cnt = *rx_count + 1;
 			*rx_count = _cnt;
 
-			*rssi = 100;
+			*rssi = RC_INPUT_RSSI_MAX;
 
 			/* failsafe flag */
 			*failsafe = (_rxpacket.status == SUMD_ID_FAILSAFE);

@@ -22,7 +22,11 @@ uint64 timestamp_last_signal		# last valid reception time
 
 uint8 channel_count			# number of channels actually being seen
 
-int32 rssi				# receive signal strength indicator (RSSI): < 0: Undefined, 0: no signal, 100: full reception
+uint8 RC_RSSI_NO_SIGNAL = 0		# no signal
+uint8 RC_RSSI_MAX = 100			# full reception
+uint8 RC_RSSI_UNDEFINED = 255		# no indication of rssi strength
+
+uint8 rssi				# receive signal strength indicator (RSSI)
 
 bool rc_failsafe			# explicit failsafe flag: true on TX failure or TX out of range , false otherwise. Only the true state is reliable, as there are some (PPM) receivers on the market going into failsafe without telling us explicitly.
 bool rc_lost				# RC receiver connection status: True,if no frame has arrived in the expected time, false otherwise. True usually means that the receiver has been disconnected, but can also indicate a radio link loss on "stupid" systems. Will remain false, if a RX with failsafe option continues to transmit frames after a link loss.

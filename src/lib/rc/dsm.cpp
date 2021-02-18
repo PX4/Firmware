@@ -508,7 +508,7 @@ void dsm_bind(uint16_t cmd, int pulses)
  * @return true=DSM frame successfully decoded, false=no update
  */
 bool dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, unsigned max_values,
-		int8_t *rssi_percent)
+		uint8_t *rssi_percent)
 {
 	/*
 	debug("DSM dsm_frame %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x %02x%02x",
@@ -547,7 +547,7 @@ bool dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, 
 			int8_t dbm = (int8_t)dsm_frame[0];
 
 			if (dbm == -128) {
-				*rssi_percent = 0;
+				*rssi_percent = RC_INPUT_RSSI_MIN;
 
 			} else {
 				*rssi_percent = spek_dbm_to_percent(dbm);
@@ -555,7 +555,7 @@ bool dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, 
 
 		} else {
 			/* if we don't know the rssi, anything over 100 will invalidate it */
-			*rssi_percent = 127;
+			*rssi_percent = RC_INPUT_RSSI_UNDEFINED;
 		}
 	}
 
@@ -704,13 +704,13 @@ bool dsm_decode(hrt_abstime frame_time, uint16_t *values, uint16_t *num_values, 
  * @param[out] num_values pointer to number of raw channel values returned, high order bit 0:10 bit data, 1:11 bit data
  * @param[out] n_butes number of bytes read
  * @param[out] bytes pointer to the buffer of read bytes
- * @param[out] rssi value in percent, if supported, or 127
+ * @param[out] rssi value in percent, if supported, or RC_RSSI_UNDEFINED
  * @param[out] frame_drops dropped frames (indication of an unstable link)
  * @param[in] max_values maximum number of channels the receiver can process
  * @return true=decoded raw channel values updated, false=no update
  */
 bool dsm_input(int fd, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit, uint8_t *n_bytes, uint8_t **bytes,
-	       int8_t *rssi, unsigned *frame_drops, unsigned max_values)
+	       uint8_t *rssi, unsigned *frame_drops, unsigned max_values)
 {
 	/*
 	 * The S.BUS protocol doesn't provide reliable framing,
@@ -752,7 +752,7 @@ bool dsm_input(int fd, uint16_t *values, uint16_t *num_values, bool *dsm_11_bit,
 }
 
 bool dsm_parse(const uint64_t now, const uint8_t *frame, const unsigned len, uint16_t *values,
-	       uint16_t *num_values, bool *dsm_11_bit, unsigned *frame_drops, int8_t *rssi_percent, uint16_t max_channels)
+	       uint16_t *num_values, bool *dsm_11_bit, unsigned *frame_drops, uint8_t *rssi_percent, uint16_t max_channels)
 {
 	/* this is set by the decoding state machine and will default to false
 	 * once everything that was decodable has been decoded.

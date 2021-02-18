@@ -60,7 +60,7 @@
 int test_ppm_loopback(int argc, char *argv[])
 {
 
-	int _rc_sub = orb_subscribe(ORB_ID(input_rc));
+	int input_rc_sub = orb_subscribe(ORB_ID(input_rc));
 
 	int servo_fd, result;
 	servo_position_t pos;
@@ -134,17 +134,17 @@ int test_ppm_loopback(int argc, char *argv[])
 
 	/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
 	struct input_rc_s rc_input;
-	orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
+	orb_copy(ORB_ID(input_rc), input_rc_sub, &rc_input);
 	px4_usleep(100000);
 
 	/* open PPM input and expect values close to the output values */
 
 	bool rc_updated;
-	orb_check(_rc_sub, &rc_updated);
+	orb_check(input_rc_sub, &rc_updated);
 
 	if (rc_updated) {
 
-		orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
+		orb_copy(ORB_ID(input_rc), input_rc_sub, &rc_input);
 
 		// int ppm_fd = open(RC_INPUT_DEVICE_PATH, O_RDONLY);
 

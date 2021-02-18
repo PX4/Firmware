@@ -22,3 +22,7 @@ typedef  struct rc_decode_buf_ {
 #pragma pack(pop)
 
 extern rc_decode_buf_t rc_decode_buf;
+
+#define RC_INPUT_RSSI_MAX		100 //should be same as  input_rc_s::RC_RSSI_MAX
+#define RC_INPUT_RSSI_MIN		0   //should be same as  input_rc_s::RC_RSSI_MIN
+#define RC_INPUT_RSSI_UNDEFINED	255 //should be same as  input_rc_s::RC_RSSI_UNDEFINED

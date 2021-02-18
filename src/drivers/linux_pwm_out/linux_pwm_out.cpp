@@ -83,7 +83,7 @@ int     _armed_sub = -1;
 
 // publications
 orb_advert_t    _outputs_pub = nullptr;
-orb_advert_t    _rc_pub = nullptr;
+orb_advert_t    _input_rc_pub = nullptr;
 
 perf_counter_t	_perf_control_latency = nullptr;
 

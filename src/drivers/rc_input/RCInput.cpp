@@ -170,7 +170,7 @@ void
 RCInput::fill_rc_in(uint16_t raw_rc_count_local,
 		    uint16_t raw_rc_values_local[input_rc_s::RC_INPUT_MAX_CHANNELS],
 		    hrt_abstime now, bool frame_drop, bool failsafe,
-		    unsigned frame_drops, int rssi = -1)
+		    unsigned frame_drops, uint8_t rssi = input_rc_s::RC_RSSI_UNDEFINED)
 {
 	// fill rc_in struct for publishing
 	_rc_in.channel_count = raw_rc_count_local;
@@ -197,8 +197,11 @@ RCInput::fill_rc_in(uint16_t raw_rc_count_local,
 	_rc_in.rc_ppm_frame_length = 0;
 
 	/* fake rssi if no value was provided */
-	if (rssi == -1) {
+	if (rssi == input_rc_s::RC_RSSI_UNDEFINED) {
+#ifdef ADC_RC_RSSI_CHANNEL
+
 		if ((_param_rc_rssi_pwm_chan.get() > 0) && (_param_rc_rssi_pwm_chan.get() < _rc_in.channel_count)) {
+
 			const int32_t rssi_pwm_chan = _param_rc_rssi_pwm_chan.get();
 			const int32_t rssi_pwm_min = _param_rc_rssi_pwm_min.get();
 			const int32_t rssi_pwm_max = _param_rc_rssi_pwm_max.get();
@@ -211,26 +214,22 @@ RCInput::fill_rc_in(uint16_t raw_rc_count_local,
 			// set RSSI if analog RSSI input is present
 			float rssi_analog = ((_analog_rc_rssi_volt - 0.2f) / 3.0f) * 100.0f;
 
-			if (rssi_analog > 100.0f) {
-				rssi_analog = 100.0f;
-			}
-
-			if (rssi_analog < 0.0f) {
-				rssi_analog = 0.0f;
-			}
-
-			_rc_in.rssi = rssi_analog;
+			_rc_in.rssi = math::constrain(rssi_analog, 0.f, 100.f);
 
 		} else {
-			_rc_in.rssi = 255;
+			_rc_in.rssi = input_rc_s::RC_RSSI_UNDEFINED;
 		}
+
+#else
+		_rc_in.rssi = input_rc_s::RC_RSSI_UNDEFINED;
+#endif
 
 	} else {
 		_rc_in.rssi = rssi;
 	}
 
 	if (valid_chans == 0) {
-		_rc_in.rssi = 0;
+		_rc_in.rssi = input_rc_s::RC_RSSI_NO_SIGNAL;
 	}
 
 	_rc_in.rc_failsafe = failsafe;
@@ -439,7 +438,7 @@ void RCInput::Run()
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
 
 				if (newBytes > 0) {
-					int8_t dsm_rssi;
+					uint8_t dsm_rssi;
 
 					// parse new data
 					rc_updated = dsm_parse(cycle_timestamp, &_rcs_buf[0], newBytes, &_raw_rc_values[0], &_raw_rc_count,
@@ -479,7 +478,7 @@ void RCInput::Run()
 
 					for (unsigned i = 0; i < (unsigned)newBytes; i++) {
 						/* set updated flag if one complete packet was parsed */
-						st24_rssi = RC_INPUT_RSSI_MAX;
+						st24_rssi = input_rc_s::RC_RSSI_MAX;
 						rc_updated = (OK == st24_decode(_rcs_buf[i], &st24_rssi, &lost_count,
 										&_raw_rc_count, _raw_rc_values, input_rc_s::RC_INPUT_MAX_CHANNELS));
 					}
@@ -528,7 +527,7 @@ void RCInput::Run()
 
 					for (unsigned i = 0; i < (unsigned)newBytes; i++) {
 						/* set updated flag if one complete packet was parsed */
-						sumd_rssi = RC_INPUT_RSSI_MAX;
+						sumd_rssi = input_rc_s::RC_RSSI_MAX;
 						rc_updated = (OK == sumd_decode(_rcs_buf[i], &sumd_rssi, &rx_count,
 										&_raw_rc_count, _raw_rc_values, input_rc_s::RC_INPUT_MAX_CHANNELS, &sumd_failsafe));
 					}
@@ -638,7 +637,7 @@ void RCInput::Run()
 		if (rc_updated) {
 			perf_count(_publish_interval_perf);
 
-			_to_input_rc.publish(_rc_in);
+			_input_rc_pub.publish(_rc_in);
 
 		} else if (!rc_updated && ((hrt_absolute_time() - _rc_in.timestamp_last_signal) > 1_s)) {
 			_rc_scan_locked = false;
@@ -793,7 +792,11 @@ This module does the RC input parsing and auto-selecting the method. Supported m
 
 	PRINT_MODULE_USAGE_NAME("rc_input", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_PARAM_STRING('d', "/dev/ttyS3", "<file:dev>", "RC device", true);
+#if defined(RC_SERIAL_PORT)
+	PRINT_MODULE_USAGE_PARAM_STRING('d', RC_SERIAL_PORT, "<file:dev>", "RC device", true);
+#else
+	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "RC device", true);
+#endif
 
 #if defined(SPEKTRUM_POWER)
 	PRINT_MODULE_USAGE_COMMAND_DESCR("bind", "Send a DSM bind command (module must be running)");

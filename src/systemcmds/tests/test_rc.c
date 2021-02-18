@@ -59,18 +59,18 @@
 
 int test_rc(int argc, char *argv[])
 {
-	int _rc_sub = orb_subscribe(ORB_ID(input_rc));
+	int input_rc_sub = orb_subscribe(ORB_ID(input_rc));
 
 	/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
 	struct input_rc_s rc_input;
 	struct input_rc_s rc_last;
-	orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
+	orb_copy(ORB_ID(input_rc), input_rc_sub, &rc_input);
 	px4_usleep(100000);
 
 	/* open PPM input and expect values close to the output values */
 
 	bool rc_updated;
-	orb_check(_rc_sub, &rc_updated);
+	orb_check(input_rc_sub, &rc_updated);
 
 	PX4_INFO("Reading PPM values - press any key to abort");
 	PX4_INFO("This test guarantees: 10 Hz update rates, no glitches (channel values), no channel count changes.");
@@ -86,7 +86,7 @@ int test_rc(int argc, char *argv[])
 
 		/* poll descriptor */
 		struct pollfd fds[2];
-		fds[0].fd = _rc_sub;
+		fds[0].fd = input_rc_sub;
 		fds[0].events = POLLIN;
 		fds[1].fd = 0;
 		fds[1].events = POLLIN;
@@ -99,13 +99,13 @@ int test_rc(int argc, char *argv[])
 
 				if (fds[0].revents & POLLIN) {
 
-					orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
+					orb_copy(ORB_ID(input_rc), input_rc_sub, &rc_input);
 
 					/* go and check values */
 					for (unsigned i = 0; i < rc_input.channel_count; i++) {
 						if (abs(rc_input.values[i] - rc_last.values[i]) > 20) {
 							PX4_ERR("comparison fail: RC: %d, expected: %d", rc_input.values[i], rc_last.values[i]);
-							(void)orb_unsubscribe(_rc_sub);
+							(void)orb_unsubscribe(input_rc_sub);
 							return ERROR;
 						}
 
@@ -114,13 +114,13 @@ int test_rc(int argc, char *argv[])
 
 					if (rc_last.channel_count != rc_input.channel_count) {
 						PX4_ERR("channel count mismatch: last: %d, now: %d", rc_last.channel_count, rc_input.channel_count);
-						(void)orb_unsubscribe(_rc_sub);
+						(void)orb_unsubscribe(input_rc_sub);
 						return ERROR;
 					}
 
 					if (hrt_absolute_time() - rc_input.timestamp_last_signal > 100000) {
 						PX4_ERR("TIMEOUT, less than 10 Hz updates");
-						(void)orb_unsubscribe(_rc_sub);
+						(void)orb_unsubscribe(input_rc_sub);
 						return ERROR;
 					}
 

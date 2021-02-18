@@ -117,7 +117,7 @@ void RcInput::_measure(void)
 	_data.timestamp = ts;
 	_data.timestamp_last_signal = ts;
 	_data.channel_count = _channels;
-	_data.rssi = 100;
+	_data.rssi = input_rc_s::RC_RSSI_MAX;
 	_data.rc_lost_frame_count = 0;
 	_data.rc_total_frame_count = 1;
 	_data.rc_ppm_frame_length = 100;
