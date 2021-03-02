@@ -154,6 +154,34 @@ then
 	param set SYS_RESTART_TYPE 2
 
 	param set TRIG_INTERFACE 3
+
+	param set MAV_0_UDP_PRT $udp_offboard_port_local
+	param set MAV_0_REMOTE_PRT $udp_offboard_port_remote
+	param set MAV_0_BROADCAST 1
+	param set MAV_0_FORWARD 1
+	param set MAV_0_MODE 0
+	param set MAV_0_RATE 4000000
+
+	param set MAV_1_UDP_PRT $udp_offboard_port_local
+	param set MAV_1_REMOTE_PRT $udp_offboard_port_remote
+	param set MAV_1_BROADCAST 1
+	param set MAV_1_FORWARD 1
+	param set MAV_1_MODE 2
+	param set MAV_1_RATE 4000000
+
+	param set MAV_2_UDP_PRT $udp_onboard_payload_port_local
+	param set MAV_2_REMOTE_PRT $udp_onboard_payload_port_remote
+	param set MAV_2_BROADCAST 1
+	param set MAV_2_FORWARD 1
+	param set MAV_2_MODE 2
+	param set MAV_2_RATE 4000
+
+	param set MAV_3_UDP_PRT $udp_onboard_gimbal_port_local
+	param set MAV_3_REMOTE_PRT $udp_onboard_gimbal_port_remote
+	param set MAV_3_BROADCAST 1
+	param set MAV_3_FORWARD 0
+	param set MAV_3_MODE 10
+	param set MAV_3_RATE 400000
 fi
 
 param set COM_CPU_MAX -1 # disable check, no CPU load reported on posix yet
