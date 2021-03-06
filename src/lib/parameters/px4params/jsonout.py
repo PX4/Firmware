@@ -45,8 +45,8 @@ class JsonOutput():
                     type_name = param.GetType().capitalize()
                     curr_param['type'] = type_name
                     if not type_name in allowed_types:
-                        print("Error: %s type not supported: curr_param['type']" % (curr_param['name'],curr_param['type']) )
-                        sys.Exit(1)
+                        print("Error: %s type not supported: %s" % (curr_param['name'],curr_param['type']) )
+                        sys.exit(1)
                     curr_param['default'] = get_typed_value(param.GetDefault(), type_name)
 
                     curr_param['group'] = group_name
