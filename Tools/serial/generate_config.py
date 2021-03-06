@@ -216,11 +216,11 @@ def parse_yaml_parameters_config(yaml_config):
     if 'parameters' not in yaml_config:
         return ''
     parameters_section_list = yaml_config['parameters']
+    ret = ''
     for parameters_section in parameters_section_list:
         if 'definitions' not in parameters_section:
             return ''
         definitions = parameters_section['definitions']
-        ret = ''
         param_group = parameters_section.get('group', None)
         for param_name in definitions:
             param = definitions[param_name]
