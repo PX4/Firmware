@@ -51,6 +51,8 @@ px4_add_module(
 		enginefailure.cpp
 		gpsfailure.cpp
 		follow_target.cpp
+	MODULE_CONFIG
+		module.yaml
 	DEPENDS
 		git_ecl
 		ecl_geo

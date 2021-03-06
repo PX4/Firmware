@@ -1,0 +1,561 @@
+module_name: Navigator
+
+parameters:
+  - group: Mission
+    definitions:
+      NAV_LOITER_RAD:
+        description:
+          short: Loiter radius (FW only)
+          long: Default value of loiter radius for missions, Hold mode, Return mode, etc. (fixedwing only).
+        unit: m
+        min: 25
+        max: 1000
+        decimal: 1
+        increment: 0.5
+        default: 50.0
+        type: float
+      NAV_ACC_RAD:
+        description:
+          short: Acceptance radius
+          long: |
+            Default acceptance radius, overriden by acceptance radius of waypoint if set.
+            For fixed wing the L1 turning distance is used for horizontal acceptance.
+        unit: m
+        min: 0.05
+        max: 200.0
+        decimal: 1
+        increment: 0.5
+        default: 10.0
+        type: float
+      NAV_FW_ALT_RAD:
+        description:
+          short: FW altitude acceptance radius
+          long: Acceptance radius for fixedwing altitude
+        unit: m
+        min: 0.05
+        max: 200.0
+        decimal: 1
+        increment: 0.5
+        default: 10.0
+        type: float
+      NAV_FW_ALTL_RAD:
+        description:
+          short: FW altitude acceptance radius before a landing
+          long: |
+            Altitutde acceptance used for the last waypoint before a fixed-wing landing.
+            This is usually smaller than the standard vertical acceptance because close to
+            the ground higher accuracy is required.
+        unit: m
+        min: 0.05
+        max: 200.0
+        decimal: 1
+        default: 5.0
+        type: float
+      NAV_MC_ALT_RAD:
+        description:
+          short: Multicopter altitude acceptance radius
+          long: Acceptance radius for multicopter altitude
+        unit: m
+        min: 0.05
+        max: 200.0
+        decimal: 1
+        increment: 0.5
+        default: 0.8
+        type: float
+      NAV_TRAFF_AVOID:
+        description:
+          short: Set traffic avoidance mode
+          long: |
+            Enabling this will allow the system to respond to transponder data
+            e. g. from ADSB transponders
+        type: enum
+        values:
+          0: Disabled
+          1: Warn only
+          2: Return mode
+          3: Land mode
+          4: Position Hold mode
+        default: 1
+      NAV_TRAFF_A_RADM:
+        description:
+          short: Navigator traffic avoidance radius (manned)
+          long: Defines the radius where NAV TRAFFIC AVOID is called for manned aviation
+        unit: m
+        min: 500
+        default: 500
+        type: float
+      NAV_TRAFF_A_RADU:
+        description:
+          short: Navigator traffic avoidance radius (unmanned)
+          long: Defines the radius where NAV TRAFFIC AVOID is called for unmanned aviation
+        unit: m
+        min: 10
+        max: 500
+        default: 10
+        type: float
+      NAV_FORCE_VT:
+        description:
+          short: Force VTOL mode takeoff and land
+          long: Forces VTOL mode for takeoff and landing
+        type: boolean
+        default: true
+
+  - group: Data Link Loss
+    definitions:
+      NAV_AH_LAT:
+        description:
+          short: Airfield home latitude
+          long: Latitude of airfield home waypoint
+        unit: deg*1e7
+        min: -900000000
+        max: 900000000
+        default: -265847810
+        type: int32
+      NAV_AH_LON:
+        description:
+          short: Airfield home longitude
+          long: Longitude of airfield home waypoint
+        unit: deg*1e7
+        min: -1800000000
+        max: 1800000000
+        default: 1518423250
+        type: int32
+      NAV_AH_ALT:
+        description:
+          short: Airfield home altitude
+          long: Altitude of airfield home waypoint
+        unit: m
+        min: -50
+        decimal: 1
+        increment: 0.5
+        default: 600.0
+        type: float
+
+  - group: Geofence
+    definitions:
+      GF_ACTION:
+        description:
+          short: Geofence violation action.
+          long: |
+            Note: Setting this value to 4 enables flight termination, which will
+            kill the vehicle on violation of the fence. Due to the inherent danger
+            of this, this function is disabled using a software circuit breaker, which
+            needs to be reset to 0 to really shut down the system.
+        type: enum
+        values:
+          0: None
+          1: Warning
+          2: Hold Mode
+          3: Return mode
+          4: Terminate
+          5: Land mode
+        default: 2
+      GF_ALTMODE:
+        description:
+          short: Geofence altitude mode
+          long: Select which altitude (AMSL) source should be used for geofence calculations.
+        type: enum
+        values:
+          0: Autopilot estimator global position altitude (GPS)
+          1: Raw barometer altitude (assuming standard atmospheric pressure)
+        default: 0
+      GF_SOURCE:
+        description:
+          short: Geofence source
+          long: |
+            Select which position source should be used. Selecting GPS instead of global
+            position makes sure no dependence on the position estimator.
+        type: enum
+        values:
+          0: GPOS
+          1: GPS
+        default: 0
+      GF_COUNT:
+        description:
+          short: Geofence counter limit
+          long: |
+            Set how many subsequent position measurements outside of the fence are needed
+            before geofence violation is triggered.
+        type: int32
+        min: -1
+        max: 10
+        increment: 1
+        default: -1
+      GF_MAX_HOR_DIST:
+        description:
+          short: Max horizontal distance in meters
+          long: |
+            Maximum horizontal distance in meters the vehicle can be from home before
+            triggering a geofence
+        type: float
+        unit: m
+        min: 0
+        max: 10000
+        increment: 1
+        default: 0
+      GF_MAX_VER_DIST:
+        description:
+          short: Max vertical distance in meters
+          long: |
+            Maximum vertical distance in meters the vehicle can be from home before
+            triggering a geofence
+        type: float
+        unit: m
+        min: 0
+        max: 10000
+        increment: 1
+        default: 0
+
+  - group: GPS Failure Navigation
+    definitions:
+      NAV_GPSF_LT:
+        description:
+          short: Loiter time
+          long: |
+            The time in seconds the system should do open loop loiter and wait for GPS
+            recovery before it goes into flight termination. Set to 0 to disable.
+        type: float
+        unit: s
+        min: 0.0
+        max: 3600.0
+        decimal: 0
+        increment: 1
+        default: 0.0
+      NAV_GPSF_R:
+        description:
+          short: Fixed roll angle
+          long: Roll in degrees during the loiter
+        type: float
+        unit: deg
+        min: 0.0
+        max: 30.0
+        decimal: 1
+        increment: 0.5
+        default: 15.0
+      NAV_GPSF_P:
+        description:
+          short: Fixed pitch angle
+          long: Pitch in degrees during the loiter
+        type: float
+        unit: deg
+        min: -30.0
+        max: 30.0
+        decimal: 1
+        increment: 0.5
+        default: 0.0
+      NAV_GPSF_TR:
+        description:
+          short: Thrust
+          long: Thrust value which is set during the open loop loiter
+        type: float
+        unit: norm
+        min: 0.0
+        max: 1.0
+        decimal: 2
+        increment: 0.05
+        default: 0.0
+      MIS_TAKEOFF_REQ:
+        description:
+          short: Take-off waypoint required
+          long: If set, the mission feasibility checker will check for a takeoff waypoint on the mission.
+        type: boolean
+        default: false
+      MIS_MNT_YAW_CTL:
+        description:
+          short: Enable yaw control of the mount. (Only affects multicopters and ROI mission items)
+          long: |
+            If enabled, yaw commands will be sent to the mount and the vehicle will follow
+            its heading towards the flight direction.
+            If disabled, the vehicle will yaw towards the ROI.
+        type: enum
+        values:
+          0: Disable
+          1: Enable
+        default: 0
+      MIS_TAKEOFF_ALT:
+        description:
+          short: Take-off altitude
+          long: This is the minimum altitude the system will take off to.
+        unit: m
+        min: 0
+        max: 80
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 2.5
+      MIS_LTRMIN_ALT:
+        description:
+          short: Minimum loiter altitude
+          long: |
+            This is the minimum altitude the system will always obey. The intent is to stay
+            out of ground effect. Set to -1 if there shouldn't be a minimum loiter altitude.
+        unit: m
+        min: -1
+        max: 80
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: -1.0
+      MIS_DIST_1WP:
+        description:
+          short: Maximal horizontal distance from home to first waypoint
+          long: Maximal horizontal distance from home to first waypoint
+        unit: m
+        min: 0
+        max: 10000
+        decimal: 1
+        increment: 100
+        type: float
+        default: 900.0
+      MIS_DIST_WPS:
+        description:
+          short: Maximal horizontal distance between waypoint
+          long: Maximal horizontal distance between waypoint
+        unit: m
+        min: 0
+        max: 10000
+        decimal: 1
+        increment: 100
+        type: float
+        default: 900.0
+      MIS_YAW_TMT:
+        description:
+          short: Time in seconds we wait on reaching target heading at a waypoint if it is forced.
+          long: |
+            If set > 0 it will ignore the target heading for normal waypoint acceptance. If the
+            waypoint forces the heading the timeout will matter. For example on VTOL forwards
+            transition. Mainly useful for VTOLs that have less yaw authority and might not reach
+            target yaw in wind. Disabled by default.
+        unit: s
+        min: -1
+        max: 20
+        decimal: 1
+        increment: 1
+        type: float
+        default: -1.0
+      MIS_YAW_ERR:
+        description:
+          short: Max yaw error in degrees needed for waypoint heading acceptance.
+          long: Max yaw error in degrees needed for waypoint heading acceptance.
+        unit: deg
+        min: 0
+        max: 90
+        decimal: 1
+        increment: 1
+        type: float
+        default: 12.0
+
+  - group: Precision Land
+    definitions:
+      PLD_BTOUT:
+        description:
+          short: Landing Target Timeout
+          long: Time after which the landing target is onsidered lost without any new measurements.
+        unit: s
+        min: 0.0
+        max: 50
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 5.0
+      PLD_HACC_RAD:
+        description:
+          short: Horizontal acceptance radius
+          long: Start descending if closer above landing target than this.
+        unit: m
+        min: 0.0
+        max: 10
+        decimal: 2
+        increment: 0.1
+        type: float
+        default: 0.2
+      PLD_FAPPR_ALT:
+        description:
+          short: Final approach altitude
+          long: |
+            Allow final approach (without horizontal positioning) if losing landing
+            target closer than this
+        unit: m
+        min: 0.0
+        max: 10
+        decimal: 2
+        increment: 0.1
+        type: float
+        default: 0.1
+      PLD_SRCH_ALT:
+        description:
+          short: Search altitude
+          long: Altitude above home to which to climb when searching for the landing target.
+        unit: m
+        min: 0.0
+        max: 100
+        decimal: 1
+        increment: 0.1
+        type: float
+        default: 10.0
+      PLD_SRCH_TOUT:
+        description:
+          short: Search timeout
+          long: Time allowed to search for the landing target before falling back to normal landing.
+        unit: s
+        min: 0.0
+        max: 100
+        decimal: 1
+        increment: 0.1
+        type: float
+        default: 10.0
+      PLD_MAX_SRCH:
+        description:
+          short: Maximum number of search attempts
+          long: Maximum number of times to search for the landing target if it is lost during the precision landing.
+        min: 0
+        max: 100
+        type: int32
+        default: 3
+
+  - group: Follow Target
+    definitions:
+      NAV_MIN_FT_HT:
+        description:
+          short: Minimum follow target altitude
+          long: The minimum height in meters relative to home for following a target
+        unit: m
+        min: 8.0
+        type: float
+        default: 8.0
+      NAV_FT_DST:
+        description:
+          short: Distance to follow target from
+          long: The distance in meters to follow the target at
+        unit: m
+        min: 1.0
+        type: float
+        default: 8.0
+      NAV_FT_FS:
+        description:
+          short: Side to follow target from
+          long: |
+            The side to follow the target from (front right = 0, behind = 1, front
+            = 2, front left = 3)
+        min: 0
+        max: 3
+        type: int32
+        default: 1
+      NAV_FT_RS:
+        description:
+          short: Dynamic filtering algorithm responsiveness to target movement
+          long: Dynamic filtering algorithm responsiveness to target movement
+        min: 0.0
+        max: 1.0
+        decimal: 2
+        type: float
+        default: 0.5
+
+  - group: Return Mode
+    definitions:
+      RTL_TYPE:
+        description:
+          short: Return type
+          long: |
+            Return mode destination and flight path (home location, rally point, mission
+            landing pattern, reverse mission)
+        type: enum
+        values:
+          0: Return to closest safe point (home or rally point) via direct path.
+          1: Return to closest safe point other than home (mission landing pattern or rally point).
+          2: Return to a planned mission landing, if available, using the mission path, else return to home via the reverse mission path. Do not consider rally points.
+          3: "Return via the direct path to closest destination: home, start of mission landing pattern or safe point. If the destination is a mission landing pattern, follow the pattern to land."
+        default: 0
+      RTL_CONE_ANG:
+        description:
+          short: Half-angle of the return mode altitude cone
+          long: |
+            Defines the half-angle of a cone centered around the destination position that
+            affects the altitude at which the vehicle returns.
+        unit: deg
+        type: enum
+        values:
+          0: No cone, always climb to RTL_RETURN_ALT above destination.
+          25: 25 degrees half cone angle.
+          45: 45 degrees half cone angle
+          65: 65 degrees half cone angle.
+          80: 80 degrees half cone angle.
+          90: Only climb to at least RTL_DESCEND_ALT above destination.
+        default: 45
+      RTL_PLD_MD:
+        description:
+          short: RTL precision land mode
+          long: Use precision landing when doing an RTL landing phase.
+        type: enum
+        values:
+          0: No precision landing
+          1: Opportunistic precision landing
+          2: Required precision landing
+        default: 0
+      RTL_RETURN_ALT:
+        description:
+          short: Return mode return altitude
+          long: Return mode return altitude
+        unit: m
+        min: 0
+        max: 150
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 60.0
+      RTL_DESCEND_ALT:
+        description:
+          short: Return mode loiter altitude
+          long: Return mode loiter altitude
+        unit: m
+        min: 2
+        max: 100
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 30.0
+      RTL_LAND_DELAY:
+        description:
+          short: Return mode delay
+          long: Return mode delay
+        unit: s
+        min: -1
+        max: 300
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 0.0
+      RTL_MIN_DIST:
+        description:
+          short: Horizontal radius from return point within which special rules for
+            return mode apply.
+          long: Horizontal radius from return point within which special rules for return
+            mode apply.
+        unit: m
+        min: 0.5
+        max: 100
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 10.0
+      RTL_LOITER_RAD:
+        description:
+          short: Loiter radius for rtl descend
+          long: Set the radius for loitering to a safe altitude for VTOL transition.
+        unit: m
+        min: 25
+        max: 1000
+        decimal: 1
+        increment: 0.5
+        type: float
+        default: 50.0
+
+  - group: Commander
+    definitions:
+      RTL_FLT_TIME:
+        description:
+          short: Maximum allowed RTL flight in minutes
+          long: Maximum allowed RTL flight in minutes
+        unit: min
+        type: float
+        default: 15.0
