@@ -377,8 +377,8 @@ class SourceParser(object):
                 seenParamNames.append(name_plus_board)
                 # Validate values
                 default = param.GetDefault()
-                min = param.GetFieldValue("min")
-                max = param.GetFieldValue("max")
+                _min = param.GetFieldValue("min")
+                _max = param.GetFieldValue("max")
                 units = param.GetFieldValue("unit")
                 if units not in allowedUnits:
                     sys.stderr.write("Invalid unit in {0}: {1}\n".format(name, units))
@@ -390,19 +390,19 @@ class SourceParser(object):
                 # if default != "" and "." not in default:
                 #     sys.stderr.write("Default value does not contain dot (e.g. 10 needs to be written as 10.0): {0} {1}\n".format(name, default))
                 #     return False
-                if min != "":
-                    if not self.IsNumber(min):
-                        sys.stderr.write("Min value not number: {0} {1}\n".format(name, min))
+                if _min != "":
+                    if not self.IsNumber(_min):
+                        sys.stderr.write("Min value not number: {0} {1}\n".format(name, _min))
                         return False
-                    if default != "" and float(default) < float(min):
-                        sys.stderr.write("Default value is smaller than min: {0} default:{1} min:{2}\n".format(name, default, min))
+                    if default != "" and float(default) < float(_min):
+                        sys.stderr.write("Default value is smaller than min: {0} default:{1} min:{2}\n".format(name, default, _min))
                         return False
-                if max != "":
-                    if not self.IsNumber(max):
-                        sys.stderr.write("Max value not number: {0} {1}\n".format(name, max))
+                if _max != "":
+                    if not self.IsNumber(_max):
+                        sys.stderr.write("Max value not number: {0} {1}\n".format(name, _max))
                         return False
-                    if default != "" and float(default) > float(max):
-                        sys.stderr.write("Default value is larger than max: {0} default:{1} max:{2}\n".format(name, default, max))
+                    if default != "" and float(default) > float(_max):
+                        sys.stderr.write("Default value is larger than max: {0} default:{1} max:{2}\n".format(name, default, _max))
                         return False
                 for code in param.GetEnumCodes():
                         if not self.IsNumber(code):
@@ -415,9 +415,12 @@ class SourceParser(object):
                         if not self.IsNumber(index):
                             sys.stderr.write("bit value not number: {0} {1}\n".format(name, index))
                             return False
-                        if not int(min) <= math.pow(2, int(index)) <= int(max):
-                            sys.stderr.write("Bitmask bit must be between {0} and {1}: {2} {3}\n".format(min, max, name, math.pow(2, int(index))))
-                            return False
+                        # TODO: add this back, but the logic is incorrect right now
+                        # a single bit doesn't have to be in the range (_min, _max)
+                        # as long as the combined bitmask configuration is
+                        # if not int(min) <= math.pow(2, int(index)) <= int(max):
+                            # sys.stderr.write("Bitmask bit must be between {0} and {1}: {2} {3}\n".format(min, max, name, math.pow(2, int(index))))
+                            # return False
                         if param.GetBitmaskBit(index) == "":
                             sys.stderr.write("Description for bitmask bit is empty: {0} {1}\n".format(name, index))
                             return False

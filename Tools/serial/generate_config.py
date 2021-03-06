@@ -242,13 +242,18 @@ def parse_yaml_parameters_config(yaml_config):
                 param_type = 'INT32'
             elif param['type'] == 'float':
                 param_type = 'FLOAT'
+            elif param['type'] == 'bitmask':
+                param_type = 'INT32'
             else:
                 raise Exception("unknown param type {:}".format(param['type']))
 
-            for tag in ['decimal', 'increment', 'category', 'volatile', 'bit',
+            for tag in ['decimal', 'increment', 'category', 'volatile',
                         'min', 'max', 'unit', 'reboot_required']:
                 if tag in param:
                     tags += '\n * @{:} {:}'.format(tag, param[tag])
+            if 'bit' in param:
+                for value, tag in param['bit'].items():
+                    tags += '\n * @bit {:} {:}'.format(value, tag)
 
             for i in range(num_instances):
                 # default value
