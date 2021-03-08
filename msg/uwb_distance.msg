@@ -10,6 +10,6 @@ uint8 	time_offset		#  in Milie Seconds  //Populate with actual time of Range?
 #GPS position of target_pos of the UWB system
 float32[4] gps_data #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
 
-int32[3] position		# position of the drone (x,y,z) in regards to (to be determined)
+int16[3] position		# position of the drone (x,y,z) in regards to (to be determined)
 
 

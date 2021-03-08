@@ -15,15 +15,15 @@ float32[4] target_gps #Latitude, Longitude, Altitude, and Yaw Offset to Truenort
 
 #Grid DATA
 #Coordinates start at Anchor 0 with X defined by Anchor 1
-int32[3] target_pos 	#Target, mostly landing Target x,y,z
-int32[3] anchor_pos_0 #Anchor 0
-int32[3] anchor_pos_1 #better way?
-int32[3] anchor_pos_2 #Position of every anchor
-int32[3] anchor_pos_3 #Position of every anchor
-int32[3] anchor_pos_4 #Position of every anchor
-int32[3] anchor_pos_5 #Position of every anchor
-int32[3] anchor_pos_6 #Position of every anchor
-int32[3] anchor_pos_7 #Position of every anchor
-int32[3] anchor_pos_8 #Position of every anchor
+int16[3] target_pos 	#Target, mostly landing Target x,y,z
+int16[3] anchor_pos_0 #Anchor 0
+int16[3] anchor_pos_1 #better way?
+int16[3] anchor_pos_2 #Position of every anchor
+int16[3] anchor_pos_3 #Position of every anchor
+int16[3] anchor_pos_4 #Position of every anchor
+int16[3] anchor_pos_5 #Position of every anchor
+int16[3] anchor_pos_6 #Position of every anchor
+int16[3] anchor_pos_7 #Position of every anchor
+int16[3] anchor_pos_8 #Position of every anchor
 
 

@@ -84,7 +84,7 @@ typedef struct {  //needs higher accuracy?
 } gps_pos_t;
 
 typedef struct {
-	int32_t x, y, z; //axis in cm
+	int16_t x, y, z; //axis in cm
 } position_t; // Position of a device or target in 3D space
 
 typedef union {
