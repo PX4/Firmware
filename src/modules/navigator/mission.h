@@ -79,6 +79,8 @@ public:
 
 	bool set_current_mission_index(uint16_t index);
 
+	bool mission_valid() const { return _mission_result.valid; }
+
 	bool land_start();
 	bool landing();
 
@@ -103,6 +105,16 @@ public:
 	 * For a list of the different modes refer to mission_result.msg
 	 */
 	void set_execution_mode(const uint8_t mode);
+
+	void set_failure() override
+	{
+		if (!_mission_result.failure) {
+			_mission_result.failure = true;
+
+			_mission_result_updated = true;
+		}
+	}
+
 private:
 
 	/**
@@ -235,6 +247,7 @@ private:
 
 	bool position_setpoint_equal(const position_setpoint_s *p1, const position_setpoint_s *p2) const;
 
+	void publish_mission_result();
 	void publish_navigator_mission_item();
 
 	DEFINE_PARAMETERS(
@@ -243,10 +256,14 @@ private:
 		(ParamInt<px4::params::MIS_MNT_YAW_CTL>) _param_mis_mnt_yaw_ctl
 	)
 
+	uORB::Publication<mission_result_s> _mission_result_pub{ORB_ID::mission_result};
 	uORB::Publication<navigator_mission_item_s> _navigator_mission_item_pub{ORB_ID::navigator_mission_item};
 
 	uORB::Subscription	_mission_sub{ORB_ID(mission)};		/**< mission subscription */
 	mission_s		_mission {};
+
+	mission_result_s _mission_result{};
+	bool _mission_result_updated{false};
 
 	int32_t _current_mission_index{-1};
 

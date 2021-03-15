@@ -403,7 +403,7 @@ Navigator::run()
 				publish_vehicle_command_ack(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED);
 
 			} else if (cmd.command == vehicle_command_s::VEHICLE_CMD_MISSION_START) {
-				if (_mission_result.valid && PX4_ISFINITE(cmd.param1) && (cmd.param1 >= 0)) {
+				if (_mission.mission_valid() && PX4_ISFINITE(cmd.param1) && (cmd.param1 >= 0)) {
 					if (!_mission.set_current_mission_index(cmd.param1)) {
 						PX4_WARN("CMD_MISSION_START failed");
 					}
@@ -653,9 +653,6 @@ Navigator::run()
 			navigation_mode_new = nullptr;
 		}
 
-		// update the vehicle status
-		_previous_nav_state = _vstatus.nav_state;
-
 		/* we have a new navigation mode: reset triplet */
 		if (_navigation_mode != navigation_mode_new) {
 			// We don't reset the triplet if we just did an auto-takeoff and are now
@@ -689,9 +686,17 @@ Navigator::run()
 			publish_position_setpoint_triplet();
 		}
 
-		if (_mission_result_updated) {
-			publish_mission_result();
+		if (_navigator_status_updated || (_navigator_status.nav_state != _vstatus.nav_state)) {
+			_navigator_status.nav_state = _vstatus.nav_state;
+			_navigator_status.nav_state_prev = _previous_nav_state;
+
+			_navigator_status.timestamp = hrt_absolute_time();
+			_navigator_status_pub.publish(_navigator_status);
+			_navigator_status_updated = false;
 		}
+
+		// update the vehicle status
+		_previous_nav_state = _vstatus.nav_state;
 
 		perf_end(_loop_perf);
 	}
@@ -1305,32 +1310,6 @@ int Navigator::custom_command(int argc, char *argv[])
 int navigator_main(int argc, char *argv[])
 {
 	return Navigator::main(argc, argv);
-}
-
-void
-Navigator::publish_mission_result()
-{
-	_mission_result.timestamp = hrt_absolute_time();
-
-	/* lazily publish the mission result only once available */
-	_mission_result_pub.publish(_mission_result);
-
-	/* reset some of the flags */
-	_mission_result.item_do_jump_changed = false;
-	_mission_result.item_changed_index = 0;
-	_mission_result.item_do_jump_remaining = 0;
-
-	_mission_result_updated = false;
-}
-
-void
-Navigator::set_mission_failure(const char *reason)
-{
-	if (!_mission_result.failure) {
-		_mission_result.failure = true;
-		set_mission_result_updated();
-		mavlink_log_critical(&_mavlink_log_pub, "%s", reason);
-	}
 }
 
 void

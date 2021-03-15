@@ -43,6 +43,7 @@
 #pragma once
 
 #include <dataman/dataman.h>
+#include <lib/systemlib/mavlink_log.h>
 #include <uORB/topics/mission.h>
 
 class Geofence;
@@ -50,6 +51,20 @@ class Navigator;
 
 class MissionFeasibilityChecker
 {
+public:
+	MissionFeasibilityChecker(Navigator *navigator) : _navigator(navigator) {}
+	~MissionFeasibilityChecker() = default;
+
+	MissionFeasibilityChecker(const MissionFeasibilityChecker &) = delete;
+	MissionFeasibilityChecker &operator=(const MissionFeasibilityChecker &) = delete;
+
+	/*
+	 * Returns true if mission is feasible and false otherwise
+	 */
+	bool checkMissionFeasible(const mission_s &mission,
+				  float max_distance_to_1st_waypoint, float max_distance_between_waypoints,
+				  bool land_start_req);
+
 private:
 	Navigator *_navigator{nullptr};
 
@@ -76,18 +91,5 @@ private:
 	bool checkVTOL(const mission_s &mission, float home_alt, bool land_start_req);
 	bool checkVTOLLanding(const mission_s &mission, bool land_start_req);
 
-public:
-	MissionFeasibilityChecker(Navigator *navigator) : _navigator(navigator) {}
-	~MissionFeasibilityChecker() = default;
-
-	MissionFeasibilityChecker(const MissionFeasibilityChecker &) = delete;
-	MissionFeasibilityChecker &operator=(const MissionFeasibilityChecker &) = delete;
-
-	/*
-	 * Returns true if mission is feasible and false otherwise
-	 */
-	bool checkMissionFeasible(const mission_s &mission,
-				  float max_distance_to_1st_waypoint, float max_distance_between_waypoints,
-				  bool land_start_req);
-
+	orb_advert_t _mavlink_log_pub{nullptr};
 };

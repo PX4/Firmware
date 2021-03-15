@@ -405,7 +405,7 @@ void enable_failsafe(vehicle_status_s *status, bool old_failsafe, orb_advert_t *
  */
 bool set_nav_state(vehicle_status_s *status, actuator_armed_s *armed, commander_state_s *internal_state,
 		   orb_advert_t *mavlink_log_pub, const link_loss_actions_t data_link_loss_act, const bool mission_finished,
-		   const bool stay_in_failsafe, const vehicle_status_flags_s &status_flags, bool landed,
+		   const vehicle_status_flags_s &status_flags, bool landed,
 		   const link_loss_actions_t rc_loss_act, const offboard_loss_actions_t offb_loss_act,
 		   const offboard_loss_rc_actions_t offb_loss_rc_act,
 		   const position_nav_loss_actions_t posctl_nav_loss_act,
@@ -537,7 +537,7 @@ bool set_nav_state(vehicle_status_s *status, actuator_armed_s *armed, commander_
 			enable_failsafe(status, old_failsafe, mavlink_log_pub, reason_no_datalink);
 			set_link_loss_nav_state(status, armed, status_flags, internal_state, link_loss_actions_t::AUTO_RTL, 0);
 
-		} else if (!stay_in_failsafe) {
+		} else {
 			// normal mission operation if there's no need to stay in failsafe
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION;
 		}

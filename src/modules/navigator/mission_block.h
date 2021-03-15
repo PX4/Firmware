@@ -144,6 +144,8 @@ protected:
 
 	float get_absolute_altitude_for_item(const mission_item_s &mission_item) const;
 
+	virtual void set_failure() {}
+
 	mission_item_s _mission_item{};
 
 	bool _waypoint_position_reached{false};

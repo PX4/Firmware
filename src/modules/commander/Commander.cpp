@@ -1947,21 +1947,39 @@ Commander::run()
 					}
 				}
 			}
+		}
 
-			// Transition main state to loiter or auto-mission after takeoff is completed.
-			if (_armed.armed && !_land_detector.landed
-			    && (_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF)
-			    && (mission_result.timestamp >= _status.nav_state_timestamp)
-			    && mission_result.finished) {
+		if (_navigator_status_sub.updated()) {
+			navigator_status_s navigator_status;
 
-				if ((_param_takeoff_finished_action.get() == 1) && _status_flags.condition_auto_mission_available) {
-					main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_MISSION, _status_flags, &_internal_state);
+			if (_navigator_status_sub.copy(&navigator_status)) {
 
-				} else {
-					main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
+				// Transition main state to loiter or auto-mission after takeoff is completed.
+				if (_armed.armed && !_land_detector.landed
+				    && (navigator_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF)
+				    && (_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF)
+				    && (navigator_status.timestamp >= _status.nav_state_timestamp)
+				    && navigator_status.finished) {
+
+					if ((_param_takeoff_finished_action.get() == 1) && _status_flags.condition_auto_mission_available) {
+						main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_MISSION, _status_flags, &_internal_state);
+
+					} else {
+						main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
+					}
+				}
+
+				// Check for flight termination
+				if (_armed.armed && navigator_status.flight_termination && !_status_flags.circuit_breaker_flight_termination_disabled) {
+
+					_armed.force_failsafe = true;
+					_status_changed = true;
+
+					mavlink_log_critical(&_mavlink_log_pub, "Flight termination active");
 				}
 			}
 		}
+
 
 		/* start geofence result check */
 		_geofence_result_sub.update(&_geofence_result);
@@ -2062,23 +2080,6 @@ Commander::run()
 			_geofence_land_on = false;
 			_geofence_warning_action_on = false;
 			_geofence_violated_prev = false;
-		}
-
-		/* Check for mission flight termination */
-		if (_armed.armed && _mission_result_sub.get().flight_termination &&
-		    !_status_flags.circuit_breaker_flight_termination_disabled) {
-
-			_armed.force_failsafe = true;
-			_status_changed = true;
-
-			if (!_flight_termination_printed) {
-				mavlink_log_critical(&_mavlink_log_pub, "Geofence violation! Flight terminated");
-				_flight_termination_printed = true;
-			}
-
-			if (_counter % (1000000 / COMMANDER_MONITORING_INTERVAL) == 0) {
-				mavlink_log_critical(&_mavlink_log_pub, "Flight termination active");
-			}
 		}
 
 		// Manual control input handling
@@ -2401,7 +2402,6 @@ Commander::run()
 						       &_mavlink_log_pub,
 						       (link_loss_actions_t)_param_nav_dll_act.get(),
 						       _mission_result_sub.get().finished,
-						       _mission_result_sub.get().stay_in_failsafe,
 						       _status_flags,
 						       _land_detector.landed,
 						       (link_loss_actions_t)_param_nav_rcl_act.get(),

@@ -98,6 +98,7 @@ set(msg_files
 	mount_orientation.msg
 	multirotor_motor_limits.msg
 	navigator_mission_item.msg
+	navigator_status.msg
 	obstacle_distance.msg
 	offboard_control_mode.msg
 	onboard_computer_status.msg

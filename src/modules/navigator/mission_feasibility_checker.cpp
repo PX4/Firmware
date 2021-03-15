@@ -73,7 +73,7 @@ MissionFeasibilityChecker::checkMissionFeasible(const mission_s &mission,
 	if (!home_alt_valid) {
 		failed = true;
 		warned = true;
-		mavlink_log_info(_navigator->get_mavlink_log_pub(), "Not yet ready for mission, no position lock.");
+		mavlink_log_info(&_mavlink_log_pub, "Not yet ready for mission, no position lock.");
 
 	} else {
 		failed = failed || !checkDistanceToFirstWaypoint(mission, max_distance_to_1st_waypoint);
@@ -136,7 +136,7 @@ bool
 MissionFeasibilityChecker::checkGeofence(const mission_s &mission, float home_alt, bool home_valid)
 {
 	if (_navigator->get_geofence().isHomeRequired() && !home_valid) {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Geofence requires valid home position");
+		mavlink_log_critical(&_mavlink_log_pub, "Geofence requires valid home position");
 		return false;
 	}
 
@@ -152,7 +152,7 @@ MissionFeasibilityChecker::checkGeofence(const mission_s &mission, float home_al
 			}
 
 			if (missionitem.altitude_is_relative && !home_valid) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Geofence requires valid home position");
+				mavlink_log_critical(&_mavlink_log_pub, "Geofence requires valid home position");
 				return false;
 			}
 
@@ -161,7 +161,7 @@ MissionFeasibilityChecker::checkGeofence(const mission_s &mission, float home_al
 
 			if (MissionBlock::item_contains_position(missionitem) && !_navigator->get_geofence().check(missionitem)) {
 
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Geofence violation for waypoint %zu", i + 1);
+				mavlink_log_critical(&_mavlink_log_pub, "Geofence violation for waypoint %zu", i + 1);
 				return false;
 			}
 		}
@@ -180,7 +180,7 @@ MissionFeasibilityChecker::checkHomePositionAltitude(const mission_s &mission, f
 		const ssize_t len = sizeof(struct mission_item_s);
 
 		if (dm_read((dm_item_t)mission.dataman_id, i, &missionitem, len) != len) {
-			_navigator->get_mission_result()->warning = true;
+			//_navigator->get_mission_result()->warning = true;
 			/* not supposed to happen unless the datamanager can't access the SD card, etc. */
 			return false;
 		}
@@ -188,14 +188,14 @@ MissionFeasibilityChecker::checkHomePositionAltitude(const mission_s &mission, f
 		/* reject relative alt without home set */
 		if (missionitem.altitude_is_relative && !home_alt_valid && MissionBlock::item_contains_position(missionitem)) {
 
-			_navigator->get_mission_result()->warning = true;
+			//_navigator->get_mission_result()->warning = true;
 
 			if (throw_error) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: No home pos, WP %zu uses rel alt", i + 1);
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: No home pos, WP %zu uses rel alt", i + 1);
 				return false;
 
 			} else	{
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Warning: No home pos, WP %zu uses rel alt", i + 1);
+				mavlink_log_critical(&_mavlink_log_pub, "Warning: No home pos, WP %zu uses rel alt", i + 1);
 				return true;
 			}
 		}
@@ -205,14 +205,14 @@ MissionFeasibilityChecker::checkHomePositionAltitude(const mission_s &mission, f
 
 		if ((home_alt > wp_alt) && MissionBlock::item_contains_position(missionitem)) {
 
-			_navigator->get_mission_result()->warning = true;
+			//_navigator->get_mission_result()->warning = true;
 
 			if (throw_error) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: Waypoint %zu below home", i + 1);
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: Waypoint %zu below home", i + 1);
 				return false;
 
 			} else	{
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Warning: Waypoint %zu below home", i + 1);
+				mavlink_log_critical(&_mavlink_log_pub, "Warning: Waypoint %zu below home", i + 1);
 				return true;
 			}
 		}
@@ -231,7 +231,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 
 		if (dm_read((dm_item_t)mission.dataman_id, i, &missionitem, len) != len) {
 			// not supposed to happen unless the datamanager can't access the SD card, etc.
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: Cannot access SD card");
+			mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: Cannot access SD card");
 			return false;
 		}
 
@@ -276,7 +276,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		    missionitem.nav_cmd != NAV_CMD_SET_CAMERA_FOCUS &&
 		    missionitem.nav_cmd != NAV_CMD_DO_VTOL_TRANSITION) {
 
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: item %i: unsupported cmd: %d", (int)(i + 1),
+			mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: item %i: unsupported cmd: %d", (int)(i + 1),
 					     (int)missionitem.nav_cmd);
 			return false;
 		}
@@ -286,14 +286,14 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 
 			/* check actuator number */
 			if (missionitem.params[0] < 0 || missionitem.params[0] > 5) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Actuator number %d is out of bounds 0..5",
+				mavlink_log_critical(&_mavlink_log_pub, "Actuator number %d is out of bounds 0..5",
 						     (int)missionitem.params[0]);
 				return false;
 			}
 
 			/* check actuator value */
 			if (missionitem.params[1] < -PWM_DEFAULT_MAX || missionitem.params[1] > PWM_DEFAULT_MAX) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				mavlink_log_critical(&_mavlink_log_pub,
 						     "Actuator value %d is out of bounds -PWM_DEFAULT_MAX..PWM_DEFAULT_MAX", (int)missionitem.params[1]);
 				return false;
 			}
@@ -302,7 +302,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		// check if the mission starts with a land command while the vehicle is landed
 		if ((i == 0) && missionitem.nav_cmd == NAV_CMD_LAND && _navigator->get_land_detected()->landed) {
 
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: starts with landing");
+			mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: starts with landing");
 			return false;
 		}
 	}
@@ -343,7 +343,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 			}
 
 			if (takeoff_alt - 1.0f < acceptance_radius) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: Takeoff altitude too low!");
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: Takeoff altitude too low!");
 				return false;
 			}
 
@@ -413,14 +413,14 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 		// MIS_TAKEOFF_REQ param has to be set and the vehicle has to be landed - one can load a mission
 		// while the vehicle is flying and it does not require a takeoff waypoint
 		if (!has_takeoff) {
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: takeoff waypoint required.");
+			mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: takeoff waypoint required.");
 			return false;
 
 		} else if (!takeoff_first) {
 			// check if the takeoff waypoint is the first waypoint item on the mission
 			// i.e, an item with position/attitude change modification
 			// if it is not, the mission should be rejected
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: takeoff not first waypoint item");
+			mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: takeoff not first waypoint item");
 			return false;
 		}
 	}
@@ -453,7 +453,7 @@ MissionFeasibilityChecker::checkFixedWingLanding(const mission_s &mission, bool 
 		// if DO_LAND_START found then require valid landing AFTER
 		if (missionitem.nav_cmd == NAV_CMD_DO_LAND_START) {
 			if (land_start_found) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: more than one land start.");
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: more than one land start.");
 				return false;
 
 			} else {
@@ -495,12 +495,12 @@ MissionFeasibilityChecker::checkFixedWingLanding(const mission_s &mission, bool 
 
 							if (missionitem_previous.altitude > slope_alt_req + 1.0f) {
 								/* Landing waypoint is above altitude of slope at the given waypoint distance (with small tolerance for floating point discrepancies) */
-								mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: adjust landing approach.");
+								mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: adjust landing approach.");
 
 								const float wp_distance_req = Landingslope::getLandingSlopeWPDistance(missionitem_previous.altitude,
 											      missionitem.altitude, horizontal_slope_displacement, slope_angle_rad);
 
-								mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Move down %d m or move further away by %d m.",
+								mavlink_log_critical(&_mavlink_log_pub, "Move down %d m or move further away by %d m.",
 										     (int)ceilf(slope_alt_req - missionitem_previous.altitude),
 										     (int)ceilf(wp_distance_req - wp_distance));
 
@@ -509,13 +509,13 @@ MissionFeasibilityChecker::checkFixedWingLanding(const mission_s &mission, bool 
 
 						} else {
 							/* Landing waypoint is above last waypoint */
-							mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: landing above last waypoint.");
+							mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: landing above last waypoint.");
 							return false;
 						}
 
 					} else {
 						/* Last wp is in flare region */
-						mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: waypoint within landing flare.");
+						mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: waypoint within landing flare.");
 						return false;
 					}
 
@@ -523,18 +523,18 @@ MissionFeasibilityChecker::checkFixedWingLanding(const mission_s &mission, bool 
 
 				} else {
 					// mission item before land doesn't have a position
-					mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: need landing approach.");
+					mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: need landing approach.");
 					return false;
 				}
 
 			} else {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: starts with land waypoint.");
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: starts with land waypoint.");
 				return false;
 			}
 
 		} else if (missionitem.nav_cmd == NAV_CMD_RETURN_TO_LAUNCH) {
 			if (land_start_found && do_land_start_index < i) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				mavlink_log_critical(&_mavlink_log_pub,
 						     "Mission rejected: land start item before RTL item not possible.");
 				return false;
 			}
@@ -542,12 +542,12 @@ MissionFeasibilityChecker::checkFixedWingLanding(const mission_s &mission, bool 
 	}
 
 	if (land_start_req && !land_start_found) {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: landing pattern required.");
+		mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: landing pattern required.");
 		return false;
 	}
 
 	if (land_start_found && (!landing_valid || (do_land_start_index > landing_approach_index))) {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: invalid land start.");
+		mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: invalid land start.");
 		return false;
 	}
 
@@ -577,7 +577,7 @@ MissionFeasibilityChecker::checkVTOLLanding(const mission_s &mission, bool land_
 		// if DO_LAND_START found then require valid landing AFTER
 		if (missionitem.nav_cmd == NAV_CMD_DO_LAND_START) {
 			if (land_start_found) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: more than one land start.");
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: more than one land start.");
 				return false;
 
 			} else {
@@ -599,13 +599,13 @@ MissionFeasibilityChecker::checkVTOLLanding(const mission_s &mission, bool land_
 
 
 			} else {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: starts with land waypoint.");
+				mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: starts with land waypoint.");
 				return false;
 			}
 
 		} else if (missionitem.nav_cmd == NAV_CMD_RETURN_TO_LAUNCH) {
 			if (land_start_found && do_land_start_index < i) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				mavlink_log_critical(&_mavlink_log_pub,
 						     "Mission rejected: land start item before RTL item not possible.");
 				return false;
 			}
@@ -613,12 +613,12 @@ MissionFeasibilityChecker::checkVTOLLanding(const mission_s &mission, bool land_
 	}
 
 	if (land_start_req && !land_start_found) {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: landing pattern required.");
+		mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: landing pattern required.");
 		return false;
 	}
 
 	if (land_start_found && (do_land_start_index > landing_approach_index)) {
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: invalid land start.");
+		mavlink_log_critical(&_mavlink_log_pub, "Mission rejected: invalid land start.");
 		return false;
 	}
 
@@ -641,7 +641,7 @@ MissionFeasibilityChecker::checkDistanceToFirstWaypoint(const mission_s &mission
 
 		if (!(dm_read((dm_item_t)mission.dataman_id, i, &mission_item, sizeof(mission_item_s)) == sizeof(mission_item_s))) {
 			/* error reading, mission is invalid */
-			mavlink_log_info(_navigator->get_mavlink_log_pub(), "Error reading offboard mission.");
+			mavlink_log_info(&_mavlink_log_pub, "Error reading offboard mission.");
 			return false;
 		}
 
@@ -661,11 +661,11 @@ MissionFeasibilityChecker::checkDistanceToFirstWaypoint(const mission_s &mission
 
 		} else {
 			/* item is too far from home */
-			mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+			mavlink_log_critical(&_mavlink_log_pub,
 					     "First waypoint too far away: %d meters, %d max.",
 					     (int)dist_to_1wp, (int)max_distance);
 
-			_navigator->get_mission_result()->warning = true;
+			//_navigator->get_mission_result()->warning = true;
 			return false;
 		}
 	}
@@ -693,7 +693,7 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 
 		if (!(dm_read((dm_item_t)mission.dataman_id, i, &mission_item, sizeof(mission_item_s)) == sizeof(mission_item_s))) {
 			/* error reading, mission is invalid */
-			mavlink_log_info(_navigator->get_mavlink_log_pub(), "Error reading offboard mission.");
+			mavlink_log_info(&_mavlink_log_pub, "Error reading offboard mission.");
 			return false;
 		}
 
@@ -713,11 +713,11 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 
 			if (dist_between_waypoints > max_distance) {
 				/* distance between waypoints is too high */
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				mavlink_log_critical(&_mavlink_log_pub,
 						     "Distance between waypoints too far: %d meters, %d max.",
 						     (int)dist_between_waypoints, (int)max_distance);
 
-				_navigator->get_mission_result()->warning = true;
+				//_navigator->get_mission_result()->warning = true;
 				return false;
 
 				/* do not allow waypoints that are literally on top of each other */
@@ -730,11 +730,11 @@ MissionFeasibilityChecker::checkDistancesBetweenWaypoints(const mission_s &missi
 				/* Waypoints and gate are at the exact same position, which indicates an
 				 * invalid mission and makes calculating the direction from one waypoint
 				 * to another impossible. */
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				mavlink_log_critical(&_mavlink_log_pub,
 						     "Distance between waypoint and gate too close: %d meters",
 						     (int)dist_between_waypoints);
 
-				_navigator->get_mission_result()->warning = true;
+				//_navigator->get_mission_result()->warning = true;
 				return false;
 			}
 		}

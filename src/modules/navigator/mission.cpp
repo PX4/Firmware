@@ -106,7 +106,7 @@ Mission::on_inactive()
 	} else {
 
 		/* load missions from storage */
-		mission_s mission_state = {};
+		mission_s mission_state{};
 
 		dm_lock(DM_KEY_MISSION_STATE);
 
@@ -139,7 +139,9 @@ Mission::on_inactive()
 	_work_item_type = WORK_ITEM_TYPE_DEFAULT;
 
 	/* reset so MISSION_ITEM_REACHED isn't published */
-	_navigator->get_mission_result()->seq_reached = -1;
+	_mission_result.seq_reached = -1;
+	_mission_result_updated = true;
+	publish_mission_result();
 }
 
 void
@@ -163,6 +165,10 @@ Mission::on_inactivation()
 
 	/* reset so current mission item gets restarted if mission was paused */
 	_work_item_type = WORK_ITEM_TYPE_DEFAULT;
+
+	_mission_result.active = false;
+	_mission_result_updated = true;
+	publish_mission_result();
 }
 
 void
@@ -189,6 +195,10 @@ Mission::on_activation()
 	cmd.param1 = -1.0f;
 	cmd.param3 = 0.0f;
 	_navigator->publish_vehicle_cmd(&cmd);
+
+	_mission_result.active = true;
+	_mission_result_updated = true;
+	publish_mission_result();
 }
 
 void
@@ -282,13 +292,14 @@ Mission::on_active()
 	} else if (_navigator->get_precland()->is_activated()) {
 		_navigator->get_precland()->on_inactivation();
 	}
+
+	publish_mission_result();
 }
 
 bool
 Mission::set_current_mission_index(uint16_t index)
 {
-	if (_navigator->get_mission_result()->valid &&
-	    (index != _current_mission_index) && (index < _mission.count)) {
+	if (_mission_result.valid && (index != _current_mission_index) && (index < _mission.count)) {
 
 		_current_mission_index = index;
 
@@ -322,8 +333,9 @@ Mission::set_execution_mode(const uint8_t mode)
 {
 	if (_mission_execution_mode != mode) {
 		_execution_mode_changed = true;
-		_navigator->get_mission_result()->execution_mode = mode;
 
+		_mission_result.execution_mode = mode;
+		_mission_result_updated = true;
 
 		switch (_mission_execution_mode) {
 		case mission_result_s::MISSION_EXECUTION_MODE_NORMAL:
@@ -471,7 +483,7 @@ Mission::landing()
 	// vehicle is currently landing if
 	//  mission valid, still flying, and in the landing portion of mission
 
-	const bool mission_valid = _navigator->get_mission_result()->valid;
+	const bool mission_valid = _mission_result.valid;
 	const bool on_landing_stage = _land_start_available && (_current_mission_index >= get_land_start_index());
 
 	return mission_valid && on_landing_stage;
@@ -480,7 +492,6 @@ Mission::landing()
 void
 Mission::update_mission()
 {
-
 	bool failed = true;
 
 	/* Reset vehicle_roi
@@ -491,6 +502,9 @@ Mission::update_mission()
 	const mission_s old_mission = _mission;
 
 	if (_mission_sub.copy(&_mission)) {
+		_mission_result.mission_dataman_id = _mission.dataman_id;
+		_mission_result.mission_timestamp = _mission.timestamp;
+
 		/* determine current index */
 		if (_mission.current_seq >= 0 && _mission.current_seq < (int)_mission.count) {
 			_current_mission_index = _mission.current_seq;
@@ -510,15 +524,17 @@ Mission::update_mission()
 
 		check_mission_valid(true);
 
-		failed = !_navigator->get_mission_result()->valid;
+		failed = !_mission_result.valid;
 
 		if (!failed) {
 			/* reset mission failure if we have an updated valid mission */
-			_navigator->get_mission_result()->failure = false;
+			_mission_result.failure = false;
 
 			/* reset sequence info as well */
-			_navigator->get_mission_result()->seq_reached = -1;
-			_navigator->get_mission_result()->seq_total = _mission.count;
+			_mission_result.seq_reached = -1;
+			_mission_result.seq_total = _mission.count;
+
+			_mission_result_updated = true;
 
 			/* reset work item if new mission has been accepted */
 			_work_item_type = WORK_ITEM_TYPE_DEFAULT;
@@ -530,6 +546,7 @@ Mission::update_mission()
 		if (((_mission.count != old_mission.count) ||
 		     (_mission.dataman_id != old_mission.dataman_id)) &&
 		    !_navigator->get_land_detected()->landed) {
+
 			_mission_waypoints_changed = true;
 		}
 
@@ -546,6 +563,8 @@ Mission::update_mission()
 		// reset the mission
 		_mission.count = 0;
 		_mission.current_seq = 0;
+		_mission_result_updated = true;
+
 		_current_mission_index = 0;
 	}
 
@@ -554,7 +573,6 @@ Mission::update_mission()
 
 	set_current_mission_item();
 }
-
 
 void
 Mission::advance_mission()
@@ -674,8 +692,11 @@ Mission::set_mission_items()
 		_navigator->set_can_loiter_at_sp(pos_sp_triplet->current.type == position_setpoint_s::SETPOINT_TYPE_LOITER);
 
 		// set mission finished
-		_navigator->get_mission_result()->finished = true;
-		_navigator->set_mission_result_updated();
+		_mission_result.finished = true;
+		_mission_result_updated = true;
+
+		_navigator->navigator_status().finished = true;
+		_navigator->navigator_status_updated();
 
 		if (!user_feedback_done) {
 			/* only tell users that we got no mission if there has not been any
@@ -1648,18 +1669,17 @@ void
 Mission::report_do_jump_mission_changed(int index, int do_jumps_remaining)
 {
 	/* inform about the change */
-	_navigator->get_mission_result()->item_do_jump_changed = true;
-	_navigator->get_mission_result()->item_changed_index = index;
-	_navigator->get_mission_result()->item_do_jump_remaining = do_jumps_remaining;
-
-	_navigator->set_mission_result_updated();
+	_mission_result.item_do_jump_changed = true;
+	_mission_result.item_changed_index = index;
+	_mission_result.item_do_jump_remaining = do_jumps_remaining;
+	_mission_result_updated = true;
 }
 
 void
 Mission::set_mission_item_reached()
 {
-	_navigator->get_mission_result()->seq_reached = _current_mission_index;
-	_navigator->set_mission_result_updated();
+	_mission_result.seq_reached = _current_mission_index;
+	_mission_result_updated = true;
 
 	// let the navigator know that we are currently executing the mission landing.
 	// Using the method landing() itself is not accurate as it only give information about the mission index
@@ -1672,10 +1692,12 @@ Mission::set_mission_item_reached()
 void
 Mission::set_current_mission_item()
 {
-	_navigator->get_mission_result()->finished = false;
-	_navigator->get_mission_result()->seq_current = _current_mission_index;
+	_mission_result.finished = false;
+	_mission_result.seq_current = _current_mission_index;
+	_mission_result_updated = true;
 
-	_navigator->set_mission_result_updated();
+	_navigator->navigator_status().finished = false;
+	_navigator->navigator_status_updated();
 
 	save_mission_state();
 }
@@ -1687,15 +1709,16 @@ Mission::check_mission_valid(bool force)
 
 		MissionFeasibilityChecker _missionFeasibilityChecker(_navigator);
 
-		_navigator->get_mission_result()->valid =
+		_mission_result.valid =
 			_missionFeasibilityChecker.checkMissionFeasible(_mission,
 					_param_mis_dist_1wp.get(),
 					_param_mis_dist_wps.get(),
 					_navigator->mission_landing_required());
 
-		_navigator->get_mission_result()->seq_total = _mission.count;
-		_navigator->increment_mission_instance_count();
-		_navigator->set_mission_result_updated();
+		_mission_result.seq_total = _mission.count;
+		_mission_result.instance_count++;
+		_mission_result_updated = true;
+
 		_home_inited = _navigator->home_position_valid();
 
 		// find and store landing start marker (if available)
@@ -1860,11 +1883,21 @@ bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const posit
 
 }
 
+void Mission::publish_mission_result()
+{
+	if (_mission_result_updated) {
+		_mission_result.timestamp = hrt_absolute_time();
+		_mission_result_pub.publish(_mission_result);
+		_mission_result_updated = false;
+	}
+}
+
+
 void Mission::publish_navigator_mission_item()
 {
 	navigator_mission_item_s navigator_mission_item{};
 
-	navigator_mission_item.instance_count = _navigator->mission_instance_count();
+	navigator_mission_item.instance_count = _mission_result.instance_count;
 	navigator_mission_item.sequence_current = _current_mission_index;
 	navigator_mission_item.nav_cmd = _mission_item.nav_cmd;
 	navigator_mission_item.latitude = _mission_item.lat;

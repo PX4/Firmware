@@ -67,6 +67,7 @@
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
+#include <uORB/topics/navigator_status.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/position_controller_landing_status.h>
 #include <uORB/topics/position_controller_status.h>
@@ -146,21 +147,22 @@ public:
 	 */
 	void		set_can_loiter_at_sp(bool can_loiter) { _can_loiter_at_sp = can_loiter; }
 	void		set_position_setpoint_triplet_updated() { _pos_sp_triplet_updated = true; }
-	void		set_mission_result_updated() { _mission_result_updated = true; }
+	void		navigator_status_updated() { _navigator_status_updated = true; }
 
 	/**
 	 * Getters
 	 */
-	struct home_position_s *get_home_position() { return &_home_pos; }
-	struct mission_result_s *get_mission_result() { return &_mission_result; }
-	struct position_setpoint_triplet_s *get_position_setpoint_triplet() { return &_pos_sp_triplet; }
-	struct position_setpoint_triplet_s *get_reposition_triplet() { return &_reposition_triplet; }
-	struct position_setpoint_triplet_s *get_takeoff_triplet() { return &_takeoff_triplet; }
-	struct vehicle_global_position_s *get_global_position() { return &_global_pos; }
-	struct vehicle_land_detected_s *get_land_detected() { return &_land_detected; }
-	struct vehicle_local_position_s *get_local_position() { return &_local_pos; }
-	struct vehicle_status_s *get_vstatus() { return &_vstatus; }
+	home_position_s *get_home_position() { return &_home_pos; }
+	position_setpoint_triplet_s *get_position_setpoint_triplet() { return &_pos_sp_triplet; }
+	position_setpoint_triplet_s *get_reposition_triplet() { return &_reposition_triplet; }
+	position_setpoint_triplet_s *get_takeoff_triplet() { return &_takeoff_triplet; }
+	vehicle_global_position_s *get_global_position() { return &_global_pos; }
+	vehicle_land_detected_s *get_land_detected() { return &_land_detected; }
+	vehicle_local_position_s *get_local_position() { return &_local_pos; }
+	vehicle_status_s *get_vstatus() { return &_vstatus; }
 	PrecLand *get_precland() { return &_precland; } /**< allow others, e.g. Mission, to use the precision land block */
+
+	navigator_status_s &navigator_status() { return _navigator_status; }
 
 	const vehicle_roi_s &get_vroi() { return _vroi; }
 	void reset_vroi() { _vroi = {}; }
@@ -259,11 +261,6 @@ public:
 
 	orb_advert_t	*get_mavlink_log_pub() { return &_mavlink_log_pub; }
 
-	void		increment_mission_instance_count() { _mission_result.instance_count++; }
-	int		mission_instance_count() const { return _mission_result.instance_count; }
-
-	void 		set_mission_failure(const char *reason);
-
 	void 		setMissionLandingInProgress(bool in_progress) { _mission_landing_in_progress = in_progress; }
 
 	bool 		getMissionLandingInProgress() { return _mission_landing_in_progress; }
@@ -346,7 +343,7 @@ private:
 	uORB::SubscriptionData<position_controller_status_s>	_position_controller_status_sub{ORB_ID(position_controller_status)};
 
 	uORB::Publication<geofence_result_s>		_geofence_result_pub{ORB_ID(geofence_result)};
-	uORB::Publication<mission_result_s>		_mission_result_pub{ORB_ID(mission_result)};
+	uORB::Publication<navigator_status_s>		_navigator_status_pub{ORB_ID(navigator_status)};
 	uORB::Publication<position_setpoint_triplet_s>	_pos_sp_triplet_pub{ORB_ID(position_setpoint_triplet)};
 	uORB::Publication<vehicle_roi_s>		_vehicle_roi_pub{ORB_ID(vehicle_roi)};
 
@@ -357,7 +354,7 @@ private:
 
 	// Subscriptions
 	home_position_s					_home_pos{};		/**< home position for RTL */
-	mission_result_s				_mission_result{};
+	navigator_status_s				_navigator_status{};
 	vehicle_global_position_s			_global_pos{};		/**< global vehicle position */
 	vehicle_gps_position_s				_gps_pos{};		/**< gps position */
 	vehicle_land_detected_s				_land_detected{};	/**< vehicle land_detected */
@@ -383,7 +380,7 @@ private:
 	bool		_can_loiter_at_sp{false};			/**< flags if current position SP can be used to loiter */
 	bool		_pos_sp_triplet_updated{false};		/**< flags if position SP triplet needs to be published */
 	bool 		_pos_sp_triplet_published_invalid_once{false};	/**< flags if position SP triplet has been published once to UORB */
-	bool		_mission_result_updated{false};		/**< flags if mission result has seen an update */
+	bool		_navigator_status_updated{false};
 
 	NavigatorMode	*_navigation_mode{nullptr};		/**< abstract pointer to current navigation mode class */
 	Mission		_mission;			/**< class that handles the missions */
@@ -417,11 +414,6 @@ private:
 	 * Publish a new position setpoint triplet for position controllers
 	 */
 	void		publish_position_setpoint_triplet();
-
-	/**
-	 * Publish the mission result so commander and mavlink know what is going on
-	 */
-	void		publish_mission_result();
 
 	void		publish_vehicle_command_ack(const vehicle_command_s &cmd, uint8_t result);
 };

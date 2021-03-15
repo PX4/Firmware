@@ -338,7 +338,8 @@ MissionBlock::is_mission_item_reached()
 			    (_navigator->get_yaw_timeout() >= FLT_EPSILON) &&
 			    (now - _time_wp_reached >= (hrt_abstime)_navigator->get_yaw_timeout() * 1e6f)) {
 
-				_navigator->set_mission_failure("unable to reach heading within timeout");
+				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "unable to reach heading within timeout");
+				set_failure();
 			}
 
 		} else {
