@@ -66,10 +66,12 @@
 #define UWB_CMD_DEBUG  0x02
 #define STOP_B 0x1b
 
-const uint8_t CMD_STOP_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_STOP};
-const uint8_t CMD_START_RANGING[4] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, UWB_CMD_START};
-const uint8_t CMD_DISTANCE_RESULT[20] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //example UUID
-const uint8_t CMD_GRID_SURVEY[5] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00, STOP_B};
+#define UWB_CMD_LEN  0x05
+#define UWB_CMD_DISTANCE_LEN 0x21
+const uint8_t CMD_STOP_RANGING[UWB_CMD_LEN ] = {UWB_CMD, UWB_CMD_DISTANCE, 0x01, UWB_CMD_STOP,STOP_B};
+const uint8_t CMD_START_RANGING[UWB_CMD_LEN ] = {UWB_CMD, UWB_CMD_DISTANCE, 0x01, UWB_CMD_START,STOP_B};
+const uint8_t CMD_DISTANCE_RESULT[UWB_CMD_DISTANCE_LEN] = {UWB_CMD, UWB_CMD_DISTANCE, 0x11, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, STOP_B}; //example UUID
+const uint8_t CMD_GRID_SURVEY[UWB_CMD_LEN] = {UWB_CMD, UWB_CMD_GRID, 0x01, 0x00, STOP_B};
 
 // Currently, the "start ranging" command is unused. If in the future it is used, there will need to be a mechanism
 // for populating the UUID field.

@@ -123,52 +123,54 @@ void UWB_R4::run()
 	/* Ranging */
 
 	/* Read UUID here */
-	uint8_t Distance_cmd[20] = {0}; //populate the CMD
-	memcpy(&Distance_cmd, CMD_START_RANGING, sizeof(CMD_START_RANGING));
+	uint8_t Distance_cmd[UWB_CMD_DISTANCE_LEN] = {0}; //populate the CMD
+	memcpy(&Distance_cmd, CMD_START_RANGING, UWB_CMD_DISTANCE_LEN);
 
-	//Param to decide on wich UUID to Range.
-	if (_param_uwb_uuid_on_sd.get()) {
-		//use Internal Grid UUID
-		PX4_INFO("Reading UWB GRID from SD... \t\n");
-		uint8_t string[32] = {0};
-		FILE *file;
-		file = fopen(CONF_FILE, "r");
-		int bread = fread(&string, 1, 2 * GRID_UUID, file); //try 3
+	//Param to decide wich Grid-UUID to Range.
+	// if (_param_uwb_uuid_on_sd.get()) {
+	// 	//use Internal Grid UUID
+	// 	PX4_INFO("Reading UWB GRID from SD... \t\n");
+	// 	uint8_t string[32] = {0};
+	// 	FILE *file;
+	// 	file = fopen(CONF_FILE, "r");
+	// 	int bread = fread(&string, 1, 2 * GRID_UUID, file); //try 3
 
-		if (bread != 2 * GRID_UUID) {
-			PX4_INFO("GRID UUID MISSING! bytes read: %d \t\n", bread); // or to short.
-			return;
+	// 	if (bread != 2 * GRID_UUID) {
+	// 		PX4_INFO("GRID UUID MISSING! bytes read: %d \t\n", bread); // or to short.
+	// 		return;
 
-		} else {
-			//Convert string to Hex
-			char upper, lower;
+	// 	} else {
+	// 		//Convert string to Hex
+	// 		char upper, lower;
 
-			for (int i = 0; i < GRID_UUID; i++) {
-				upper     = (isdigit(string[2 * i]))   ? string[2 * i]   - 0x30 : 10 + (string[2 * i]   & ~0x20) - 0x41;
-				lower     = (isdigit(string[2 * i + 1])) ? string[2 * i + 1] - 0x30 : 10 + (string[2 * i + 1] & ~0x20) - 0x41;
+	// 		for (int i = 0; i < GRID_UUID; i++) {
+	// 			upper     = (isdigit(string[2 * i]))   ? string[2 * i]   - 0x30 : 10 + (string[2 * i]   & ~0x20) - 0x41;
+	// 			lower     = (isdigit(string[2 * i + 1])) ? string[2 * i + 1] - 0x30 : 10 + (string[2 * i + 1] & ~0x20) - 0x41;
 
-				Distance_cmd[4 + i] = (upper << 4) | lower;
-			}
-		}
+	// 			Distance_cmd[4 + i] = (upper << 4) | lower;
+	// 		}
+	// 	}
 
-		fclose(file);
+	// 	fclose(file);
 
-	} else { //use UUID from Grid survey
-		memcpy(&Distance_cmd[4], &_uwb_grid.grid_uuid, sizeof(_uwb_grid.grid_uuid));
-	}
+	// } else { //use UUID from Grid survey
+	// 	memcpy(&Distance_cmd[4], &_uwb_grid.grid_uuid, sizeof(_uwb_grid.grid_uuid));
+	// }
 
 
 	/* Ranging  Command */
-	int written = write(_uart, Distance_cmd, sizeof(uint8_t) * 20); //there should be something to check if the command went through.
+	int written = write(_uart, CMD_START_RANGING,  UWB_CMD_LEN); //there should be something to check if the command went through.
 
-	if (written < (int) sizeof(Distance_cmd)) {
-		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(uint8_t) * 20);
+	if (written <  UWB_CMD_LEN) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(uint8_t) *  UWB_CMD_LEN);
 	}
 
 	while (!should_exit()) {
 		ok = UWB_R4::distance(); //evaluate Ranging Messages until Stop
 	}
 
+	///* Ranging  STOP */
+	//int written = write(_uart, CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING)); //there should be something to check if the command went through.
 
 	if (!ok) { printf("ERROR: Distance Failed"); }
 
@@ -208,6 +210,7 @@ $ uwb start -d /dev/ttyS2
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Name of device for serial communication with UWB", false);
 	PRINT_MODULE_USAGE_PARAM_STRING('b', nullptr, "<int>", "Baudrate for serial communication", false);
+	PRINT_MODULE_USAGE_PARAM_STRING('p', nullptr, "<int>", "Position Debug: displays errors in Multilateration", false);
 	PRINT_MODULE_USAGE_COMMAND("stop");
 	PRINT_MODULE_USAGE_COMMAND("status");
 	PRINT_MODULE_USAGE_COMMAND("grid survey");
@@ -289,18 +292,18 @@ UWB_R4 *UWB_R4::instantiate(int argc, char *argv[])
 	}
 
 	if (!error_flag && device_name == nullptr) {
-		print_usage("Device name not provided.");
+		print_usage("Device name not provided. Using default Device: /dev/ttyS4");
+		device_name = "/dev/ttyS4";
 		error_flag = true;
 	}
 
 	if (!error_flag && baudrate == 0) {
-		printf("Baudrate not provided. Using default B115200\n");
+		printf("Baudrate not provided. Using default Baud: 115200\n");
 		baudrate = 115200;
 	}
 
 	if (!error_flag && uwb_pos_debug == true) {
-		printf("UWB Position Algortihm Debugging");
-		baudrate = 115200;
+		printf("UWB Position algorithm Debugging");
 	}
 
 	if (error_flag) {
@@ -323,7 +326,7 @@ int UWB_R4::grid_survey()
 	bool grid_found = false;
 
 
-	int written = write(_uart, CMD_GRID_SURVEY, sizeof(CMD_GRID_SURVEY)); //TODO insert grid you want to range with
+	int written = write(_uart, CMD_GRID_SURVEY, UWB_CMD_LEN); //TODO insert grid you want to range with
 
 	if (written < (int) sizeof(CMD_GRID_SURVEY)) {
 		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_GRID_SURVEY));
@@ -606,8 +609,7 @@ listener uwb_distance-i 0 -n 1000
 	int64_t denominator = 0;
 	bool	anchors_on_x_y_plane = true;																		// Is true, if all anchors are on the same height => x-y-plane
 	bool	lin_dep = true;																						// All vectors are linear dependent, if this variable is true
-	uint8_t ind_y_indi =
-		0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
+	uint8_t ind_y_indi = 0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
 
 
 	/* Arrays for used distances and anchor positions (without rejected ones) */
@@ -619,7 +621,7 @@ listener uwb_distance-i 0 -n 1000
 	/* Reject invalid distances (including related anchor position) */
 	for (int i = 0; i < no_distances; i++) {
 		if (_distance_result_msg.anchor_distance[i] != 0xFFFFu) {
-			//exlcudes any distance that is 0xFFFFU (int16 Maximum Value)
+			//excludes any distance that is 0xFFFFU (int16 Maximum Value)
 			distances_cm_pt[no_valid_distances] 		= _distance_result_msg.anchor_distance[i];
 			anchor_pos[no_valid_distances] 	= _grid_survey_msg.anchor_pos[i];
 			no_valid_distances++;
@@ -728,6 +730,7 @@ listener uwb_distance-i 0 -n 1000
 		b[1] += (int64_t)((int64_t)(anchor_pos[i].y - anchor_pos[0].y) * temp);
 		b[2] += (int64_t)((int64_t)(anchor_pos[i].z - anchor_pos[0].z) * temp);
 	}
+
 
 	M_11 = 2 * M_11;
 	M_12 = 2 * M_12;
