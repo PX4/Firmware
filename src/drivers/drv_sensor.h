@@ -176,4 +176,6 @@
 
 #define DRV_DEVTYPE_UNUSED		0xff
 
+#define DRV_IMU_DEVTYPE_ADIS16354 0x9c
+
 #endif /* _DRV_SENSOR_H */
