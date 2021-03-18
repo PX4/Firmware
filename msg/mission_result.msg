@@ -14,7 +14,6 @@ bool warning			# true if mission is valid, but has potentially problematic items
 bool finished			# true if mission has been completed
 bool failure			# true if the mission cannot continue or be completed for some reason
 
-bool stay_in_failsafe		# true if the commander should not switch out of the failsafe mode
 bool flight_termination		# true if the navigator demands a flight termination from the commander app
 
 bool item_do_jump_changed	# true if the number of do jumps remaining has changed

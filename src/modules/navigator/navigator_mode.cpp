@@ -55,8 +55,6 @@ NavigatorMode::run(bool active)
 {
 	if (active) {
 		if (!_active) {
-			/* first run, reset stay in failsafe flag */
-			_navigator->get_mission_result()->stay_in_failsafe = false;
 			_navigator->set_mission_result_updated();
 			on_activation();
 
