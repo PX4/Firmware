@@ -86,7 +86,7 @@ extern "C" int bno055_main(int argc, char *argv[])
 {
 	using ThisDriver = BNO055;
 	BusCLIArguments cli{true, false};
-	cli.default_i2c_frequency = 100;
+	cli.default_i2c_frequency = 400000;
 
 	cli.getopt(argc, argv, "");
 	const char *verb = cli.optarg();
