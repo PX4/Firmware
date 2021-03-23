@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2014, 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -92,7 +92,13 @@ void mavlink_end_uart_send(mavlink_channel_t chan, int length);
 extern mavlink_status_t *mavlink_get_channel_status(uint8_t chan);
 extern mavlink_message_t *mavlink_get_channel_buffer(uint8_t chan);
 
+#define MAVLINK_DEVELOPMENT_BUILD
+
+#ifdef MAVLINK_DEVELOPMENT_BUILD
+#include <v2.0/development/mavlink.h>
+#else
 #include <v2.0/standard/mavlink.h>
+#endif
 
 __END_DECLS
 
