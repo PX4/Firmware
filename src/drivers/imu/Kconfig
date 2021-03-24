@@ -1,0 +1,59 @@
+menuconfig DRIVERS_IMU_ADIS16477
+	bool "adis16477"
+	default n
+	---help---
+		Enable support for adis16477
+		
+menuconfig DRIVERS_IMU_ADIS16497
+	bool "adis16497"
+	default n
+	---help---
+		Enable support for adis16497
+		
+menuconfig DRIVERS_IMU_ANALOG_DEVICES
+	bool "analog devices"
+	default n
+	---help---
+		Enable support for analog devices
+		
+menuconfig DRIVERS_IMU_BOSCH
+	bool "bosch"
+	default n
+	---help---
+		Enable support for bosch
+		
+menuconfig DRIVERS_IMU_FXAS21002C
+	bool "fxas21002c"
+	default n
+	---help---
+		Enable support for fxas21002c
+		
+menuconfig DRIVERS_IMU_FXOS8701CQ
+	bool "fxos8701cq"
+	default n
+	---help---
+		Enable support for fxos8701cq
+		
+menuconfig DRIVERS_IMU_INVENSENSE
+	bool "invensense"
+	default n
+	---help---
+		Enable support for invensense
+		
+menuconfig DRIVERS_IMU_L3GD20
+	bool "l3gd20"
+	default n
+	---help---
+		Enable support for l3gd20
+		
+menuconfig DRIVERS_IMU_LSM303D
+	bool "lsm303d"
+	default n
+	---help---
+		Enable support for lsm303d
+		
+menuconfig DRIVERS_IMU_ST
+	bool "st"
+	default n
+	---help---
+		Enable support for st

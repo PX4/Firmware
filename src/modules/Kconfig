@@ -1,0 +1,251 @@
+menuconfig MODULES_AIRSHIP_ATT_CONTROL
+	bool "airship att control"
+	default n
+	---help---
+		Enable support for airship att control
+		
+menuconfig MODULES_AIRSPEED_SELECTOR
+	bool "airspeed selector"
+	default n
+	---help---
+		Enable support for airspeed selector
+		
+menuconfig MODULES_ANGULAR_VELOCITY_CONTROLLER
+	bool "angular velocity controller"
+	default n
+	---help---
+		Enable support for angular velocity controller
+		
+menuconfig MODULES_ATTITUDE_ESTIMATOR_Q
+	bool "attitude estimator q"
+	default n
+	---help---
+		Enable support for attitude estimator q
+		
+menuconfig MODULES_BATTERY_STATUS
+	bool "battery status"
+	default n
+	---help---
+		Enable support for battery status
+		
+menuconfig MODULES_CAMERA_FEEDBACK
+	bool "camera feedback"
+	default n
+	---help---
+		Enable support for camera feedback
+		
+menuconfig MODULES_COMMANDER
+	bool "commander"
+	default n
+	---help---
+		Enable support for commander
+		
+menuconfig MODULES_CONTROL_ALLOCATOR
+	bool "control allocator"
+	default n
+	---help---
+		Enable support for control allocator
+		
+menuconfig MODULES_DATAMAN
+	bool "dataman"
+	default n
+	---help---
+		Enable support for dataman
+		
+menuconfig MODULES_EKF2
+	bool "ekf2"
+	default n
+	---help---
+		Enable support for ekf2
+		
+menuconfig MODULES_ESC_BATTERY
+	bool "esc battery"
+	default n
+	---help---
+		Enable support for esc battery
+		
+menuconfig MODULES_EVENTS
+	bool "events"
+	default n
+	---help---
+		Enable support for events
+		
+menuconfig MODULES_FLIGHT_MODE_MANAGER
+	bool "flight mode manager"
+	default n
+	---help---
+		Enable support for flight mode manager
+		
+menuconfig MODULES_FW_ATT_CONTROL
+	bool "fw att control"
+	default n
+	---help---
+		Enable support for fw att control
+		
+menuconfig MODULES_FW_POS_CONTROL_L1
+	bool "fw pos control l1"
+	default n
+	---help---
+		Enable support for fw pos control l1
+	
+menuconfig MODULES_GYRO_CALIBRATION
+	bool "gyro calibration"
+	default n
+	---help---
+		Enable support for gyro calibration
+	
+menuconfig MODULES_GYRO_FFT
+	bool "gyro fft"
+	default n
+	---help---
+		Enable support for gyro fft
+		
+menuconfig MODULES_LAND_DETECTOR
+	bool "land detector"
+	default n
+	---help---
+		Enable support for land detector
+		
+menuconfig MODULES_LANDING_TARGET_ESTIMATOR
+	bool "landing target estimator"
+	default n
+	---help---
+		Enable support for landing target estimator
+		
+menuconfig MODULES_LOAD_MON
+	bool "load mon"
+	default n
+	---help---
+		Enable support for load mon
+		
+menuconfig MODULES_LOCAL_POSITION_ESTIMATOR
+	bool "local position estimator"
+	default n
+	---help---
+		Enable support for local position estimator
+		
+menuconfig MODULES_LOGGER
+	bool "logger"
+	default n
+	---help---
+		Enable support for logger
+		
+menuconfig MODULES_MAVLINK
+	bool "mavlink"
+	default n
+	---help---
+		Enable support for mavlink
+		
+menuconfig MODULES_MC_ATT_CONTROL
+	bool "mc att control"
+	default n
+	---help---
+		Enable support for mc att control
+		
+menuconfig MODULES_MC_HOVER_THRUST_ESTIMATOR
+	bool "mc hover thrust estimator"
+	default n
+	---help---
+		Enable support for mc hover thrust estimator
+		
+menuconfig MODULES_MC_POS_CONTROL
+	bool "mc pos control"
+	default n
+	---help---
+		Enable support for mc pos control
+		
+menuconfig MODULES_MC_RATE_CONTROL
+	bool "mc rate control"
+	default n
+	---help---
+		Enable support for mc rate control
+		
+menuconfig MODULES_MICRORTPS_BRIDGE
+	bool "micrortps bridge"
+	default n
+	---help---
+		Enable support for micrortps bridge
+		
+menuconfig MODULES_MUORB
+	bool "muorb"
+	default n
+	---help---
+		Enable support for muorb
+		
+menuconfig MODULES_NAVIGATOR
+	bool "navigator"
+	default n
+	---help---
+		Enable support for navigator
+		
+menuconfig MODULES_PX4IOFIRMWARE
+	bool "px4iofirmware"
+	default n
+	---help---
+		Enable support for px4iofirmware
+		
+menuconfig MODULES_RC_UPDATE
+	bool "rc update"
+	default n
+	---help---
+		Enable support for rc update
+		
+menuconfig MODULES_REPLAY
+	bool "replay"
+	default n
+	---help---
+		Enable support for replay
+		
+menuconfig MODULES_ROVER_POS_CONTROL
+	bool "rover pos control"
+	default n
+	---help---
+		Enable support for rover pos control
+		
+menuconfig MODULES_SENSORS
+	bool "sensors"
+	default n
+	---help---
+		Enable support for sensors
+		
+menuconfig MODULES_SIH
+	bool "sih"
+	default n
+	---help---
+		Enable support for sih
+		
+menuconfig MODULES_SIMULATOR
+	bool "simulator"
+	default n
+	---help---
+		Enable support for simulator
+		
+menuconfig MODULES_TEMPERATURE_COMPENSATION
+	bool "temperature compensation"
+	default n
+	---help---
+		Enable support for temperature compensation
+		
+menuconfig MODULES_UUV_ATT_CONTROL
+	bool "uuv att control"
+	default n
+	---help---
+		Enable support for uuv att control
+		
+menuconfig MODULES_UUV_POS_CONTROL
+	bool "uuv pos control"
+	default n
+	---help---
+		Enable support for uuv pos control
+		
+menuconfig MODULES_VMOUNT
+	bool "vmount"
+	default n
+	---help---
+		Enable support for vmount
+		
+menuconfig MODULES_VTOL_ATT_CONTROL
+	bool "vtol att control"
+	default n
+	---help---
+		Enable support for vtol att control

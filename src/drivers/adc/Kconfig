@@ -1,0 +1,11 @@
+menuconfig DRIVERS_ADC_ADS1115
+	bool "ADC ADS1115"
+	default n
+	---help---
+		Enable support for ADS1115
+		
+menuconfig DRIVERS_ADC_BOARD_ADC
+	bool "Board ADC"
+	default n
+	---help---
+		Enable support for Board ADC

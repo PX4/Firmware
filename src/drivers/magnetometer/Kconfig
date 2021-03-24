@@ -1,0 +1,59 @@
+menuconfig DRIVERS_MAGNETOMETER_AKM
+	bool "akm"
+	default n
+	---help---
+		Enable support for akm
+		
+menuconfig DRIVERS_MAGNETOMETER_BOSCH
+	bool "bosch"
+	default n
+	---help---
+		Enable support for bosch
+		
+menuconfig DRIVERS_MAGNETOMETER_HMC5883
+	bool "hmc5883"
+	default n
+	---help---
+		Enable support for hmc5883
+		
+menuconfig DRIVERS_MAGNETOMETER_ISENTEK
+	bool "isentek"
+	default n
+	---help---
+		Enable support for isentek
+		
+menuconfig DRIVERS_MAGNETOMETER_LIS2MDL
+	bool "lis2mdl"
+	default n
+	---help---
+		Enable support for lis2mdl
+		
+menuconfig DRIVERS_MAGNETOMETER_LIS3MDL
+	bool "lis3mdl"
+	default n
+	---help---
+		Enable support for lis3mdl
+		
+menuconfig DRIVERS_MAGNETOMETER_LSM303AGR
+	bool "lsm303agr"
+	default n
+	---help---
+		Enable support for lsm303agr
+		
+menuconfig DRIVERS_MAGNETOMETER_LSM9DS1_MAG
+	bool "lsm9ds1 mag"
+	default n
+	---help---
+		Enable support for lsm9ds1 mag
+		
+menuconfig DRIVERS_MAGNETOMETER_QMC5883L
+	bool "qmc5883l"
+	default n
+	---help---
+		Enable support for qmc5883l
+		
+menuconfig DRIVERS_MAGNETOMETER_RM3100
+	bool "rm3100"
+	default n
+	---help---
+		Enable support for rm3100

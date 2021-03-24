@@ -1,0 +1,238 @@
+
+menu "ADC"
+source "src/drivers/adc/Kconfig"
+endmenu #ADC
+
+menuconfig DRIVERS_BAROMETER
+	bool "Barometer"
+	default n
+	---help---
+		Enable support for Barometers
+
+if DRIVERS_BAROMETER
+source "src/drivers/barometer/Kconfig"
+endif #DRIVERS_BAROMETER
+
+menuconfig DRIVERS_BATT_SMBUS
+	bool "batt smbus"
+	default n
+	---help---
+		Enable support for batt smbus
+
+menuconfig DRIVERS_BOOTLOADERS
+	bool "BOOTLOADERS"
+	default n
+	---help---
+		Enable support for bootloaders
+		
+menuconfig DRIVERS_CAMERA_CAPTURE
+	bool "camera capture"
+	default n
+	---help---
+		Enable support for camera capture
+		
+menuconfig DRIVERS_CAMERA_TRIGGER
+	bool "camera trigger"
+	default n
+	---help---
+		Enable support for camera trigger
+		
+menuconfig DRIVERS_DIFFERENTIAL_PRESSURE
+	bool "Differential pressure"
+	default n
+	---help---
+		Enable support for all available differential pressure drivers
+		
+menuconfig DRIVERS_DISTANCE_SENSOR
+	bool "distance sensor"
+	default n
+	---help---
+		Enable support for distance sensor
+		
+if DRIVERS_DISTANCE_SENSOR
+source "src/drivers/distance_sensor/Kconfig"
+endif #DRIVERS_DISTANCE_SENSOR
+		
+menuconfig DRIVERS_DSHOT
+	bool "dshot"
+	default n
+	---help---
+		Enable support for dshot
+		
+menuconfig DRIVERS_GPS
+	bool "GPS"
+	default n
+	---help---
+		Enable support for all available GPS drivers
+
+menuconfig DRIVERS_HEATER
+	bool "heater"
+	default n
+	---help---
+		Enable support for heater
+		
+menu "IMU"
+source "src/drivers/imu/Kconfig"
+endmenu
+
+menuconfig DRIVERS_IRLOCK
+	bool "irlock"
+	default n
+	---help---
+		Enable support for irlock
+		
+menu "Lights"
+source "src/drivers/lights/Kconfig"
+endmenu
+
+menuconfig DRIVERS_LINUX_PWM_OUT
+	bool "linux pwm out"
+	default n
+	---help---
+		Enable support for linux pwm out
+
+menuconfig DRIVERS_MAGNETOMETER
+	bool "Magnetometer"
+	default n
+	---help---
+		Enable support for all available magnetometer drivers
+		
+if DRIVERS_MAGNETOMETER
+source "src/drivers/magnetometer/Kconfig"
+endif #DRIVERS_MAGNETOMETER
+
+menu "Optical flow"
+source "src/drivers/optical_flow/Kconfig"
+endmenu
+
+menuconfig DRIVERS_OSD
+	bool "osd"
+	default n
+	---help---
+		Enable support for osd
+		
+menuconfig DRIVERS_PCA9685
+	bool "pca9685"
+	default n
+	---help---
+		Enable support for pca9685
+		
+menuconfig DRIVERS_PCA9685_PWM_OUT
+	bool "pca9685 pwm out"
+	default n
+	---help---
+		Enable support for pca9685 pwm out
+
+menu "Power monitor"
+source "src/drivers/power_monitor/Kconfig"
+endmenu
+		
+menuconfig DRIVERS_PROTOCOL_SPLITTER
+	bool "protocol splitter"
+	default n
+	---help---
+		Enable support for protocol splitter
+		
+menuconfig DRIVERS_PWM_INPUT
+	bool "pwm input"
+	default n
+	---help---
+		Enable support for pwm input
+		
+menuconfig DRIVERS_PWM_OUT_SIM
+	bool "pwm out sim"
+	default n
+	---help---
+		Enable support for pwm out sim
+		
+menuconfig DRIVERS_PWM_OUT
+	bool "pwm out"
+	default n
+	---help---
+		Enable support for pwm out
+		
+menuconfig DRIVERS_PX4IO
+	bool "px4io"
+	default n
+	---help---
+		Enable support for px4io
+		
+menuconfig DRIVERS_QSHELL
+	bool "qshell"
+	default n
+	---help---
+		Enable support for qshell
+		
+menuconfig DRIVERS_RC_INPUT
+	bool "rc input"
+	default n
+	---help---
+		Enable support for rc input
+		
+menuconfig DRIVERS_ROBOCLAW
+	bool "roboclaw"
+	default n
+	---help---
+		Enable support for roboclaw
+		
+menuconfig DRIVERS_RPI_RC_IN
+	bool "rpi rc in"
+	default n
+	---help---
+		Enable support for rpi rc in
+		
+menuconfig DRIVERS_RPM
+	bool "rpm"
+	default n
+	---help---
+		Enable support for rpm
+		
+menuconfig DRIVERS_SAFETY_BUTTON
+	bool "safety button"
+	default n
+	---help---
+		Enable support for safety button
+		
+menuconfig DRIVERS_SPEKTRUM_RC
+	bool "spektrum rc"
+	default n
+	---help---
+		Enable support for spektrum rc
+		
+menuconfig DRIVERS_TELEMETRY
+	bool "telemetry"
+	default n
+	---help---
+		Enable support for telemetry
+		
+menuconfig DRIVERS_TEST_PPM
+	bool "test ppm"
+	default n
+	---help---
+		Enable support for test ppm
+		
+menuconfig DRIVERS_TONE_ALARM
+	bool "Tone alarm"
+	default n
+	---help---
+		Enable support for tone alarm
+		
+menuconfig DRIVERS_UAVCAN
+	bool "uavcan"
+	default n
+	---help---
+		Enable support for uavcan
+		
+if DRIVERS_UAVCAN
+source "src/drivers/uavcan/Kconfig"
+endif #DRIVERS_UAVCAN
+
+menuconfig DRIVERS_UAVCAN_V1
+	bool "UAVCANv1"
+	default n
+	---help---
+		Enable support for UAVCANv1
+
+if DRIVERS_UAVCAN_V1
+source "src/drivers/uavcan_v1/Kconfig"
+endif #DRIVERS_UAVCAN_V1

@@ -1,0 +1,77 @@
+menuconfig EXAMPLES_DYN_HELLO
+	bool "dyn hello"
+	default n
+	---help---
+		Enable support for dyn hello
+		
+menuconfig EXAMPLES_FAKE_GPS
+	bool "fake gps"
+	default n
+	---help---
+		Enable support for fake gps
+		
+menuconfig EXAMPLES_FAKE_GYRO
+	bool "fake gyro"
+	default n
+	---help---
+		Enable support for fake gyro
+		
+menuconfig EXAMPLES_FAKE_MAGNETOMETER
+	bool "fake magnetometer"
+	default n
+	---help---
+		Enable support for fake magnetometer
+		
+menuconfig EXAMPLES_FIXEDWING_CONTROL
+	bool "fixedwing control"
+	default n
+	---help---
+		Enable support for fixedwing control
+		
+menuconfig EXAMPLES_HELLO
+	bool "hello"
+	default n
+	---help---
+		Enable support for hello
+		
+menuconfig EXAMPLES_HWTEST
+	bool "hwtest"
+	default n
+	---help---
+		Enable support for hwtest
+		
+menuconfig EXAMPLES_MATLAB_CSV_SERIAL
+	bool "matlab csv serial"
+	default n
+	---help---
+		Enable support for matlab csv serial
+		
+menuconfig EXAMPLES_PX4_MAVLINK_DEBUG
+	bool "px4 mavlink debug"
+	default n
+	---help---
+		Enable support for px4 mavlink debug
+		
+menuconfig EXAMPLES_PX4_SIMPLE_APP
+	bool "px4 simple app"
+	default n
+	---help---
+		Enable support for px4 simple app
+		
+menuconfig EXAMPLES_ROVER_STEERING_CONTROL
+	bool "rover steering control"
+	default n
+	---help---
+		Enable support for rover steering control
+		
+menuconfig EXAMPLES_UUV_EXAMPLE_APP
+	bool "uuv example app"
+	default n
+	---help---
+		Enable support for uuv example app
+		
+menuconfig EXAMPLES_WORK_ITEM
+	bool "work item"
+	default n
+	---help---
+		Enable support for work item

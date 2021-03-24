@@ -1,0 +1,23 @@
+menuconfig DRIVERS_OPTICAL_FLOW_PAW3902
+	bool "paw3902"
+	default n
+	---help---
+		Enable support for paw3902
+		
+menuconfig DRIVERS_OPTICAL_FLOW_PMW3901
+	bool "pmw3901"
+	default n
+	---help---
+		Enable support for pmw3901
+		
+menuconfig DRIVERS_OPTICAL_FLOW_PX4FLOW
+	bool "px4flow"
+	default n
+	---help---
+		Enable support for px4flow
+		
+menuconfig DRIVERS_OPTICAL_FLOW_THONEFLOW
+	bool "thoneflow"
+	default n
+	---help---
+		Enable support for thoneflow

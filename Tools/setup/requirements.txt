@@ -4,6 +4,7 @@ cerberus
 coverage
 empy>=3.3
 jinja2>=2.8
+kconfiglib
 matplotlib>=3.0.*
 numpy>=1.13
 nunavut

@@ -1,0 +1,95 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_CM8JL65
+	bool "cm8jl65"
+	default n
+	---help---
+		Enable support for cm8jl65
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_LEDDAR_ONE
+	bool "leddar one"
+	default n
+	---help---
+		Enable support for leddar one
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_LIGHTWARE_LASER_I2C
+	bool "lightware laser i2c"
+	default n
+	---help---
+		Enable support for lightware laser i2c
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_LIGHTWARE_LASER_SERIAL
+	bool "lightware laser serial"
+	default n
+	---help---
+		Enable support for lightware laser serial
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_LL40LS
+	bool "ll40ls"
+	default n
+	---help---
+		Enable support for ll40ls
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_LL40LS_PWM
+	bool "ll40ls pwm"
+	default n
+	---help---
+		Enable support for ll40ls pwm
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_MAPPYDOT
+	bool "mappydot"
+	default n
+	---help---
+		Enable support for mappydot
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_MB12XX
+	bool "mb12xx"
+	default n
+	---help---
+		Enable support for mb12xx
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_PGA460
+	bool "pga460"
+	default n
+	---help---
+		Enable support for pga460
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_SRF02
+	bool "srf02"
+	default n
+	---help---
+		Enable support for srf02
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_SRF05
+	bool "srf05"
+	default n
+	---help---
+		Enable support for srf05
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_TERARANGER
+	bool "teraranger"
+	default n
+	---help---
+		Enable support for teraranger
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_TFMINI
+	bool "tfmini"
+	default n
+	---help---
+		Enable support for tfmini
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_ULANDING_RADAR
+	bool "ulanding radar"
+	default n
+	---help---
+		Enable support for ulanding radar
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_VL53L0X
+	bool "vl53l0x"
+	default n
+	---help---
+		Enable support for vl53l0x
+		
+menuconfig DRIVERS_DISTANCE_SENSOR_VL53L1X
+	bool "vl53l1x"
+	default n
+	---help---
+		Enable support for vl53l1x

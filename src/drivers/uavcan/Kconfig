@@ -1,0 +1,5 @@
+menuconfig UAVCAN_INTERFACES
+	int "UAVCANv0 interface count"
+	default 0
+	---help---
+		Interface count for UAVCANv0

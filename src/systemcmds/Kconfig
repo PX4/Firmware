@@ -1,0 +1,203 @@
+menuconfig SYSTEMCMDS_BL_UPDATE
+	bool "bl update"
+	default n
+	---help---
+		Enable support for bl update
+		
+menuconfig SYSTEMCMDS_DMESG
+	bool "dmesg"
+	default n
+	---help---
+		Enable support for dmesg
+		
+menuconfig SYSTEMCMDS_DUMPFILE
+	bool "dumpfile"
+	default n
+	---help---
+		Enable support for dumpfile
+		
+menuconfig SYSTEMCMDS_DYN
+	bool "dyn"
+	default n
+	---help---
+		Enable support for dyn
+		
+menuconfig SYSTEMCMDS_ESC_CALIB
+	bool "esc calib"
+	default n
+	---help---
+		Enable support for esc calib
+		
+menuconfig SYSTEMCMDS_FAILURE
+	bool "failure"
+	default n
+	---help---
+		Enable support for failure
+		
+menuconfig SYSTEMCMDS_GPIO
+	bool "gpio"
+	default n
+	---help---
+		Enable support for gpio
+		
+menuconfig SYSTEMCMDS_HARDFAULT_LOG
+	bool "hardfault log"
+	default n
+	---help---
+		Enable support for hardfault log
+		
+menuconfig SYSTEMCMDS_I2CDETECT
+	bool "i2cdetect"
+	default n
+	---help---
+		Enable support for i2cdetect
+		
+menuconfig SYSTEMCMDS_LED_CONTROL
+	bool "led control"
+	default n
+	---help---
+		Enable support for led control
+		
+menuconfig SYSTEMCMDS_MFT
+	bool "mft"
+	default n
+	---help---
+		Enable support for mft
+		
+menuconfig SYSTEMCMDS_MIXER
+	bool "mixer"
+	default n
+	---help---
+		Enable support for mixer
+		
+menuconfig SYSTEMCMDS_MOTOR_RAMP
+	bool "motor ramp"
+	default n
+	---help---
+		Enable support for motor ramp
+		
+menuconfig SYSTEMCMDS_MOTOR_TEST
+	bool "motor test"
+	default n
+	---help---
+		Enable support for motor test
+		
+menuconfig SYSTEMCMDS_MTD
+	bool "mtd"
+	default n
+	---help---
+		Enable support for mtd
+		
+menuconfig SYSTEMCMDS_NETMAN
+	bool "netman"
+	default n
+	---help---
+		Enable support for netman
+		
+menuconfig SYSTEMCMDS_NSHTERM
+	bool "nshterm"
+	default n
+	---help---
+		Enable support for nshterm
+		
+menuconfig SYSTEMCMDS_PARAM
+	bool "param"
+	default n
+	---help---
+		Enable support for param
+		
+menuconfig SYSTEMCMDS_PERF
+	bool "perf"
+	default n
+	---help---
+		Enable support for perf
+		
+menuconfig SYSTEMCMDS_PWM
+	bool "pwm"
+	default n
+	---help---
+		Enable support for pwm
+		
+menuconfig SYSTEMCMDS_REBOOT
+	bool "reboot"
+	default n
+	---help---
+		Enable support for reboot
+		
+menuconfig SYSTEMCMDS_REFLECT
+	bool "reflect"
+	default n
+	---help---
+		Enable support for reflect
+		
+menuconfig SYSTEMCMDS_SD_BENCH
+	bool "sd bench"
+	default n
+	---help---
+		Enable support for sd bench
+		
+menuconfig SYSTEMCMDS_SERIAL_TEST
+	bool "serial test"
+	default n
+	---help---
+		Enable support for serial test
+		
+menuconfig SYSTEMCMDS_SHUTDOWN
+	bool "shutdown"
+	default n
+	---help---
+		Enable support for shutdown
+		
+menuconfig SYSTEMCMDS_SYSTEM_TIME
+	bool "system time"
+	default n
+	---help---
+		Enable support for system time
+		
+menuconfig SYSTEMCMDS_TESTS
+	bool "tests"
+	default n
+	---help---
+		Enable support for tests
+		
+menuconfig SYSTEMCMDS_TOP
+	bool "top"
+	default n
+	---help---
+		Enable support for top
+		
+menuconfig SYSTEMCMDS_TOPIC_LISTENER
+	bool "topic listener"
+	default n
+	---help---
+		Enable support for topic listener
+		
+menuconfig SYSTEMCMDS_TUNE_CONTROL
+	bool "tune control"
+	default n
+	---help---
+		Enable support for tune control
+		
+menuconfig SYSTEMCMDS_UORB
+	bool "uorb"
+	default n
+	---help---
+		Enable support for uorb
+		
+menuconfig SYSTEMCMDS_USB_CONNECTED
+	bool "usb connected"
+	default n
+	---help---
+		Enable support for usb connected
+		
+menuconfig SYSTEMCMDS_VER
+	bool "ver"
+	default n
+	---help---
+		Enable support for ver
+		
+menuconfig SYSTEMCMDS_WORK_QUEUE
+	bool "work queue"
+	default n
+	---help---
+		Enable support for work queue

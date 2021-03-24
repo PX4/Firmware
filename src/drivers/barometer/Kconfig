@@ -1,0 +1,53 @@
+menuconfig DRIVERS_BAROMETER_BMP280
+	bool "bmp280"
+	default n
+	---help---
+		Enable support for bmp280
+		
+menuconfig DRIVERS_BAROMETER_BMP388
+	bool "bmp388"
+	default n
+	---help---
+		Enable support for bmp388
+		
+menuconfig DRIVERS_BAROMETER_DPS310
+	bool "dps310"
+	default n
+	---help---
+		Enable support for dps310
+		
+menuconfig DRIVERS_BAROMETER_LPS22HB
+	bool "lps22hb"
+	default n
+	---help---
+		Enable support for lps22hb
+		
+menuconfig DRIVERS_BAROMETER_LPS25H
+	bool "lps25h"
+	default n
+	---help---
+		Enable support for lps25h
+		
+menuconfig DRIVERS_BAROMETER_LPS33HW
+	bool "lps33hw"
+	default n
+	---help---
+		Enable support for lps33hw
+		
+menuconfig DRIVERS_BAROMETER_MPL3115A2
+	bool "mpl3115a2"
+	default n
+	---help---
+		Enable support for mpl3115a2
+		
+menuconfig DRIVERS_BAROMETER_MS5611
+	bool "ms5611"
+	default n
+	---help---
+		Enable support for ms5611
+		
+menuconfig DRIVERS_BAROMETER_TCBP001TA
+	bool "tcbp001ta"
+	default n
+	---help---
+		Enable support for tcbp001ta

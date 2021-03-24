@@ -1,0 +1,26 @@
+menuconfig DRIVERS_LIGHTS_BLINKM
+	bool "Blinkm"
+	default n
+	---help---
+		Enable support for blinkm lights
+		
+menuconfig DRIVERS_LIGHTS_NEOPIXEL
+	bool "Neopixel"
+	default n
+	---help---
+		Enable support for Neopixel lights
+		
+menuconfig DRIVERS_LIGHTS_RGBLED
+	bool "RGB Led"
+	---help---
+		Enable support for RGB led
+		
+menuconfig DRIVERS_LIGHTS_RGBLED_PWM
+	bool "RGB Led PWM"
+	---help---
+		Enable support for RGB PWM led
+		
+menuconfig DRIVERS_LIGHTS_RGBLED_NCP5623C
+	bool "RGB Led NCP5623C"
+	---help---
+		Enable support for RGB NCP5623C led

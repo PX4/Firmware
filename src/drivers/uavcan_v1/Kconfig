@@ -1,0 +1,30 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+
+
+
+choice
+    prompt "UAVCANv1 Mode"
+
+config UAVCAN_V1_FMU
+    bool "Server (FMU)"
+
+config UAVCAN_V1_CLIENT
+    bool "Client (Peripheral)"
+
+endchoice
+
+config UAVCAN_V1_GETINFO_RESPONDER
+	bool "GetInfo1.0 responder"
+	default n
+
+config UAVCAN_V1_EXECUTECOMMAND_RESPONDER
+	bool "ExecuteCommand1.0 responder"
+	default n
+
+config UAVCAN_V1_GNSS_PUBLISHER
+	bool "GNSS Publisher"
+	default n
