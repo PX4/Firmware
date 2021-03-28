@@ -33,7 +33,7 @@ px4_add_board(
 		irlock
 		lights/blinkm
 		lights/rgbled
-		#lights/rgbled_ncp5623c
+		lights/rgbled_ncp5623c
 		magnetometer # all available magnetometer drivers
 		#optical_flow # all available optical flow drivers
 		optical_flow/px4flow

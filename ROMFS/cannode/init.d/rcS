@@ -76,6 +76,7 @@ unset BOARD_RC_DEFAULTS
 #
 rgbled start -X -q
 rgbled_ncp5623c start -X -q
+rgbled_ncp5623c start -X -q -a 0x38
 rgbled_pwm start
 
 if param greater -s LIGHT_EN_BLINKM 0
