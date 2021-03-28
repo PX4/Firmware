@@ -77,7 +77,6 @@ pipeline {
                      "px4_fmu-v2_fixedwing",
                      "px4_fmu-v2_multicopter",
                      "px4_fmu-v2_rover",
-                     "px4_fmu-v2_test",
                      "px4_fmu-v3_default",
                      "px4_fmu-v4_cannode",
                      "px4_fmu-v4_default",

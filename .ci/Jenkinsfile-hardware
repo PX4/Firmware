@@ -160,58 +160,6 @@ pipeline {
           }
         }
 
-        // stage("px4_fmu-v2_test") {
-        //   stages {
-        //     stage("build px4_fmu-v2_test") {
-        //       agent {
-        //         docker {
-        //           image 'px4io/px4-dev-nuttx-focal:2020-09-14'
-        //           args '-e CCACHE_BASEDIR=$WORKSPACE -v ${CCACHE_DIR}:${CCACHE_DIR}:rw'
-        //         }
-        //       }
-        //       steps {
-        //         sh 'export'
-        //         sh 'make distclean'
-        //         sh 'ccache -s'
-        //         sh 'git fetch --tags'
-        //         sh 'make px4_fmu-v2_test'
-        //         sh 'make sizes'
-        //         sh 'ccache -s'
-        //         stash includes: 'build/px4_fmu-v2_test/px4_fmu-v2_test.elf', name: 'px4_fmu-v2_test'
-        //       }
-        //       post {
-        //         always {
-        //             sh 'make distclean'
-        //         }
-        //       }
-        //     } // stage build
-        //     stage("test") {
-        //       agent {
-        //         label 'px4_fmu-v2'
-        //       }
-        //       stages {
-        //         stage("flash") {
-        //           steps {
-        //             sh 'export'
-        //             sh 'find /dev/serial'
-        //             unstash 'px4_fmu-v2_test'
-        //             // flash board and watch bootup
-        //             sh './platforms/nuttx/Debug/upload_jlink_gdb.sh build/px4_fmu-v2_test/px4_fmu-v2_test.elf && ./Tools/HIL/monitor_firmware_upload.py --device `find /dev/serial -name *usb-*` --baudrate 57600'
-        //           }
-        //         }
-        //         stage("reset") {
-        //           steps {
-        //             cleanupFTDI();
-        //           }
-        //         }
-        //       }
-        //       options {
-        //         timeout(time: 90, unit: 'MINUTES')
-        //       }
-        //     }
-        //   }
-        // }
-
         stage("px4_fmu-v3_default") {
           stages {
             stage("build px4_fmu-v3_default") {

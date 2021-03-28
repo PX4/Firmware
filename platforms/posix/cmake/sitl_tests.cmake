@@ -42,7 +42,7 @@ foreach(test_name ${tests})
 		COMMAND $<TARGET_FILE:px4>
 			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated
 			-t ${PX4_SOURCE_DIR}/test_data
-			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_common
 		WORKING_DIRECTORY ${SITL_WORKING_DIR}
 	)
 
@@ -70,7 +70,7 @@ foreach(test_name ${cmd_tests})
 		COMMAND $<TARGET_FILE:px4>
 			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated
 			-t ${PX4_SOURCE_DIR}/test_data
-			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_common
 		WORKING_DIRECTORY ${SITL_WORKING_DIR}
 	)
 
@@ -87,7 +87,7 @@ add_test(NAME sitl-mavlink
 	COMMAND $<TARGET_FILE:px4>
 		-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_mavlink
 		-t ${PX4_SOURCE_DIR}/test_data
-		${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+		${PX4_SOURCE_DIR}/ROMFS/px4fmu_common
 	WORKING_DIRECTORY ${SITL_WORKING_DIR}
 )
 
@@ -102,7 +102,7 @@ sanitizer_fail_test_on_error(sitl-mavlink)
 # 	COMMAND $<TARGET_FILE:px4>
 # 		-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_shutdown
 # 		-t ${PX4_SOURCE_DIR}/test_data
-# 		${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+# 		${PX4_SOURCE_DIR}/ROMFS/px4fmu_common
 # 	WORKING_DIRECTORY ${SITL_WORKING_DIR}
 # )
 
@@ -140,7 +140,7 @@ foreach(cmd_name ${test_cmds})
 
 	add_test(NAME posix_${cmd_name}
 		COMMAND $<TARGET_FILE:px4>
-			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_common
 			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/cmd_${cmd_name}_generated
 			-t ${PX4_SOURCE_DIR}/test_data
 		WORKING_DIRECTORY ${SITL_WORKING_DIR}

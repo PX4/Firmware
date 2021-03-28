@@ -1,8 +1,0 @@
-#!/bin/sh
-#
-# Flight startup script for PX4FMU standalone configuration.
-#
-
-echo "[i] doing standalone PX4FMU startup..."
-
-echo "[i] startup done"
