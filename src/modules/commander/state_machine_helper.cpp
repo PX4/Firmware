@@ -289,19 +289,38 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 	// kept super lightweight. No complex logic or calls on external function should be
 	// implemented here.
 
+	if (new_main_state == internal_state->main_state) {
+		return TRANSITION_NOT_CHANGED;
+	}
+
 	transition_result_t ret = TRANSITION_DENIED;
 
 	/* transition may be denied even if the same state is requested because conditions may have changed */
 	switch (new_main_state) {
 	case commander_state_s::MAIN_STATE_MANUAL:
-	case commander_state_s::MAIN_STATE_STAB:
+		if (status_flags.condition_attitude_valid && status_flags.condition_angular_velocity_valid) {
+			ret = TRANSITION_CHANGED;
+		}
+
+		break;
+
 	case commander_state_s::MAIN_STATE_ACRO:
-		ret = TRANSITION_CHANGED;
+		if (status_flags.condition_angular_velocity_valid) {
+			ret = TRANSITION_CHANGED;
+		}
+
+		break;
+
+	case commander_state_s::MAIN_STATE_STAB:
+		if (status_flags.condition_attitude_valid && status_flags.condition_angular_velocity_valid) {
+			ret = TRANSITION_CHANGED;
+		}
+
 		break;
 
 	case commander_state_s::MAIN_STATE_ALTCTL:
 
-		/* need at minimum altitude estimate */
+		// need at minimum altitude estimate
 		if (status_flags.condition_local_altitude_valid ||
 		    status_flags.condition_global_position_valid) {
 			ret = TRANSITION_CHANGED;
@@ -311,7 +330,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_POSCTL:
 
-		/* need at minimum local position estimate */
+		// need at minimum local position estimate
 		if (status_flags.condition_local_position_valid ||
 		    status_flags.condition_global_position_valid) {
 			ret = TRANSITION_CHANGED;
@@ -321,7 +340,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_AUTO_LOITER:
 
-		/* need global position estimate */
+		// need global position estimate
 		if (status_flags.condition_global_position_valid) {
 			ret = TRANSITION_CHANGED;
 		}
@@ -331,7 +350,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 	case commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET:
 	case commander_state_s::MAIN_STATE_ORBIT:
 
-		/* Follow and orbit only implemented for multicopter */
+		// Follow and orbit only implemented for multicopter
 		if (status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
 			ret = TRANSITION_CHANGED;
 		}
@@ -340,7 +359,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_AUTO_MISSION:
 
-		/* need global position, home position, and a valid mission */
+		// need global position, home position, and a valid mission
 		if (status_flags.condition_global_position_valid &&
 		    status_flags.condition_auto_mission_available) {
 
@@ -351,8 +370,10 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_AUTO_RTL:
 
-		/* need global position and home position */
-		if (status_flags.condition_global_position_valid && status_flags.condition_home_position_valid) {
+		// need global position and home position
+		if (status_flags.condition_global_position_valid &&
+		    status_flags.condition_home_position_valid) {
+
 			ret = TRANSITION_CHANGED;
 		}
 
@@ -361,7 +382,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 	case commander_state_s::MAIN_STATE_AUTO_TAKEOFF:
 	case commander_state_s::MAIN_STATE_AUTO_LAND:
 
-		/* need local position */
+		// need local position
 		if (status_flags.condition_local_position_valid) {
 			ret = TRANSITION_CHANGED;
 		}
@@ -370,10 +391,10 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_AUTO_PRECLAND:
 
-		/* need local and global position, and precision land only implemented for multicopters */
+		// need local and global position, and precision land only implemented for multicopters
 		if (status_flags.condition_local_position_valid
 		    && status_flags.condition_global_position_valid
-		    && status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+		    && (status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING)) {
 
 			ret = TRANSITION_CHANGED;
 		}
@@ -382,9 +403,8 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_OFFBOARD:
 
-		/* need offboard signal */
+		// need offboard signal
 		if (!status_flags.offboard_control_signal_lost) {
-
 			ret = TRANSITION_CHANGED;
 		}
 

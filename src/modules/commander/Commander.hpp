@@ -154,7 +154,7 @@ private:
 
 	void offboard_control_update();
 
-	void print_reject_mode(const char *msg);
+	void print_reject_mode(uint8_t main_state);
 
 	void reset_posvel_validity();
 

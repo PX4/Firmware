@@ -331,11 +331,13 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 	// Bits for condition_bits
 #define MTT_ALL_NOT_VALID		0
-#define MTT_ROTARY_WING			1 << 0
+#define MTT_ROTARY_WING		1 << 0
 #define MTT_LOC_ALT_VALID		1 << 1
 #define MTT_LOC_POS_VALID		1 << 2
 #define MTT_HOME_POS_VALID		1 << 3
 #define MTT_GLOBAL_POS_VALID		1 << 4
+#define MTT_ANGULAR_VELOCITY_VALID	1 << 5
+#define MTT_ATTITUDE_VALID		1 << 6
 
 	static const MainTransitionTest_t rgMainTransitionTests[] = {
 
@@ -351,31 +353,31 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 		{
 			"transition: MANUAL to ACRO - rotary",
-			MTT_ROTARY_WING,
+			MTT_ROTARY_WING | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_MANUAL, commander_state_s::MAIN_STATE_ACRO, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: MANUAL to ACRO - not rotary",
-			MTT_ALL_NOT_VALID,
+			MTT_ALL_NOT_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_MANUAL, commander_state_s::MAIN_STATE_ACRO, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: ACRO to MANUAL",
-			MTT_ALL_NOT_VALID,
+			MTT_ROTARY_WING | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_ACRO, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: MANUAL to AUTO_MISSION - global position valid, home position valid",
-			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID,
+			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_MANUAL, commander_state_s::MAIN_STATE_AUTO_MISSION, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: AUTO_MISSION to MANUAL - global position valid, home position valid",
-			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID,
+			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_AUTO_MISSION, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
@@ -387,19 +389,19 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 		{
 			"transition: AUTO_LOITER to MANUAL - global position valid",
-			MTT_GLOBAL_POS_VALID,
+			MTT_GLOBAL_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_AUTO_LOITER, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: MANUAL to AUTO_RTL - global position valid, home position valid",
-			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID,
+			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_MANUAL, commander_state_s::MAIN_STATE_AUTO_RTL, TRANSITION_CHANGED
 		},
 
 		{
 			"transition: AUTO_RTL to MANUAL - global position valid, home position valid",
-			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID,
+			MTT_GLOBAL_POS_VALID | MTT_HOME_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_AUTO_RTL, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
@@ -423,7 +425,7 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 		{
 			"transition: ALTCTL to MANUAL - local altitude valid",
-			MTT_LOC_ALT_VALID,
+			MTT_LOC_ALT_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_ALTCTL, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
@@ -441,7 +443,7 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 		{
 			"transition: POSCTL to MANUAL - local position valid, global position valid",
-			MTT_LOC_POS_VALID,
+			MTT_LOC_POS_VALID | MTT_ATTITUDE_VALID | MTT_ANGULAR_VELOCITY_VALID,
 			commander_state_s::MAIN_STATE_POSCTL, commander_state_s::MAIN_STATE_MANUAL, TRANSITION_CHANGED
 		},
 
@@ -502,13 +504,17 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 		const MainTransitionTest_t *test = &rgMainTransitionTests[i];
 
 		// Setup initial machine state
-		struct vehicle_status_s current_vehicle_status = {};
-		struct commander_state_s current_commander_state = {};
-		struct vehicle_status_flags_s current_status_flags = {};
+		vehicle_status_s current_vehicle_status{};
+		commander_state_s current_commander_state{};
+		vehicle_status_flags_s current_status_flags{};
 
 		current_commander_state.main_state = test->from_state;
+
 		current_vehicle_status.vehicle_type = (test->condition_bits & MTT_ROTARY_WING) ?
 						      vehicle_status_s::VEHICLE_TYPE_ROTARY_WING : vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
+
+		current_status_flags.condition_angular_velocity_valid = test->condition_bits & MTT_ANGULAR_VELOCITY_VALID;
+		current_status_flags.condition_attitude_valid = test->condition_bits & MTT_ATTITUDE_VALID;
 		current_status_flags.condition_local_altitude_valid = test->condition_bits & MTT_LOC_ALT_VALID;
 		current_status_flags.condition_local_position_valid = test->condition_bits & MTT_LOC_POS_VALID;
 		current_status_flags.condition_home_position_valid = test->condition_bits & MTT_HOME_POS_VALID;

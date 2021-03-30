@@ -435,6 +435,41 @@ static constexpr const char *arm_disarm_reason_str(arm_disarm_reason_t calling_r
 	return "";
 };
 
+static constexpr const char *main_state_str(uint8_t main_state)
+{
+	switch (main_state) {
+	case commander_state_s::MAIN_STATE_MANUAL: return "manual";
+
+	case commander_state_s::MAIN_STATE_ALTCTL: return "altitude control";
+
+	case commander_state_s::MAIN_STATE_POSCTL: return "position control";
+
+	case commander_state_s::MAIN_STATE_AUTO_MISSION: return "auto mission";
+
+	case commander_state_s::MAIN_STATE_AUTO_LOITER: return "auto hold";
+
+	case commander_state_s::MAIN_STATE_AUTO_RTL: return "RTL";
+
+	case commander_state_s::MAIN_STATE_ACRO: return "acro";
+
+	case commander_state_s::MAIN_STATE_OFFBOARD: return "offboard";
+
+	case commander_state_s::MAIN_STATE_STAB: return "stabilized";
+
+	case commander_state_s::MAIN_STATE_AUTO_TAKEOFF: return "auto takeoff";
+
+	case commander_state_s::MAIN_STATE_AUTO_LAND: return "auto land";
+
+	case commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET: return "follow target";
+
+	case commander_state_s::MAIN_STATE_AUTO_PRECLAND: return "auto precision land";
+
+	case commander_state_s::MAIN_STATE_ORBIT: return "orbit";
+
+	default: return "unknown";
+	}
+}
+
 transition_result_t Commander::arm(arm_disarm_reason_t calling_reason, bool run_preflight_checks)
 {
 	// allow a grace period for re-arming: preflight checks don't need to pass during that time, for example for accidential in-air disarming
@@ -598,14 +633,26 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					/* MANUAL */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_MANUAL, _status_flags, &_internal_state);
 
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_MANUAL);
+					}
+
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ALTCTL) {
 					/* ALTCTL */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_ALTCTL, _status_flags, &_internal_state);
+
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_ALTCTL);
+					}
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_POSCTL) {
 					/* POSCTL */
 					reset_posvel_validity();
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_POSCTL, _status_flags, &_internal_state);
+
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_POSCTL);
+					}
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_AUTO) {
 					/* AUTO */
@@ -615,37 +662,66 @@ Commander::handle_command(const vehicle_command_s &cmd)
 						switch (custom_sub_mode) {
 						case PX4_CUSTOM_SUB_MODE_AUTO_LOITER:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_LOITER);
+							}
+
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_MISSION:
-							if (_status_flags.condition_auto_mission_available) {
-								main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_MISSION, _status_flags, &_internal_state);
+							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_MISSION, _status_flags, &_internal_state);
 
-							} else {
-								main_ret = TRANSITION_DENIED;
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_MISSION);
 							}
 
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_RTL:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_RTL, _status_flags, &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_RTL);
+							}
+
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_TAKEOFF, _status_flags, &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_TAKEOFF);
+							}
+
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_LAND:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LAND, _status_flags, &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_LAND);
+							}
+
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET, _status_flags,
 											 &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET);
+							}
+
 							break;
 
 						case PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND:
 							main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_PRECLAND, _status_flags, &_internal_state);
+
+							if (main_ret == TRANSITION_DENIED) {
+								print_reject_mode(commander_state_s::MAIN_STATE_AUTO_PRECLAND);
+							}
+
 							break;
 
 						default:
@@ -662,15 +738,27 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					/* ACRO */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_ACRO, _status_flags, &_internal_state);
 
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_ACRO);
+					}
+
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_STABILIZED) {
 					/* STABILIZED */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_STAB, _status_flags, &_internal_state);
+
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_STAB);
+					}
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_OFFBOARD) {
 					reset_posvel_validity();
 
 					/* OFFBOARD */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_OFFBOARD, _status_flags, &_internal_state);
+
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_OFFBOARD);
+					}
 				}
 
 			} else {
@@ -679,18 +767,34 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					/* AUTO */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_MISSION, _status_flags, &_internal_state);
 
+					if (main_ret == TRANSITION_DENIED) {
+						print_reject_mode(commander_state_s::MAIN_STATE_AUTO_MISSION);
+					}
+
 				} else if (base_mode & VEHICLE_MODE_FLAG_MANUAL_INPUT_ENABLED) {
 					if (base_mode & VEHICLE_MODE_FLAG_GUIDED_ENABLED) {
 						/* POSCTL */
 						main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_POSCTL, _status_flags, &_internal_state);
 
+						if (main_ret == TRANSITION_DENIED) {
+							print_reject_mode(commander_state_s::MAIN_STATE_POSCTL);
+						}
+
 					} else if (base_mode & VEHICLE_MODE_FLAG_STABILIZE_ENABLED) {
 						/* STABILIZED */
 						main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_STAB, _status_flags, &_internal_state);
 
+						if (main_ret == TRANSITION_DENIED) {
+							print_reject_mode(commander_state_s::MAIN_STATE_STAB);
+						}
+
 					} else {
 						/* MANUAL */
 						main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_MANUAL, _status_flags, &_internal_state);
+
+						if (main_ret == TRANSITION_DENIED) {
+							print_reject_mode(commander_state_s::MAIN_STATE_MANUAL);
+						}
 					}
 				}
 			}
@@ -2835,7 +2939,7 @@ Commander::set_main_state_rc()
 		res = main_state_transition(_status, commander_state_s::MAIN_STATE_OFFBOARD, _status_flags, &_internal_state);
 
 		if (res == TRANSITION_DENIED) {
-			print_reject_mode("OFFBOARD");
+			print_reject_mode(commander_state_s::MAIN_STATE_OFFBOARD);
 			/* mode rejected, continue to evaluate the main system mode */
 
 		} else {
@@ -2849,7 +2953,7 @@ Commander::set_main_state_rc()
 		res = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_RTL, _status_flags, &_internal_state);
 
 		if (res == TRANSITION_DENIED) {
-			print_reject_mode("AUTO RTL");
+			print_reject_mode(commander_state_s::MAIN_STATE_AUTO_RTL);
 
 			/* fallback to LOITER if home position not set */
 			res = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
@@ -2868,7 +2972,7 @@ Commander::set_main_state_rc()
 		res = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
 
 		if (res == TRANSITION_DENIED) {
-			print_reject_mode("AUTO HOLD");
+			print_reject_mode(commander_state_s::MAIN_STATE_AUTO_LOITER);
 
 		} else {
 			return res;
@@ -2902,10 +3006,9 @@ Commander::set_main_state_rc()
 				maxcount--;
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_MISSION) {
-
-					/* fall back to loiter */
+					// fall back to loiter
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
-					print_reject_mode("AUTO MISSION");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2914,10 +3017,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_RTL) {
-
-					/* fall back to position control */
+					// fall back to position control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
-					print_reject_mode("AUTO RTL");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2926,10 +3028,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_LAND) {
-
-					/* fall back to position control */
+					// fall back to position control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
-					print_reject_mode("AUTO LAND");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2938,10 +3039,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_TAKEOFF) {
-
-					/* fall back to position control */
+					// fall back to position control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
-					print_reject_mode("AUTO TAKEOFF");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2950,10 +3050,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_FOLLOW_TARGET) {
-
-					/* fall back to position control */
+					// fall back to position control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_AUTO_LOITER;
-					print_reject_mode("AUTO FOLLOW");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2962,10 +3061,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_AUTO_LOITER) {
-
-					/* fall back to position control */
+					// fall back to position control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_POSCTL;
-					print_reject_mode("AUTO HOLD");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2974,10 +3072,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_POSCTL) {
-
-					/* fall back to altitude control */
+					// fall back to altitude control
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_ALTCTL;
-					print_reject_mode("POSITION CONTROL");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2986,10 +3083,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_ALTCTL) {
-
-					/* fall back to stabilized */
+					// fall back to stabilized
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_STAB;
-					print_reject_mode("ALTITUDE CONTROL");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -2998,10 +3094,9 @@ Commander::set_main_state_rc()
 				}
 
 				if (new_mode == commander_state_s::MAIN_STATE_STAB) {
-
-					/* fall back to manual */
+					// fall back to manual
+					print_reject_mode(new_mode);
 					new_mode = commander_state_s::MAIN_STATE_MANUAL;
-					print_reject_mode("STABILIZED");
 					res = main_state_transition(_status, new_mode, _status_flags, &_internal_state);
 
 					if (res != TRANSITION_DENIED) {
@@ -3080,7 +3175,7 @@ Commander::set_main_state_rc()
 					break;	// changed successfully or already in this state
 				}
 
-				print_reject_mode("POSITION CONTROL");
+				print_reject_mode(commander_state_s::MAIN_STATE_POSCTL);
 			}
 
 			// fallback to ALTCTL
@@ -3091,7 +3186,7 @@ Commander::set_main_state_rc()
 			}
 
 			if (_manual_control_switches.posctl_switch != manual_control_switches_s::SWITCH_POS_ON) {
-				print_reject_mode("ALTITUDE CONTROL");
+				print_reject_mode(commander_state_s::MAIN_STATE_ALTCTL);
 			}
 
 			// fallback to MANUAL
@@ -3106,7 +3201,7 @@ Commander::set_main_state_rc()
 				break;	// changed successfully or already in this state
 			}
 
-			print_reject_mode("AUTO MISSION");
+			print_reject_mode(commander_state_s::MAIN_STATE_AUTO_MISSION);
 
 			// fallback to LOITER if home position not set
 			res = main_state_transition(_status, commander_state_s::MAIN_STATE_AUTO_LOITER, _status_flags, &_internal_state);
@@ -3362,17 +3457,19 @@ Commander::stabilization_required()
 }
 
 void
-Commander::print_reject_mode(const char *msg)
+Commander::print_reject_mode(uint8_t main_state)
 {
-	const hrt_abstime t = hrt_absolute_time();
+	const hrt_abstime time_now_us = hrt_absolute_time();
 
-	if (t - _last_print_mode_reject_time > PRINT_MODE_REJECT_INTERVAL) {
-		_last_print_mode_reject_time = t;
-		mavlink_log_critical(&_mavlink_log_pub, "REJECT %s", msg);
+	if (time_now_us - _last_print_mode_reject_time > PRINT_MODE_REJECT_INTERVAL) {
+
+		mavlink_log_critical(&_mavlink_log_pub, "Rejecting %s mode", main_state_str(main_state));
 
 		/* only buzz if armed, because else we're driving people nuts indoors
 		they really need to look at the leds as well. */
 		tune_negative(_armed.armed);
+
+		_last_print_mode_reject_time = time_now_us;
 	}
 }
 
