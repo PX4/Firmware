@@ -185,9 +185,9 @@ void UUVPOSControl::Run()
 			float pitch_des = 0;
 			float yaw_des = _trajectory_setpoint.yaw;
 
-			float x_pos_des = _trajectory_setpoint.x;
-			float y_pos_des = _trajectory_setpoint.y;
-			float z_pos_des = _trajectory_setpoint.z;
+			float x_pos_des = _trajectory_setpoint.position[0];
+			float y_pos_des = _trajectory_setpoint.position[1];
+			float z_pos_des = _trajectory_setpoint.position[2];
 
 			//stabilization controller(keep pos and hold depth + angle) vs position controller(global + yaw)
 			if (_param_stabilization.get() == 0) {

@@ -36,7 +36,7 @@
 
 #include "FlightTaskDescend.hpp"
 
-bool FlightTaskDescend::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskDescend::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 	// stay level to minimize horizontal drift

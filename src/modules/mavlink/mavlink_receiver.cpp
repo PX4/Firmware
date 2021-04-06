@@ -889,18 +889,18 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 	    (mavlink_system.sysid == target_local_ned.target_system || target_local_ned.target_system == 0) &&
 	    (mavlink_system.compid == target_local_ned.target_component || target_local_ned.target_component == 0)) {
 
-		vehicle_local_position_setpoint_s setpoint{};
+		trajectory_setpoint_s setpoint{};
 
 		const uint16_t type_mask = target_local_ned.type_mask;
 
 		if (target_local_ned.coordinate_frame == MAV_FRAME_LOCAL_NED) {
-			setpoint.x = (type_mask & POSITION_TARGET_TYPEMASK_X_IGNORE) ? NAN : target_local_ned.x;
-			setpoint.y = (type_mask & POSITION_TARGET_TYPEMASK_Y_IGNORE) ? NAN : target_local_ned.y;
-			setpoint.z = (type_mask & POSITION_TARGET_TYPEMASK_Z_IGNORE) ? NAN : target_local_ned.z;
+			setpoint.position[0] = (type_mask & POSITION_TARGET_TYPEMASK_X_IGNORE) ? NAN : target_local_ned.x;
+			setpoint.position[1] = (type_mask & POSITION_TARGET_TYPEMASK_Y_IGNORE) ? NAN : target_local_ned.y;
+			setpoint.position[2] = (type_mask & POSITION_TARGET_TYPEMASK_Z_IGNORE) ? NAN : target_local_ned.z;
 
-			setpoint.vx = (type_mask & POSITION_TARGET_TYPEMASK_VX_IGNORE) ? NAN : target_local_ned.vx;
-			setpoint.vy = (type_mask & POSITION_TARGET_TYPEMASK_VY_IGNORE) ? NAN : target_local_ned.vy;
-			setpoint.vz = (type_mask & POSITION_TARGET_TYPEMASK_VZ_IGNORE) ? NAN : target_local_ned.vz;
+			setpoint.velocity[0] = (type_mask & POSITION_TARGET_TYPEMASK_VX_IGNORE) ? NAN : target_local_ned.vx;
+			setpoint.velocity[1] = (type_mask & POSITION_TARGET_TYPEMASK_VY_IGNORE) ? NAN : target_local_ned.vy;
+			setpoint.velocity[2] = (type_mask & POSITION_TARGET_TYPEMASK_VZ_IGNORE) ? NAN : target_local_ned.vz;
 
 			setpoint.acceleration[0] = (type_mask & POSITION_TARGET_TYPEMASK_AX_IGNORE) ? NAN : target_local_ned.afx;
 			setpoint.acceleration[1] = (type_mask & POSITION_TARGET_TYPEMASK_AY_IGNORE) ? NAN : target_local_ned.afy;
@@ -923,14 +923,12 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 				};
 
 				const matrix::Vector3f velocity_setpoint{R * velocity_body_sp};
-				setpoint.vx = velocity_setpoint(0);
-				setpoint.vy = velocity_setpoint(1);
-				setpoint.vz = velocity_setpoint(2);
+				velocity_setpoint.copyTo(setpoint.velocity);
 
 			} else {
-				setpoint.vx = NAN;
-				setpoint.vy = NAN;
-				setpoint.vz = NAN;
+				setpoint.velocity[0] = NAN;
+				setpoint.velocity[1] = NAN;
+				setpoint.velocity[2] = NAN;
 			}
 
 			const bool ignore_acceleration = type_mask & (POSITION_TARGET_TYPEMASK_AX_IGNORE | POSITION_TARGET_TYPEMASK_AY_IGNORE |
@@ -952,9 +950,9 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 				setpoint.acceleration[2] = NAN;
 			}
 
-			setpoint.x = NAN;
-			setpoint.y = NAN;
-			setpoint.z = NAN;
+			setpoint.position[0] = NAN;
+			setpoint.position[0] = NAN;
+			setpoint.position[0] = NAN;
 
 		} else {
 			mavlink_log_critical(&_mavlink_log_pub, "SET_POSITION_TARGET_LOCAL_NED coordinate frame %d unsupported",
@@ -962,17 +960,15 @@ MavlinkReceiver::handle_message_set_position_target_local_ned(mavlink_message_t 
 			return;
 		}
 
-		setpoint.thrust[0] = NAN;
-		setpoint.thrust[1] = NAN;
-		setpoint.thrust[2] = NAN;
-
-		setpoint.yaw      = (type_mask & POSITION_TARGET_TYPEMASK_YAW_IGNORE)      ? NAN : target_local_ned.yaw;
-		setpoint.yawspeed = (type_mask & POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE) ? NAN : target_local_ned.yaw_rate;
+		setpoint.yaw      = (type_mask == POSITION_TARGET_TYPEMASK_YAW_IGNORE)      ? NAN : target_local_ned.yaw;
+		setpoint.yawspeed = (type_mask == POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE) ? NAN : target_local_ned.yaw_rate;
 
 
 		offboard_control_mode_s ocm{};
-		ocm.position = PX4_ISFINITE(setpoint.x) || PX4_ISFINITE(setpoint.y) || PX4_ISFINITE(setpoint.z);
-		ocm.velocity = PX4_ISFINITE(setpoint.vx) || PX4_ISFINITE(setpoint.vy) || PX4_ISFINITE(setpoint.vz);
+		ocm.position = PX4_ISFINITE(setpoint.position[0]) || PX4_ISFINITE(setpoint.position[1])
+			       || PX4_ISFINITE(setpoint.position[2]);
+		ocm.velocity = PX4_ISFINITE(setpoint.velocity[0]) || PX4_ISFINITE(setpoint.velocity[1])
+			       || PX4_ISFINITE(setpoint.velocity[2]);
 		ocm.acceleration = PX4_ISFINITE(setpoint.acceleration[0]) || PX4_ISFINITE(setpoint.acceleration[1])
 				   || PX4_ISFINITE(setpoint.acceleration[2]);
 
@@ -1012,7 +1008,7 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 	    (mavlink_system.sysid == target_global_int.target_system || target_global_int.target_system == 0) &&
 	    (mavlink_system.compid == target_global_int.target_component || target_global_int.target_component == 0)) {
 
-		vehicle_local_position_setpoint_s setpoint{};
+		trajectory_setpoint_s setpoint{};
 
 		const uint16_t type_mask = target_global_int.type_mask;
 
@@ -1033,10 +1029,10 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 			// global -> local
 			const double lat = target_global_int.lat_int / 1e7;
 			const double lon = target_global_int.lon_int / 1e7;
-			map_projection_project(&global_local_proj_ref, lat, lon, &setpoint.x, &setpoint.y);
+			map_projection_project(&global_local_proj_ref, lat, lon, &setpoint.position[0], &setpoint.position[1]);
 
 			if (target_global_int.coordinate_frame == MAV_FRAME_GLOBAL_INT) {
-				setpoint.z = local_pos.ref_alt - target_global_int.alt;
+				setpoint.position[2] = local_pos.ref_alt - target_global_int.alt;
 
 			} else if (target_global_int.coordinate_frame == MAV_FRAME_GLOBAL_RELATIVE_ALT_INT) {
 				home_position_s home_position{};
@@ -1044,7 +1040,7 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 
 				if (home_position.valid_alt) {
 					const float alt = home_position.alt - target_global_int.alt;
-					setpoint.z = alt - local_pos.ref_alt;
+					setpoint.position[2] = alt - local_pos.ref_alt;
 
 				} else {
 					// home altitude required
@@ -1057,7 +1053,7 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 
 				if (vehicle_global_position.terrain_alt_valid) {
 					const float alt = target_global_int.alt + vehicle_global_position.terrain_alt;
-					setpoint.z = local_pos.ref_alt - alt;
+					setpoint.position[2] = local_pos.ref_alt - alt;
 
 				} else {
 					// valid terrain alt required
@@ -1071,32 +1067,30 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 			}
 
 		} else {
-			setpoint.x = NAN;
-			setpoint.y = NAN;
-			setpoint.z = NAN;
+			setpoint.position[0] = NAN;
+			setpoint.position[1] = NAN;
+			setpoint.position[2] = NAN;
 		}
 
 		// velocity
-		setpoint.vx = (type_mask & POSITION_TARGET_TYPEMASK_VX_IGNORE) ? NAN : target_global_int.vx;
-		setpoint.vy = (type_mask & POSITION_TARGET_TYPEMASK_VY_IGNORE) ? NAN : target_global_int.vy;
-		setpoint.vz = (type_mask & POSITION_TARGET_TYPEMASK_VZ_IGNORE) ? NAN : target_global_int.vz;
+		setpoint.velocity[0] = (type_mask & POSITION_TARGET_TYPEMASK_VX_IGNORE) ? NAN : target_global_int.vx;
+		setpoint.velocity[1] = (type_mask & POSITION_TARGET_TYPEMASK_VY_IGNORE) ? NAN : target_global_int.vy;
+		setpoint.velocity[2] = (type_mask & POSITION_TARGET_TYPEMASK_VZ_IGNORE) ? NAN : target_global_int.vz;
 
 		// acceleration
 		setpoint.acceleration[0] = (type_mask & POSITION_TARGET_TYPEMASK_AX_IGNORE) ? NAN : target_global_int.afx;
 		setpoint.acceleration[1] = (type_mask & POSITION_TARGET_TYPEMASK_AY_IGNORE) ? NAN : target_global_int.afy;
 		setpoint.acceleration[2] = (type_mask & POSITION_TARGET_TYPEMASK_AZ_IGNORE) ? NAN : target_global_int.afz;
 
-		setpoint.thrust[0] = NAN;
-		setpoint.thrust[1] = NAN;
-		setpoint.thrust[2] = NAN;
-
-		setpoint.yaw      = (type_mask & POSITION_TARGET_TYPEMASK_YAW_IGNORE)      ? NAN : target_global_int.yaw;
-		setpoint.yawspeed = (type_mask & POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE) ? NAN : target_global_int.yaw_rate;
+		setpoint.yaw      = (type_mask == POSITION_TARGET_TYPEMASK_YAW_IGNORE)      ? NAN : target_global_int.yaw;
+		setpoint.yawspeed = (type_mask == POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE) ? NAN : target_global_int.yaw_rate;
 
 
 		offboard_control_mode_s ocm{};
-		ocm.position = PX4_ISFINITE(setpoint.x) || PX4_ISFINITE(setpoint.y) || PX4_ISFINITE(setpoint.z);
-		ocm.velocity = PX4_ISFINITE(setpoint.vx) || PX4_ISFINITE(setpoint.vy) || PX4_ISFINITE(setpoint.vz);
+		ocm.position = PX4_ISFINITE(setpoint.position[0]) || PX4_ISFINITE(setpoint.position[1])
+			       || PX4_ISFINITE(setpoint.position[2]);
+		ocm.velocity = PX4_ISFINITE(setpoint.velocity[0]) || PX4_ISFINITE(setpoint.velocity[1])
+			       || PX4_ISFINITE(setpoint.velocity[2]);
 		ocm.acceleration = PX4_ISFINITE(setpoint.acceleration[0]) || PX4_ISFINITE(setpoint.acceleration[1])
 				   || PX4_ISFINITE(setpoint.acceleration[2]);
 

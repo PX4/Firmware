@@ -321,7 +321,7 @@ RoverPositionControl::control_position(const matrix::Vector2d &current_position,
 void
 RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity)
 {
-	const Vector3f desired_velocity{_trajectory_setpoint.vx, _trajectory_setpoint.vy, _trajectory_setpoint.vz};
+	const Vector3f desired_velocity{_trajectory_setpoint.velocity};
 	float dt = 0.01; // Using non zero value to a avoid division by zero
 
 	const float mission_throttle = _param_throttle_cruise.get();
@@ -420,10 +420,10 @@ RoverPositionControl::Run()
 
 				// local -> global
 				map_projection_reproject(&_global_local_proj_ref,
-							 _trajectory_setpoint.x, _trajectory_setpoint.y,
+							 _trajectory_setpoint.position[0], _trajectory_setpoint.position[1],
 							 &_pos_sp_triplet.current.lat, &_pos_sp_triplet.current.lon);
 
-				_pos_sp_triplet.current.alt = _global_local_alt0 - _trajectory_setpoint.z;
+				_pos_sp_triplet.current.alt = _global_local_alt0 - _trajectory_setpoint.position[2];
 				_pos_sp_triplet.current.valid = true;
 			}
 

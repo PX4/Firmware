@@ -43,12 +43,12 @@ FlightTaskManualAcceleration::FlightTaskManualAcceleration() :
 	_stick_acceleration_xy(this)
 {};
 
-bool FlightTaskManualAcceleration::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskManualAcceleration::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTaskManualAltitudeSmoothVel::activate(last_setpoint);
 
-	if (PX4_ISFINITE(last_setpoint.vx)) {
-		_stick_acceleration_xy.resetVelocity(Vector2f(last_setpoint.vx, last_setpoint.vy));
+	if (PX4_ISFINITE(last_setpoint.velocity[0])) {
+		_stick_acceleration_xy.resetVelocity(Vector2f(last_setpoint.velocity[0], last_setpoint.velocity[1]));
 
 	} else {
 		_stick_acceleration_xy.resetVelocity(_velocity.xy());

@@ -52,7 +52,6 @@ TEST(PositionControlTest, EmptySetpoint)
 	EXPECT_FLOAT_EQ(output_setpoint.vy, 0.f);
 	EXPECT_FLOAT_EQ(output_setpoint.vz, 0.f);
 	EXPECT_EQ(Vector3f(output_setpoint.acceleration), Vector3f(0.f, 0.f, 0.f));
-	EXPECT_EQ(Vector3f(output_setpoint.jerk), Vector3f(0.f, 0.f, 0.f));
 	EXPECT_EQ(Vector3f(output_setpoint.thrust), Vector3f(0, 0, 0));
 
 	vehicle_attitude_setpoint_s attitude{};
@@ -87,16 +86,15 @@ public:
 
 	void resetInputSetpoint()
 	{
-		_input_setpoint.x = NAN;
-		_input_setpoint.y = NAN;
-		_input_setpoint.z = NAN;
+		_input_setpoint.position[0] = NAN;
+		_input_setpoint.position[1] = NAN;
+		_input_setpoint.position[2] = NAN;
+		_input_setpoint.velocity[0] = NAN;
+		_input_setpoint.velocity[1] = NAN;
+		_input_setpoint.velocity[2] = NAN;
+		Vector3f(NAN, NAN, NAN).copyTo(_input_setpoint.acceleration);
 		_input_setpoint.yaw = NAN;
 		_input_setpoint.yawspeed = NAN;
-		_input_setpoint.vx = NAN;
-		_input_setpoint.vy = NAN;
-		_input_setpoint.vz = NAN;
-		Vector3f(NAN, NAN, NAN).copyTo(_input_setpoint.acceleration);
-		Vector3f(NAN, NAN, NAN).copyTo(_input_setpoint.thrust);
 	}
 
 	bool runController()
@@ -109,7 +107,7 @@ public:
 	}
 
 	PositionControl _position_control;
-	vehicle_local_position_setpoint_s _input_setpoint{};
+	trajectory_setpoint_s _input_setpoint{};
 	vehicle_local_position_setpoint_s _output_setpoint{};
 	vehicle_attitude_setpoint_s _attitude{};
 };
@@ -133,27 +131,27 @@ public:
 
 TEST_F(PositionControlBasicDirectionTest, PositionDirection)
 {
-	_input_setpoint.x = .1f;
-	_input_setpoint.y = .1f;
-	_input_setpoint.z = -.1f;
+	_input_setpoint.position[0] = .1f;
+	_input_setpoint.position[1] = .1f;
+	_input_setpoint.position[2] = -.1f;
 	EXPECT_TRUE(runController());
 	checkDirection();
 }
 
 TEST_F(PositionControlBasicDirectionTest, VelocityDirection)
 {
-	_input_setpoint.vx = .1f;
-	_input_setpoint.vy = .1f;
-	_input_setpoint.vz = -.1f;
+	_input_setpoint.velocity[0] = .1f;
+	_input_setpoint.velocity[1] = .1f;
+	_input_setpoint.velocity[2] = -.1f;
 	EXPECT_TRUE(runController());
 	checkDirection();
 }
 
 TEST_F(PositionControlBasicTest, TiltLimit)
 {
-	_input_setpoint.x = 10.f;
-	_input_setpoint.y = 10.f;
-	_input_setpoint.z = -0.f;
+	_input_setpoint.position[0] = 10.f;
+	_input_setpoint.position[1] = 10.f;
+	_input_setpoint.position[2] = -0.f;
 
 	EXPECT_TRUE(runController());
 	Vector3f body_z = Quatf(_attitude.q_d).dcm_z();
@@ -173,9 +171,9 @@ TEST_F(PositionControlBasicTest, TiltLimit)
 
 TEST_F(PositionControlBasicTest, VelocityLimit)
 {
-	_input_setpoint.x = 10.f;
-	_input_setpoint.y = 10.f;
-	_input_setpoint.z = -10.f;
+	_input_setpoint.position[0] = 10.f;
+	_input_setpoint.position[1] = 10.f;
+	_input_setpoint.position[2] = -10.f;
 
 	EXPECT_TRUE(runController());
 	Vector2f velocity_xy(_output_setpoint.vx, _output_setpoint.vy);
@@ -185,9 +183,9 @@ TEST_F(PositionControlBasicTest, VelocityLimit)
 
 TEST_F(PositionControlBasicTest, PositionControlMaxThrustLimit)
 {
-	_input_setpoint.x = 10.f;
-	_input_setpoint.y = 10.f;
-	_input_setpoint.z = -10.f;
+	_input_setpoint.position[0] = 10.f;
+	_input_setpoint.position[1] = 10.f;
+	_input_setpoint.position[2] = -10.f;
 
 	runController();
 	Vector3f thrust(_output_setpoint.thrust);
@@ -205,9 +203,9 @@ TEST_F(PositionControlBasicTest, PositionControlMaxThrustLimit)
 
 TEST_F(PositionControlBasicTest, PositionControlMinThrustLimit)
 {
-	_input_setpoint.x = 10.f;
-	_input_setpoint.y = 0.f;
-	_input_setpoint.z = 10.f;
+	_input_setpoint.position[0] = 10.f;
+	_input_setpoint.position[1] = 0.f;
+	_input_setpoint.position[2] = 10.f;
 
 	runController();
 	Vector3f thrust(_output_setpoint.thrust);
@@ -221,8 +219,7 @@ TEST_F(PositionControlBasicTest, PositionControlMinThrustLimit)
 
 TEST_F(PositionControlBasicTest, FailsafeInput)
 {
-	_input_setpoint.vz = .1f;
-	_input_setpoint.thrust[0] = _input_setpoint.thrust[1] = 0.f;
+	_input_setpoint.velocity[2] = .1f;
 	_input_setpoint.acceleration[0] = _input_setpoint.acceleration[1] = 0.f;
 
 	EXPECT_TRUE(runController());
@@ -247,9 +244,9 @@ TEST_F(PositionControlBasicTest, IdleThrustInput)
 
 TEST_F(PositionControlBasicTest, InputCombinationsPosition)
 {
-	_input_setpoint.x = .1f;
-	_input_setpoint.y = .2f;
-	_input_setpoint.z = .3f;
+	_input_setpoint.position[0] = .1f;
+	_input_setpoint.position[1] = .2f;
+	_input_setpoint.position[2] = .3f;
 
 	EXPECT_TRUE(runController());
 	EXPECT_FLOAT_EQ(_output_setpoint.x, .1f);
@@ -265,9 +262,9 @@ TEST_F(PositionControlBasicTest, InputCombinationsPosition)
 
 TEST_F(PositionControlBasicTest, InputCombinationsPositionVelocity)
 {
-	_input_setpoint.vx = .1f;
-	_input_setpoint.vy = .2f;
-	_input_setpoint.z = .3f; // altitude
+	_input_setpoint.velocity[0] = .1f;
+	_input_setpoint.velocity[1] = .2f;
+	_input_setpoint.position[2] = .3f; // altitude
 
 	EXPECT_TRUE(runController());
 	// EXPECT_TRUE(isnan(_output_setpoint.x));
@@ -284,9 +281,9 @@ TEST_F(PositionControlBasicTest, InputCombinationsPositionVelocity)
 TEST_F(PositionControlBasicTest, SetpointValiditySimple)
 {
 	EXPECT_FALSE(runController());
-	_input_setpoint.x = .1f;
+	_input_setpoint.position[0] = .1f;
 	EXPECT_FALSE(runController());
-	_input_setpoint.y = .2f;
+	_input_setpoint.position[1] = .2f;
 	EXPECT_FALSE(runController());
 	_input_setpoint.acceleration[2] = .3f;
 	EXPECT_TRUE(runController());
@@ -295,9 +292,9 @@ TEST_F(PositionControlBasicTest, SetpointValiditySimple)
 TEST_F(PositionControlBasicTest, SetpointValidityAllCombinations)
 {
 	// This test runs any combination of set and unset (NAN) setpoints and checks if it gets accepted or rejected correctly
-	float *const setpoint_loop_access_map[] = {&_input_setpoint.x, &_input_setpoint.vx, &_input_setpoint.acceleration[0],
-						   &_input_setpoint.y, &_input_setpoint.vy, &_input_setpoint.acceleration[1],
-						   &_input_setpoint.z, &_input_setpoint.vz, &_input_setpoint.acceleration[2]
+	float *const setpoint_loop_access_map[] = {&_input_setpoint.position[0], &_input_setpoint.velocity[0], &_input_setpoint.acceleration[0],
+						   &_input_setpoint.position[1], &_input_setpoint.velocity[1], &_input_setpoint.acceleration[1],
+						   &_input_setpoint.position[2], &_input_setpoint.velocity[2], &_input_setpoint.acceleration[2]
 						  };
 
 	for (int combination = 0; combination < 512; combination++) {
@@ -320,8 +317,10 @@ TEST_F(PositionControlBasicTest, SetpointValidityAllCombinations)
 
 		EXPECT_EQ(runController(), expected_result) << "combination " << combination << std::endl
 				<< "input" << std::endl
-				<< "position     " << _input_setpoint.x << ", " << _input_setpoint.y << ", " << _input_setpoint.z << std::endl
-				<< "velocity     " << _input_setpoint.vx << ", " << _input_setpoint.vy << ", " << _input_setpoint.vz << std::endl
+				<< "position     " << _input_setpoint.position[0] << ", " << _input_setpoint.position[1] << ", " <<
+				_input_setpoint.position[2] << std::endl
+				<< "velocity     " << _input_setpoint.velocity[0] << ", " << _input_setpoint.velocity[1] << ", " <<
+				_input_setpoint.velocity[2] << std::endl
 				<< "acceleration " << _input_setpoint.acceleration[0] << ", "
 				<< _input_setpoint.acceleration[1] << ", " << _input_setpoint.acceleration[2] << std::endl
 				<< "output" << std::endl
@@ -334,9 +333,9 @@ TEST_F(PositionControlBasicTest, SetpointValidityAllCombinations)
 
 TEST_F(PositionControlBasicTest, InvalidState)
 {
-	_input_setpoint.x = .1f;
-	_input_setpoint.y = .2f;
-	_input_setpoint.z = .3f;
+	_input_setpoint.position[0] = .1f;
+	_input_setpoint.position[1] = .2f;
+	_input_setpoint.position[2] = .3f;
 
 	PositionControlStates states{};
 	states.position(0) = NAN;
@@ -364,9 +363,9 @@ TEST_F(PositionControlBasicTest, UpdateHoverThrust)
 	const float hover_thrust = 0.6f;
 	_position_control.setHoverThrust(hover_thrust);
 
-	_input_setpoint.vx = 0.f;
-	_input_setpoint.vy = 0.f;
-	_input_setpoint.vz = -0.f;
+	_input_setpoint.velocity[0] = 0.f;
+	_input_setpoint.velocity[1] = 0.f;
+	_input_setpoint.velocity[2] = -0.f;
 
 	// WHEN: we run the controller
 	EXPECT_TRUE(runController());

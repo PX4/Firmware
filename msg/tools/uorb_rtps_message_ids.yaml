@@ -342,6 +342,9 @@ rtps:
     id: 158
   - msg: estimator_event_flags
     id: 159
+  - msg: trajectory_setpoint
+    id: 160
+    receive: true
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 170
@@ -394,10 +397,6 @@ rtps:
   - msg: vehicle_vision_attitude
     id: 185
     alias: vehicle_attitude
-  - msg: trajectory_setpoint
-    id: 186
-    alias: vehicle_local_position_setpoint
-    receive: true
   - msg: camera_trigger_secondary
     id: 187
     alias: camera_trigger

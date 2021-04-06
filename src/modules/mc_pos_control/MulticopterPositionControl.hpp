@@ -58,6 +58,7 @@
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/hover_thrust_estimate.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_constraints.h>
 #include <uORB/topics/vehicle_control_mode.h>
@@ -111,7 +112,7 @@ private:
 	int _task_failure_count{0};         /**< counter for task failures */
 
 	vehicle_control_mode_s _control_mode{};
-	vehicle_local_position_setpoint_s _setpoint{};
+	trajectory_setpoint_s _setpoint{};
 	vehicle_constraints_s _vehicle_constraints{
 		.timestamp = 0,
 		.speed_xy = NAN,
@@ -236,11 +237,10 @@ private:
 	 * setpoints. The failsafe will occur after LOITER_TIME_BEFORE_DESCEND. If force is set
 	 * to true, the failsafe will be initiated immediately.
 	 */
-	void failsafe(const hrt_abstime &now, vehicle_local_position_setpoint_s &setpoint, const PositionControlStates &states,
-		      bool warn);
+	void failsafe(const hrt_abstime &now, trajectory_setpoint_s &setpoint, const PositionControlStates &states, bool warn);
 
 	/**
 	 * Reset setpoints to NAN
 	 */
-	void reset_setpoint_to_nan(vehicle_local_position_setpoint_s &setpoint);
+	void reset_setpoint_to_nan(trajectory_setpoint_s &setpoint);
 };

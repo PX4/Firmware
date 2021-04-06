@@ -296,21 +296,21 @@ void MulticopterPositionControl::Run()
 			// adjust existing (or older) setpoint with any EKF reset deltas
 			if (_setpoint.timestamp < local_pos.timestamp) {
 				if (local_pos.vxy_reset_counter != _vxy_reset_counter) {
-					_setpoint.vx += local_pos.delta_vxy[0];
-					_setpoint.vy += local_pos.delta_vxy[1];
+					_setpoint.velocity[0] += local_pos.delta_vxy[0];
+					_setpoint.velocity[1] += local_pos.delta_vxy[1];
 				}
 
 				if (local_pos.vz_reset_counter != _vz_reset_counter) {
-					_setpoint.vz += local_pos.delta_vz;
+					_setpoint.velocity[2] += local_pos.delta_vz;
 				}
 
 				if (local_pos.xy_reset_counter != _xy_reset_counter) {
-					_setpoint.x += local_pos.delta_xy[0];
-					_setpoint.y += local_pos.delta_xy[1];
+					_setpoint.position[0] += local_pos.delta_xy[0];
+					_setpoint.position[1] += local_pos.delta_xy[1];
 				}
 
 				if (local_pos.z_reset_counter != _z_reset_counter) {
-					_setpoint.z += local_pos.delta_z;
+					_setpoint.position[2] += local_pos.delta_z;
 				}
 
 				if (local_pos.heading_reset_counter != _heading_reset_counter) {
@@ -332,13 +332,13 @@ void MulticopterPositionControl::Run()
 				bool want_takeoff = _control_mode.flag_armed && _vehicle_land_detected.landed
 						    && hrt_elapsed_time(&_setpoint.timestamp) < 1_s;
 
-				if (want_takeoff && PX4_ISFINITE(_setpoint.z)
-				    && (_setpoint.z < states.position(2))) {
+				if (want_takeoff && PX4_ISFINITE(_setpoint.position[2])
+				    && (_setpoint.position[2] < states.position(2))) {
 
 					_vehicle_constraints.want_takeoff = true;
 
-				} else if (want_takeoff && PX4_ISFINITE(_setpoint.vz)
-					   && (_setpoint.vz < 0.f)) {
+				} else if (want_takeoff && PX4_ISFINITE(_setpoint.velocity[2])
+					   && (_setpoint.velocity[2] < 0.f)) {
 
 					_vehicle_constraints.want_takeoff = true;
 
@@ -404,13 +404,13 @@ void MulticopterPositionControl::Run()
 			_control.setInputSetpoint(_setpoint);
 
 			// update states
-			if (PX4_ISFINITE(_setpoint.vz) && (fabsf(_setpoint.vz) > FLT_EPSILON)
+			if (PX4_ISFINITE(_setpoint.velocity[2]) && (fabsf(_setpoint.velocity[2]) > FLT_EPSILON)
 			    && PX4_ISFINITE(local_pos.z_deriv) && local_pos.z_valid && local_pos.v_z_valid) {
 				// A change in velocity is demanded. Set velocity to the derivative of position
 				// because it has less bias but blend it in across the landing speed range
 				//  <  MPC_LAND_SPEED: ramp up using altitude derivative without a step
 				//  >= MPC_LAND_SPEED: use altitude derivative
-				float weighting = fminf(fabsf(_setpoint.vz) / _param_mpc_land_speed.get(), 1.f);
+				float weighting = fminf(fabsf(_setpoint.velocity[2]) / _param_mpc_land_speed.get(), 1.f);
 				states.velocity(2) = local_pos.z_deriv * weighting + local_pos.vz * (1.f - weighting);
 			}
 
@@ -427,8 +427,7 @@ void MulticopterPositionControl::Run()
 					_last_warn = time_stamp_now;
 				}
 
-				vehicle_local_position_setpoint_s failsafe_setpoint{};
-
+				trajectory_setpoint_s failsafe_setpoint{};
 				failsafe(time_stamp_now, failsafe_setpoint, states, !was_in_failsafe);
 
 				// reset constraints
@@ -481,7 +480,7 @@ void MulticopterPositionControl::Run()
 	perf_end(_cycle_perf);
 }
 
-void MulticopterPositionControl::failsafe(const hrt_abstime &now, vehicle_local_position_setpoint_s &setpoint,
+void MulticopterPositionControl::failsafe(const hrt_abstime &now, trajectory_setpoint_s &setpoint,
 		const PositionControlStates &states, bool warn)
 {
 	// do not warn while we are disarmed, as we might not have valid setpoints yet
@@ -497,7 +496,8 @@ void MulticopterPositionControl::failsafe(const hrt_abstime &now, vehicle_local_
 
 		if (PX4_ISFINITE(states.velocity(0)) && PX4_ISFINITE(states.velocity(1))) {
 			// don't move along xy
-			setpoint.vx = setpoint.vy = 0.f;
+			setpoint.velocity[0] = 0.f;
+			setpoint.velocity[1] = 0.f;
 
 			if (warn) {
 				PX4_WARN("Failsafe: stop and wait");
@@ -505,8 +505,9 @@ void MulticopterPositionControl::failsafe(const hrt_abstime &now, vehicle_local_
 
 		} else {
 			// descend with land speed since we can't stop
-			setpoint.acceleration[0] = setpoint.acceleration[1] = 0.f;
-			setpoint.vz = _param_mpc_land_speed.get();
+			setpoint.acceleration[0] = 0.f;
+			setpoint.acceleration[1] = 0.f;
+			setpoint.velocity[2] = _param_mpc_land_speed.get();
 
 			if (warn) {
 				PX4_WARN("Failsafe: blind land");
@@ -515,13 +516,13 @@ void MulticopterPositionControl::failsafe(const hrt_abstime &now, vehicle_local_
 
 		if (PX4_ISFINITE(states.velocity(2))) {
 			// don't move along z if we can stop in all dimensions
-			if (!PX4_ISFINITE(setpoint.vz)) {
-				setpoint.vz = 0.f;
+			if (!PX4_ISFINITE(setpoint.velocity[2])) {
+				setpoint.velocity[2] = 0.f;
 			}
 
 		} else {
 			// emergency descend with a bit below hover thrust
-			setpoint.vz = NAN;
+			setpoint.velocity[2] = NAN;
 			setpoint.acceleration[2] = .3f;
 
 			if (warn) {
@@ -533,13 +534,22 @@ void MulticopterPositionControl::failsafe(const hrt_abstime &now, vehicle_local_
 	}
 }
 
-void MulticopterPositionControl::reset_setpoint_to_nan(vehicle_local_position_setpoint_s &setpoint)
+void MulticopterPositionControl::reset_setpoint_to_nan(trajectory_setpoint_s &setpoint)
 {
-	setpoint.x = setpoint.y = setpoint.z = NAN;
-	setpoint.vx = setpoint.vy = setpoint.vz = NAN;
-	setpoint.yaw = setpoint.yawspeed = NAN;
-	setpoint.acceleration[0] = setpoint.acceleration[1] = setpoint.acceleration[2] = NAN;
-	setpoint.thrust[0] = setpoint.thrust[1] = setpoint.thrust[2] = NAN;
+	setpoint.position[0] = NAN;
+	setpoint.position[1] = NAN;
+	setpoint.position[2] = NAN;
+
+	setpoint.velocity[0] = NAN;
+	setpoint.velocity[1] = NAN;
+	setpoint.velocity[2] = NAN;
+
+	setpoint.acceleration[0] = NAN;
+	setpoint.acceleration[1] = NAN;
+	setpoint.acceleration[2] = NAN;
+
+	setpoint.yaw = NAN;
+	setpoint.yawspeed = NAN;
 }
 
 int MulticopterPositionControl::task_spawn(int argc, char *argv[])

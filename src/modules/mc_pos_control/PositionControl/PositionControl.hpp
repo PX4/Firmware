@@ -41,6 +41,7 @@
 
 #include <lib/mathlib/mathlib.h>
 #include <matrix/matrix/math.hpp>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 
@@ -135,9 +136,9 @@ public:
 	/**
 	 * Pass the desired setpoints
 	 * Note: NAN value means no feed forward/leave state uncontrolled if there's no higher order setpoint.
-	 * @param setpoint a vehicle_local_position_setpoint_s structure
+	 * @param setpoint a trajectory_setpoint_s structure
 	 */
-	void setInputSetpoint(const vehicle_local_position_setpoint_s &setpoint);
+	void setInputSetpoint(const trajectory_setpoint_s &setpoint);
 
 	/**
 	 * Apply P-position and PID-velocity controller that updates the member

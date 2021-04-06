@@ -76,6 +76,7 @@
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/tecs_status.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_attitude.h>

@@ -38,14 +38,14 @@
 
 using namespace matrix;
 
-bool FlightTaskManualPositionSmoothVel::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskManualPositionSmoothVel::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTaskManualPosition::activate(last_setpoint);
 
 	// Check if the previous FlightTask provided setpoints
 	Vector3f accel_prev{last_setpoint.acceleration};
-	Vector3f vel_prev{last_setpoint.vx, last_setpoint.vy, last_setpoint.vz};
-	Vector3f pos_prev{last_setpoint.x, last_setpoint.y, last_setpoint.z};
+	Vector3f vel_prev{last_setpoint.velocity};
+	Vector3f pos_prev{last_setpoint.position};
 
 	for (int i = 0; i < 3; i++) {
 		// If the position setpoint is unknown, set to the current postion

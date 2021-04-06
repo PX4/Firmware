@@ -62,6 +62,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
@@ -113,7 +114,7 @@ private:
 	//actuator_controls_s _actuators {}; /**< actuator control inputs */
 	manual_control_setpoint_s _manual_control_setpoint {}; /**< r/c channel data */
 	vehicle_attitude_s _vehicle_attitude {}; /**< vehicle attitude */
-	vehicle_local_position_setpoint_s _trajectory_setpoint{}; /**< vehicle position setpoint */
+	trajectory_setpoint_s _trajectory_setpoint{};
 	vehicle_control_mode_s _vcontrol_mode {}; /**< vehicle control mode */
 
 	perf_counter_t	_loop_perf; /**< loop performance counter */

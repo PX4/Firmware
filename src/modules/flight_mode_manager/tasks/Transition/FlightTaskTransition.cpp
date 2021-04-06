@@ -42,7 +42,7 @@ bool FlightTaskTransition::updateInitialize()
 	return FlightTask::updateInitialize();
 }
 
-bool FlightTaskTransition::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskTransition::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	return FlightTask::activate(last_setpoint);
 }

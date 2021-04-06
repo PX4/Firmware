@@ -44,7 +44,7 @@ FlightTaskAutoMapper::FlightTaskAutoMapper() :
 	_sticks(this)
 {}
 
-bool FlightTaskAutoMapper::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskAutoMapper::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTaskAuto::activate(last_setpoint);
 	_reset();

@@ -49,7 +49,7 @@ class FlightTaskManualAcceleration : public FlightTaskManualAltitudeSmoothVel
 public:
 	FlightTaskManualAcceleration();
 	virtual ~FlightTaskManualAcceleration() = default;
-	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
+	bool activate(const trajectory_setpoint_s &last_setpoint) override;
 	bool update() override;
 
 private:

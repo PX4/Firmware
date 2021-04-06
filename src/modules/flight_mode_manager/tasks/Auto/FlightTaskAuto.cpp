@@ -48,7 +48,7 @@ FlightTaskAuto::FlightTaskAuto() :
 
 }
 
-bool FlightTaskAuto::activate(const vehicle_local_position_setpoint_s &last_setpoint)
+bool FlightTaskAuto::activate(const trajectory_setpoint_s &last_setpoint)
 {
 	bool ret = FlightTask::activate(last_setpoint);
 	_position_setpoint = _position;

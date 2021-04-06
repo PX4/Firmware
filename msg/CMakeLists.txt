@@ -145,6 +145,7 @@ set(msg_files
 	timesync.msg
 	timesync_status.msg
 	trajectory_bezier.msg
+	trajectory_setpoint.msg
 	trajectory_waypoint.msg
 	transponder_report.msg
 	tune_control.msg

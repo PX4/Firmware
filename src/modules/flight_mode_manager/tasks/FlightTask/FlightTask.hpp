@@ -46,8 +46,8 @@
 #include <matrix/matrix/math.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/landing_gear.h>
+#include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_local_position.h>
-#include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_constraints.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -81,7 +81,7 @@ public:
 	 * @param last_setpoint last output of the previous task
 	 * @return true on success, false on error
 	 */
-	virtual bool activate(const vehicle_local_position_setpoint_s &last_setpoint);
+	virtual bool activate(const trajectory_setpoint_s &last_setpoint);
 
 	/**
 	 * Call this to reset an active Flight Task
@@ -120,7 +120,7 @@ public:
 	 * Get the output data
 	 * @return task output setpoints that get executed by the positon controller
 	 */
-	const vehicle_local_position_setpoint_s getPositionSetpoint();
+	const trajectory_setpoint_s getPositionSetpoint();
 
 	const ekf_reset_counters_s getResetCounters() const { return _reset_counters; }
 	void setResetCounters(const ekf_reset_counters_s &counters) { _reset_counters = counters; }
@@ -144,12 +144,6 @@ public:
 	 * @return desired waypoints
 	 */
 	const vehicle_trajectory_waypoint_s &getAvoidanceWaypoint() { return _desired_waypoint; }
-
-	/**
-	 * Empty setpoint.
-	 * All setpoints are set to NAN.
-	 */
-	static const vehicle_local_position_setpoint_s empty_setpoint;
 
 	/**
 	 * Empty constraints.
