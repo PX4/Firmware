@@ -26,11 +26,18 @@ uint8 FUNCTION_ARMSWITCH  = 22
 uint8 FUNCTION_STAB       = 23
 uint8 FUNCTION_AUX_6      = 24
 uint8 FUNCTION_MAN        = 25
+uint8 FUNCTION_FLTBTN_SLOT_1=27
+uint8 FUNCTION_FLTBTN_SLOT_2=28
+uint8 FUNCTION_FLTBTN_SLOT_3=29
+uint8 FUNCTION_FLTBTN_SLOT_4=30
+uint8 FUNCTION_FLTBTN_SLOT_5=31
+uint8 FUNCTION_FLTBTN_SLOT_6=32
+uint8 FUNCTION_FLTBTN_NUM_SLOTS=6
 
 uint64 timestamp_last_valid					# Timestamp of last valid RC signal
 float32[18] channels						# Scaled to -1..1 (throttle: 0..1)
 uint8 channel_count						# Number of valid channels
-int8[26] function						# Functions mapping
+int8[33] function						# Functions mapping
 uint8 rssi							# Receive signal strength index
 bool signal_lost						# Control signal lost, should be checked together with topic timeout
 uint32 frame_drop_count						# Number of dropped frames

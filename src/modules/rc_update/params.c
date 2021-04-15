@@ -1703,6 +1703,41 @@ PARAM_DEFINE_INT32(RC_MAP_STAB_SW, 0);
 PARAM_DEFINE_INT32(RC_MAP_MAN_SW, 0);
 
 /**
+ * Enables changing flight modes with multiple toggle buttons.
+ *
+ * This bitmask allows to specify multiple channels for changing flight modes.
+ * Each channel is assigned to a flight mode slot ((lowest channel = slot 1),
+ * the behavior of each flight mode is defined by the COM_FLTMODE1,COM_FLTMODE2,...
+ * parameters.
+ * The functionality can be used only if RC_MAP_FLTMODE is disabled.
+ *
+ * The maximum number of available slots is 6.
+ * @min 0
+ * @max 258048
+ * @bit 0 Enable Channel 1 as toggle button
+ * @bit 1 Enable Channel 2 as toggle button
+ * @bit 2 Enable Channel 3 as toggle button
+ * @bit 3 Enable Channel 4 as toggle button
+ * @bit 4 Enable Channel 5 as toggle button
+ * @bit 5 Enable Channel 6 as toggle button
+ * @bit 6 Enable Channel 7 as toggle button
+ * @bit 7 Enable Channel 8 as toggle button
+ * @bit 8 Enable Channel 9 as toggle button
+ * @bit 9 Enable Channel 10 as toggle button
+ * @bit 10 Enable Channel 11 as toggle button
+ * @bit 11 Enable Channel 12 as toggle button
+ * @bit 12 Enable Channel 13 as toggle button
+ * @bit 13 Enable Channel 14 as toggle button
+ * @bit 14 Enable Channel 15 as toggle button
+ * @bit 15 Enable Channel 16 as toggle button
+ * @bit 16 Enable Channel 17 as toggle button
+ * @bit 17 Enable Channel 18 as toggle button
+ *
+ */
+
+PARAM_DEFINE_INT32(RC_MAP_FLTM_BTN, 0);
+
+/**
  * AUX1 Passthrough RC channel
  *
  * Default function: Camera pitch

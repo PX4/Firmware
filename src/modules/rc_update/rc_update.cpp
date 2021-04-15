@@ -190,6 +190,8 @@ void RCUpdate::update_rc_functions()
 	for (int i = 0; i < rc_parameter_map_s::RC_PARAM_MAP_NCHAN; i++) {
 		_rc.function[rc_channels_s::FUNCTION_PARAM_1 + i] = _parameters.rc_map_param[i] - 1;
 	}
+
+	map_flight_modes_buttons();
 }
 
 void RCUpdate::rc_parameter_map_poll(bool forced)
@@ -260,6 +262,42 @@ void RCUpdate::set_params_from_rc()
 						  _rc_parameter_map.value_min[i], _rc_parameter_map.value_max[i]);
 
 			param_set(_parameter_handles.rc_param[i], &param_val);
+		}
+	}
+}
+
+void
+RCUpdate::map_flight_modes_buttons()
+{
+	static_assert(rc_channels_s::FUNCTION_FLTBTN_SLOT_1 + manual_control_switches_s::MODE_SLOT_NUM <= sizeof(
+			      _rc.function) / sizeof(_rc.function[0]), "Unexpected number of RC functions");
+	static_assert(rc_channels_s::FUNCTION_FLTBTN_NUM_SLOTS == manual_control_switches_s::MODE_SLOT_NUM,
+		      "Unexpected number of Flight Modes slots");
+
+	// Reset all the slots to -1
+	for (uint8_t index = 0; index < manual_control_switches_s::MODE_SLOT_NUM; index++) {
+		_rc.function[rc_channels_s::FUNCTION_FLTBTN_SLOT_1 + index] = -1;
+	}
+
+	// If the functionality is disabled we can early return, no need to map channels
+	int buttons_rc_channels = _param_rc_map_flightmode_buttons.get();
+
+	if (buttons_rc_channels == 0) {
+		return;
+	}
+
+	uint8_t slot_counter = 0;
+
+	for (uint8_t index = 0; index < RC_MAX_CHAN_COUNT; index++) {
+		if (buttons_rc_channels & (1 << index)) {
+			PX4_DEBUG("Slot %d assigned to channel %d", slot_counter + 1, index);
+			_rc.function[rc_channels_s::FUNCTION_FLTBTN_SLOT_1 + slot_counter] = index;
+			slot_counter++;
+		}
+
+		if (slot_counter == manual_control_switches_s::MODE_SLOT_NUM) {
+			// we have filled all the available slots
+			break;
 		}
 	}
 }
@@ -415,9 +453,18 @@ void RCUpdate::Run()
 			}
 		}
 
+		/*
+		 * some RC systems glitch after a reboot, we should ignore the first 100ms of regained signal
+		 * as the glitch might be interpreted as a commanded stick action or a flight mode switch
+		 *
+		 */
+
+		_rc_signal_lost_hysteresis.set_hysteresis_time_from(true, 100_ms);
+		_rc_signal_lost_hysteresis.set_state_and_update(signal_lost, hrt_absolute_time());
+
 		_rc.channel_count = input_rc.channel_count;
 		_rc.rssi = input_rc.rssi;
-		_rc.signal_lost = signal_lost;
+		_rc.signal_lost = _rc_signal_lost_hysteresis.get_state();
 		_rc.timestamp = input_rc.timestamp_last_signal;
 		_rc.frame_drop_count = input_rc.rc_lost_frame_count;
 
@@ -425,7 +472,7 @@ void RCUpdate::Run()
 		_rc_channels_pub.publish(_rc);
 
 		/* only publish manual control if the signal is present */
-		if (input_source_stable && channel_count_stable && !signal_lost
+		if (input_source_stable && channel_count_stable && !_rc_signal_lost_hysteresis.get_state()
 		    && (input_rc.timestamp_last_signal > _last_timestamp_signal)) {
 
 			_last_timestamp_signal = input_rc.timestamp_last_signal;
@@ -541,6 +588,37 @@ void RCUpdate::UpdateManualSwitches(const hrt_abstime &timestamp_sample)
 		switches.acro_switch      = get_rc_sw2pos_position(rc_channels_s::FUNCTION_ACRO,      _param_rc_acro_th.get());
 		switches.stab_switch      = get_rc_sw2pos_position(rc_channels_s::FUNCTION_STAB,      _param_rc_stab_th.get());
 		switches.posctl_switch    = get_rc_sw2pos_position(rc_channels_s::FUNCTION_POSCTL,    _param_rc_posctl_th.get());
+
+	} else if (_param_rc_map_flightmode_buttons.get() > 0) {
+		switches.mode_slot = manual_control_switches_s::MODE_SLOT_NONE;
+		bool is_consistent_button_press = false;
+
+		for (uint8_t index = 0; index < manual_control_switches_s::MODE_SLOT_NUM; index++) {
+
+			// If the slot is not in use (-1), get_rc_value() will return 0
+			float value = get_rc_value(rc_channels_s::FUNCTION_FLTBTN_SLOT_1 + index, -1.0, 1.0);
+
+			// The range goes from -1 to 1, checking that value is greater than 0.5f
+			// corresponds to check that the signal is above 75% of the overall range.
+			if (value > 0.5f) {
+				const uint8_t current_button_press_slot = index + 1;
+
+				// The same button stays pressed consistently
+				if (current_button_press_slot == _potential_button_press_slot) {
+					is_consistent_button_press = true;
+				}
+
+				_potential_button_press_slot = current_button_press_slot;
+				break;
+			}
+		}
+
+		_button_pressed_hysteresis.set_hysteresis_time_from(false, 50_ms);
+		_button_pressed_hysteresis.set_state_and_update(is_consistent_button_press, hrt_absolute_time());
+
+		if (_button_pressed_hysteresis.get_state()) {
+			switches.mode_slot = _potential_button_press_slot;
+		}
 	}
 
 	switches.return_switch     = get_rc_sw2pos_position(rc_channels_s::FUNCTION_RETURN,     _param_rc_return_th.get());
