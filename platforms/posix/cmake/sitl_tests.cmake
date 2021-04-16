@@ -8,7 +8,6 @@ set(tests
 	bezier
 	bitset
 	bson
-	conv
 	dataman
 	file2
 	float

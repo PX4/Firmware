@@ -48,7 +48,7 @@
 #include <output_limit/output_limit.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_pwm_output.h>
-#include <px4iofirmware/mixer.h>
+
 #include <px4iofirmware/protocol.h>
 
 #include <uORB/topics/actuator_controls.h>
@@ -277,7 +277,7 @@ bool MixerTest::load_mixer(const char *filename, const char *buf, unsigned loade
 
 	/* reset, load in chunks */
 	mixer_group.reset();
-	char mixer_text[PX4IO_MAX_MIXER_LENGTH];		/* large enough for one mixer */
+	char mixer_text[330];		/* large enough for one mixer */
 
 	unsigned mixer_text_length = 0;
 	unsigned transmitted = 0;
@@ -290,7 +290,7 @@ bool MixerTest::load_mixer(const char *filename, const char *buf, unsigned loade
 		/* check for overflow - this would be really fatal */
 		if ((mixer_text_length + text_length + 1) > sizeof(mixer_text)) {
 			PX4_ERR("Mixer text length overflow for file: %s. Is PX4IO_MAX_MIXER_LENGTH too small? (curr len: %d)", filename,
-				PX4IO_MAX_MIXER_LENGTH);
+				330);
 			return false;
 		}
 

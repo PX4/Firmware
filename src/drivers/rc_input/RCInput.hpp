@@ -38,7 +38,6 @@
 #include <board_config.h>
 #include <drivers/drv_adc.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_rc_input.h>
 #include <lib/perf/perf_counter.h>
 #include <lib/rc/crsf.h>
 #include <lib/rc/ghst.hpp>

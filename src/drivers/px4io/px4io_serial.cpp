@@ -51,24 +51,14 @@ device::Device
 
 PX4IO_serial::PX4IO_serial() :
 	Device("PX4IO_serial"),
-	_pc_txns(perf_alloc(PC_ELAPSED, "io_txns")),
-#if 0
-	_pc_retries(perf_alloc(PC_COUNT,	"io_retries  ")),
-	_pc_timeouts(perf_alloc(PC_COUNT,	"io_timeouts ")),
-	_pc_crcerrs(perf_alloc(PC_COUNT,	"io_crcerrs  ")),
-	_pc_protoerrs(perf_alloc(PC_COUNT,	"io_protoerrs")),
-	_pc_uerrs(perf_alloc(PC_COUNT,		"io_uarterrs ")),
-	_pc_idle(perf_alloc(PC_COUNT,		"io_idle     ")),
-	_pc_badidle(perf_alloc(PC_COUNT,	"io_badidle  ")),
-#else
-	_pc_retries(nullptr),
-	_pc_timeouts(nullptr),
-	_pc_crcerrs(nullptr),
-	_pc_protoerrs(nullptr),
-	_pc_uerrs(nullptr),
-	_pc_idle(nullptr),
-	_pc_badidle(nullptr),
-#endif
+	_pc_txns(perf_alloc(PC_ELAPSED, MODULE_NAME": txns")),
+	_pc_retries(perf_alloc(PC_COUNT, MODULE_NAME": retries")),
+	_pc_timeouts(perf_alloc(PC_COUNT, MODULE_NAME": timeouts")),
+	_pc_crcerrs(perf_alloc(PC_COUNT, MODULE_NAME": crcerrs")),
+	_pc_protoerrs(perf_alloc(PC_COUNT, MODULE_NAME": protoerrs")),
+	_pc_uerrs(perf_alloc(PC_COUNT, MODULE_NAME": uarterrs")),
+	_pc_idle(perf_alloc(PC_COUNT, MODULE_NAME": idle")),
+	_pc_badidle(perf_alloc(PC_COUNT, MODULE_NAME": badidle")),
 	_bus_semaphore(SEM_INITIALIZER(0))
 {
 	g_interface = this;

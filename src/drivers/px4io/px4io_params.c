@@ -47,9 +47,10 @@
  *
  * Can be used to use a standard startup script but with a FMU only set-up. Set to 0 to force the FMU only set-up.
  *
- * @boolean
- * @min 0
- * @max 1
+ * @value 0 IO disabled
+ * @value 1 IO default (RC & PWM output)
+ * @value 2 RC only
+ * @value 3 PWM output only
  * @reboot_required true
  * @group System
  */

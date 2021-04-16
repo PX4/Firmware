@@ -58,8 +58,6 @@
 # include <lib/perf/perf_counter.h>
 #endif
 
-#include <output_limit/output_limit.h>
-
 #include <stm32_uart.h>
 
 #define DEBUG
@@ -70,10 +68,6 @@ __EXPORT int user_start(int argc, char *argv[]);
 struct sys_state_s 	system_state;
 
 static struct hrt_call serial_dma_call;
-
-output_limit_t pwm_limit;
-
-float dt;
 
 /*
  * a set of debug buffers to allow us to send debug information from ISRs
@@ -312,11 +306,6 @@ user_start(int argc, char *argv[])
 	LED_RING(false);
 #endif
 
-	/* turn on servo power (if supported) */
-#ifdef POWER_SERVO
-	POWER_SERVO(true);
-#endif
-
 	/* turn off S.Bus out (if supported) */
 #ifdef ENABLE_SBUS_OUT
 	ENABLE_SBUS_OUT(false);
@@ -349,44 +338,6 @@ user_start(int argc, char *argv[])
 	r_page_status[PX4IO_P_STATUS_FREEMEM] = minfo.mxordblk;
 	syslog(LOG_INFO, "MEM: free %u, largest %u\n", minfo.mxordblk, minfo.fordblks);
 
-	/* initialize PWM limit lib */
-	output_limit_init(&pwm_limit);
-
-	/*
-	 *    P O L I C E    L I G H T S
-	 *
-	 * Not enough memory, lock down.
-	 *
-	 * We might need to allocate mixers later, and this will
-	 * ensure that a developer doing a change will notice
-	 * that he just burned the remaining RAM with static
-	 * allocations. We don't want him to be able to
-	 * get past that point. This needs to be clearly
-	 * documented in the dev guide.
-	 *
-	 */
-	if (minfo.mxordblk < 550) {
-
-		syslog(LOG_ERR, "ERR: not enough MEM");
-		bool phase = false;
-
-		while (true) {
-
-			if (phase) {
-				LED_AMBER(true);
-				LED_BLUE(false);
-
-			} else {
-				LED_AMBER(false);
-				LED_BLUE(true);
-			}
-
-			up_udelay(250000);
-
-			phase = !phase;
-		}
-	}
-
 	/* Start the failsafe led init */
 	failsafe_led_init();
 
@@ -396,19 +347,8 @@ user_start(int argc, char *argv[])
 
 	uint64_t last_debug_time = 0;
 	uint64_t last_heartbeat_time = 0;
-	uint64_t last_loop_time = 0;
 
 	for (;;) {
-		dt = (hrt_absolute_time() - last_loop_time) / 1000000.0f;
-		last_loop_time = hrt_absolute_time();
-
-		if (dt < 0.0001f) {
-			dt = 0.0001f;
-
-		} else if (dt > 0.02f) {
-			dt = 0.02f;
-		}
-
 #if defined(PX4IO_PERF)
 		/* track the rate at which the loop is running */
 		perf_count(loop_perf);
@@ -445,10 +385,6 @@ user_start(int argc, char *argv[])
 			  pre-flight testing the override system
 			 */
 			uint32_t heartbeat_period_us = 250 * 1000UL;
-
-			if (r_status_flags & PX4IO_P_STATUS_FLAGS_OVERRIDE) {
-				heartbeat_period_us /= 4;
-			}
 
 			if ((hrt_absolute_time() - last_heartbeat_time) > heartbeat_period_us) {
 				last_heartbeat_time = hrt_absolute_time();

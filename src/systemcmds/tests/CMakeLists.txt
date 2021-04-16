@@ -37,7 +37,6 @@ set(srcs
 	test_bezierQuad.cpp
 	test_bitset.cpp
 	test_bson.cpp
-	test_conv.cpp
 	test_dataman.c
 	test_file.c
 	test_file2.c

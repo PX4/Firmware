@@ -89,7 +89,11 @@ MixingOutput::~MixingOutput()
 void MixingOutput::printStatus() const
 {
 	perf_print_counter(_control_latency_perf);
-	PX4_INFO("Switched to rate_ctrl work queue: %i", (int)_wq_switched);
+
+	if (_wq_switched) {
+		PX4_INFO("Switched to rate_ctrl work queue");
+	}
+
 	PX4_INFO("Mixer loaded: %s", _mixers ? "yes" : "no");
 	PX4_INFO("Driver instance: %i", _driver_instance);
 

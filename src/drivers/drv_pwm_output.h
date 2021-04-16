@@ -215,9 +215,6 @@ typedef uint16_t	servo_position_t;
 /** force safety switch on (to enable use of safety switch) */
 #define PWM_SERVO_SET_FORCE_SAFETY_ON		_PX4_IOC(_PWM_SERVO_BASE, 28)
 
-/** setup OVERRIDE_IMMEDIATE behaviour on FMU fail */
-#define PWM_SERVO_SET_OVERRIDE_IMMEDIATE	_PX4_IOC(_PWM_SERVO_BASE, 32)
-
 /** set auxillary output mode. These correspond to enum Mode in px4fmu/fmu.cpp */
 #define PWM_SERVO_MODE_NONE         0
 #define PWM_SERVO_MODE_1PWM         1

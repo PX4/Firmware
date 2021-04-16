@@ -48,7 +48,6 @@ param set-default CBRK_IO_SAFETY    22027
 param set-default CBRK_SUPPLY_CHK   894281
 
 # RC configuration
-param set-default RC_MAP_MODE_SW    5
 param set-default RC_MAP_PITCH      2
 param set-default RC_MAP_ROLL       1
 param set-default RC_MAP_THROTTLE   3

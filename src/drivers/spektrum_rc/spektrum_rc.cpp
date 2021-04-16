@@ -46,7 +46,6 @@
 #include <px4_platform_common/getopt.h>
 
 #include <lib/rc/dsm.h>
-#include <drivers/drv_rc_input.h>
 #include <drivers/drv_hrt.h>
 
 #include <uORB/uORB.h>

@@ -93,19 +93,15 @@ then
 		fi
 	fi
 
-	if [ $OUTPUT_MODE = io ]
-	then
-		. ${R}etc/init.d/rc.io
-	fi
-
 	#
 	# Start IO for RC input if needed.
 	#
-	if [ $IO_PRESENT = yes ]
+	if [ $IO_PRESENT = yes -a $OUTPUT_MODE = io ]
 	then
-		if [ $OUTPUT_MODE != io ]
+		if ! px4io start
 		then
-			. ${R}etc/init.d/rc.io
+			echo "PX4IO start failed"
+			tune_control play -t 18 # PROG_PX4IO_ERR
 		fi
 	fi
 fi

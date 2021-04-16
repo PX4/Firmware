@@ -78,11 +78,8 @@ private:
 			if (_manual_control_switches_sub.copy(&manual_control_switches)) {
 				unsigned shift = 2;
 				msg.buttons = 0;
-				msg.buttons |= (manual_control_switches.mode_switch << (shift * 0));
 				msg.buttons |= (manual_control_switches.return_switch << (shift * 1));
-				msg.buttons |= (manual_control_switches.posctl_switch << (shift * 2));
 				msg.buttons |= (manual_control_switches.loiter_switch << (shift * 3));
-				msg.buttons |= (manual_control_switches.acro_switch << (shift * 4));
 				msg.buttons |= (manual_control_switches.offboard_switch << (shift * 5));
 				msg.buttons |= (manual_control_switches.kill_switch << (shift * 6));
 			}

@@ -4,12 +4,12 @@ uint8 FUNCTION_THROTTLE   = 0
 uint8 FUNCTION_ROLL       = 1
 uint8 FUNCTION_PITCH      = 2
 uint8 FUNCTION_YAW        = 3
-uint8 FUNCTION_MODE       = 4
+uint8 FUNCTION_RES1       = 4
 uint8 FUNCTION_RETURN     = 5
-uint8 FUNCTION_POSCTL     = 6
+uint8 FUNCTION_RES2       = 6
 uint8 FUNCTION_LOITER     = 7
 uint8 FUNCTION_OFFBOARD   = 8
-uint8 FUNCTION_ACRO       = 9
+uint8 FUNCTION_RES3       = 9
 uint8 FUNCTION_FLAPS      = 10
 uint8 FUNCTION_AUX_1      = 11
 uint8 FUNCTION_AUX_2      = 12
@@ -23,9 +23,9 @@ uint8 FUNCTION_KILLSWITCH = 19
 uint8 FUNCTION_TRANSITION = 20
 uint8 FUNCTION_GEAR       = 21
 uint8 FUNCTION_ARMSWITCH  = 22
-uint8 FUNCTION_STAB       = 23
+uint8 FUNCTION_RES4       = 23
 uint8 FUNCTION_AUX_6      = 24
-uint8 FUNCTION_MAN        = 25
+uint8 FUNCTION_RES5       = 25
 
 uint64 timestamp_last_valid					# Timestamp of last valid RC signal
 float32[18] channels						# Scaled to -1..1 (throttle: 0..1)

@@ -77,8 +77,6 @@ const char *get_commands()
 		"param set RC6_MIN 992\n"
 		"param set RC6_TRIM 1504\n"
 		"param set RC_CHAN_CNT 8\n"
-		"param set RC_MAP_MODE_SW 5\n"
-		"param set RC_MAP_POSCTL_SW 7\n"
 		"param set RC_MAP_RETURN_SW 8\n"
 		"param set MC_YAW_P 1.5\n"
 		"param set MC_PITCH_P 3.0\n"

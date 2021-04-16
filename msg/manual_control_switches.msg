@@ -26,11 +26,4 @@ uint8 kill_switch                # throttle kill: _NORMAL_, KILL
 uint8 gear_switch                # landing gear switch: _DOWN_, UP
 uint8 transition_switch          # VTOL transition switch: _HOVER, FORWARD_FLIGHT
 
-# legacy "advanced" switch configuration (will be removed soon)
-uint8 mode_switch                # main mode 3 position switch (mandatory): _MANUAL_, ASSIST, AUTO
-uint8 man_switch                 # manual switch (only relevant for fixed wings, optional): _STABILIZED_, MANUAL
-uint8 acro_switch                # acro 2 position switch (optional): _MANUAL_, ACRO
-uint8 stab_switch                # stabilize switch (only relevant for fixed wings, optional): _MANUAL, STABILIZED
-uint8 posctl_switch              # position control 2 position switch (optional): _ALTCTL_, POSCTL
-
 uint32 switch_changes            # number of switch changes

@@ -174,14 +174,8 @@ private:
 
 	void UpdateEstimateValidity();
 
-	// Set the main system state based on RC and override device inputs
-	transition_result_t set_main_state(bool &changed);
-
-	// Enable override (manual reversion mode) on the system
-	transition_result_t set_main_state_override_on(bool &changed);
-
 	// Set the system main state based on the current RC inputs
-	transition_result_t set_main_state_rc();
+	transition_result_t set_main_state();
 
 	bool shutdown_if_allowed();
 

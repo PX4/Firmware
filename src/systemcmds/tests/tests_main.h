@@ -48,7 +48,6 @@ extern int test_atomic_bitset(int argc, char *argv[]);
 extern int test_bezierQuad(int argc, char *argv[]);
 extern int test_bitset(int argc, char *argv[]);
 extern int test_bson(int argc, char *argv[]);
-extern int test_conv(int argc, char *argv[]);
 extern int test_dataman(int argc, char *argv[]);
 extern int test_file(int argc, char *argv[]);
 extern int test_file2(int argc, char *argv[]);

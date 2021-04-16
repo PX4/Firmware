@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2012-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1331,39 +1331,6 @@ PARAM_DEFINE_INT32(RC_MAP_YAW, 0);
 PARAM_DEFINE_INT32(RC_MAP_FLTMODE, 0);
 
 /**
- * Mode switch channel mapping.
- *
- * This is the main flight mode selector.
- * The channel index (starting from 1 for channel 1) indicates
- * which channel should be used for deciding about the main mode.
- * A value of zero indicates the switch is not assigned.
- *
- * @min 0
- * @max 18
- * @group Radio Switches
- * @value 0 Unassigned
- * @value 1 Channel 1
- * @value 2 Channel 2
- * @value 3 Channel 3
- * @value 4 Channel 4
- * @value 5 Channel 5
- * @value 6 Channel 6
- * @value 7 Channel 7
- * @value 8 Channel 8
- * @value 9 Channel 9
- * @value 10 Channel 10
- * @value 11 Channel 11
- * @value 12 Channel 12
- * @value 13 Channel 13
- * @value 14 Channel 14
- * @value 15 Channel 15
- * @value 16 Channel 16
- * @value 17 Channel 17
- * @value 18 Channel 18
- */
-PARAM_DEFINE_INT32(RC_MAP_MODE_SW, 0);
-
-/**
  * Return switch channel
  *
  * @min 0
@@ -1392,34 +1359,6 @@ PARAM_DEFINE_INT32(RC_MAP_MODE_SW, 0);
 PARAM_DEFINE_INT32(RC_MAP_RETURN_SW, 0);
 
 /**
- * Position Control switch channel
- *
- * @min 0
- * @max 18
- * @group Radio Switches
- * @value 0 Unassigned
- * @value 1 Channel 1
- * @value 2 Channel 2
- * @value 3 Channel 3
- * @value 4 Channel 4
- * @value 5 Channel 5
- * @value 6 Channel 6
- * @value 7 Channel 7
- * @value 8 Channel 8
- * @value 9 Channel 9
- * @value 10 Channel 10
- * @value 11 Channel 11
- * @value 12 Channel 12
- * @value 13 Channel 13
- * @value 14 Channel 14
- * @value 15 Channel 15
- * @value 16 Channel 16
- * @value 17 Channel 17
- * @value 18 Channel 18
- */
-PARAM_DEFINE_INT32(RC_MAP_POSCTL_SW, 0);
-
-/**
  * Loiter switch channel
  *
  * @min 0
@@ -1446,34 +1385,6 @@ PARAM_DEFINE_INT32(RC_MAP_POSCTL_SW, 0);
  * @value 18 Channel 18
  */
 PARAM_DEFINE_INT32(RC_MAP_LOITER_SW, 0);
-
-/**
- * Acro switch channel
- *
- * @min 0
- * @max 18
- * @group Radio Switches
- * @value 0 Unassigned
- * @value 1 Channel 1
- * @value 2 Channel 2
- * @value 3 Channel 3
- * @value 4 Channel 4
- * @value 5 Channel 5
- * @value 6 Channel 6
- * @value 7 Channel 7
- * @value 8 Channel 8
- * @value 9 Channel 9
- * @value 10 Channel 10
- * @value 11 Channel 11
- * @value 12 Channel 12
- * @value 13 Channel 13
- * @value 14 Channel 14
- * @value 15 Channel 15
- * @value 16 Channel 16
- * @value 17 Channel 17
- * @value 18 Channel 18
- */
-PARAM_DEFINE_INT32(RC_MAP_ACRO_SW, 0);
 
 /**
  * Offboard switch channel
@@ -1645,62 +1556,6 @@ PARAM_DEFINE_INT32(RC_MAP_TRANS_SW, 0);
  * @value 18 Channel 18
  */
 PARAM_DEFINE_INT32(RC_MAP_GEAR_SW, 0);
-
-/**
- * Stabilize switch channel mapping.
- *
- * @min 0
- * @max 18
- * @group Radio Switches
- * @value 0 Unassigned
- * @value 1 Channel 1
- * @value 2 Channel 2
- * @value 3 Channel 3
- * @value 4 Channel 4
- * @value 5 Channel 5
- * @value 6 Channel 6
- * @value 7 Channel 7
- * @value 8 Channel 8
- * @value 9 Channel 9
- * @value 10 Channel 10
- * @value 11 Channel 11
- * @value 12 Channel 12
- * @value 13 Channel 13
- * @value 14 Channel 14
- * @value 15 Channel 15
- * @value 16 Channel 16
- * @value 17 Channel 17
- * @value 18 Channel 18
- */
-PARAM_DEFINE_INT32(RC_MAP_STAB_SW, 0);
-
-/**
- * Manual switch channel mapping.
- *
- * @min 0
- * @max 18
- * @group Radio Switches
- * @value 0 Unassigned
- * @value 1 Channel 1
- * @value 2 Channel 2
- * @value 3 Channel 3
- * @value 4 Channel 4
- * @value 5 Channel 5
- * @value 6 Channel 6
- * @value 7 Channel 7
- * @value 8 Channel 8
- * @value 9 Channel 9
- * @value 10 Channel 10
- * @value 11 Channel 11
- * @value 12 Channel 12
- * @value 13 Channel 13
- * @value 14 Channel 14
- * @value 15 Channel 15
- * @value 16 Channel 16
- * @value 17 Channel 17
- * @value 18 Channel 18
- */
-PARAM_DEFINE_INT32(RC_MAP_MAN_SW, 0);
 
 /**
  * AUX1 Passthrough RC channel
@@ -1985,54 +1840,6 @@ PARAM_DEFINE_INT32(RC_MAP_PARAM3, 0);
 PARAM_DEFINE_INT32(RC_FAILS_THR, 0);
 
 /**
- * Threshold for selecting assist mode
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_ASSIST_TH, 0.25f);
-
-/**
- * Threshold for selecting auto mode
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_AUTO_TH, 0.75f);
-
-/**
- * Threshold for selecting posctl mode
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_POSCTL_TH, 0.75f);
-
-/**
  * Threshold for selecting return to launch mode
  *
  * 0-1 indicate where in the full channel range the threshold sits
@@ -2063,22 +1870,6 @@ PARAM_DEFINE_FLOAT(RC_RETURN_TH, 0.75f);
  * @group Radio Switches
  */
 PARAM_DEFINE_FLOAT(RC_LOITER_TH, 0.75f);
-
-/**
- * Threshold for selecting acro mode
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_ACRO_TH, 0.75f);
 
 /**
  * Threshold for selecting offboard mode
@@ -2159,38 +1950,6 @@ PARAM_DEFINE_FLOAT(RC_TRANS_TH, 0.75f);
  * @group Radio Switches
  */
 PARAM_DEFINE_FLOAT(RC_GEAR_TH, 0.75f);
-
-/**
- * Threshold for the stabilize switch.
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_STAB_TH, 0.5f);
-
-/**
- * Threshold for the manual switch.
- *
- * 0-1 indicate where in the full channel range the threshold sits
- * 		0 : min
- * 		1 : max
- * sign indicates polarity of comparison
- * 		positive : true when channel>th
- * 		negative : true when channel<th
- *
- * @min -1
- * @max 1
- * @group Radio Switches
- */
-PARAM_DEFINE_FLOAT(RC_MAN_TH, 0.75f);
 
 /**
  * PWM input channel that provides RSSI.

@@ -82,7 +82,6 @@ const struct {
 	{"bezier",		test_bezierQuad,	0},
 	{"bitset",		test_bitset,		0},
 	{"bson",		test_bson,		0},
-	{"conv",		test_conv,		0},
 	{"dataman",		test_dataman,		OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"file2",		test_file2,		OPT_NOJIGTEST},
 	{"float",		test_float,		0},

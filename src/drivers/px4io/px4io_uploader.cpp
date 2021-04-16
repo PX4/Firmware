@@ -355,9 +355,8 @@ int
 PX4IO_Uploader::get_sync(unsigned timeout)
 {
 	uint8_t c[2];
-	int ret;
 
-	ret = recv_byte_with_timeout(c, timeout);
+	int ret = recv_byte_with_timeout(c, timeout);
 
 	if (ret != OK) {
 		return ret;
@@ -395,13 +394,11 @@ PX4IO_Uploader::sync()
 int
 PX4IO_Uploader::get_info(int param, uint32_t &val)
 {
-	int ret;
-
 	send(PROTO_GET_DEVICE);
 	send(param);
 	send(PROTO_EOC);
 
-	ret = recv_bytes((uint8_t *)&val, sizeof(val));
+	int ret = recv_bytes((uint8_t *)&val, sizeof(val));
 
 	if (ret != OK) {
 		return ret;
@@ -418,7 +415,6 @@ PX4IO_Uploader::erase()
 	send(PROTO_EOC);
 	return get_sync(10000);		/* allow 10s timeout */
 }
-
 
 static int read_with_retry(int fd, void *buf, size_t n)
 {

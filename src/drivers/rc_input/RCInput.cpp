@@ -494,7 +494,7 @@ void RCInput::Run()
 
 					for (unsigned i = 0; i < (unsigned)newBytes; i++) {
 						/* set updated flag if one complete packet was parsed */
-						st24_rssi = RC_INPUT_RSSI_MAX;
+						st24_rssi = input_rc_s::RSSI_MAX;
 						rc_updated = (OK == st24_decode(_rcs_buf[i], &st24_rssi, &lost_count,
 										&_raw_rc_count, _raw_rc_values, input_rc_s::RC_INPUT_MAX_CHANNELS));
 					}
@@ -543,7 +543,7 @@ void RCInput::Run()
 
 					for (unsigned i = 0; i < (unsigned)newBytes; i++) {
 						/* set updated flag if one complete packet was parsed */
-						sumd_rssi = RC_INPUT_RSSI_MAX;
+						sumd_rssi = input_rc_s::RSSI_MAX;
 						rc_updated = (OK == sumd_decode(_rcs_buf[i], &sumd_rssi, &rx_count,
 										&_raw_rc_count, _raw_rc_values, input_rc_s::RC_INPUT_MAX_CHANNELS, &sumd_failsafe));
 					}

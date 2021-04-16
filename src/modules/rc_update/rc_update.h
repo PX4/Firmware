@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2016-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -201,21 +201,16 @@ private:
 		(ParamInt<px4::params::RC_MAP_FAILSAFE>) _param_rc_map_failsafe,
 
 		(ParamInt<px4::params::RC_MAP_FLTMODE>) _param_rc_map_fltmode,
-		(ParamInt<px4::params::RC_MAP_MODE_SW>) _param_rc_map_mode_sw,
 
 		(ParamInt<px4::params::RC_MAP_FLAPS>) _param_rc_map_flaps,
 
 		(ParamInt<px4::params::RC_MAP_RETURN_SW>) _param_rc_map_return_sw,
-		(ParamInt<px4::params::RC_MAP_POSCTL_SW>) _param_rc_map_posctl_sw,
 		(ParamInt<px4::params::RC_MAP_LOITER_SW>) _param_rc_map_loiter_sw,
-		(ParamInt<px4::params::RC_MAP_ACRO_SW>) _param_rc_map_acro_sw,
 		(ParamInt<px4::params::RC_MAP_OFFB_SW>) _param_rc_map_offb_sw,
 		(ParamInt<px4::params::RC_MAP_KILL_SW>) _param_rc_map_kill_sw,
 		(ParamInt<px4::params::RC_MAP_ARM_SW>) _param_rc_map_arm_sw,
 		(ParamInt<px4::params::RC_MAP_TRANS_SW>) _param_rc_map_trans_sw,
 		(ParamInt<px4::params::RC_MAP_GEAR_SW>) _param_rc_map_gear_sw,
-		(ParamInt<px4::params::RC_MAP_STAB_SW>) _param_rc_map_stab_sw,
-		(ParamInt<px4::params::RC_MAP_MAN_SW>) _param_rc_map_man_sw,
 
 		(ParamInt<px4::params::RC_MAP_AUX1>) _param_rc_map_aux1,
 		(ParamInt<px4::params::RC_MAP_AUX2>) _param_rc_map_aux2,
@@ -226,18 +221,12 @@ private:
 
 		(ParamInt<px4::params::RC_FAILS_THR>) _param_rc_fails_thr,
 
-		(ParamFloat<px4::params::RC_ASSIST_TH>) _param_rc_assist_th,
-		(ParamFloat<px4::params::RC_AUTO_TH>) _param_rc_auto_th,
-		(ParamFloat<px4::params::RC_POSCTL_TH>) _param_rc_posctl_th,
 		(ParamFloat<px4::params::RC_LOITER_TH>) _param_rc_loiter_th,
-		(ParamFloat<px4::params::RC_ACRO_TH>) _param_rc_acro_th,
 		(ParamFloat<px4::params::RC_OFFB_TH>) _param_rc_offb_th,
 		(ParamFloat<px4::params::RC_KILLSWITCH_TH>) _param_rc_killswitch_th,
 		(ParamFloat<px4::params::RC_ARMSWITCH_TH>) _param_rc_armswitch_th,
 		(ParamFloat<px4::params::RC_TRANS_TH>) _param_rc_trans_th,
 		(ParamFloat<px4::params::RC_GEAR_TH>) _param_rc_gear_th,
-		(ParamFloat<px4::params::RC_STAB_TH>) _param_rc_stab_th,
-		(ParamFloat<px4::params::RC_MAN_TH>) _param_rc_man_th,
 		(ParamFloat<px4::params::RC_RETURN_TH>) _param_rc_return_th,
 
 		(ParamInt<px4::params::RC_CHAN_CNT>) _param_rc_chan_cnt

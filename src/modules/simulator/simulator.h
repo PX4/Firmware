@@ -43,7 +43,6 @@
 #pragma once
 
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_rc_input.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
@@ -60,6 +59,7 @@
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/differential_pressure.h>
 #include <uORB/topics/distance_sensor.h>
+#include <uORB/topics/input_rc.h>
 #include <uORB/topics/irlock_report.h>
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/optical_flow.h>

@@ -50,6 +50,7 @@
 #include "sbus.h"
 #include "common_rc.h"
 #include <drivers/drv_hrt.h>
+#include <lib/mathlib/mathlib.h>
 
 using namespace time_literals;
 
@@ -689,13 +690,6 @@ sbus_decode(uint64_t frame_time, uint8_t *frame, uint16_t *values, uint16_t *num
  */
 void sbus1_set_output_rate_hz(uint16_t rate_hz)
 {
-	if (rate_hz > SBUS1_MAX_RATE_HZ) {
-		rate_hz = SBUS1_MAX_RATE_HZ;
-	}
-
-	if (rate_hz < SBUS1_MIN_RATE_HZ) {
-		rate_hz = SBUS1_MIN_RATE_HZ;
-	}
-
-	sbus1_frame_delay = (1000U * 1000U) / rate_hz;
+	sbus1_frame_delay = (1000U * 1000U) / math::constrain(rate_hz, (uint16_t)SBUS1_MIN_RATE_HZ,
+			    (uint16_t)SBUS1_MAX_RATE_HZ);
 }

@@ -48,7 +48,7 @@
 #include <errno.h>
 
 #include <drivers/drv_pwm_output.h>
-#include <drivers/drv_rc_input.h>
+#include <uORB/topics/input_rc.h>
 #include <uORB/topics/rc_channels.h>
 #include <systemlib/err.h>
 

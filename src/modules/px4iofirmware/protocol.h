@@ -61,7 +61,7 @@
  * the PX4 system are expressed as signed integer values scaled by 10000,
  * e.g. control values range from -10000..10000.  Use the REG_TO_SIGNED and
  * SIGNED_TO_REG macros to convert between register representation and
- * the signed version, and REG_TO_FLOAT/FLOAT_TO_REG to convert to float.
+ * the signed version.
  *
  * Note that the implementation of readable pages prefers registers within
  * readable pages to be densely packed. Page numbers do not need to be
@@ -75,76 +75,58 @@
 #define REG_TO_SIGNED(_reg)	((int16_t)(_reg))
 #define SIGNED_TO_REG(_signed)	((uint16_t)(_signed))
 
-#define REG_TO_FLOAT(_reg)	((float)REG_TO_SIGNED(_reg) / 10000.0f)
-#define FLOAT_TO_REG(_float)	SIGNED_TO_REG((int16_t)floorf((_float + 0.00005f) * 10000.0f))
-
 #define REG_TO_BOOL(_reg) 	((bool)(_reg))
 
-#define PX4IO_PROTOCOL_VERSION		4
+#define PX4IO_PROTOCOL_VERSION		5
 
 /* maximum allowable sizes on this protocol version */
 #define PX4IO_PROTOCOL_MAX_CONTROL_COUNT	8	/**< The protocol does not support more than set here, individual units might support less - see PX4IO_P_CONFIG_CONTROL_COUNT */
 
 /* static configuration page */
-#define PX4IO_PAGE_CONFIG					0
+#define PX4IO_PAGE_CONFIG			0
 #define PX4IO_P_CONFIG_PROTOCOL_VERSION		0	/* PX4IO_PROTOCOL_VERSION */
 #define PX4IO_P_CONFIG_HARDWARE_VERSION		1	/* magic numbers TBD */
 #define PX4IO_P_CONFIG_BOOTLOADER_VERSION	2	/* get this how? */
-#define PX4IO_P_CONFIG_MAX_TRANSFER			3	/* maximum I2C transfer size */
+#define PX4IO_P_CONFIG_MAX_TRANSFER		3	/* maximum I2C transfer size */
 #define PX4IO_P_CONFIG_CONTROL_COUNT		4	/* hardcoded max control count supported */
 #define PX4IO_P_CONFIG_ACTUATOR_COUNT		5	/* hardcoded max actuator output count */
 #define PX4IO_P_CONFIG_RC_INPUT_COUNT		6	/* hardcoded max R/C input count supported */
 #define PX4IO_P_CONFIG_ADC_INPUT_COUNT		7	/* hardcoded max ADC inputs */
-#define PX4IO_P_CONFIG_RELAY_COUNT			8	/* hardcoded # of relay outputs */
-#define PX4IO_MAX_TRANSFER_LEN				64
+#define PX4IO_MAX_TRANSFER_LEN			64
 
 /* dynamic status page */
-#define PX4IO_PAGE_STATUS		1
+#define PX4IO_PAGE_STATUS			1
 #define PX4IO_P_STATUS_FREEMEM			0
 #define PX4IO_P_STATUS_CPULOAD			1
 
 #define PX4IO_P_STATUS_FLAGS			2	 /* monitoring flags */
 #define PX4IO_P_STATUS_FLAGS_OUTPUTS_ARMED	(1 << 0) /* arm-ok and locally armed */
-#define PX4IO_P_STATUS_FLAGS_OVERRIDE		(1 << 1) /* in manual override */
-#define PX4IO_P_STATUS_FLAGS_RC_OK		(1 << 2) /* RC input is valid */
-#define PX4IO_P_STATUS_FLAGS_RC_PPM		(1 << 3) /* PPM input is valid */
-#define PX4IO_P_STATUS_FLAGS_RC_DSM		(1 << 4) /* DSM input is valid */
-#define PX4IO_P_STATUS_FLAGS_RC_SBUS		(1 << 5) /* SBUS input is valid */
-#define PX4IO_P_STATUS_FLAGS_FMU_OK		(1 << 6) /* controls from FMU are valid */
-#define PX4IO_P_STATUS_FLAGS_RAW_PWM		(1 << 7) /* raw PWM from FMU is bypassing the mixer */
-#define PX4IO_P_STATUS_FLAGS_MIXER_OK		(1 << 8) /* mixer is OK */
-#define PX4IO_P_STATUS_FLAGS_ARM_SYNC		(1 << 9) /* the arming state between IO and FMU is in sync */
-#define PX4IO_P_STATUS_FLAGS_INIT_OK		(1 << 10) /* initialisation of the IO completed without error */
-#define PX4IO_P_STATUS_FLAGS_FAILSAFE		(1 << 11) /* failsafe is active */
-#define PX4IO_P_STATUS_FLAGS_SAFETY_OFF		(1 << 12) /* safety is off */
-#define PX4IO_P_STATUS_FLAGS_FMU_INITIALIZED	(1 << 13) /* FMU was initialized and OK once */
-#define PX4IO_P_STATUS_FLAGS_RC_ST24		(1 << 14) /* ST24 input is valid */
-#define PX4IO_P_STATUS_FLAGS_RC_SUMD		(1 << 15) /* SUMD input is valid */
+#define PX4IO_P_STATUS_FLAGS_RC_OK		(1 << 1) /* RC input is valid */
+#define PX4IO_P_STATUS_FLAGS_RC_PPM		(1 << 2) /* PPM input is valid */
+#define PX4IO_P_STATUS_FLAGS_RC_DSM		(1 << 3) /* DSM input is valid */
+#define PX4IO_P_STATUS_FLAGS_RC_SBUS		(1 << 4) /* SBUS input is valid */
+#define PX4IO_P_STATUS_FLAGS_FMU_OK		(1 << 5) /* controls from FMU are valid */
+#define PX4IO_P_STATUS_FLAGS_RAW_PWM		(1 << 6) /* raw PWM from FMU */
+#define PX4IO_P_STATUS_FLAGS_ARM_SYNC		(1 << 7) /* the arming state between IO and FMU is in sync */
+#define PX4IO_P_STATUS_FLAGS_INIT_OK		(1 << 8) /* initialisation of the IO completed without error */
+#define PX4IO_P_STATUS_FLAGS_FAILSAFE		(1 << 9) /* failsafe is active */
+#define PX4IO_P_STATUS_FLAGS_SAFETY_OFF         (1 << 10) /* safety is off */
+#define PX4IO_P_STATUS_FLAGS_FMU_INITIALIZED	(1 << 11) /* FMU was initialized and OK once */
+#define PX4IO_P_STATUS_FLAGS_RC_ST24		(1 << 12) /* ST24 input is valid */
+#define PX4IO_P_STATUS_FLAGS_RC_SUMD		(1 << 13) /* SUMD input is valid */
 
 #define PX4IO_P_STATUS_ALARMS			3	 /* alarm flags - alarms latch, write 1 to a bit to clear it */
-#define PX4IO_P_STATUS_ALARMS_VBATT_LOW		(1 << 0) /* [1] VBatt is very close to regulator dropout */
-#define PX4IO_P_STATUS_ALARMS_TEMPERATURE	(1 << 1) /* board temperature is high */
-#define PX4IO_P_STATUS_ALARMS_SERVO_CURRENT	(1 << 2) /* [1] servo current limit was exceeded */
-#define PX4IO_P_STATUS_ALARMS_ACC_CURRENT	(1 << 3) /* [1] accessory current limit was exceeded */
-#define PX4IO_P_STATUS_ALARMS_FMU_LOST		(1 << 4) /* timed out waiting for controls from FMU */
-#define PX4IO_P_STATUS_ALARMS_RC_LOST		(1 << 5) /* timed out waiting for RC input */
-#define PX4IO_P_STATUS_ALARMS_PWM_ERROR		(1 << 6) /* PWM configuration or output was bad */
-#define PX4IO_P_STATUS_ALARMS_VSERVO_FAULT	(1 << 7) /* [2] VServo was out of the valid range (2.5 - 5.5 V) */
+#define PX4IO_P_STATUS_ALARMS_RC_LOST           (1 << 0) /* timed out waiting for RC input */
+#define PX4IO_P_STATUS_ALARMS_PWM_ERROR         (1 << 1) /* PWM configuration or output was bad */
 
 #define PX4IO_P_STATUS_VSERVO			6	/* [2] servo rail voltage in mV */
 #define PX4IO_P_STATUS_VRSSI			7	/* [2] RSSI voltage */
-#define PX4IO_P_STATUS_PRSSI			8	/* [2] RSSI PWM value */
-
-#define PX4IO_P_STATUS_MIXER			9	 /* mixer actuator limit flags */
-
-/* array of post-mix actuator outputs, -10000..10000 */
-#define PX4IO_PAGE_ACTUATORS		2		/* 0..CONFIG_ACTUATOR_COUNT-1 */
 
 /* array of PWM servo output values, microseconds */
-#define PX4IO_PAGE_SERVOS		3		/* 0..CONFIG_ACTUATOR_COUNT-1 */
+#define PX4IO_PAGE_SERVOS			3	/* 0..CONFIG_ACTUATOR_COUNT-1 */
 
 /* array of raw RC input values, microseconds */
-#define PX4IO_PAGE_RAW_RC_INPUT		4
+#define PX4IO_PAGE_RAW_RC_INPUT			4
 #define PX4IO_P_RAW_RC_COUNT			0	/* number of valid channels */
 #define PX4IO_P_RAW_RC_FLAGS			1	/* RC detail status flags */
 #define PX4IO_P_RAW_RC_FLAGS_FRAME_DROP		(1 << 0) /* single frame drop */
@@ -159,47 +141,34 @@
 #define PX4IO_P_RAW_LOST_FRAME_COUNT		5	/* Number of total dropped frames (wrapping counter) */
 #define PX4IO_P_RAW_RC_BASE			6	/* CONFIG_RC_INPUT_COUNT channels from here */
 
-/* array of scaled RC input values, -10000..10000 */
-#define PX4IO_PAGE_RC_INPUT		5
-#define PX4IO_P_RC_VALID			0	/* bitmask of valid controls */
-#define PX4IO_P_RC_BASE				1	/* CONFIG_RC_INPUT_COUNT controls from here */
-
 /* array of raw ADC values */
-#define PX4IO_PAGE_RAW_ADC_INPUT	6		/* 0..CONFIG_ADC_INPUT_COUNT-1 */
+#define PX4IO_PAGE_RAW_ADC_INPUT		6	/* 0..CONFIG_ADC_INPUT_COUNT-1 */
 
 /* PWM servo information */
-#define PX4IO_PAGE_PWM_INFO		7
+#define PX4IO_PAGE_PWM_INFO			7
 #define PX4IO_RATE_MAP_BASE			0	/* 0..CONFIG_ACTUATOR_COUNT bitmaps of PWM rate groups */
 
 /* setup page */
-#define PX4IO_PAGE_SETUP		50
+#define PX4IO_PAGE_SETUP			50
 #define PX4IO_P_SETUP_FEATURES			0
 #define PX4IO_P_SETUP_FEATURES_SBUS1_OUT	(1 << 0) /**< enable S.Bus v1 output */
 #define PX4IO_P_SETUP_FEATURES_SBUS2_OUT	(1 << 1) /**< enable S.Bus v2 output */
-#define PX4IO_P_SETUP_FEATURES_PWM_RSSI		(1 << 2) /**< enable PWM RSSI parsing */
-#define PX4IO_P_SETUP_FEATURES_ADC_RSSI		(1 << 3) /**< enable ADC RSSI parsing */
+#define PX4IO_P_SETUP_FEATURES_ADC_RSSI		(1 << 2) /**< enable ADC RSSI parsing */
 
 #define PX4IO_P_SETUP_ARMING			1	 /* arming controls */
-#define PX4IO_P_SETUP_ARMING_IO_ARM_OK		(1 << 0) /* OK to arm the IO side */
-#define PX4IO_P_SETUP_ARMING_FMU_ARMED		(1 << 1) /* FMU is already armed */
-#define PX4IO_P_SETUP_ARMING_FMU_PREARMED	(1 << 2) /* FMU is already prearmed */
-#define PX4IO_P_SETUP_ARMING_MANUAL_OVERRIDE_OK	(1 << 3) /* OK to switch to manual override via override RC channel */
-#define PX4IO_P_SETUP_ARMING_FAILSAFE_CUSTOM	(1 << 4) /* use custom failsafe values, not 0 values of mixer */
-#define PX4IO_P_SETUP_ARMING_INAIR_RESTART_OK	(1 << 5) /* OK to try in-air restart */
-#define PX4IO_P_SETUP_ARMING_ALWAYS_PWM_ENABLE	(1 << 6) /* Output of PWM right after startup enabled to help ESCs initialize and prevent them from beeping */
-#define PX4IO_P_SETUP_ARMING_RC_HANDLING_DISABLED	(1 << 7) /* Disable the IO-internal evaluation of the RC */
-#define PX4IO_P_SETUP_ARMING_LOCKDOWN		(1 << 8) /* If set, the system operates normally, but won't actuate any servos */
-#define PX4IO_P_SETUP_ARMING_FORCE_FAILSAFE	(1 << 9) /* If set, the system will always output the failsafe values */
-#define PX4IO_P_SETUP_ARMING_TERMINATION_FAILSAFE	(1 << 10) /* If set, the system will never return from a failsafe, but remain in failsafe once triggered. */
-#define PX4IO_P_SETUP_ARMING_OVERRIDE_IMMEDIATE	(1 << 11) /* If set then on FMU failure override is immediate. Othewise it waits for the mode switch to go past the override thrshold */
+#define PX4IO_P_SETUP_ARMING_IO_ARM_OK            (1 << 0) /* OK to arm the IO side */
+#define PX4IO_P_SETUP_ARMING_FMU_ARMED            (1 << 1) /* FMU is already armed */
+#define PX4IO_P_SETUP_ARMING_FMU_PREARMED         (1 << 2) /* FMU is already prearmed */
+#define PX4IO_P_SETUP_ARMING_FAILSAFE_CUSTOM      (1 << 3) /* use custom failsafe values */
+#define PX4IO_P_SETUP_ARMING_LOCKDOWN             (1 << 4) /* If set, the system operates normally, but won't actuate any servos */
+#define PX4IO_P_SETUP_ARMING_FORCE_FAILSAFE       (1 << 5) /* If set, the system will always output the failsafe values */
+#define PX4IO_P_SETUP_ARMING_TERMINATION_FAILSAFE (1 << 6) /* If set, the system will never return from a failsafe, but remain in failsafe once triggered. */
 
-#define PX4IO_P_SETUP_PWM_RATES			2	/* bitmask, 0 = low rate, 1 = high rate */
-#define PX4IO_P_SETUP_PWM_DEFAULTRATE		3	/* 'low' PWM frame output rate in Hz */
-#define PX4IO_P_SETUP_PWM_ALTRATE		4	/* 'high' PWM frame output rate in Hz */
-#define PX4IO_P_SETUP_RELAYS_PAD		5
-
-#define PX4IO_P_SETUP_VSERVO_SCALE		6	/* hardware rev [2] servo voltage correction factor (float) */
-#define PX4IO_P_SETUP_DSM			7	/* DSM bind state */
+#define PX4IO_P_SETUP_PWM_RATES                 2	/* bitmask, 0 = low rate, 1 = high rate */
+#define PX4IO_P_SETUP_PWM_DEFAULTRATE           3	/* 'low' PWM frame output rate in Hz */
+#define PX4IO_P_SETUP_PWM_ALTRATE               4	/* 'high' PWM frame output rate in Hz */
+#define PX4IO_P_SETUP_VSERVO_SCALE              5	/* hardware rev [2] servo voltage correction factor (float) */
+#define PX4IO_P_SETUP_DSM                       6	/* DSM bind state */
 enum {							/* DSM bind states */
 	dsm_bind_power_down = 0,
 	dsm_bind_power_up,
@@ -218,113 +187,42 @@ enum {							/* DSM bind states */
 #define PX4IO_P_SETUP_FORCE_SAFETY_OFF		12	/* force safety switch into
                                                            'armed' (PWM enabled) state - this is a non-data write and
                                                            hence index 12 can safely be used. */
-#define PX4IO_P_SETUP_RC_THR_FAILSAFE_US	13	/**< the throttle failsafe pulse length in microseconds */
 
 #define PX4IO_P_SETUP_FORCE_SAFETY_ON		14	/* force safety switch into 'disarmed' (PWM disabled state) */
 #define PX4IO_FORCE_SAFETY_MAGIC		22027	/* required argument for force safety (random) */
-
-#define PX4IO_P_SETUP_PWM_REVERSE		15	/**< Bitmask to reverse PWM channels 1-8 */
-#define PX4IO_P_SETUP_TRIM_ROLL			16	/**< Roll trim, in actuator units */
-#define PX4IO_P_SETUP_TRIM_PITCH		17	/**< Pitch trim, in actuator units */
-#define PX4IO_P_SETUP_TRIM_YAW			18	/**< Yaw trim, in actuator units */
-#define PX4IO_P_SETUP_SCALE_ROLL		19	/**< Roll scale, in actuator units */
-#define PX4IO_P_SETUP_SCALE_PITCH		20	/**< Pitch scale, in actuator units */
-#define PX4IO_P_SETUP_SCALE_YAW			21	/**< Yaw scale, in actuator units */
-
-#define PX4IO_P_SETUP_SBUS_RATE			22	/**< frame rate of SBUS1 output in Hz */
-
-#define PX4IO_P_SETUP_MOTOR_SLEW_MAX		24 	/**< max motor slew rate */
-
-#define PX4IO_P_SETUP_THR_MDL_FAC 		25	/**< factor for modelling motor control signal output to static thrust relationship */
-
-#define PX4IO_P_SETUP_THERMAL			26	/**< thermal management */
-
-#define PX4IO_P_SETUP_AIRMODE 			27 	/**< air-mode */
-
-#define PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION	28	/**< flight termination; false if the circuit breaker (CBRK_FLIGHTTERM) is set */
+#define PX4IO_P_SETUP_SBUS_RATE			16	/**< frame rate of SBUS1 output in Hz */
+#define PX4IO_P_SETUP_THERMAL			17	/**< thermal management */
+#define PX4IO_P_SETUP_ENABLE_FLIGHTTERMINATION	18	/**< flight termination; false if the circuit breaker (CBRK_FLIGHTTERM) is set */
 
 #define PX4IO_THERMAL_IGNORE			UINT16_MAX
 #define PX4IO_THERMAL_OFF			0
 #define PX4IO_THERMAL_FULL			10000
 
-/* autopilot control values, -10000..10000 */
-#define PX4IO_PAGE_CONTROLS			51	/**< actuator control groups, one after the other, 8 wide */
-#define PX4IO_P_CONTROLS_GROUP_0		(PX4IO_PROTOCOL_MAX_CONTROL_COUNT * 0)	/**< 0..PX4IO_PROTOCOL_MAX_CONTROL_COUNT - 1 */
-#define PX4IO_P_CONTROLS_GROUP_1		(PX4IO_PROTOCOL_MAX_CONTROL_COUNT * 1)	/**< 0..PX4IO_PROTOCOL_MAX_CONTROL_COUNT - 1 */
-#define PX4IO_P_CONTROLS_GROUP_2		(PX4IO_PROTOCOL_MAX_CONTROL_COUNT * 2)	/**< 0..PX4IO_PROTOCOL_MAX_CONTROL_COUNT - 1 */
-#define PX4IO_P_CONTROLS_GROUP_3		(PX4IO_PROTOCOL_MAX_CONTROL_COUNT * 3)	/**< 0..PX4IO_PROTOCOL_MAX_CONTROL_COUNT - 1 */
-
-#define PX4IO_P_CONTROLS_GROUP_VALID		64
-#define PX4IO_P_CONTROLS_GROUP_VALID_GROUP0	(1 << 0) /**< group 0 is valid / received */
-#define PX4IO_P_CONTROLS_GROUP_VALID_GROUP1	(1 << 1) /**< group 1 is valid / received */
-#define PX4IO_P_CONTROLS_GROUP_VALID_GROUP2	(1 << 2) /**< group 2 is valid / received */
-#define PX4IO_P_CONTROLS_GROUP_VALID_GROUP3	(1 << 3) /**< group 3 is valid / received */
-
-/* raw text load to the mixer parser - ignores offset */
-#define PX4IO_PAGE_MIXERLOAD			52
-
 /* R/C channel config */
 #define PX4IO_PAGE_RC_CONFIG			53		/**< R/C input configuration */
-#define PX4IO_P_RC_CONFIG_MIN			0		/**< lowest input value */
-#define PX4IO_P_RC_CONFIG_CENTER		1		/**< center input value */
-#define PX4IO_P_RC_CONFIG_MAX			2		/**< highest input value */
-#define PX4IO_P_RC_CONFIG_DEADZONE		3		/**< band around center that is ignored */
-#define PX4IO_P_RC_CONFIG_ASSIGNMENT		4		/**< mapped input value */
-#define PX4IO_P_RC_CONFIG_ASSIGNMENT_MODESWITCH	100		/**< magic value for mode switch */
-#define PX4IO_P_RC_CONFIG_OPTIONS		5		/**< channel options bitmask */
+#define PX4IO_P_RC_CONFIG_ASSIGNMENT		0		/**< mapped input value */
+#define PX4IO_P_RC_CONFIG_ASSIGNMENT_KILLSWITCH	100	/**< magic value for kill switch */
+#define PX4IO_P_RC_CONFIG_OPTIONS		1		/**< channel options bitmask */
 #define PX4IO_P_RC_CONFIG_OPTIONS_ENABLED	(1 << 0)
 #define PX4IO_P_RC_CONFIG_OPTIONS_REVERSE	(1 << 1)
-#define PX4IO_P_RC_CONFIG_STRIDE		6		/**< spacing between channel config data */
+#define PX4IO_P_RC_CONFIG_STRIDE		2		/**< spacing between channel config data */
 
-/* PWM output - overrides mixer */
+/* PWM output */
 #define PX4IO_PAGE_DIRECT_PWM			54		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
 
 /* PWM failsafe values - zero disables the output */
 #define PX4IO_PAGE_FAILSAFE_PWM			55		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
 
-/* PWM failsafe values - zero disables the output */
-#define PX4IO_PAGE_SENSORS			56		/**< Sensors connected to PX4IO */
-#define PX4IO_P_SENSORS_ALTITUDE		0		/**< Altitude of an external sensor (HoTT or S.BUS2) */
-
 /* Debug and test page - not used in normal operation */
 #define PX4IO_PAGE_TEST				127
 #define PX4IO_P_TEST_LED			0		/**< set the amber LED on/off */
 
-/* PWM minimum values for certain ESCs */
-#define PX4IO_PAGE_CONTROL_MIN_PWM		106		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
-
-/* PWM maximum values for certain ESCs */
-#define PX4IO_PAGE_CONTROL_MAX_PWM		107		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
-
-/* PWM mtrim values for central position */
-#define PX4IO_PAGE_CONTROL_TRIM_PWM		108		/**< 0..CONFIG_ACTUATOR_COUNT-1 */
-
 /* PWM disarmed values that are active, even when SAFETY_SAFE */
-#define PX4IO_PAGE_DISARMED_PWM		109			/* 0..CONFIG_ACTUATOR_COUNT-1 */
-
-/**
- * As-needed mixer data upload.
- *
- * This message adds text to the mixer text buffer; the text
- * buffer is drained as the definitions are consumed.
- */
-#pragma pack(push, 1)
-struct px4io_mixdata {
-	uint16_t	f2i_mixer_magic;
-#define F2I_MIXER_MAGIC		0x6d74
-
-	uint8_t		action;
-#define F2I_MIXER_ACTION_RESET			0
-#define F2I_MIXER_ACTION_APPEND			1
-
-	char		text[0];	/* actual text size may vary */
-};
-#pragma pack(pop)
+#define PX4IO_PAGE_DISARMED_PWM			109		/* 0..CONFIG_ACTUATOR_COUNT-1 */
 
 /**
  * Serial protocol encapsulation.
  */
-
 #define PKT_MAX_REGS	32 // by agreement w/FMU
 
 #pragma pack(push, 1)
