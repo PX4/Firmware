@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2015 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2015, 2021 PX4 Development Team. All rights reserved.
  *   Author: @author David Sidrane <david_s5@nscdg.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -272,7 +272,7 @@ static int write_stack_detail(bool inValid, _stack_s *si, char *sp_name,
 
 #ifdef CONFIG_STACK_COLORATION
 	FAR struct tcb_s tcb;
-	tcb.adj_stack_ptr = (void *) sbot;
+	tcb.stack_base_ptr = (void *) sbot;
 	tcb.adj_stack_size = si->size;
 
 	if (verify_ram_address(sbot, si->size)) {
