@@ -335,11 +335,10 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 
 	const float sched_load = 1.f - idle_load - task_load;
 
-	snprintf(buffer, buffer_length, "Processes: %d total, %d running, %d sleeping, max FDs: %d",
+	snprintf(buffer, buffer_length, "Processes: %d total, %d running, %d sleeping",
 		 system_load.total_count,
 		 print_state->running_count,
-		 print_state->blocked_count,
-		 CONFIG_NFILE_DESCRIPTORS);
+		 print_state->blocked_count);
 	cb(user);
 	snprintf(buffer, buffer_length, "CPU usage: %.2f%% tasks, %.2f%% sched, %.2f%% idle",
 		 (double)(task_load * 100.f),
