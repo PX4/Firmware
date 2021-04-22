@@ -225,7 +225,9 @@ private:
 
 	grid_msg_t _grid_survey_msg{};
 	distance_msg_t _distance_result_msg{};
-	position_t position;
+	float x_rel_position; //float for the Position result
+	float y_rel_position;
+	float z_rel_position;
 
 	matrix::Dcmf _uwb_r4_to_nwu;
 	matrix::Dcmf _nwu_to_ned{matrix::Eulerf(M_PI_F, 0.0f, 0.0f)};

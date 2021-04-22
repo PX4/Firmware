@@ -271,26 +271,26 @@ void LandingTargetEstimator::_update_topics()
 	if (_uwbDistanceSub.update(&_uwbDistance)) {
 		if (!_vehicleAttitude_valid || !_vehicleLocalPosition_valid) {
 			// don't have the data needed for an update
-			//PX4_INFO("Attitude: %d, Local pos: %d", _vehicleAttitude_valid, _vehicleLocalPosition_valid);
+			PX4_INFO("Attitude: %d, Local pos: %d", _vehicleAttitude_valid, _vehicleLocalPosition_valid);
 			return;
 		}
 
 		if (!PX4_ISFINITE((float)_uwbDistance.position[0]) || !PX4_ISFINITE((float)_uwbDistance.position[1]) ||
 		    !PX4_ISFINITE((float)_uwbDistance.position[2])) {  // is this correct?
+			PX4_INFO("Position is corrupt!");
 			return;
 		}
 
 		_new_sensorReport = true;
 		_uncertainty_scale = 1.0f;
 
-		// The coordinate system is NED (north-east-down).
+		// The coordinate system is NED (north-east-down)
+		// the uwb_distance msg contains the Position in NED
 		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
-		// The UWB report contains the position of the vehicle relative to the landing point.
-		// So, just negate all 3 components.
 		_sensor_report.timestamp = _uwbDistance.timestamp;
-		_sensor_report.rel_pos_x = -_uwbDistance.position[0];
-		_sensor_report.rel_pos_y = -_uwbDistance.position[1];
-		_sensor_report.rel_pos_z = -_uwbDistance.position[2];
+		_sensor_report.rel_pos_x = _uwbDistance.position[0] ;
+		_sensor_report.rel_pos_y = _uwbDistance.position[1] ;
+		_sensor_report.rel_pos_z = _uwbDistance.position[2] ;
 
 		//PX4_INFO("data from uwb x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
 		//	 (double)_sensor_report.rel_pos_y);

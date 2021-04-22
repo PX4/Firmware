@@ -2,7 +2,7 @@
 # such as Pozyx or NXP Rddrone.
 
 uint64 	timestamp	# time since system start (microseconds)
-uint16 	initator_time	# time to synchronize clocks
+uint16 	initator_time	# time to synchronize clocks in microseconds
 uint8 flag	 	# flag, bit 7: Grid is moving yes / no
 uint8[16] grid_uuid	# UUID of Anchor 0 of the Grid
 uint8 num_anchors	 	# Number of anchors
@@ -14,7 +14,7 @@ float32[4] target_gps #Latitude, Longitude, Altitude, and Yaw Offset to Truenort
 		#yaw offset does not need this accuracy
 
 #Grid DATA
-#Coordinates start at Anchor 0 with X defined by Anchor 1
+#Coordinates start 0, 0, 0 in cm
 int16[3] target_pos 	#Target, mostly landing Target x,y,z
 int16[3] anchor_pos_0 #Anchor 0
 int16[3] anchor_pos_1 #better way?

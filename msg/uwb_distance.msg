@@ -8,8 +8,11 @@ uint16[9] anchor_distance	# distance in cm
 uint8 	time_offset		#  in Milie Seconds  //Populate with actual time of Range?
 # GPS:
 #GPS position of target_pos of the UWB system
-float32[4] gps_data #Latitude, Longitude, Altitude, and Yaw Offset to Truenorth
+float32[4] gps_data #Latitude, Longitude, Altitude, and Yaw Offset to True North
 
-int16[3] position		# position of the drone (x,y,z) in regards to (to be determined)
+float32[3] position		# Position of the Landing point in relation to the Drone (x,y,z in Meters NED)
+				# X/north position of target, relative to vehicle (navigation frame) [meters]
+				# Y/east position of target, relative to vehicle (navigation frame) [meters]
+				# Z/down position of target, relative to vehicle (navigation frame) [meters]
 
 

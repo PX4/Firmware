@@ -95,6 +95,13 @@ UWB_R4::UWB_R4(const char *device_name, speed_t baudrate, bool  uwb_pos_debug):
 
 UWB_R4::~UWB_R4()
 {
+	printf("UWB: Ranging Stopped\t\n");
+	int written = write(_uart, &CMD_STOP_RANGING, sizeof(CMD_STOP_RANGING));
+
+	if (written < (int) sizeof(CMD_STOP_RANGING)) {
+		PX4_ERR("Only wrote %d bytes out of %d.", written, (int) sizeof(CMD_STOP_RANGING));
+	}
+
 	perf_free(_read_err_perf);
 	perf_free(_read_count_perf);
 
@@ -506,7 +513,11 @@ int UWB_R4::distance()
 
 
 		if (UWB_OK == UWB_POS_ERROR) {
-			memcpy(&_uwb_distance.position, &position, sizeof(position_t));
+
+			//memcpy(&_uwb_distance.position, &position, sizeof(position_t));
+			_uwb_distance.position[0] = x_rel_position;
+			_uwb_distance.position[1] = y_rel_position;
+			_uwb_distance.position[2] = z_rel_position;
 
 		} else {
 			//only print the error if debug is enabled
@@ -581,16 +592,21 @@ UWB_POS_ERROR_CODES UWB_R4::localization()
 	 * @param no_distances: 				Number of valid distances in distance array (it's not the size of the array)
 	 * @param anchor_pos: 	Pointer to array that contains anchor positions in cm (including positions related to invalid results)
 	 * @param no_anc_positions: 			Number of valid anchor positions in the position array (it's not the size of the array)
-	 * @param position_result_pt: 			Pointer to position_t variable that holds the result of this calculation
+	 * @param position_result_pt: 			Pointer toposition. position_t variable that holds the result of this calculation
 	 * @return: The function returns a status code. */
 
 	/* 		Algorithm used:
 	 *		Linear Least Sqaures to solve Multilateration
-listener uwb_distance-i 0 -n 1000
 	 * 		with a Special case if there are only 3 Anchors.
 	 * 		Output is the Coordinates of the Initiator in relation to Anchor 0 in NEU (North-East-Up) Framing
+	 * 		In cm
 	 */
 
+
+	/* Resulting Position Vector*/
+	int64_t x_pos = 0;
+	int64_t y_pos = 0;
+	int64_t z_pos = 0;
 	/* Matrix components (3*3 Matrix resulting from least square error method) [cm^2] */
 	int64_t M_11 = 0;
 	int64_t M_12 = 0;																						// = M_21
@@ -610,7 +626,6 @@ listener uwb_distance-i 0 -n 1000
 	bool	anchors_on_x_y_plane = true;																		// Is true, if all anchors are on the same height => x-y-plane
 	bool	lin_dep = true;																						// All vectors are linear dependent, if this variable is true
 	uint8_t ind_y_indi = 0;	//numberr of independet vectors																					// First anchor index, for which the second row entry of the matrix [(x_1 - x_0) (x_2 - x_0) ... ; (y_1 - x_0) (y_2 - x_0) ...] is non-zero => linear independent
-
 
 	/* Arrays for used distances and anchor positions (without rejected ones) */
 	uint32_t 	distances_cm_pt[_grid_survey_msg.num_anchors];
@@ -751,16 +766,16 @@ listener uwb_distance-i 0 -n 1000
 			return UWB_RANK_ZERO;
 		}
 
-		position.z = (int32_t)(((nominator * 10) / denominator + 5) / 10);	// [cm]
+		z_pos = ((nominator * 10) / denominator + 5) / 10;	// [cm]
 	}
 
 	/* Else prepare for different calculation approach (after x and y were calculated) */
 	else {
-		position.z = 0u;
+		z_pos = 0;
 	}
 
 	/* Calculating the y-position */
-	nominator = b[1] * M_11 - b[0] * M_12 - ((int64_t)position.z) * (M_11 * M_23 - M_12 * M_13);	// [cm^5]
+	nominator = b[1] * M_11 - b[0] * M_12 - (z_pos * (M_11 * M_23 - M_12 * M_13));	// [cm^5]
 	denominator = M_11 * M_22 - M_12 * M_12;// [cm^4]
 
 	/* Check, if denominator is zero (Rank of matrix not high enough) */
@@ -768,13 +783,13 @@ listener uwb_distance-i 0 -n 1000
 		return UWB_RANK_ZERO;
 	}
 
-	position.y = (int32_t)(((nominator * 10) / denominator + 5) / 10);	// [cm]
+	y_pos = ((nominator * 10) / denominator + 5) / 10;	// [cm]
 
 	/* Calculating the x-position */
-	nominator = b[0] - ((int64_t)position.z) * M_13 - ((int64_t)position.y) * M_12;	// [cm^3]
+	nominator = b[0] - z_pos * M_13 - y_pos* M_12;	// [cm^3]
 	denominator = M_11;	// [cm^2]
 
-	position.x = (int32_t)(((nominator * 10) / denominator + 5) / 10);// [cm]
+	x_pos = ((nominator * 10) / denominator + 5) / 10;// [cm]
 
 	/* Calculate z-position form x and y coordinates, if z can't be determined by previous steps (All anchors at z_n = 0) */
 	if (anchors_on_x_y_plane == true) {
@@ -782,51 +797,47 @@ listener uwb_distance-i 0 -n 1000
 		for (int i = 0; i < no_distances; i++) {
 			/* z² = dis_meas_n² - (x - x_anc_n)² - (y - y_anc_n)² */
 			temp = (int64_t)((int64_t)pow(distances_cm_pt[i], 2)
-					 - (int64_t)pow(((int64_t)position.x - (int64_t)anchor_pos[i].x), 2)
-					 - (int64_t)pow(((int64_t)position.y - (int64_t)anchor_pos[i].y), 2));
+					 - (int64_t)pow((x_pos - (int64_t)anchor_pos[i].x), 2)
+					 - (int64_t)pow((y_pos - (int64_t)anchor_pos[i].y), 2));
 
 			/* z² must be positive, else x and y must be wrong => calculate positive sqrt and sum up all calculated heights, if positive */
 			if (temp >= 0) {
-				position.z += (int32_t)sqrt(temp);
+				z_pos += (int64_t)sqrt(temp);
 
 			} else {
-				position.z = 0;
+				z_pos = 0;
 			}
 		}
 
-		position.z = position.z / no_distances;										// Divide sum by number of distances to get the average
+		z_pos = z_pos / no_distances;										// Divide sum by number of distances to get the average
 
 		/* Add height of the anchor grid's height */
-		position.z += anchor_pos[0].z;
+		z_pos += anchor_pos[0].z;
 	}
 
 
-	/*	Coordinate Frame	*/
-	//	Changes the Coordinate Frame from Anchor 0 to Target Position
-	//
-	position.x -= _uwb_grid.target_pos[0];
-	position.z -= _uwb_grid.target_pos[1];
-	position.y -= _uwb_grid.target_pos[2];
-
-
+	//Output is the Coordinates of the Initiator in relation to 0,0,0 in NEU (North-East-Up) Framing
 	// The end goal of this math is to get the position relative to the landing point in the NED frame.
-	// Current position, in RDDrone frame
-	_current_position_uwb_r4 = matrix::Vector3f(position.x, position.y, position.z);
-	// Construct the rotation from the RDDrone frame to the NWU frame.
-	// The RDDrone frame is just NWU, rotated by some amount about the Z (up) axis.
+	_current_position_uwb_r4 = matrix::Vector3f(x_pos, y_pos, z_pos);
+
+	// Construct the rotation from the UWB_R4frame to the NWU frame.
+	// The UWB_R4 frame is just NWU, rotated by some amount about the Z (up) axis. (GPS offset angle to North)
 	// To get back to NWU, just rotate by negative this amount about Z.
-	_uwb_r4_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_uwb_distance.gps_data[3]  * M_PI_F / 180.0f)));
+	_uwb_r4_to_nwu = matrix::Dcmf(matrix::Eulerf(0.0f, 0.0f, -(_uwb_distance.gps_data[3]  * M_PI_F / 180.0f))); //_distance_result_msg.gps_data.yaw
 	// The actual conversion:
-	//  - Subtract _landing_point to get the position relative to the landing point, in RDDrone frame
+	//  - Subtract _landing_point to get the position relative to the landing point, in UWB_R4 frame
 	//  - Rotate by _rddrone_to_nwu to get into the NWU frame
 	//  - Rotate by _nwu_to_ned to get into the NED frame
 	_current_position_ned = _nwu_to_ned * _uwb_r4_to_nwu * _current_position_uwb_r4;
 
-	// Now the position is the vehicle relative to the landing point. We need the landing point relative to
-	// the vehicle. So just negate everything.
-	position.x = _current_position_ned(0);
-	position.y = _current_position_ned(1);
-	position.z = _current_position_ned(2);
+	// Now the position is the landing point relative to the vehicle.
+	// so the only thing left is to convert cm to Meters
+	x_rel_position = _current_position_ned(0)/100;
+	y_rel_position = _current_position_ned(1)/100;
+	z_rel_position = _current_position_ned(2)/100;
+
+
+	// The UWB report contains the position of the vehicle relative to the landing point.
 
 
 	return UWB_OK;
