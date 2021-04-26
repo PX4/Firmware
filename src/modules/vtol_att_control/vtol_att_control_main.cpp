@@ -139,52 +139,40 @@ VtolAttitudeControl::init()
 	return true;
 }
 
-/**
-* Check for command updates.
-*/
-void
-VtolAttitudeControl::vehicle_cmd_poll()
+void VtolAttitudeControl::vehicle_cmd_poll()
 {
-	if (_vehicle_cmd_sub.updated()) {
-		_vehicle_cmd_sub.copy(&_vehicle_cmd);
-		handle_command();
-	}
-}
+	vehicle_command_s vehicle_command;
 
-/**
-* Check received command
-*/
-void
-VtolAttitudeControl::handle_command()
-{
-	if (_vehicle_cmd.command == vehicle_command_s::VEHICLE_CMD_DO_VTOL_TRANSITION) {
+	while (_vehicle_cmd_sub.update(&vehicle_command)) {
+		if (vehicle_command.command == vehicle_command_s::VEHICLE_CMD_DO_VTOL_TRANSITION) {
+			vehicle_status_s vehicle_status{};
+			_vehicle_status_sub.copy(&vehicle_status);
 
-		vehicle_status_s vehicle_status = {};
-		_vehicle_status_sub.copy(&vehicle_status);
+			uint8_t result = vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED;
 
-		uint8_t result = vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED;
+			// deny any transition in auto takeoff mode, plus transition from RW to FW in land or RTL mode
+			if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF
+			    || (vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
+				&& (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LAND
+				    || vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL))) {
 
-		// deny any transition in auto takeoff mode, plus transition from RW to FW in land or RTL mode
-		if (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_TAKEOFF
-		    || (vehicle_status.vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
-			&& (vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_LAND
-			    || vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL))) {
-			result = vehicle_command_ack_s::VEHICLE_RESULT_TEMPORARILY_REJECTED;
+				result = vehicle_command_ack_s::VEHICLE_RESULT_TEMPORARILY_REJECTED;
 
-		} else {
-			_transition_command = int(_vehicle_cmd.param1 + 0.5f);
-		}
+			} else {
+				_transition_command = int(vehicle_command.param1 + 0.5f);
+			}
 
-		if (_vehicle_cmd.from_external) {
-			vehicle_command_ack_s command_ack{};
-			command_ack.timestamp = hrt_absolute_time();
-			command_ack.command = _vehicle_cmd.command;
-			command_ack.result = result;
-			command_ack.target_system = _vehicle_cmd.source_system;
-			command_ack.target_component = _vehicle_cmd.source_component;
+			if (vehicle_command.from_external) {
+				vehicle_command_ack_s command_ack{};
+				command_ack.timestamp = hrt_absolute_time();
+				command_ack.command = vehicle_command.command;
+				command_ack.result = result;
+				command_ack.target_system = vehicle_command.source_system;
+				command_ack.target_component = vehicle_command.source_component;
 
-			uORB::Publication<vehicle_command_ack_s> command_ack_pub{ORB_ID(vehicle_command_ack)};
-			command_ack_pub.publish(command_ack);
+				uORB::Publication<vehicle_command_ack_s> command_ack_pub{ORB_ID(vehicle_command_ack)};
+				command_ack_pub.publish(command_ack);
+			}
 		}
 	}
 }
@@ -207,27 +195,14 @@ VtolAttitudeControl::is_fixed_wing_requested()
 		to_fw = (_transition_command == vtol_vehicle_status_s::VEHICLE_VTOL_STATE_FW);
 	}
 
-	// handle abort request
-	if (_abort_front_transition) {
-		if (to_fw) {
-			to_fw = false;
-
-		} else {
-			// the state changed to mc mode, reset the abort request
-			_abort_front_transition = false;
-			_vtol_vehicle_status.vtol_transition_failsafe = false;
-		}
-	}
-
 	return to_fw;
 }
 
 void
-VtolAttitudeControl::abort_front_transition(const char *reason)
+VtolAttitudeControl::quadchute(const char *reason)
 {
-	if (!_abort_front_transition) {
+	if (!_vtol_vehicle_status.vtol_transition_failsafe) {
 		mavlink_log_critical(&_mavlink_log_pub, "Abort: %s", reason);
-		_abort_front_transition = true;
 		_vtol_vehicle_status.vtol_transition_failsafe = true;
 	}
 }
@@ -449,7 +424,7 @@ VtolAttitudeControl::Run()
 
 			_fw_virtual_att_sp_sub.update(&_fw_virtual_att_sp);
 
-			if (mc_att_sp_updated || fw_att_sp_updated) {
+			if (!_vtol_type->was_in_trans_mode() || mc_att_sp_updated || fw_att_sp_updated) {
 				_vtol_type->update_transition_state();
 				_v_att_sp_pub.publish(_v_att_sp);
 			}

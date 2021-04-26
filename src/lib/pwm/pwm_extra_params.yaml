@@ -1,0 +1,147 @@
+__max_num_config_instances: &max_num_config_instances 8
+
+module_name: pwm_out
+
+parameters:
+    - group: PWM Outputs
+      definitions:
+
+        PWM_EXTRA_RATE:
+            description:
+                short: PWM extra output frequency
+                long: |
+                    Set to 400 for industry default or 1000 for high frequency ESCs.
+                    Set to 0 for Oneshot125.
+            type: int32
+            unit: Hz
+            min: -1
+            max: 2000
+            default: 50
+
+        PWM_EXTRA_MIN:
+            description:
+                short: PWM extra minimum value
+                long: |
+                    Set to 1000 for industry default or 900 to increase servo travel.
+            type: int32
+            unit: us
+            min: 800
+            max: 1400
+            default: 1000
+
+        PWM_EXTRA_MAX:
+            description:
+                short: PWM extra maximum value
+                long: |
+                    Set to 2000 for industry default or 2100 to increase servo travel.
+            type: int32
+            unit: us
+            min: 1600
+            max: 2200
+            default: 2000
+
+        PWM_EXTRA_DISARM:
+            description:
+                short: PWM extra disarmed value
+                long: |
+                    This is the PWM pulse the autopilot is outputting if not armed.
+                    The main use of this parameter is to silence ESCs when they are disarmed.
+            type: int32
+            unit: us
+            min: 0
+            max: 2200
+            default: 1500
+
+        PWM_EXTRA_MIN${i}:
+            description:
+                short: PWM extra ${i} minimum value
+                long: |
+                    This is the minimum PWM pulse the autopilot is allowed to output.
+                    When set to -1 the value for PWM_EXTRA_MIN will be used
+            type: int32
+            unit: us
+            min: -1
+            max: 1600
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: -1
+
+        PWM_EXTRA_MAX${i}:
+            description:
+                short: PWM extra ${i} maximum value
+                long: |
+                    This is the maximum PWM pulse the autopilot is allowed to output.
+                    When set to -1 the value for PWM_EXTRA_MAX will be used
+            type: int32
+            unit: us
+            min: -1
+            max: 2150
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: -1
+
+        PWM_EXTRA_FAIL${i}:
+            description:
+                short: PWM extra ${i} failsafe value
+                long: |
+                    This is the PWM pulse the autopilot is outputting if in failsafe mode.
+                    When set to -1 the value is set automatically depending if the actuator
+                    is a motor (900us) or a servo (1500us)
+            type: int32
+            unit: us
+            min: 0
+            max: 2150
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: 0
+
+        PWM_EXTRA_DIS${i}:
+            description:
+                short: PWM extra ${i} disarmed value
+                long: |
+                    This is the PWM pulse the autopilot is outputting if not armed.
+                    When set to -1 the value for PWM_EXTRA_DISARM will be used
+            type: int32
+            unit: us
+            min: -1
+            max: 2150
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: -1
+
+        PWM_EXTRA_TRIM${i}:
+            description:
+                short: PWM extra ${i} trim value
+                long: |
+                    Set to normalized offset
+            type: float
+            min: -0.2
+            max:  0.2
+            decimal: 2
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: 0
+
+        PWM_EXTRA_REV${i}:
+            description:
+                short: PWM extra ${i} reverse value
+                long: |
+                    Enable to invert the channel.
+                    Warning: Use this parameter when connected to a servo only.
+                    For a brushless motor, invert manually two phases to reverse the direction.
+            type: boolean
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: 0
+
+        PWM_EXTRA_RATE${i}:
+            description:
+                short: PWM extra ${i} rate
+                long: |
+                    Set the default PWM output frequency for the main outputs
+            type: int32
+            unit: Hz
+            min: 0
+            max: 400
+            instance_start: 1
+            default: 50

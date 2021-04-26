@@ -339,10 +339,6 @@ void ICM42605::ConfigureGyro()
 
 void ICM42605::ConfigureSampleRate(int sample_rate)
 {
-	if (sample_rate == 0) {
-		sample_rate = 800; // default to 800 Hz
-	}
-
 	// round down to nearest FIFO sample dt
 	const float min_interval = FIFO_SAMPLE_DT;
 	_fifo_empty_interval_us = math::max(roundf((1e6f / (float)sample_rate) / min_interval) * min_interval, min_interval);

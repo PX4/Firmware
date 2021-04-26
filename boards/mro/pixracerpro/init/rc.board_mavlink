@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Board specific MAVLink startup script.
+# board specific MAVLink startup script.
 #------------------------------------------------------------------------------
 
 # Start MAVLink on the USB port

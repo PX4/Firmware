@@ -39,6 +39,7 @@
 
 #include "MixerGroup.hpp"
 
+#include "AllocatedActuatorMixer/AllocatedActuatorMixer.hpp"
 #include "HelicopterMixer/HelicopterMixer.hpp"
 #include "MultirotorMixer/MultirotorMixer.hpp"
 #include "NullMixer/NullMixer.hpp"
@@ -190,6 +191,10 @@ MixerGroup::load_from_buf(Mixer::ControlCallback control_cb, uintptr_t cb_handle
 		switch (*p) {
 		case 'Z':
 			m = NullMixer::from_text(p, resid);
+			break;
+
+		case 'A':
+			m = AllocatedActuatorMixer::from_text(control_cb, cb_handle, p, resid);
 			break;
 
 		case 'M':

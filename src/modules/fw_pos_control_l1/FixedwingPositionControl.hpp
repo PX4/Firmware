@@ -76,7 +76,6 @@
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/tecs_status.h>
-#include <uORB/topics/vehicle_acceleration.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -86,27 +85,17 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_local_position.h>
+#include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/uORB.h>
 #include <vtol_att_control/vtol_type.h>
 
-using math::constrain;
-using math::max;
-using math::min;
-using math::radians;
-
-using matrix::Dcmf;
-using matrix::Eulerf;
-using matrix::Quatf;
-using matrix::Vector2f;
-using matrix::Vector3f;
-using matrix::wrap_pi;
-
-using uORB::SubscriptionData;
-
 using namespace launchdetection;
 using namespace runwaytakeoff;
 using namespace time_literals;
+
+using matrix::Vector2d;
+using matrix::Vector2f;
 
 static constexpr float HDG_HOLD_DIST_NEXT =
 	3000.0f; // initial distance of waypoint in front of plane in heading hold mode
@@ -150,16 +139,18 @@ private:
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	uORB::Subscription _control_mode_sub{ORB_ID(vehicle_control_mode)};		///< control mode subscription
+	uORB::Subscription _airspeed_validated_sub{ORB_ID(airspeed_validated)};
+	uORB::Subscription _control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};
-	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	///< notification of manual control updates
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 	uORB::Subscription _pos_sp_triplet_sub{ORB_ID(position_setpoint_triplet)};
+	uORB::Subscription _trajectory_setpoint_sub{ORB_ID(trajectory_setpoint)};
 	uORB::Subscription _vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
-	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};		///< vehicle attitude subscription
-	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};		///< vehicle command subscription
-	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};	///< vehicle land detected subscription
-	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};			///< vehicle status subscription
-	uORB::SubscriptionData<vehicle_angular_velocity_s>	_vehicle_rates_sub{ORB_ID(vehicle_angular_velocity)};
+	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
+	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	uORB::Publication<vehicle_attitude_setpoint_s>		_attitude_sp_pub;
 	uORB::Publication<position_controller_status_s>		_pos_ctrl_status_pub{ORB_ID(position_controller_status)};			///< navigation capabilities publication
@@ -168,22 +159,19 @@ private:
 
 	manual_control_setpoint_s	_manual_control_setpoint {};			///< r/c channel data
 	position_setpoint_triplet_s	_pos_sp_triplet {};		///< triplet of mission items
-	vehicle_attitude_s		_att {};			///< vehicle attitude setpoint
 	vehicle_attitude_setpoint_s	_att_sp {};			///< vehicle attitude setpoint
-	vehicle_command_s		_vehicle_command {};		///< vehicle commands
 	vehicle_control_mode_s		_control_mode {};		///< control mode
 	vehicle_local_position_s	_local_pos {};			///< vehicle local position
-	vehicle_land_detected_s		_vehicle_land_detected {};	///< vehicle land detected
 	vehicle_status_s		_vehicle_status {};		///< vehicle status
-
-	SubscriptionData<airspeed_validated_s>			_airspeed_validated_sub{ORB_ID(airspeed_validated)};
-	SubscriptionData<vehicle_acceleration_s>	_vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 
 	double _current_latitude{0};
 	double _current_longitude{0};
 	float _current_altitude{0.f};
 
 	perf_counter_t	_loop_perf;				///< loop performance counter
+
+	map_projection_reference_s _global_local_proj_ref{};
+	float	_global_local_alt0{NAN};
 
 	float	_hold_alt{0.0f};				///< hold altitude for altitude mode
 	float	_takeoff_ground_alt{0.0f};			///< ground altitude at which plane was launched
@@ -199,6 +187,8 @@ private:
 	position_setpoint_s _hdg_hold_curr_wp {};		///< position to which heading hold flies
 
 	hrt_abstime _control_position_last_called{0};		///< last call of control_position
+
+	bool _landed{true};
 
 	/* Landing */
 	bool _land_noreturn_horizontal{false};
@@ -238,12 +228,12 @@ private:
 	float _airspeed{0.0f};
 	float _eas2tas{1.0f};
 
-	float _groundspeed_undershoot{0.0f};			///< ground speed error to min. speed in m/s
-
-	Dcmf _R_nb;				///< current attitude
-	float _roll{0.0f};
 	float _pitch{0.0f};
 	float _yaw{0.0f};
+	float _yawrate{0.0f};
+
+	matrix::Vector3f _body_acceleration{};
+	matrix::Vector3f _body_velocity{};
 
 	bool _reinitialize_tecs{true};				///< indicates if the TECS states should be reinitialized (used for VTOL)
 	bool _is_tecs_running{false};
@@ -254,7 +244,7 @@ private:
 
 	bool _vtol_tailsitter{false};
 
-	Vector2f _transition_waypoint{NAN, NAN};
+	matrix::Vector2d _transition_waypoint{(double)NAN, (double)NAN};
 
 	// estimator reset counters
 	uint8_t _pos_reset_counter{0};				///< captures the number of times the estimator has reset the horizontal position
@@ -330,13 +320,13 @@ private:
 	 */
 	void		update_desired_altitude(float dt);
 
-	bool		control_position(const hrt_abstime &now, const Vector2f &curr_pos, const Vector2f &ground_speed,
+	bool		control_position(const hrt_abstime &now, const Vector2d &curr_pos, const Vector2f &ground_speed,
 					 const position_setpoint_s &pos_sp_prev,
 					 const position_setpoint_s &pos_sp_curr, const position_setpoint_s &pos_sp_next);
-	void		control_takeoff(const hrt_abstime &now, const Vector2f &curr_pos, const Vector2f &ground_speed,
+	void		control_takeoff(const hrt_abstime &now, const Vector2d &curr_pos, const Vector2f &ground_speed,
 					const position_setpoint_s &pos_sp_prev,
 					const position_setpoint_s &pos_sp_curr);
-	void		control_landing(const hrt_abstime &now, const Vector2f &curr_pos, const Vector2f &ground_speed,
+	void		control_landing(const hrt_abstime &now, const Vector2d &curr_pos, const Vector2f &ground_speed,
 					const position_setpoint_s &pos_sp_prev,
 					const position_setpoint_s &pos_sp_curr);
 
@@ -345,11 +335,6 @@ private:
 
 	float		get_demanded_airspeed();
 	float		calculate_target_airspeed(float airspeed_demand, const Vector2f &ground_speed);
-
-	/**
-	 * Handle incoming vehicle commands
-	 */
-	void		handle_command();
 
 	void		reset_takeoff_state(bool force = false);
 	void		reset_landing_state();
@@ -395,19 +380,21 @@ private:
 
 		(ParamFloat<px4::params::FW_T_CLMB_MAX>) _param_fw_t_clmb_max,
 		(ParamFloat<px4::params::FW_T_HRATE_FF>) _param_fw_t_hrate_ff,
-		(ParamFloat<px4::params::FW_T_HRATE_P>) _param_fw_t_hrate_p,
-		(ParamFloat<px4::params::FW_T_INTEG_GAIN>) _param_fw_t_integ_gain,
+		(ParamFloat<px4::params::FW_T_ALT_TC>) _param_fw_t_h_error_tc,
+		(ParamFloat<px4::params::FW_T_I_GAIN_THR>) _param_fw_t_I_gain_thr,
+		(ParamFloat<px4::params::FW_T_I_GAIN_PIT>) _param_fw_t_I_gain_pit,
 		(ParamFloat<px4::params::FW_T_PTCH_DAMP>) _param_fw_t_ptch_damp,
 		(ParamFloat<px4::params::FW_T_RLL2THR>) _param_fw_t_rll2thr,
 		(ParamFloat<px4::params::FW_T_SINK_MAX>) _param_fw_t_sink_max,
 		(ParamFloat<px4::params::FW_T_SINK_MIN>) _param_fw_t_sink_min,
 		(ParamFloat<px4::params::FW_T_SPD_OMEGA>) _param_fw_t_spd_omega,
 		(ParamFloat<px4::params::FW_T_SPDWEIGHT>) _param_fw_t_spdweight,
-		(ParamFloat<px4::params::FW_T_SRATE_P>) _param_fw_t_srate_p,
+		(ParamFloat<px4::params::FW_T_TAS_TC>) _param_fw_t_tas_error_tc,
 		(ParamFloat<px4::params::FW_T_THR_DAMP>) _param_fw_t_thr_damp,
-		(ParamFloat<px4::params::FW_T_THRO_CONST>) _param_fw_t_thro_const,
-		(ParamFloat<px4::params::FW_T_TIME_CONST>) _param_fw_t_time_const,
 		(ParamFloat<px4::params::FW_T_VERT_ACC>) _param_fw_t_vert_acc,
+		(ParamFloat<px4::params::FW_T_STE_R_TC>) _param_ste_rate_time_const,
+		(ParamFloat<px4::params::FW_T_TAS_R_TC>) _param_tas_rate_time_const,
+		(ParamFloat<px4::params::FW_T_SEB_R_FF>) _param_seb_rate_ff,
 
 		(ParamFloat<px4::params::FW_THR_ALT_SCL>) _param_fw_thr_alt_scl,
 		(ParamFloat<px4::params::FW_THR_CRUISE>) _param_fw_thr_cruise,
@@ -423,11 +410,12 @@ private:
 		(ParamInt<px4::params::FW_ARSP_MODE>) _param_fw_arsp_mode,
 
 		(ParamFloat<px4::params::FW_PSP_OFF>) _param_fw_psp_off,
-		(ParamFloat<px4::params::FW_RSP_OFF>) _param_fw_rsp_off,
 		(ParamFloat<px4::params::FW_MAN_P_MAX>) _param_fw_man_p_max,
 		(ParamFloat<px4::params::FW_MAN_R_MAX>) _param_fw_man_r_max,
 
-		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad
+		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad,
+
+		(ParamFloat<px4::params::FW_TKO_PITCH_MIN>) _takeoff_pitch_min
 
 	)
 

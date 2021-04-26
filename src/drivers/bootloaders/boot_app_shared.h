@@ -36,32 +36,18 @@
 
 #pragma once
 
-/****************************************************************************
- * Included Files
- ****************************************************************************/
-
 #include <nuttx/compiler.h>
 
 __BEGIN_DECLS
-
-/****************************************************************************
- * Pre-processor Definitions
- ****************************************************************************/
 
 /* Define the signature for the Application descriptor as 'APDesc' and a
  * revision number of 00 used in app_descriptor_t
  */
 
-#define APP_DESCRIPTOR_SIGNATURE_ID 'A','P','D','e','s','c'
-#define APP_DESCRIPTOR_SIGNATURE_REV '0','0'
-#define APP_DESCRIPTOR_SIGNATURE APP_DESCRIPTOR_SIGNATURE_ID, APP_DESCRIPTOR_SIGNATURE_REV
+#define APP_DESCRIPTOR_SIGNATURE { 0x40, 0xa2, 0xe4, 0xf1, 0x64, 0x68, 0x91, 0x06 }
 
 /* N.B. the .ld file must emit this sections */
 # define boot_app_shared_section __attribute__((section(".app_descriptor")))
-
-/****************************************************************************
- * Public Type Definitions
- ****************************************************************************/
 
 /* eRole defines the role of the bootloader_app_shared_t structure */
 
@@ -108,7 +94,6 @@ typedef begin_packed_struct struct bootloader_app_shared_t {
 	uint32_t bus_speed;
 	uint32_t node_id;
 } end_packed_struct bootloader_app_shared_t;
-#pragma GCC diagnostic pop
 
 /****************************************************************************
  *
@@ -140,22 +125,22 @@ typedef begin_packed_struct struct bootloader_app_shared_t {
 #pragma GCC diagnostic ignored "-Wpacked"
 typedef begin_packed_struct struct app_descriptor_t {
 	uint8_t signature[sizeof(uint64_t)];
-	uint64_t image_crc;
+	union {
+		uint64_t image_crc;
+		struct {
+			uint32_t crc32_block1;
+			uint32_t crc32_block2;
+		};
+	};
 	uint32_t image_size;
-	uint32_t vcs_commit;
-	uint8_t major_version;
-	uint8_t minor_version;
-	uint8_t reserved[6];
+	uint32_t git_hash;
+	uint8_t  major_version;
+	uint8_t  minor_version;
+	uint16_t board_id;
+	uint8_t reserved[ 3 + 3 + 2];
 } end_packed_struct app_descriptor_t;
 #pragma GCC diagnostic pop
 
-/****************************************************************************
- * Global Variables
- ****************************************************************************/
-
-/****************************************************************************
- * Public Function Prototypes
- ****************************************************************************/
 /****************************************************************************
  * Name: bootloader_app_shared_read
  *
@@ -184,8 +169,7 @@ typedef begin_packed_struct struct app_descriptor_t {
  *
  ****************************************************************************/
 
-int bootloader_app_shared_read(bootloader_app_shared_t *shared,
-			       eRole_t role);
+int bootloader_app_shared_read(bootloader_app_shared_t *shared, eRole_t role);
 
 /****************************************************************************
  * Name: bootloader_app_shared_write
@@ -211,8 +195,7 @@ int bootloader_app_shared_read(bootloader_app_shared_t *shared,
  *
  ****************************************************************************/
 
-void bootloader_app_shared_write(bootloader_app_shared_t *shared,
-				 eRole_t role);
+void bootloader_app_shared_write(bootloader_app_shared_t *shared, eRole_t role);
 
 /****************************************************************************
  * Name: bootloader_app_shared_invalidate

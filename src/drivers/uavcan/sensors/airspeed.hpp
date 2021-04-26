@@ -45,7 +45,7 @@
 #include <uavcan/equipment/air_data/TrueAirspeed.hpp>
 #include <uavcan/equipment/air_data/StaticTemperature.hpp>
 
-class UavcanAirspeedBridge : public UavcanCDevSensorBridgeBase
+class UavcanAirspeedBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;

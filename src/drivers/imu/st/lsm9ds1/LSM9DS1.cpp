@@ -239,10 +239,6 @@ void LSM9DS1::RunImpl()
 
 void LSM9DS1::ConfigureSampleRate(int sample_rate)
 {
-	if (sample_rate == 0) {
-		sample_rate = ST_LSM9DS1::LA_ODR;
-	}
-
 	// round down to nearest FIFO sample dt
 	const float min_interval = FIFO_SAMPLE_DT;
 	_fifo_empty_interval_us = math::max(roundf((1e6f / (float)sample_rate) / min_interval) * min_interval, min_interval);

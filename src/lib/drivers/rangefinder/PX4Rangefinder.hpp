@@ -34,24 +34,22 @@
 #pragma once
 
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_range_finder.h>
-#include <lib/cdev/CDev.hpp>
 #include <lib/conversion/rotation.h>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/distance_sensor.h>
 
-class PX4Rangefinder : public cdev::CDev
+class PX4Rangefinder
 {
-
 public:
 	PX4Rangefinder(const uint32_t device_id,
 		       const uint8_t device_orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING);
 	~PX4Rangefinder();
 
-	void set_device_type(uint8_t device_type);
-	//void set_error_count(uint64_t error_count) { _distance_sensor_pub.get().error_count = error_count; }
+	// Set the MAV_DISTANCE_SENSOR type (LASER, ULTRASOUND, INFRARED, RADAR)
+	void set_rangefinder_type(uint8_t rangefinder_type) { _distance_sensor_pub.get().type = rangefinder_type; };
 
-	void set_device_id(const uint8_t device_id) { _distance_sensor_pub.get().id = device_id; };
+	void set_device_id(const uint8_t device_id) { _distance_sensor_pub.get().device_id = device_id; };
+	void set_device_type(const uint8_t device_type);
 
 	void set_fov(const float fov) { set_hfov(fov); set_vfov(fov); }
 	void set_hfov(const float fov) { _distance_sensor_pub.get().h_fov = fov; }
@@ -64,12 +62,8 @@ public:
 
 	void update(const hrt_abstime &timestamp_sample, const float distance, const int8_t quality = -1);
 
-	int get_class_instance() { return _class_device_instance; };
+	int get_instance() { return _distance_sensor_pub.get_instance(); };
 
 private:
-
-	uORB::PublicationMultiData<distance_sensor_s> _distance_sensor_pub;
-
-	int			_class_device_instance{-1};
-
+	uORB::PublicationMultiData<distance_sensor_s> _distance_sensor_pub{ORB_ID(distance_sensor)};
 };

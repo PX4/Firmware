@@ -370,3 +370,8 @@ uint64_t px4_os_version_binary(void)
 #endif
 }
 
+const char *px4_firmware_oem_version_string(void)
+{
+	return PX4_GIT_OEM_VERSION_STR;
+}
+

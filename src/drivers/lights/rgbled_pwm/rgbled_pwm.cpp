@@ -72,6 +72,7 @@ private:
 };
 
 extern int led_pwm_servo_set(unsigned channel, uint8_t  value);
+extern int led_pwm_servo_set_ex(uint8_t r, uint8_t g, uint8_t b, uint8_t led_count);
 extern unsigned led_pwm_servo_get(unsigned channel);
 extern int led_pwm_servo_init(void);
 extern void led_pwm_servo_deinit(void);
@@ -208,7 +209,6 @@ RGBLED_PWM::send_led_rgb()
 	led_pwm_servo_set(4, _g);
 	led_pwm_servo_set(5, _b);
 #endif
-
 	return (OK);
 }
 

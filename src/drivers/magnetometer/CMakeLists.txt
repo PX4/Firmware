@@ -32,7 +32,7 @@
 ############################################################################
 
 add_subdirectory(akm)
-add_subdirectory(bmm150)
+add_subdirectory(bosch)
 add_subdirectory(hmc5883)
 add_subdirectory(qmc5883l)
 add_subdirectory(isentek)

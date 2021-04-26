@@ -100,18 +100,6 @@ SECTIONS
 		 . += 8;
 	} > progflash
 
-	/*
-	 * Construction data for parameters.
-	 */
-	__param ALIGN(4): {
-		__param_start = ABSOLUTE(.);
-		KEEP(*(__param*))
-		__param_end = ABSOLUTE(.);
-		 . = ALIGN(8);
-		 FILL(0xff)
-		 . += 8;
-	} > progflash
-
 	.ARM.extab : {
 		*(.ARM.extab*)
 		 . = ALIGN(8);

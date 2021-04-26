@@ -48,6 +48,9 @@ __BEGIN_DECLS
 #define px4_enter_critical_section()       enter_critical_section()
 #define px4_leave_critical_section(flags)  leave_critical_section(flags)
 
+#define px4_udelay(usec) up_udelay(usec)
+#define px4_mdelay(msec) up_mdelay(msec)
+
 #include <arch/board/board.h>
 
 __END_DECLS

@@ -185,25 +185,25 @@ void PCA9685Wrapper::updatePWMParams()
 		default_pwm_fail = PWM_DEFAULT_MIN,
 		default_pwm_dis = PWM_MOTOR_OFF;
 
-	param_t param_h = param_find("PWM_MAX");
+	param_t param_h = param_find("PWM_MAIN_MAX");
 
 	if (param_h != PARAM_INVALID) {
 		param_get(param_h, &default_pwm_max);
 
 	} else {
-		PX4_DEBUG("PARAM_INVALID: %s", "PWM_MAX");
+		PX4_DEBUG("PARAM_INVALID: %s", "PWM_MAIN_MAX");
 	}
 
-	param_h = param_find("PWM_MIN");
+	param_h = param_find("PWM_MAIN_MIN");
 
 	if (param_h != PARAM_INVALID) {
 		param_get(param_h, &default_pwm_min);
 
 	} else {
-		PX4_DEBUG("PARAM_INVALID: %s", "PWM_MIN");
+		PX4_DEBUG("PARAM_INVALID: %s", "PWM_MAIN_MIN");
 	}
 
-	param_h = param_find("PWM_RATE");
+	param_h = param_find("PWM_MAIN_RATE");
 
 	if (param_h != PARAM_INVALID) {
 		int32_t pval = 0;
@@ -215,7 +215,7 @@ void PCA9685Wrapper::updatePWMParams()
 		}
 
 	} else {
-		PX4_DEBUG("PARAM_INVALID: %s", "PWM_RATE");
+		PX4_DEBUG("PARAM_INVALID: %s", "PWM_MAIN_RATE");
 	}
 
 	for (int i = 0; i < PCA9685_PWM_CHANNEL_COUNT; i++) {

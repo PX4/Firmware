@@ -127,7 +127,8 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 	if (reset_yaw_sp) {
 		_man_yaw_sp = yaw;
 
-	} else if (_manual_control_setpoint.z > 0.05f || _param_mc_airmode.get() == (int32_t)Mixer::Airmode::roll_pitch_yaw) {
+	} else if (math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f) > 0.05f
+		   || _param_mc_airmode.get() == (int32_t)Mixer::Airmode::roll_pitch_yaw) {
 
 		const float yaw_rate = math::radians(_param_mpc_man_y_max.get());
 		attitude_setpoint.yaw_sp_move_rate = _manual_control_setpoint.r * yaw_rate;
@@ -210,7 +211,7 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 	Quatf q_sp = Eulerf(attitude_setpoint.roll_body, attitude_setpoint.pitch_body, attitude_setpoint.yaw_body);
 	q_sp.copyTo(attitude_setpoint.q_d);
 
-	attitude_setpoint.thrust_body[2] = -throttle_curve(_manual_control_setpoint.z);
+	attitude_setpoint.thrust_body[2] = -throttle_curve(math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f));
 	attitude_setpoint.timestamp = hrt_absolute_time();
 
 	_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
@@ -286,15 +287,6 @@ MulticopterAttitudeControl::Run()
 			}
 		}
 
-		/* Check if we are in rattitude mode and the pilot is above the threshold on pitch
-		* or roll (yaw can rotate 360 in normal att control). If both are true don't
-		* even bother running the attitude controllers */
-		if (_v_control_mode.flag_control_rattitude_enabled) {
-			_v_control_mode.flag_control_attitude_enabled =
-				fabsf(_manual_control_setpoint.y) <= _param_mc_ratt_th.get() &&
-				fabsf(_manual_control_setpoint.x) <= _param_mc_ratt_th.get();
-		}
-
 		bool attitude_setpoint_generated = false;
 
 		const bool is_hovering = (_vehicle_type_rotary_wing && !_vtol_in_transition_mode);
@@ -324,16 +316,6 @@ MulticopterAttitudeControl::Run()
 
 			Vector3f rates_sp = _attitude_control.update(q);
 
-			if (_v_control_mode.flag_control_yawrate_override_enabled) {
-				/* Yaw rate override enabled, overwrite the yaw setpoint */
-				vehicle_rates_setpoint_s v_rates_sp{};
-
-				if (_v_rates_sp_sub.copy(&v_rates_sp)) {
-					const float yawrate_sp = v_rates_sp.yaw;
-					rates_sp(2) = yawrate_sp;
-				}
-			}
-
 			// publish rate setpoint
 			vehicle_rates_setpoint_s v_rates_sp{};
 			v_rates_sp.roll = rates_sp(0);
@@ -347,9 +329,7 @@ MulticopterAttitudeControl::Run()
 
 		// reset yaw setpoint during transitions, tailsitter.cpp generates
 		// attitude setpoint for the transition
-		_reset_yaw_sp = (!attitude_setpoint_generated && !_v_control_mode.flag_control_rattitude_enabled) ||
-				_landed || (_vtol && _vtol_in_transition_mode);
-
+		_reset_yaw_sp = !attitude_setpoint_generated || _landed || (_vtol && _vtol_in_transition_mode);
 	}
 
 	perf_end(_loop_perf);

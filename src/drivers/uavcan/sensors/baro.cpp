@@ -44,24 +44,15 @@
 
 const char *const UavcanBarometerBridge::NAME = "baro";
 
-#define UAVCAN_BARO_BASE_DEVICE_PATH "/dev/uavcan/baro"
-
 UavcanBarometerBridge::UavcanBarometerBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_baro", UAVCAN_BARO_BASE_DEVICE_PATH, UAVCAN_BARO_BASE_DEVICE_PATH,
-				   ORB_ID(sensor_baro)),
+	UavcanSensorBridgeBase("uavcan_baro", ORB_ID(sensor_baro)),
 	_sub_air_pressure_data(node),
 	_sub_air_temperature_data(node)
 { }
 
 int UavcanBarometerBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_air_pressure_data.start(AirPressureCbBinder(this, &UavcanBarometerBridge::air_pressure_sub_cb));
+	int res = _sub_air_pressure_data.start(AirPressureCbBinder(this, &UavcanBarometerBridge::air_pressure_sub_cb));
 
 	if (res < 0) {
 		DEVICE_LOG("failed to start uavcan sub: %d", res);
@@ -78,20 +69,16 @@ int UavcanBarometerBridge::init()
 	return 0;
 }
 
-void
-UavcanBarometerBridge::air_temperature_sub_cb(const
+void UavcanBarometerBridge::air_temperature_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticTemperature> &msg)
 {
 	last_temperature_kelvin = msg.static_temperature;
 }
 
-void
-UavcanBarometerBridge::air_pressure_sub_cb(const
+void UavcanBarometerBridge::air_pressure_sub_cb(const
 		uavcan::ReceivedDataStructure<uavcan::equipment::air_data::StaticPressure> &msg)
 {
-	lock();
 	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
-	unlock();
 
 	if (channel == nullptr) {
 		// Something went wrong - no channel to publish on; return
@@ -125,10 +112,10 @@ int UavcanBarometerBridge::init_driver(uavcan_bridge::Channel *channel)
 
 	PX4Barometer *baro = (PX4Barometer *)channel->h_driver;
 
-	channel->class_instance = baro->get_class_instance();
+	channel->instance = baro->get_instance();
 
-	if (channel->class_instance < 0) {
-		PX4_ERR("UavcanBaro: Unable to get a class instance");
+	if (channel->instance < 0) {
+		PX4_ERR("UavcanBaro: Unable to get an instance");
 		delete baro;
 		channel->h_driver = nullptr;
 		return PX4_ERROR;

@@ -120,8 +120,8 @@ static void usage(const char *name)
              "  -i <ip_address>         Target IP for UDP. Default 127.0.0.1\n"
              "  -n <namespace>          ROS 2 topics namespace. Identifies the vehicle in a multi-agent network\n"
              "  -p <poll_ms>            Time in ms to poll over UART. Default 1ms\n"
-             "  -r <reception port>     UDP port for receiving. Default 2019\n"
-             "  -s <sending port>       UDP port for sending. Default 2020\n"
+             "  -r <reception port>     UDP port for receiving. Default 2020\n"
+             "  -s <sending port>       UDP port for sending. Default 2019\n"
              "  -t <transport>          [UART|UDP] Default UART\n"
              "  -v <debug verbosity>    Add more verbosity\n"
              "  -w <sleep_time_us>      Time in us for which each iteration sleep. Default 1ms\n",

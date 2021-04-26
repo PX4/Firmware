@@ -58,6 +58,7 @@ ExternalProject_Add(px4io_firmware
 	USES_TERMINAL_BUILD true
 	DEPENDS git_nuttx git_nuttx_apps
 	BUILD_ALWAYS 1
+	BUILD_BYPRODUCTS "${PX4_BINARY_DIR}/external/Build/px4io_firmware/${config_io_board}.elf"
 )
 
 ExternalProject_Get_Property(px4io_firmware BINARY_DIR)
@@ -71,7 +72,7 @@ file(RELATIVE_PATH fw_io_bin_relative ${CMAKE_CURRENT_BINARY_DIR} ${fw_io_bin})
 add_custom_command(OUTPUT ${fw_io_bin}
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${PX4_BINARY_DIR}/romfs_extras
 	COMMAND ${CMAKE_OBJCOPY} -O binary ${fw_io_exe_relative} ${fw_io_bin_relative}
-	DEPENDS px4io_firmware
+	DEPENDS ${fw_io_exe} px4io_firmware
 	COMMENT "Copying ${config_io_board} to ROMFS extras"
 	)
 add_custom_target(copy_px4io_bin DEPENDS ${fw_io_bin})

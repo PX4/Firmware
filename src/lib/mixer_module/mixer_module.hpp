@@ -178,6 +178,8 @@ public:
 
 	void setIgnoreLockdown(bool ignore_lockdown) { _ignore_lockdown = ignore_lockdown; }
 
+	void setMaxNumOutputs(uint8_t max_num_outputs) { _max_num_outputs = max_num_outputs; }
+
 protected:
 	void updateParams() override;
 
@@ -261,7 +263,7 @@ private:
 
 	bool _wq_switched{false};
 	uint8_t _driver_instance{0}; ///< for boards that supports multiple outputs (e.g. PX4IO + FMU)
-	const uint8_t _max_num_outputs;
+	uint8_t _max_num_outputs;
 
 	struct MotorTest {
 		uORB::Subscription test_motor_sub{ORB_ID(test_motor)};

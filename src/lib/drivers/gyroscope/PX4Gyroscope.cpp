@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2018-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2018-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@
 using namespace time_literals;
 using matrix::Vector3f;
 
-static constexpr int32_t sum(const int16_t samples[16], uint8_t len)
+static constexpr int32_t sum(const int16_t samples[], uint8_t len)
 {
 	int32_t sum = 0;
 
@@ -52,8 +52,6 @@ static constexpr int32_t sum(const int16_t samples[16], uint8_t len)
 }
 
 PX4Gyroscope::PX4Gyroscope(uint32_t device_id, enum Rotation rotation) :
-	_sensor_pub{ORB_ID(sensor_gyro)},
-	_sensor_fifo_pub{ORB_ID(sensor_gyro_fifo)},
 	_device_id{device_id},
 	_rotation{rotation}
 {
@@ -82,45 +80,21 @@ void PX4Gyroscope::set_device_type(uint8_t devtype)
 	_device_id = device_id.devid;
 }
 
-void PX4Gyroscope::update(const hrt_abstime &timestamp_sample, float x, float y, float z)
+void PX4Gyroscope::set_scale(float scale)
 {
-	// publish
-	Publish(timestamp_sample, x, y, z);
-}
+	if (fabsf(scale - _scale) > FLT_EPSILON) {
+		// rescale last sample on scale change
+		float rescale = _scale / scale;
 
-void PX4Gyroscope::updateFIFO(sensor_gyro_fifo_s &sample)
-{
-	// publish fifo
-	sample.device_id = _device_id;
-	sample.scale = _scale;
-	sample.rotation = _rotation;
+		for (auto &s : _last_sample) {
+			s = roundf(s * rescale);
+		}
 
-	sample.timestamp = hrt_absolute_time();
-	_sensor_fifo_pub.publish(sample);
-
-	{
-		// trapezoidal integration (equally spaced, scaled by dt later)
-		const uint8_t N = sample.samples;
-		const Vector3f integral{
-			(0.5f * (_last_sample[0] + sample.x[N - 1]) + sum(sample.x, N - 1)),
-			(0.5f * (_last_sample[1] + sample.y[N - 1]) + sum(sample.y, N - 1)),
-			(0.5f * (_last_sample[2] + sample.z[N - 1]) + sum(sample.z, N - 1)),
-		};
-
-		_last_sample[0] = sample.x[N - 1];
-		_last_sample[1] = sample.y[N - 1];
-		_last_sample[2] = sample.z[N - 1];
-
-		const float x = integral(0) / (float)N;
-		const float y = integral(1) / (float)N;
-		const float z = integral(2) / (float)N;
-
-		// publish
-		Publish(sample.timestamp_sample, x, y, z);
+		_scale = scale;
 	}
 }
 
-void PX4Gyroscope::Publish(const hrt_abstime &timestamp_sample, float x, float y, float z)
+void PX4Gyroscope::update(const hrt_abstime &timestamp_sample, float x, float y, float z)
 {
 	// Apply rotation (before scaling)
 	rotate_3f(_rotation, x, y, z);
@@ -134,6 +108,51 @@ void PX4Gyroscope::Publish(const hrt_abstime &timestamp_sample, float x, float y
 	report.x = x * _scale;
 	report.y = y * _scale;
 	report.z = z * _scale;
+	report.samples = 1;
+	report.timestamp = hrt_absolute_time();
+
+	_sensor_pub.publish(report);
+}
+
+void PX4Gyroscope::updateFIFO(sensor_gyro_fifo_s &sample)
+{
+	// rotate all raw samples and publish fifo
+	const uint8_t N = sample.samples;
+
+	for (int n = 0; n < N; n++) {
+		rotate_3i(_rotation, sample.x[n], sample.y[n], sample.z[n]);
+	}
+
+	sample.device_id = _device_id;
+	sample.scale = _scale;
+	sample.timestamp = hrt_absolute_time();
+	_sensor_fifo_pub.publish(sample);
+
+
+	// trapezoidal integration (equally spaced, scaled by dt later)
+	const Vector3f integral{
+		(0.5f * (_last_sample[0] + sample.x[N - 1]) + sum(sample.x, N - 1)),
+		(0.5f * (_last_sample[1] + sample.y[N - 1]) + sum(sample.y, N - 1)),
+		(0.5f * (_last_sample[2] + sample.z[N - 1]) + sum(sample.z, N - 1)),
+	};
+
+	_last_sample[0] = sample.x[N - 1];
+	_last_sample[1] = sample.y[N - 1];
+	_last_sample[2] = sample.z[N - 1];
+
+
+	const float scale = _scale / N;
+
+	sensor_gyro_s report;
+
+	report.timestamp_sample = sample.timestamp_sample;
+	report.device_id = _device_id;
+	report.temperature = _temperature;
+	report.error_count = _error_count;
+	report.x = integral(0) * scale;
+	report.y = integral(1) * scale;
+	report.z = integral(2) * scale;
+	report.samples = N;
 	report.timestamp = hrt_absolute_time();
 
 	_sensor_pub.publish(report);

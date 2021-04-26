@@ -41,6 +41,7 @@ add_library(drivers_board
 	spi.cpp
 	timer_config.cpp
 	usb.c
+	toc.c
 )
 add_dependencies(drivers_board arch_board_hw_info)
 

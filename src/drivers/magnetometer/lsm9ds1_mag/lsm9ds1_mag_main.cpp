@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,8 +36,27 @@
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module.h>
 
-void
-LSM9DS1_MAG::print_usage()
+I2CSPIDriverBase *LSM9DS1_MAG::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
+		int runtime_instance)
+{
+	LSM9DS1_MAG *instance = new LSM9DS1_MAG(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.rotation,
+						cli.bus_frequency, cli.spi_mode);
+
+	if (instance == nullptr) {
+		PX4_ERR("alloc failed");
+		return nullptr;
+	}
+
+	if (OK != instance->init()) {
+		delete instance;
+		PX4_DEBUG("no device on bus %i (devid 0x%x)", iterator.bus(), iterator.devid());
+		return nullptr;
+	}
+
+	return instance;
+}
+
+void LSM9DS1_MAG::print_usage()
 {
 	PRINT_MODULE_USAGE_NAME("lsm9ds1_mag", "driver");
 	PRINT_MODULE_USAGE_SUBCATEGORY("magnetometer");
@@ -47,32 +66,12 @@ LSM9DS1_MAG::print_usage()
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 }
 
-I2CSPIDriverBase *LSM9DS1_MAG::instantiate(const BusCLIArguments &cli, const BusInstanceIterator &iterator,
-		int runtime_instance)
-{
-	LSM9DS1_MAG *instance = new LSM9DS1_MAG(iterator.configuredBusOption(), iterator.bus(), iterator.devid(),
-						cli.rotation, cli.bus_frequency, cli.spi_mode);
-
-	if (instance == nullptr) {
-		PX4_ERR("alloc failed");
-		return nullptr;
-	}
-
-	if (OK != instance->init()) {
-		delete instance;
-		return nullptr;
-	}
-
-	return instance;
-}
-
-
 extern "C" __EXPORT int lsm9ds1_mag_main(int argc, char *argv[])
 {
-	using ThisDriver = LSM9DS1_MAG;
 	int ch;
+	using ThisDriver = LSM9DS1_MAG;
 	BusCLIArguments cli{false, true};
-	cli.default_spi_frequency = ST_LSM9DS1_MAG::SPI_SPEED;
+	cli.default_spi_frequency = SPI_SPEED;
 
 	while ((ch = cli.getopt(argc, argv, "R:")) != EOF) {
 		switch (ch) {

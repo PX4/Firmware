@@ -1,0 +1,42 @@
+#!/bin/sh
+#
+# Standard apps for balloons
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+#
+# Start the attitude and position estimator.
+#
+
+if param compare SYS_MC_EST_GROUP 1
+then
+	#
+	# Try to start LPE. If it fails, start EKF2 as a default.
+	# Unfortunately we do not build it on px4_fmu-v2 due to a limited flash.
+	#
+	if attitude_estimator_q start
+	then
+		echo "WARN [init] Estimator LPE unsupported, EKF2 recommended."
+		local_position_estimator start
+	else
+		echo "ERROR [init] Estimator LPE not available. Using EKF2"
+		param set SYS_MC_EST_GROUP 2
+		param save
+		reboot
+	fi
+else
+	#
+	# Q estimator (attitude estimation only)
+	#
+	if param compare SYS_MC_EST_GROUP 3
+	then
+		attitude_estimator_q start
+	else
+		#
+		# EKF2
+		#
+		param set SYS_MC_EST_GROUP 2
+		ekf2 start &
+	fi
+fi

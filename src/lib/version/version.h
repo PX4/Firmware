@@ -187,5 +187,10 @@ __EXPORT uint64_t px4_mavlink_lib_version_binary(void);
  */
 __EXPORT uint64_t px4_os_version_binary(void);
 
+/**
+ * get the git oem version tag (can be empty, no particular format)
+ */
+__EXPORT const char *px4_firmware_oem_version_string(void);
+
 __END_DECLS
 

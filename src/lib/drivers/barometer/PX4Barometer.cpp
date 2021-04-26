@@ -36,22 +36,13 @@
 
 #include <lib/drivers/device/Device.hpp>
 
-PX4Barometer::PX4Barometer(uint32_t device_id) :
-	CDev(nullptr),
-	_sensor_baro_pub{ORB_ID(sensor_baro)}
+PX4Barometer::PX4Barometer(uint32_t device_id)
 {
-	_class_device_instance = register_class_devname(BARO_BASE_DEVICE_PATH);
-	_sensor_baro_pub.advertise();
-
 	_sensor_baro_pub.get().device_id = device_id;
 }
 
 PX4Barometer::~PX4Barometer()
 {
-	if (_class_device_instance != -1) {
-		unregister_class_devname(BARO_BASE_DEVICE_PATH, _class_device_instance);
-	}
-
 	_sensor_baro_pub.unadvertise();
 }
 

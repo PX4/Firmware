@@ -15,7 +15,7 @@ uint16 ARM_AUTH_DENIED_REASON_BAD_WEATHER = 5
 
 uint8 ORB_QUEUE_LENGTH = 4
 
-uint16 command
+uint32 command
 uint8 result
 bool from_external
 uint8 result_param1

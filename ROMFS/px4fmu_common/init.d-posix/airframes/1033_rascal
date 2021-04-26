@@ -5,54 +5,55 @@
 
 . ${R}etc/init.d/rc.fw_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set EKF2_ARSP_THR 8
-	param set EKF2_FUSE_BETA 1
-	#param set EKF2_MAG_ACCLIM 0
-	#param set EKF2_MAG_YAWLIM 0
+param set-default EKF2_ARSP_THR 8
+param set-default EKF2_FUSE_BETA 1
 
-	param set FW_LND_AIRSPD_SC 1.1
-	param set FW_LND_ANG 5
-	param set FW_THR_LND_MAX 0
-	param set FW_LND_HHDIST 30
-	param set FW_LND_FL_PMIN 9.5
-	param set FW_LND_FL_PMAX 20
-	param set FW_LND_FLALT 5
-	param set FW_LND_TLALT 15
+param set-default FW_LND_AIRSPD_SC 1.1
+param set-default FW_LND_ANG 5
+param set-default FW_THR_LND_MAX 0
+param set-default FW_LND_HHDIST 30
+param set-default FW_LND_FL_PMIN 9.5
+param set-default FW_LND_FL_PMAX 20
+param set-default FW_LND_FLALT 5
+param set-default FW_LND_TLALT 15
 
-	param set FW_L1_PERIOD 25
+param set-default FW_L1_PERIOD 25
 
-	param set FW_P_TC 0.4
-	param set FW_PR_FF 0.40
-	param set FW_PR_I 0.05
-	param set FW_PR_P 0.05
+param set-default FW_P_TC 0.4
+param set-default FW_PR_FF 0.40
+param set-default FW_PR_I 0.05
+param set-default FW_PR_P 0.05
 
-	param set FW_R_TC 0.45
-	param set FW_RR_FF 0.40
-	param set FW_RR_I 0.132
-	param set FW_RR_P 0.085
+param set-default FW_R_TC 0.45
+param set-default FW_RR_FF 0.40
+param set-default FW_RR_I 0.132
+param set-default FW_RR_P 0.085
 
-	param set FW_W_EN 1
+param set-default FW_W_EN 1
 
-	param set MIS_LTRMIN_ALT 30
-	param set MIS_TAKEOFF_ALT 20
-	param set MIS_DIST_1WP 2500
-	param set MIS_DIST_WPS 10000
+param set-default MIS_LTRMIN_ALT 30
+param set-default MIS_TAKEOFF_ALT 20
+param set-default MIS_DIST_1WP 2500
+param set-default MIS_DIST_WPS 10000
 
-	param set NAV_ACC_RAD 15
-	param set NAV_DLL_ACT 2
-	param set NAV_LOITER_RAD 50
+param set-default NAV_ACC_RAD 15
+param set-default NAV_DLL_ACT 2
+param set-default NAV_LOITER_RAD 50
 
-	param set RWTO_TKOFF 1
-	#param set FW_THR_SLEW_MAX 0.3 # fix takeoff failure for JSBsim in autonomous mission mode.
-	param set RWTO_MAX_PITCH 20
-	param set RWTO_MAX_ROLL 10
-	#param set RWTO_MAX_THR 0.6		# fix takeoff failure for JSBsim in autonomous mission mode.
-	param set RWTO_PSP 8
-	param set RWTO_AIRSPD_SCL 1.8
+param set-default RWTO_TKOFF 1
 
-fi
+# fix takeoff failure for JSBsim in autonomous mission mode.
+#param set FW_THR_SLEW_MAX 0.3
+
+param set-default RWTO_MAX_PITCH 20
+param set-default RWTO_MAX_ROLL 10
+
+# fix takeoff failure for JSBsim in autonomous mission mode.
+#param set-default RWTO_MAX_THR 0.6
+
+param set-default RWTO_PSP 8
+param set-default RWTO_AIRSPD_SCL 1.8
+
 
 set MIXER_FILE etc/mixers-sitl/plane_sitl.main.mix
 set MIXER custom

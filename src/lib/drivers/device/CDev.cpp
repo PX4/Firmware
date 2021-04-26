@@ -42,7 +42,6 @@
 #include <cstring>
 
 #include <px4_platform_common/posix.h>
-#include <drivers/drv_device.h>
 
 namespace device
 {
@@ -74,23 +73,6 @@ int CDev::init()
 	}
 
 out:
-	return ret;
-}
-
-int CDev::ioctl(file_t *filep, int cmd, unsigned long arg)
-{
-	PX4_DEBUG("CDev::ioctl");
-	int ret = -ENOTTY;
-
-	switch (cmd) {
-	case DEVIOCGDEVICEID:
-		ret = (int)_device_id.devid;
-		break;
-
-	default:
-		break;
-	}
-
 	return ret;
 }
 

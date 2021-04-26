@@ -43,7 +43,7 @@
 #include <drivers/drv_hrt.h>
 #include <px4_platform_common/module_params.h>
 
-class UavcanBatteryBridge : public UavcanCDevSensorBridgeBase, public ModuleParams
+class UavcanBatteryBridge : public UavcanSensorBridgeBase, public ModuleParams
 {
 public:
 	static const char *const NAME;

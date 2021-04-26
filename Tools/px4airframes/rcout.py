@@ -78,7 +78,6 @@ class RCOutput():
         if not post_start:
             result += "else\n"
             result += "\techo \"ERROR  [init] No file matches SYS_AUTOSTART value found in : /etc/init.d/airframes\"\n"
-            result += "\techo \"ERROR  [init] No file matches SYS_AUTOSTART value found in : /etc/init.d/airframes\" >> $LOG_FILE\n"
             # Reset the configuration
             result += "\tparam set SYS_AUTOSTART 0\n"
             result += "\ttone_alarm ${TUNE_ERR}\n"

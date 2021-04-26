@@ -3,35 +3,5 @@
 # Holybro Durandal V1 specific board defaults
 #------------------------------------------------------------------------------
 
-
-#
-# Bootloader upgrade
-#
-set BL_FILE /etc/extras/holybro_durandal-v1_bootloader.bin
-if [ -f $BL_FILE ]
-then
-	if param compare SYS_BL_UPDATE 1
-	then
-		param set SYS_BL_UPDATE 0
-		param save
-		echo "BL update..." >> $LOG_FILE
-		bl_update $BL_FILE
-		echo "BL update done" >> $LOG_FILE
-		reboot
-	fi
-fi
-unset BL_FILE
-
-if [ $AUTOCNF = yes ]
-then
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
-	param set EKF2_MULTI_MAG 3
-	param set SENS_MAG_MODE 0
-
-	# Enable IMU thermal control
-	param set SENS_EN_THERMAL 1
-fi
-
-set LOGGER_BUF 64
+# Enable IMU thermal control
+param set-default SENS_EN_THERMAL 1

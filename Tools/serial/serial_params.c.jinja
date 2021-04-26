@@ -58,6 +58,11 @@ PARAM_DEFINE_INT32(SER_{{ serial_device.tag }}_BAUD, {{ serial_device.default_ba
 {%- for serial_device in serial_devices %}
  * @value {{ serial_device.index }} {{ serial_device.label }}
 {%- endfor %}
+{%- if command.supports_networking %}
+{%- for config in ethernet_configuration %}
+ * @value {{ config.index }} {{ config.label }}
+{%- endfor %}
+{%- endif %}
  * @group {{ command.param_group }}
  * @reboot_required true
  */

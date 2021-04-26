@@ -43,7 +43,6 @@
 
 #include <containers/Array.hpp>
 #include <drivers/device/i2c.h>
-#include <drivers/drv_range_finder.h>
 #include <perf/perf_counter.h>
 #include <px4_platform_common/getopt.h>
 #include <px4_platform_common/module_params.h>
@@ -192,6 +191,8 @@ private:
 	 */
 	int get_sensor_rotation(const size_t index);
 
+	static constexpr int RANGE_FINDER_MAX_SENSORS = 12;
+
 	px4::Array<uint8_t, RANGE_FINDER_MAX_SENSORS> _sensor_addresses {};
 	px4::Array<uint8_t, RANGE_FINDER_MAX_SENSORS> _sensor_rotations {};
 
@@ -224,7 +225,9 @@ MappyDot::MappyDot(I2CSPIBusOption bus_option, const int bus, int bus_frequency)
 	I2C(DRV_DIST_DEVTYPE_MAPPYDOT, MODULE_NAME, bus, MAPPYDOT_BASE_ADDR, bus_frequency),
 	ModuleParams(nullptr),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus)
-{}
+{
+	set_device_type(DRV_DIST_DEVTYPE_MAPPYDOT);
+}
 
 MappyDot::~MappyDot()
 {
@@ -265,7 +268,7 @@ MappyDot::collect()
 
 		distance_sensor_s report {};
 		report.current_distance = distance_m;
-		report.id               = _sensor_addresses[index];
+		report.device_id        = get_device_id();
 		report.max_distance     = MAPPYDOT_MAX_DISTANCE;
 		report.min_distance     = MAPPYDOT_MIN_DISTANCE;
 		report.orientation      = _sensor_rotations[index];

@@ -39,35 +39,27 @@
 class MavlinkStreamGPSStatus : public MavlinkStream
 {
 public:
-	const char *get_name() const override { return MavlinkStreamGPSStatus::get_name_static(); }
+	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamGPSStatus(mavlink); }
 
 	static constexpr const char *get_name_static() { return "GPS_STATUS"; }
-
 	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_GPS_STATUS; }
 
+	const char *get_name() const override { return MavlinkStreamGPSStatus::get_name_static(); }
 	uint16_t get_id() override { return get_id_static(); }
-
-	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamGPSStatus(mavlink); }
 
 	unsigned get_size() override
 	{
-		return _satellite_info_sub.advertised() ? MAVLINK_MSG_ID_GPS_STATUS_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+		return _satellite_info_sub.advertised() ? (MAVLINK_MSG_ID_GPS_STATUS_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
+	explicit MavlinkStreamGPSStatus(Mavlink *mavlink) : MavlinkStream(mavlink) {}
+
 	uORB::Subscription _satellite_info_sub{ORB_ID(satellite_info)};
-
-	// Disallow copy and move construction.
-	MavlinkStreamGPSStatus(MavlinkStreamGPSStatus &) = delete;
-	MavlinkStreamGPSStatus &operator = (const MavlinkStreamGPSStatus &) = delete;
-
-protected:
-	explicit MavlinkStreamGPSStatus(Mavlink *mavlink) : MavlinkStream(mavlink)
-	{}
 
 	bool send() override
 	{
-		satellite_info_s sat {};
+		satellite_info_s sat;
 
 		if (_satellite_info_sub.update(&sat)) {
 			mavlink_gps_status_t msg{};

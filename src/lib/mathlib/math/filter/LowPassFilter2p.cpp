@@ -33,8 +33,6 @@
 
 #include "LowPassFilter2p.hpp"
 
-#include <px4_platform_common/defines.h>
-
 #include <math.h>
 
 namespace math
@@ -43,6 +41,7 @@ namespace math
 void LowPassFilter2p::set_cutoff_frequency(float sample_freq, float cutoff_freq)
 {
 	_cutoff_freq = cutoff_freq;
+	_sample_freq = sample_freq;
 
 	// reset delay elements on filter change
 	_delay_element_1 = 0.0f;
@@ -70,25 +69,6 @@ void LowPassFilter2p::set_cutoff_frequency(float sample_freq, float cutoff_freq)
 
 	_a1 = 2.0f * (ohm * ohm - 1.0f) / c;
 	_a2 = (1.0f - 2.0f * cosf(M_PI_F / 4.0f) * ohm + ohm * ohm) / c;
-}
-
-float LowPassFilter2p::apply(float sample)
-{
-	// do the filtering
-	float delay_element_0 = sample - _delay_element_1 * _a1 - _delay_element_2 * _a2;
-
-	if (!PX4_ISFINITE(delay_element_0)) {
-		// don't allow bad values to propagate via the filter
-		delay_element_0 = sample;
-	}
-
-	const float output = delay_element_0 * _b0 + _delay_element_1 * _b1 + _delay_element_2 * _b2;
-
-	_delay_element_2 = _delay_element_1;
-	_delay_element_1 = delay_element_0;
-
-	// return the value. Should be no need to check limits
-	return output;
 }
 
 float LowPassFilter2p::reset(float sample)

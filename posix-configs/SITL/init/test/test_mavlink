@@ -3,8 +3,6 @@
 # (px4-alias.sh is expected to be in the PATH)
 . px4-alias.sh
 
-uorb start
-
 param load
 param set CBRK_SUPPLY_CHK 894281
 param set SYS_RESTART_TYPE 0
@@ -18,11 +16,9 @@ pwm_out_sim start
 
 ver all
 
-mavlink start -x -u 14556 -r 2000000
+mavlink start -x -u 14556 -r 2000000 -p
 mavlink boot_complete
 
-tests mavlink
-
-dataman status
+mavlink_tests
 
 shutdown

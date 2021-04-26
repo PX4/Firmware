@@ -46,6 +46,7 @@
 #include <px4_platform_common/atomic.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 
+#include "beep.hpp"
 #include "rgbled.hpp"
 #include "safety_state.hpp"
 #include "uavcan_driver.hpp"
@@ -205,6 +206,7 @@ private:
 	UavcanEscController		_esc_controller;
 	UavcanMixingInterface 		_mixing_interface{_node_mutex, _esc_controller};
 	UavcanHardpointController	_hardpoint_controller;
+	UavcanBeep			_beep_controller;
 	UavcanSafetyState         	_safety_state_controller;
 	UavcanRGBController             _rgbled_controller;
 	uavcan::GlobalTimeSyncMaster	_time_sync_master;

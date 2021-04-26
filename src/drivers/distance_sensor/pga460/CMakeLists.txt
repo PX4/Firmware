@@ -37,4 +37,6 @@ px4_add_module(
 	MAIN pga460
 	SRCS
 		pga460.cpp
+	DEPENDS
+		drivers_rangefinder
 	)

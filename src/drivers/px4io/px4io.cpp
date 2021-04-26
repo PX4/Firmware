@@ -65,6 +65,7 @@
 #include <drivers/drv_pwm_output.h>
 #include <drivers/drv_sbus.h>
 #include <drivers/drv_hrt.h>
+#include <drivers/drv_io_heater.h>
 #include <drivers/drv_mixer.h>
 
 #include <rc/dsm.h>
@@ -423,6 +424,8 @@ private:
 	 * @param result	The command result
 	 */
 	void			answer_command(const vehicle_command_s &cmd, uint8_t result);
+
+	void update_params();
 
 	/**
 	 * check and handle test_motor topic updates
@@ -1074,51 +1077,6 @@ PX4IO::task_main()
 					}
 				}
 
-				/*
-				 * Set invert mask for PWM outputs (does not apply to S.Bus)
-				 */
-				int16_t pwm_invert_mask = 0;
-
-				for (unsigned i = 0; i < _max_actuators; i++) {
-					char pname[16];
-					int32_t ival;
-
-					/* fill the channel reverse mask from parameters */
-					sprintf(pname, "PWM_MAIN_REV%u", i + 1);
-					param_t param_h = param_find(pname);
-
-					if (param_h != PARAM_INVALID) {
-						param_get(param_h, &ival);
-						pwm_invert_mask |= ((int16_t)(ival != 0)) << i;
-					}
-				}
-
-				(void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_PWM_REVERSE, pwm_invert_mask);
-
-				// update trim values
-				struct pwm_output_values pwm_values;
-
-//				memset(&pwm_values, 0, sizeof(pwm_values));
-//				ret = io_reg_get(PX4IO_PAGE_CONTROL_TRIM_PWM, 0, (uint16_t *)pwm_values.values, _max_actuators);
-
-				for (unsigned i = 0; i < _max_actuators; i++) {
-					char pname[16];
-					float pval;
-
-					/* fetch the trim values from parameters */
-					sprintf(pname, "PWM_MAIN_TRIM%u", i + 1);
-					param_t param_h = param_find(pname);
-
-					if (param_h != PARAM_INVALID) {
-
-						param_get(param_h, &pval);
-						pwm_values.values[i] = (int16_t)(10000 * pval);
-					}
-				}
-
-				/* copy values to registers in IO */
-				ret = io_reg_set(PX4IO_PAGE_CONTROL_TRIM_PWM, 0, pwm_values.values, _max_actuators);
-
 				float param_val;
 				param_t parm_handle;
 
@@ -1210,6 +1168,8 @@ PX4IO::task_main()
 					param_get(parm_handle, &param_val_int);
 					(void)io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_AIRMODE, SIGNED_TO_REG(param_val_int));
 				}
+
+				update_params();
 			}
 
 		}
@@ -1230,6 +1190,170 @@ out:
 	/* tell the dtor that we are exiting */
 	_task = -1;
 	_exit(0);
+}
+
+void PX4IO::update_params()
+{
+	// skip update when armed
+	if (_armed) {
+		return;
+	}
+
+	int32_t pwm_min_default = PWM_DEFAULT_MIN;
+	int32_t pwm_max_default = PWM_DEFAULT_MAX;
+	int32_t pwm_disarmed_default = 0;
+	int32_t pwm_rate_default = 50;
+
+	const char *prefix = "PWM_MAIN";
+
+	param_get(param_find("PWM_MAIN_MIN"), &pwm_min_default);
+	param_get(param_find("PWM_MAIN_MAX"), &pwm_max_default);
+	param_get(param_find("PWM_MAIN_DISARM"), &pwm_disarmed_default);
+	param_get(param_find("PWM_MAIN_RATE"), &pwm_rate_default);
+
+	char str[17];
+
+
+	// PWM_MAIN_MINx
+	{
+		pwm_output_values pwm{};
+		pwm.channel_count = _max_actuators;
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_MIN%u", prefix, i + 1);
+			int32_t pwm_min = -1;
+
+			if (param_get(param_find(str), &pwm_min) == PX4_OK) {
+				if (pwm_min >= 0) {
+					pwm.values[i] = math::constrain(pwm_min, PWM_LOWEST_MIN, PWM_HIGHEST_MIN);
+
+					if (pwm_min != pwm.values[i]) {
+						int32_t pwm_min_new = pwm.values[i];
+						param_set(param_find(str), &pwm_min_new);
+					}
+
+				} else {
+					pwm.values[i] = pwm_min_default;
+				}
+			}
+		}
+
+		io_reg_set(PX4IO_PAGE_CONTROL_MIN_PWM, 0, pwm.values, pwm.channel_count);
+	}
+
+	// PWM_MAIN_MAXx
+	{
+		pwm_output_values pwm{};
+		pwm.channel_count = _max_actuators;
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_MAX%u", prefix, i + 1);
+			int32_t pwm_max = -1;
+
+			if (param_get(param_find(str), &pwm_max) == PX4_OK) {
+				if (pwm_max >= 0) {
+					pwm.values[i] = math::constrain(pwm_max, PWM_LOWEST_MAX, PWM_HIGHEST_MAX);
+
+					if (pwm_max != pwm.values[i]) {
+						int32_t pwm_max_new = pwm.values[i];
+						param_set(param_find(str), &pwm_max_new);
+					}
+
+				} else {
+					pwm.values[i] = pwm_max_default;
+				}
+			}
+		}
+
+		io_reg_set(PX4IO_PAGE_CONTROL_MAX_PWM, 0, pwm.values, pwm.channel_count);
+	}
+
+	// PWM_MAIN_FAILx
+	{
+		pwm_output_values pwm{};
+		pwm.channel_count = _max_actuators;
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_FAIL%u", prefix, i + 1);
+			int32_t pwm_fail = -1;
+
+			if (param_get(param_find(str), &pwm_fail) == PX4_OK) {
+				if (pwm_fail >= 0) {
+					pwm.values[i] = math::constrain(pwm_fail, 0, PWM_HIGHEST_MAX);
+
+					if (pwm_fail != pwm.values[i]) {
+						int32_t pwm_fail_new = pwm.values[i];
+						param_set(param_find(str), &pwm_fail_new);
+					}
+				}
+			}
+		}
+
+		io_reg_set(PX4IO_PAGE_FAILSAFE_PWM, 0, pwm.values, pwm.channel_count);
+	}
+
+	// PWM_MAIN_DISx
+	{
+		pwm_output_values pwm{};
+		pwm.channel_count = _max_actuators;
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_DIS%u", prefix, i + 1);
+			int32_t pwm_dis = -1;
+
+			if (param_get(param_find(str), &pwm_dis) == PX4_OK) {
+				if (pwm_dis >= 0) {
+					pwm.values[i] = math::constrain(pwm_dis, 0, PWM_HIGHEST_MAX);
+
+					if (pwm_dis != pwm.values[i]) {
+						int32_t pwm_dis_new = pwm.values[i];
+						param_set(param_find(str), &pwm_dis_new);
+					}
+
+				} else {
+					pwm.values[i] = pwm_disarmed_default;
+				}
+			}
+		}
+
+		io_reg_set(PX4IO_PAGE_DISARMED_PWM, 0, pwm.values, pwm.channel_count);
+	}
+
+	// PWM_MAIN_REVx
+	{
+		int16_t reverse_pwm_mask = 0;
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_REV%u", prefix, i + 1);
+			int32_t pwm_rev = -1;
+
+			if (param_get(param_find(str), &pwm_rev) == PX4_OK) {
+				if (pwm_rev >= 1) {
+					reverse_pwm_mask |= (1 << i);
+				}
+
+			}
+		}
+
+		io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_PWM_REVERSE, reverse_pwm_mask);
+	}
+
+	// PWM_MAIN_TRIMx
+	{
+		uint16_t values[8] {};
+
+		for (unsigned i = 0; i < _max_actuators; i++) {
+			sprintf(str, "%s_TRIM%u", prefix, i + 1);
+			float pwm_trim = 0.f;
+
+			if (param_get(param_find(str), &pwm_trim) == PX4_OK) {
+				values[i] = (int16_t)(10000 * pwm_trim);
+			}
+		}
+
+		// copy the trim values to the mixer offsets
+		io_reg_set(PX4IO_PAGE_CONTROL_TRIM_PWM, 0, values, _max_actuators);
+	}
 }
 
 int
@@ -1275,6 +1399,7 @@ PX4IO::io_set_control_state(unsigned group)
 	case 3:
 		changed = _t_actuator_controls_3.update(&controls);
 		break;
+
 	}
 
 	if (!changed && (!_in_esc_calibration_mode || group != 0)) {
@@ -2528,6 +2653,7 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 			if (alarms & PX4IO_P_STATUS_ALARMS_PWM_ERROR) {
 				ret = -EINVAL;
 				io_reg_set(PX4IO_PAGE_STATUS, PX4IO_P_STATUS_ALARMS, PX4IO_P_STATUS_ALARMS_PWM_ERROR);
+				PX4_ERR("failed setting PWM rate on IO");
 			}
 
 			break;
@@ -2646,20 +2772,6 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 
 		break;
 
-	case PWM_SERVO_SET_TRIM_PWM: {
-			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
-
-			if (pwm->channel_count > _max_actuators)
-				/* fail with error */
-			{
-				return -E2BIG;
-			}
-
-			/* copy values to registers in IO */
-			ret = io_reg_set(PX4IO_PAGE_CONTROL_TRIM_PWM, 0, pwm->values, pwm->channel_count);
-			break;
-		}
-
 	case PWM_SERVO_GET_TRIM_PWM: {
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 			pwm->channel_count = _max_actuators;
@@ -2739,18 +2851,9 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 
 		break;
 
-	case PWM_SERVO_SET_SBUS_RATE:
-		/* set the requested SBUS frame rate */
-		ret = io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_SBUS_RATE, arg);
-		break;
-
 	case DSM_BIND_START:
 		/* bind a DSM receiver */
 		ret = dsm_bind_ioctl(arg);
-		break;
-
-	case DSM_BIND_POWER_UP:
-		io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_DSM, dsm_bind_power_up);
 		break;
 
 	case PWM_SERVO_SET(0) ... PWM_SERVO_SET(PWM_OUTPUT_MAX_CHANNELS - 1): {
@@ -2850,19 +2953,26 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 			PX4_ERR("not upgrading IO firmware, system is armed");
 			return -EINVAL;
 
-		} else if (system_status() & PX4IO_P_STATUS_FLAGS_SAFETY_OFF) {
-			// re-enable safety
-			ret = io_reg_modify(PX4IO_PAGE_STATUS, PX4IO_P_STATUS_FLAGS, PX4IO_P_STATUS_FLAGS_SAFETY_OFF, 0);
-
-			// set new status
-			_status &= ~(PX4IO_P_STATUS_FLAGS_SAFETY_OFF);
 		}
+
+		// re-enable safety
+		ret = io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_FORCE_SAFETY_ON, PX4IO_FORCE_SAFETY_MAGIC);
+
+		if (ret != PX4_OK) {
+			PX4_ERR("IO refused to re-enable safety");
+		}
+
+		// set new status
+		_status &= ~(PX4IO_P_STATUS_FLAGS_SAFETY_OFF);
 
 		/* reboot into bootloader - arg must be PX4IO_REBOOT_BL_MAGIC */
 		usleep(1);
-		io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_REBOOT_BL, arg);
-		// we don't expect a reply from this operation
-		ret = OK;
+		ret = io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_REBOOT_BL, arg);
+
+		if (ret != PX4_OK) {
+			PX4_ERR("IO refused to reboot");
+		}
+
 		break;
 
 	case PX4IO_CHECK_CRC: {
@@ -2875,7 +2985,7 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 			}
 
 			if (io_crc != arg) {
-				PX4_DEBUG("crc mismatch 0x%08x 0x%08lx", io_crc, arg);
+				PX4_DEBUG("Firmware CRC mismatch 0x%08x 0x%08lx", io_crc, arg);
 				return -EINVAL;
 			}
 
@@ -2927,6 +3037,20 @@ PX4IO::ioctl(file *filep, int cmd, unsigned long arg)
 		} else {
 			ret = io_reg_modify(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_FEATURES,
 					    (PX4IO_P_SETUP_FEATURES_SBUS1_OUT | PX4IO_P_SETUP_FEATURES_SBUS2_OUT), 0);
+		}
+
+		break;
+
+	case PX4IO_HEATER_CONTROL:
+		if (arg == (unsigned long)HEATER_MODE_DISABLED) {
+			io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_THERMAL, PX4IO_THERMAL_IGNORE);
+
+		} else if (arg == 1) {
+			io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_THERMAL, PX4IO_THERMAL_FULL);
+
+		} else {
+			io_reg_set(PX4IO_PAGE_SETUP, PX4IO_P_SETUP_THERMAL, PX4IO_THERMAL_OFF);
+
 		}
 
 		break;
@@ -3057,7 +3181,8 @@ checkcrc(int argc, char *argv[])
 		(void)new PX4IO(interface);
 
 		if (g_dev == nullptr) {
-			errx(1, "driver allocation failed");
+			PX4_ERR("driver allocation failed");
+			exit(1);
 		}
 
 	} else {
@@ -3069,14 +3194,14 @@ checkcrc(int argc, char *argv[])
 	  check IO CRC against CRC of a file
 	 */
 	if (argc < 2) {
-		warnx("usage: px4io checkcrc filename");
+		PX4_WARN("usage: px4io checkcrc filename");
 		exit(1);
 	}
 
 	int fd = open(argv[1], O_RDONLY);
 
 	if (fd == -1) {
-		warnx("open of %s failed: %d", argv[1], errno);
+		PX4_ERR("open of %s failed: %d", argv[1], errno);
 		exit(1);
 	}
 
@@ -3110,8 +3235,11 @@ checkcrc(int argc, char *argv[])
 	}
 
 	if (ret != OK) {
-		warn("check CRC failed: %d", ret);
+		PX4_ERR("check CRC failed: %d, CRC: %u", ret, fw_crc);
 		exit(1);
+
+	} else {
+		PX4_INFO("IO FW CRC match");
 	}
 
 	exit(0);
@@ -3283,98 +3411,83 @@ px4io_main(int argc, char *argv[])
 
 	if (!strcmp(argv[1], "update")) {
 
-		if (g_dev != nullptr) {
-			warnx("loaded, detaching first");
-			/* stop the driver */
+		constexpr unsigned MAX_RETRIES = 5;
+		unsigned retries = 0;
+		int ret = PX4_ERROR;
+
+		while (ret != OK && retries < MAX_RETRIES) {
+
+			retries++;
+			// Sleep 200 ms before the next attempt
+			usleep(200 * 1000);
+
+			if (g_dev == nullptr) {
+				/* allocate the interface */
+				device::Device *interface = get_interface();
+
+				/* create the driver - it will set g_dev */
+				(void)new PX4IO(interface);
+
+				if (g_dev == nullptr) {
+					delete interface;
+					errx(1, "driver allocation failed");
+				}
+			}
+
+			// Try to reboot
+			ret = g_dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, PX4IO_REBOOT_BL_MAGIC);
+			// tear down the px4io instance
 			delete g_dev;
 			g_dev = nullptr;
+
+			if (ret != OK) {
+				PX4_ERR("reboot failed - %d, still attempting upgrade", ret);
+			}
+
+			PX4IO_Uploader *up;
+
+			/* Assume we are using default paths */
+
+			const char *fn[4] = PX4IO_FW_SEARCH_PATHS;
+
+			/* Override defaults if a path is passed on command line */
+			if (argc > 2) {
+				fn[0] = argv[2];
+				fn[1] = nullptr;
+			}
+
+			up = new PX4IO_Uploader;
+			ret = up->upload(&fn[0]);
+			delete up;
 		}
-
-		PX4IO_Uploader *up;
-
-		/* Assume we are using default paths */
-
-		const char *fn[4] = PX4IO_FW_SEARCH_PATHS;
-
-		/* Override defaults if a path is passed on command line */
-		if (argc > 2) {
-			fn[0] = argv[2];
-			fn[1] = nullptr;
-		}
-
-		up = new PX4IO_Uploader;
-		int ret = up->upload(&fn[0]);
-		delete up;
 
 		switch (ret) {
 		case OK:
 			break;
 
 		case -ENOENT:
-			errx(1, "PX4IO firmware file not found");
+			PX4_ERR("PX4IO firmware file not found");
+			break;
 
 		case -EEXIST:
 		case -EIO:
-			errx(1, "error updating PX4IO - check that bootloader mode is enabled");
+			PX4_ERR("error updating PX4IO - check that bootloader mode is enabled");
+			break;
 
 		case -EINVAL:
-			errx(1, "verify failed - retry the update");
+			PX4_ERR("verify failed - retry the update");
+			break;
 
 		case -ETIMEDOUT:
-			errx(1, "timed out waiting for bootloader - power-cycle and try again");
+			PX4_ERR("timed out waiting for bootloader - power-cycle and try again");
+			break;
 
 		default:
-			errx(1, "unexpected error %d", ret);
+			PX4_ERR("unexpected error %d", ret);
+			break;
 		}
 
 		return ret;
-	}
-
-	if (!strcmp(argv[1], "forceupdate")) {
-		/*
-		  force update of the IO firmware without requiring
-		  the user to hold the safety switch down
-		 */
-		if (argc <= 3) {
-			warnx("usage: px4io forceupdate MAGIC filename");
-			exit(1);
-		}
-
-		if (g_dev == nullptr) {
-			warnx("px4io is not started, still attempting upgrade");
-
-			/* allocate the interface */
-			device::Device *interface = get_interface();
-
-			/* create the driver - it will set g_dev */
-			(void)new PX4IO(interface);
-
-			if (g_dev == nullptr) {
-				delete interface;
-				errx(1, "driver allocation failed");
-			}
-		}
-
-		uint16_t arg = atol(argv[2]);
-		int ret = g_dev->ioctl(nullptr, PX4IO_REBOOT_BOOTLOADER, arg);
-
-		if (ret != OK) {
-			warnx("reboot failed - %d", ret);
-			exit(1);
-		}
-
-		// tear down the px4io instance
-		delete g_dev;
-		g_dev = nullptr;
-
-		// upload the specified firmware
-		const char *fn[2];
-		fn[0] = argv[3];
-		fn[1] = nullptr;
-		PX4IO_Uploader *up = new PX4IO_Uploader;
-		up->upload(&fn[0]);
-		delete up;
-		exit(0);
 	}
 
 	/* commands below here require a started driver */
@@ -3556,6 +3669,6 @@ px4io_main(int argc, char *argv[])
 out:
 	errx(1, "need a command, try 'start', 'stop', 'status', 'monitor', 'debug <level>',\n"
 	     "'recovery', 'bind', 'checkcrc', 'safety_on', 'safety_off',\n"
-	     "'forceupdate', 'update', 'sbus1_out', 'sbus2_out', 'rssi_analog' or 'rssi_pwm',\n"
+	     "'update', 'sbus1_out', 'sbus2_out', 'rssi_analog' or 'rssi_pwm',\n"
 	     "'test_fmu_fail', 'test_fmu_ok'");
 }

@@ -1,29 +1,18 @@
 #!/bin/sh
 #
-# Omnibus F4SD specific board defaults
+# board specific defaults
 #------------------------------------------------------------------------------
 
 # system_power unavailable
-param set CBRK_SUPPLY_CHK 894281
+param set-default CBRK_SUPPLY_CHK 894281
 
-# transition from LPE+Q to Q estimator (2019-06-05)
-if param compare SYS_MC_EST_GROUP 1
-then
-	param set SYS_MC_EST_GROUP 3
-fi
+# Disable safety switch by default
+param set-default CBRK_IO_SAFETY 22027
 
+# use the Q attitude estimator, it works w/o mag or GPS.
+param set-default SYS_MC_EST_GROUP 3
+param set-default ATT_ACC_COMP 0
+param set-default ATT_W_ACC 0.4000
+param set-default ATT_W_GYRO_BIAS 0.0000
 
-if [ $AUTOCNF = yes ]
-then
-	# Disable safety switch by default
-	param set CBRK_IO_SAFETY 22027
-
-	# use the Q attitude estimator, it works w/o mag or GPS.
-	param set SYS_MC_EST_GROUP 3
-	param set ATT_ACC_COMP 0
-	param set ATT_W_ACC 0.4000
-	param set ATT_W_GYRO_BIAS 0.0000
-
-	param set SYS_HAS_MAG 0
-fi
-
+param set-default SYS_HAS_MAG 0

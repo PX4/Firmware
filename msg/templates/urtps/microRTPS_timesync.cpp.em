@@ -107,6 +107,16 @@ void TimeSync::reset() {
 	_request_reset_counter = 0;
 }
 
+int64_t TimeSync::getTimeNSec() {
+	auto time = std::chrono::steady_clock::now();
+	return std::chrono::time_point_cast<std::chrono::nanoseconds>(time).time_since_epoch().count();
+}
+
+int64_t TimeSync::getTimeUSec() {
+	auto time = std::chrono::steady_clock::now();
+	return std::chrono::time_point_cast<std::chrono::microseconds>(time).time_since_epoch().count();
+}
+
 bool TimeSync::addMeasurement(int64_t local_t1_ns, int64_t remote_t2_ns, int64_t local_t3_ns) {
 	int64_t rtti = local_t3_ns - local_t1_ns;
 
@@ -167,15 +177,15 @@ void TimeSync::processTimesyncMsg(timesync_msg_t * msg) {
                 _last_remote_msg_seq = getMsgSeq(msg);
 
 		if (getMsgTC1(msg) > 0) {
-			if (!addMeasurement(getMsgTS1(msg), getMsgTC1(msg), getMonoRawTimeNSec())) {
+			if (!addMeasurement(getMsgTS1(msg), getMsgTC1(msg), getTimeNSec())) {
 				if (_debug) std::cerr << "\033[1;33m[ micrortps__timesync ]\tOffset not updated\033[0m" << std::endl;
 			}
 
 		} else if (getMsgTC1(msg) == 0) {
-			setMsgTimestamp(msg, getMonoTimeUSec());
+			setMsgTimestamp(msg, getTimeUSec());
 			setMsgSysID(msg, 0);
 			setMsgSeq(msg, getMsgSeq(msg) + 1);
-			setMsgTC1(msg, getMonoRawTimeNSec());
+			setMsgTC1(msg, getTimeNSec());
 
 			_timesync_pub.publish(msg);
 		}
@@ -185,11 +195,11 @@ void TimeSync::processTimesyncMsg(timesync_msg_t * msg) {
 timesync_msg_t TimeSync::newTimesyncMsg() {
 	timesync_msg_t msg{};
 
-	setMsgTimestamp(&msg, getMonoTimeUSec());
+	setMsgTimestamp(&msg, getTimeUSec());
 	setMsgSysID(&msg, 0);
 	setMsgSeq(&msg, _last_msg_seq);
 	setMsgTC1(&msg, 0);
-	setMsgTS1(&msg, getMonoRawTimeNSec());
+	setMsgTS1(&msg, getTimeNSec());
 
 	_last_msg_seq++;
 

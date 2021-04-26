@@ -34,7 +34,7 @@
 /**
  * Fixedwing max horizontal velocity
  *
- * Maximum horizontal velocity allowed in the landed state (m/s)
+ * Maximum horizontal velocity allowed in the landed state
  *
  * @unit m/s
  * @min 0.5
@@ -48,7 +48,7 @@ PARAM_DEFINE_FLOAT(LNDFW_VEL_XY_MAX, 5.0f);
 /**
  * Fixedwing max climb rate
  *
- * Maximum vertical velocity allowed in the landed state (m/s up and down)
+ * Maximum vertical velocity allowed in the landed state
  *
  * @unit m/s
  * @min 0.1
@@ -62,7 +62,7 @@ PARAM_DEFINE_FLOAT(LNDFW_VEL_Z_MAX, 3.0f);
 /**
  * Fixedwing max horizontal acceleration
  *
- * Maximum horizontal (x,y body axes) acceleration allowed in the landed state (m/s^2)
+ * Maximum horizontal (x,y body axes) acceleration allowed in the landed state
  *
  * @unit m/s^2
  * @min 2
@@ -76,7 +76,7 @@ PARAM_DEFINE_FLOAT(LNDFW_XYACC_MAX, 8.0f);
 /**
  * Airspeed max
  *
- * Maximum airspeed allowed in the landed state (m/s)
+ * Maximum airspeed allowed in the landed state
  *
  * @unit m/s
  * @min 4

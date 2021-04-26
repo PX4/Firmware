@@ -7,10 +7,7 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set MC_PITCHRATE_P 0.1
-	param set MC_ROLLRATE_P 0.1
-fi
+param set-default MC_PITCHRATE_P 0.1
+param set-default MC_ROLLRATE_P 0.1
 
 set MIXER quad_x

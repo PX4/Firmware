@@ -39,6 +39,7 @@
 #include <lib/sensor_calibration/Utilities.hpp>
 #include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/topics/estimator_status.h>
 #include <uORB/topics/sensor_mag.h>
 
 using namespace time_literals;
@@ -49,6 +50,7 @@ bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_st
 	const bool exists = (orb_exists(ORB_ID(sensor_mag), instance) == PX4_OK);
 	bool calibration_valid = false;
 	bool valid = false;
+	bool is_mag_fault = false;
 
 	if (exists) {
 
@@ -72,13 +74,28 @@ bool PreFlightCheck::magnetometerCheck(orb_advert_t *mavlink_log_pub, vehicle_st
 			}
 		}
 
+		for (uint8_t i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
+			uORB::SubscriptionData<estimator_status_s> estimator_status_sub{ORB_ID(estimator_status), i};
+
+			if (estimator_status_sub.get().mag_device_id == static_cast<uint32_t>(device_id)) {
+				if (estimator_status_sub.get().control_mode_flags & (1 << estimator_status_s::CS_MAG_FAULT)) {
+					is_mag_fault = true;
+					break;
+				}
+			}
+		}
+
+		if (is_mag_fault && report_fail) {
+			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Compass #%u fault", instance);
+		}
+
 	} else {
 		if (!optional && report_fail) {
 			mavlink_log_critical(mavlink_log_pub, "Preflight Fail: Compass Sensor %u missing", instance);
 		}
 	}
 
-	const bool success = calibration_valid && valid;
+	const bool success = calibration_valid && valid && !is_mag_fault;
 
 	if (instance == 0) {
 		set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_MAG, exists, !optional, success, status);

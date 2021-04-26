@@ -103,6 +103,7 @@ PARAM_DEFINE_INT32(ATT_MAG_DECL_A, 1);
 
 /**
  * External heading usage mode (from Motion capture/Vision)
+ *
  * Set to 1 to use heading estimate from vision.
  * Set to 2 to use heading from motion capture.
  *
@@ -116,8 +117,7 @@ PARAM_DEFINE_INT32(ATT_MAG_DECL_A, 1);
 PARAM_DEFINE_INT32(ATT_EXT_HDG_M, 0);
 
 /**
- * Acceleration compensation based on GPS
- * velocity.
+ * Acceleration compensation based on GPS velocity.
  *
  * @group Attitude Q estimator
  * @boolean

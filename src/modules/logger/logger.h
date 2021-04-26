@@ -258,6 +258,7 @@ private:
 	void write_info_template(LogType type, const char *name, T value, const char *type_str);
 
 	void write_parameters(LogType type);
+	void write_parameter_defaults(LogType type);
 
 	void write_changed_parameters(LogType type);
 

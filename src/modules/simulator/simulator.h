@@ -44,7 +44,6 @@
 
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_rc_input.h>
-#include <drivers/drv_range_finder.h>
 #include <lib/drivers/accelerometer/PX4Accelerometer.hpp>
 #include <lib/drivers/barometer/PX4Barometer.hpp>
 #include <lib/drivers/gyroscope/PX4Gyroscope.hpp>
@@ -124,6 +123,7 @@ public:
 
 	void set_ip(InternetProtocol ip) { _ip = ip; }
 	void set_port(unsigned port) { _port = port; }
+	void set_hostname(std::string hostname) { _hostname = hostname; }
 	void set_tcp_remote_ipaddr(char *tcp_remote_ipaddr) { _tcp_remote_ipaddr = tcp_remote_ipaddr; }
 
 #if defined(ENABLE_LOCKSTEP_SCHEDULER)
@@ -198,14 +198,16 @@ private:
 
 	uORB::Publication<vehicle_command_ack_s>	_command_ack_pub{ORB_ID(vehicle_command_ack)};
 
-	uORB::PublicationMulti<distance_sensor_s>	*_dist_pubs[RANGE_FINDER_MAX_SENSORS] {};
-	uint8_t _dist_sensor_ids[RANGE_FINDER_MAX_SENSORS] {};
+	uORB::PublicationMulti<distance_sensor_s>	*_dist_pubs[ORB_MULTI_MAX_INSTANCES] {};
+	uint32_t _dist_sensor_ids[ORB_MULTI_MAX_INSTANCES] {};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	unsigned int _port{14560};
 
 	InternetProtocol _ip{InternetProtocol::UDP};
+
+	std::string _hostname{""};
 
 	char *_tcp_remote_ipaddr{nullptr};
 
@@ -262,23 +264,19 @@ private:
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 
 	// hil map_ref data
-	struct map_projection_reference_s _hil_local_proj_ref {};
-
-	bool _hil_local_proj_inited{false};
-
-	double _hil_ref_lat{0};
-	double _hil_ref_lon{0};
-	float _hil_ref_alt{0.0f};
-	uint64_t _hil_ref_timestamp{0};
+	map_projection_reference_s	_global_local_proj_ref{};
+	float						_global_local_alt0{NAN};
 
 	vehicle_status_s _vehicle_status{};
 
 	bool _accel_blocked[ACCEL_COUNT_MAX] {};
 	bool _accel_stuck[ACCEL_COUNT_MAX] {};
+	sensor_accel_fifo_s _last_accel_fifo{};
 	matrix::Vector3f _last_accel[GYRO_COUNT_MAX] {};
 
 	bool _gyro_blocked[GYRO_COUNT_MAX] {};
 	bool _gyro_stuck[GYRO_COUNT_MAX] {};
+	sensor_gyro_fifo_s _last_gyro_fifo{};
 	matrix::Vector3f _last_gyro[GYRO_COUNT_MAX] {};
 
 	bool _baro_blocked{false};

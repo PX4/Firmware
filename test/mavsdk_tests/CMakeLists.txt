@@ -27,6 +27,7 @@ if(MAVSDK_FOUND)
         MAVSDK::mavsdk_info
         MAVSDK::mavsdk_manual_control
         MAVSDK::mavsdk_mission
+        MAVSDK::mavsdk_mission_raw
         MAVSDK::mavsdk_offboard
         MAVSDK::mavsdk_param
         MAVSDK::mavsdk_telemetry

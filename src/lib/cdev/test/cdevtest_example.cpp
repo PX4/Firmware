@@ -43,7 +43,6 @@
 
 #include <px4_platform_common/tasks.h>
 #include <px4_platform_common/time.h>
-#include <drivers/drv_device.h>
 #include <lib/cdev/CDev.hpp>
 #include <unistd.h>
 #include <stdio.h>

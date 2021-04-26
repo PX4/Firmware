@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Standard apps for new control allocation and controllers
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+#
+# Start angular velocity controller
+#
+angular_velocity_controller start
+mc_rate_control stop
+
+#
+# Start Control Allocator
+#
+control_allocator start
+
+#
+# Disable hover thrust estimator and prearming
+# These features are currently incompatible with control allocation
+#
+# TODO: fix
+#
+param set MPC_USE_HTE 0
+param set COM_PREARM_MODE 0

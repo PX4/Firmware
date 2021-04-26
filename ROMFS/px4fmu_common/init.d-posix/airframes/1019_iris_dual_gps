@@ -7,8 +7,5 @@
 
 . ${R}etc/init.d-posix/airframes/10016_iris
 
-if [ $AUTOCNF = yes ]
-then
-	# EKF2: Multi GPS blending
-	param set EKF2_GPS_MASK 7 # Uses speed, hpos and vpos accuracy
-fi
+# EKF2: Multi GPS blending
+param set-default SENS_GPS_MASK 7

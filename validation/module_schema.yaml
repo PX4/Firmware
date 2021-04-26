@@ -75,6 +75,9 @@ serial_config:
                 # Default: 1
                 type: integer
                 min: 1
+            supports_networking:
+                # set to true if the module supports networking (UDP)
+                type: boolean
 
 
 parameters:
@@ -107,6 +110,8 @@ parameters:
                                     # Short description (one line)
                                     type: string
                                     required: true
+                                    maxlength: 70
+                                    regex: '[^\n]+'
                                 long:
                                     # Long description (can be multiple lines)
                                     type: string
@@ -206,5 +211,9 @@ parameters:
                             # [0, N-1]
                             # Default: 0
                             type: integer
+                        requires_ethernet:
+                            # param is only added if the board has ethernet
+                            # support
+                            type: boolean
 
 

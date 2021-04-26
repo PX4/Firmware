@@ -1,16 +1,6 @@
 #!/bin/sh
 #
-# PX4 FMUv5X specific board defaults
+# board specific defaults
 #------------------------------------------------------------------------------
-
-
-if [ $AUTOCNF = yes ]
-then
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
-fi
-
-set LOGGER_BUF 64
 
 safety_button start

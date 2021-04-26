@@ -334,8 +334,12 @@ memoryout:
 		if (mtd_list->entries[i]->device->bus_type == px4_mft_device_t::I2C) {
 			rv = at24xxx_attach(instances[i]);
 
-		} else {
+		} else if (mtd_list->entries[i]->device->bus_type == px4_mft_device_t::SPI) {
 			rv = ramtron_attach(instances[i]);
+
+		} else if (mtd_list->entries[i]->device->bus_type == px4_mft_device_t::ONCHIP) {
+			instances[i].n_partitions_current++;
+			return 0;
 		}
 
 		if (rv != 0) {

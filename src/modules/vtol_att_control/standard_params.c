@@ -42,6 +42,7 @@
 
 /**
  * Enable/disable usage of fixed-wing actuators in hover to generate forward force (instead of pitching down).
+ *
  * This technique can be used to avoid the plane having to pitch down in order to move forward.
  * This prevents large, negative lift values being created when facing strong winds.
  * Fixed-wing forward actuators refers to puller/pusher (standard VTOL), or forward-tilt (tiltrotor VTOL).
@@ -53,6 +54,8 @@
  * @value 2 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT1.
  * @value 3 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT2.
  * @value 4 Enable FW forward actuation in hover in altitude, position and auto modes.
+ * @value 5 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT1 (except LANDING).
+ * @value 6 Enable FW forward actuation in hover in altitude, position and auto modes if above MPC_LAND_ALT2 (except LANDING).
  *
  * @group VTOL Attitude Control
  */
@@ -60,7 +63,8 @@ PARAM_DEFINE_INT32(VT_FWD_THRUST_EN, 0);
 
 /**
  * Maximum allowed angle the vehicle is allowed to pitch down to generate forward force
- * when fixed-wing forward actuation is active (seeVT_FW_TRHUST_EN).
+ *
+ * When fixed-wing forward actuation is active (see VT_FW_TRHUST_EN).
  * If demanded down pitch exceeds this limmit, the fixed-wing forward actuators are used instead.
  *
  * @min 0.0
@@ -96,6 +100,7 @@ PARAM_DEFINE_FLOAT(VT_B_TRANS_RAMP, 3.0f);
 
 /**
  * Output on airbrakes channel during back transition
+ *
  * Used for airbrakes or with ESCs that have reverse thrust enabled on a seperate channel
  * Airbrakes need to be enables for your selected model/mixer
  *
@@ -110,6 +115,7 @@ PARAM_DEFINE_FLOAT(VT_B_REV_OUT, 0.0f);
 
 /**
  * Delay in seconds before applying back transition throttle
+ *
  * Set this to a value greater than 0 to give the motor time to spin down.
  *
  * unit s
@@ -122,6 +128,8 @@ PARAM_DEFINE_FLOAT(VT_B_REV_OUT, 0.0f);
 PARAM_DEFINE_FLOAT(VT_B_REV_DEL, 0.0f);
 
 /**
+ * Pusher throttle ramp up window
+ *
  * Defines the time window during which the pusher throttle will be ramped up linearly to VT_F_TRANS_THR during a transition
  * to fixed wing mode. Zero or negative values will produce an instant throttle rise to VT_F_TRANS_THR.
  *

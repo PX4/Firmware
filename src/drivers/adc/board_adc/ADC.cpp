@@ -35,6 +35,10 @@
 
 #include "ADC.hpp"
 
+#ifdef CONFIG_DEV_GPIO
+#include <nuttx/ioexpander/gpio.h>
+#endif
+
 ADC::ADC(uint32_t base_address, uint32_t channels) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
 	_sample_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": sample")),
@@ -80,6 +84,7 @@ ADC::~ADC()
 
 	perf_free(_sample_perf);
 	px4_arch_adc_uninit(_base_address);
+	close_gpio_devices();
 }
 
 int ADC::init()
@@ -99,6 +104,11 @@ int ADC::init()
 
 void ADC::Run()
 {
+	if (_first_run) {
+		open_gpio_devices();
+		_first_run = false;
+	}
+
 	hrt_abstime now = hrt_absolute_time();
 
 	/* scan the channel set and sample each */
@@ -108,6 +118,26 @@ void ADC::Run()
 
 	update_adc_report(now);
 	update_system_power(now);
+}
+
+void ADC::open_gpio_devices()
+{
+#ifdef BOARD_GPIO_VDD_5V_COMP_VALID
+	_5v_comp_valid_fd = open(BOARD_GPIO_VDD_5V_COMP_VALID, O_RDONLY);
+#endif
+#ifdef BOARD_GPIO_VDD_5V_CAN1_GPS1_VALID
+	_5v_can1_gps1_valid_fd = open(BOARD_GPIO_VDD_5V_CAN1_GPS1_VALID, O_RDONLY);
+#endif
+}
+
+void ADC::close_gpio_devices()
+{
+#ifdef BOARD_GPIO_VDD_5V_COMP_VALID
+	close(_5v_comp_valid_fd);
+#endif
+#ifdef BOARD_GPIO_VDD_5V_CAN1_GPS1_VALID
+	close(_5v_can1_gps1_valid_fd);
+#endif
 }
 
 void ADC::update_adc_report(hrt_abstime now)
@@ -139,6 +169,26 @@ void ADC::update_adc_report(hrt_abstime now)
 	_to_adc_report.publish(adc);
 }
 
+uint8_t ADC::read_gpio_value(int fd)
+{
+#ifdef CONFIG_DEV_GPIO
+
+	if (fd == -1) {
+		return 0xff;
+	}
+
+	bool value;
+
+	if (ioctl(fd, GPIOC_READ, (long)&value) != 0) {
+		return 0xff;
+	}
+
+	return value;
+#else
+	return 0xff;
+#endif /* CONFIG_DEV_GPIO */
+}
+
 void ADC::update_system_power(hrt_abstime now)
 {
 #if defined (BOARD_ADC_USB_CONNECTED)
@@ -148,7 +198,7 @@ void ADC::update_system_power(hrt_abstime now)
 	int cnt = 1;
 	/* HW provides both ADC_SCALED_V5_SENSE and ADC_SCALED_V3V3_SENSORS_SENSE */
 #  if defined(ADC_SCALED_V5_SENSE) && defined(ADC_SCALED_V3V3_SENSORS_SENSE)
-	cnt++;
+	cnt += ADC_SCALED_V3V3_SENSORS_COUNT;
 #  endif
 
 	for (unsigned i = 0; i < _channel_count; i++) {
@@ -163,11 +213,17 @@ void ADC::update_system_power(hrt_abstime now)
 #  endif
 #  if defined(ADC_SCALED_V3V3_SENSORS_SENSE)
 		{
-			if (_samples[i].am_channel == ADC_SCALED_V3V3_SENSORS_SENSE) {
-				// it is 2:1 scaled
-				system_power.voltage3v3_v = _samples[i].am_data * (ADC_3V3_SCALE * (3.3f / px4_arch_adc_dn_fullcount()));
-				system_power.v3v3_valid = 1;
-				cnt--;
+			const int sensors_channels[ADC_SCALED_V3V3_SENSORS_COUNT] = ADC_SCALED_V3V3_SENSORS_SENSE;
+			static_assert(sizeof(system_power.sensors3v3) / sizeof(system_power.sensors3v3[0]) >= ADC_SCALED_V3V3_SENSORS_COUNT,
+				      "array too small");
+
+			for (int j = 0; j < ADC_SCALED_V3V3_SENSORS_COUNT; ++j) {
+				if (_samples[i].am_channel == sensors_channels[j]) {
+					// it is 2:1 scaled
+					system_power.sensors3v3[j] = _samples[i].am_data * (ADC_3V3_SCALE * (3.3f / px4_arch_adc_dn_fullcount()));
+					system_power.sensors3v3_valid |= 1 << j;
+					cnt--;
+				}
 			}
 		}
 
@@ -215,6 +271,13 @@ void ADC::update_system_power(hrt_abstime now)
 
 #if defined(BOARD_ADC_HIPOWER_5V_OC)
 	system_power.hipower_5v_oc = BOARD_ADC_HIPOWER_5V_OC;
+#endif
+
+#ifdef BOARD_GPIO_VDD_5V_COMP_VALID
+	system_power.comp_5v_valid = read_gpio_value(_5v_comp_valid_fd);
+#endif
+#ifdef BOARD_GPIO_VDD_5V_CAN1_GPS1_VALID
+	system_power.can1_gps1_5v_valid = read_gpio_value(_5v_can1_gps1_valid_fd);
 #endif
 
 	system_power.timestamp = hrt_absolute_time();

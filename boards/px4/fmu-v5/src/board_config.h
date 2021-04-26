@@ -307,6 +307,7 @@
 
 #define RC_SERIAL_PORT                     "/dev/ttyS4"
 #define RC_SERIAL_SINGLEWIRE
+#define BOARD_SUPPORTS_RC_SERIAL_PORT_OUTPUT
 
 /* Input Capture Channels. */
 #define INPUT_CAP1_TIMER                  2

@@ -76,5 +76,11 @@ void InputBase::control_data_set_lon_lat(double lon, double lat, float altitude,
 	_control_data.type_data.lonlat.yaw_angle_offset = 0.f;
 }
 
-} /* namespace vmount */
+void InputBase::set_stabilize(bool roll_stabilize, bool pitch_stabilize, bool yaw_stabilize)
+{
+	_control_data.stabilize_axis[0] = roll_stabilize;
+	_control_data.stabilize_axis[1] = pitch_stabilize;
+	_control_data.stabilize_axis[2] = yaw_stabilize;
+}
 
+} /* namespace vmount */

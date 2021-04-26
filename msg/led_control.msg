@@ -34,4 +34,4 @@ uint8 num_blinks # how many times to blink (number of on-off cycles if mode is o
                  # in MODE_FLASH it is the number of cycles. Max number of blinks: 122 and max number of flash cycles: 20
 uint8 priority # priority: higher priority events will override current lower priority events (see MAX_PRIORITY)
 
-uint8 ORB_QUEUE_LENGTH = 4      # needs to match BOARD_MAX_LEDS
+uint8 ORB_QUEUE_LENGTH = 8      # needs to match BOARD_MAX_LEDS

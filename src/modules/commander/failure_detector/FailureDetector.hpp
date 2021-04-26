@@ -48,11 +48,11 @@
 #include <px4_platform_common/module_params.h>
 #include <hysteresis/hysteresis.h>
 
-
 // subscriptions
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/esc_status.h>
 #include <uORB/topics/pwm_input.h>
@@ -73,11 +73,10 @@ class FailureDetector : public ModuleParams
 public:
 	FailureDetector(ModuleParams *parent);
 
-	bool update(const vehicle_status_s &vehicle_status);
+	bool update(const vehicle_status_s &vehicle_status, const vehicle_control_mode_s &vehicle_control_mode);
 	uint8_t getStatus() const { return _status; }
 
 private:
-	bool isAttitudeStabilized(const vehicle_status_s &vehicle_status);
 	void updateAttitudeStatus();
 	void updateExternalAtsStatus();
 	void updateEscsStatus(const vehicle_status_s &vehicle_status);

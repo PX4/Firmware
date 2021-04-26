@@ -48,11 +48,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "stm32.h"
+#include <px4_arch/micro_hal.h>
 #include "nvic.h"
 
-#define TIMER_HRT_CYCLES_PER_US (STM32_HCLK_FREQUENCY/1000000)
-#define TIMER_HRT_CYCLES_PER_MS (STM32_HCLK_FREQUENCY/1000)
 
 /* Types for timer access */
 typedef uint8_t bl_timer_id;             /* A timer handle */

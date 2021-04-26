@@ -53,7 +53,8 @@ typedef enum {
 	CAN_125KBAUD  = 1,
 	CAN_250KBAUD  = 2,
 	CAN_500KBAUD  = 3,
-	CAN_1MBAUD    = 4
+	CAN_1MBAUD    = 4,
+	CAN_UNDEFINED = 999,
 } can_speed_t;
 
 typedef enum {

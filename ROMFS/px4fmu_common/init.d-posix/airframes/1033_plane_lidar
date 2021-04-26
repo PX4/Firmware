@@ -5,8 +5,5 @@
 
 . ${R}etc/init.d-posix/airframes/1030_plane
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_LND_USETER 1
+param set-default FW_LND_USETER 1
 
-fi

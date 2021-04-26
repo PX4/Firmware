@@ -125,11 +125,12 @@ void Accelerometer::SensorCorrectionsUpdate(bool force)
 
 bool Accelerometer::set_offset(const Vector3f &offset)
 {
-	if (Vector3f(_offset - offset).longerThan(0.001f)) {
-		_offset = offset;
-
-		_calibration_count++;
-		return true;
+	if (Vector3f(_offset - offset).longerThan(0.01f)) {
+		if (PX4_ISFINITE(offset(0)) && PX4_ISFINITE(offset(1)) && PX4_ISFINITE(offset(2))) {
+			_offset = offset;
+			_calibration_count++;
+			return true;
+		}
 	}
 
 	return false;
@@ -137,11 +138,14 @@ bool Accelerometer::set_offset(const Vector3f &offset)
 
 bool Accelerometer::set_scale(const Vector3f &scale)
 {
-	if (Vector3f(_scale - scale).longerThan(0.001f)) {
-		_scale = scale;
+	if (Vector3f(_scale - scale).longerThan(0.01f)) {
+		if ((scale(0) > 0.f) && (scale(1) > 0.f) && (scale(2) > 0.f) &&
+		    PX4_ISFINITE(scale(0)) && PX4_ISFINITE(scale(1)) && PX4_ISFINITE(scale(2))) {
 
-		_calibration_count++;
-		return true;
+			_scale = scale;
+			_calibration_count++;
+			return true;
+		}
 	}
 
 	return false;
@@ -220,8 +224,14 @@ void Accelerometer::ParametersUpdate()
 
 void Accelerometer::Reset()
 {
-	_rotation.setIdentity();
-	_rotation_enum = ROTATION_NONE;
+	if (_external) {
+		set_rotation(ROTATION_NONE);
+
+	} else {
+		// internal sensors follow board rotation
+		set_rotation(GetBoardRotation());
+	}
+
 	_offset.zero();
 	_scale = Vector3f{1.f, 1.f, 1.f};
 	_thermal_offset.zero();

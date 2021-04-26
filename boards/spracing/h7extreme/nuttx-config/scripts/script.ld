@@ -143,11 +143,9 @@ SECTIONS
 		*modules__mc_att_control.a:*(.text* .rodata*)
 		*modules__mc_rate_control.a:*(.text* .rodata*)
 		*modules__rc_update.a:*(.text* .rodata*)
-		*drivers__mpu6000.a:*(.text* .rodata*)
 		*drivers__imu__invensense__icm20602.a:*(.text* .rodata*)
 		*drivers__device.a:*(.text* .rodata*)
 		*drivers__pwm_out.a:*(.text* .rodata*)
-		*vehicle_acceleration.a:*(.text* .rodata*)
 		*vehicle_angular_velocity.a:*(.text* .rodata*)
 		*modules__attitude_estimator_q.a:*(.text* .rodata*)
 		*stm32_spi.o(.text* .rodata*)
@@ -220,15 +218,6 @@ SECTIONS
 		_sinit = ABSOLUTE(.);
 		KEEP(*(.init_array .init_array.*))
 		_einit = ABSOLUTE(.);
-	} > qspi
-
-	/*
-	 * Construction data for parameters.
-	 */
-	__param ALIGN(4): {
-		__param_start = ABSOLUTE(.);
-		KEEP(*(__param*))
-		__param_end = ABSOLUTE(.);
 	} > qspi
 
 	.ARM.extab : {

@@ -3,8 +3,6 @@
 # (px4-alias.sh is expected to be in the PATH)
 . px4-alias.sh
 
-uorb start
-
 param load
 
 param set BAT_N_CELLS 3
@@ -28,7 +26,7 @@ navigator start
 ekf2 start
 vtol_att_control start
 mc_hover_thrust_estimator start
-flight_mode_manager start vtol
+flight_mode_manager start
 mc_pos_control start vtol
 mc_att_control start vtol
 mc_rate_control start vtol

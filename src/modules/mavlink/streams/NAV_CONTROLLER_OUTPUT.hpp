@@ -78,7 +78,7 @@ private:
 			msg.wp_dist = math::constrain(roundf(pos_ctrl_status.wp_dist), 0.f, (float)UINT16_MAX);
 			msg.xtrack_error = pos_ctrl_status.xtrack_error;
 			msg.alt_error = tecs_status.altitude_filtered - tecs_status.altitude_sp;
-			msg.aspd_error = tecs_status.airspeed_filtered - tecs_status.airspeed_sp;
+			msg.aspd_error = tecs_status.true_airspeed_filtered - tecs_status.true_airspeed_sp;
 
 			mavlink_msg_nav_controller_output_send_struct(_mavlink->get_channel(), &msg);
 

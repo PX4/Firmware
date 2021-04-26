@@ -136,8 +136,9 @@ LightwareLaser::LightwareLaser(I2CSPIBusOption bus_option, const int bus, const 
 			       int address) :
 	I2C(DRV_DIST_DEVTYPE_LIGHTWARE_LASER, MODULE_NAME, bus, address, bus_frequency),
 	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
-	_px4_rangefinder(DRV_DIST_DEVTYPE_LIGHTWARE_LASER, rotation)
+	_px4_rangefinder(get_device_id(), rotation)
 {
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_LIGHTWARE_LASER);
 }
 
 LightwareLaser::~LightwareLaser()

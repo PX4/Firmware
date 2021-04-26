@@ -1,0 +1,13 @@
+{
+    "board_id": 79,
+    "magic": "HBCANGPS",
+    "description": "Firmware for the Holybro CAN GPS board",
+    "image": "",
+    "build_time": 0,
+    "summary": "HolybroCANGPS",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 475136,
+    "git_identity": "",
+    "board_revision": 0
+}

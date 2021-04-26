@@ -6,10 +6,11 @@
 board_adc start
 
 # Onboard I2C
-mpu9250 -I -R 12 start
-
-# I2C bypass of mpu
-lps25h -I start
+if mpu9250_i2c -I -b 3 -a 0x69 -R 6 start; then
+	sleep 1 # wait for mpu9250 to be configured with bypass enabled
+	ak8963 -I -b 3 -R 4 start
+	lps25h -I -b 3 start
+fi
 
 # Optical flow deck
 vl53l0x start -X

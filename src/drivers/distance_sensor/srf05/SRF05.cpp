@@ -48,8 +48,10 @@
 
 SRF05::SRF05(const uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
-	_px4_rangefinder(0 /* device id not yet used */, rotation)
+	_px4_rangefinder(0 /* no device type for GPIO input */, rotation)
 {
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_SRF05);
+	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND);
 	_px4_rangefinder.set_min_distance(HXSRX0X_MIN_DISTANCE);
 	_px4_rangefinder.set_max_distance(HXSRX0X_MAX_DISTANCE);
 	_px4_rangefinder.set_fov(0.261799); // 15 degree FOV

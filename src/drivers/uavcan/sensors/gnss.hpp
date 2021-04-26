@@ -59,7 +59,7 @@
 
 #include "sensor_bridge.hpp"
 
-class UavcanGnssBridge : public UavcanCDevSensorBridgeBase
+class UavcanGnssBridge : public UavcanSensorBridgeBase
 {
 	static constexpr unsigned ORB_TO_UAVCAN_FREQUENCY_HZ = 10;
 
@@ -120,12 +120,6 @@ private:
 	float		_last_gnss_auxiliary_vdop{0.0f};
 
 	uORB::Subscription			_orb_inject_data_sub{ORB_ID(gps_inject_data)};
-	uORB::PublicationMulti<sensor_gps_s>	_gps_pub{ORB_ID(sensor_gps)};
-
-	int	_receiver_node_id{-1};
-	bool	_old_fix_subscriber_active{true};
-
-	orb_advert_t _report_pub;                ///< uORB pub for gnss position
 
 	bool _system_clock_set{false};  ///< Have we set the system clock at least once from GNSS data?
 

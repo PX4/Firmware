@@ -69,6 +69,7 @@ int Simulator::start(int argc, char *argv[])
 	_instance = new Simulator();
 
 	if (_instance) {
+
 		if (argc == 5 && strcmp(argv[3], "-u") == 0) {
 			_instance->set_ip(InternetProtocol::UDP);
 			_instance->set_port(atoi(argv[4]));
@@ -79,10 +80,20 @@ int Simulator::start(int argc, char *argv[])
 			_instance->set_port(atoi(argv[4]));
 		}
 
-		if (argc == 5 && strcmp(argv[2], "-t") == 0) {
+		if (argc == 6 && strcmp(argv[3], "-t") == 0) {
+			PX4_INFO("Simulator using TCP on remote host %s port %s", argv[4], argv[5]);
+			PX4_WARN("Please ensure port %s is not blocked by a firewall.", argv[5]);
 			_instance->set_ip(InternetProtocol::TCP);
-			_instance->set_tcp_remote_ipaddr(argv[3]);
-			_instance->set_port(atoi(argv[4]));
+			_instance->set_tcp_remote_ipaddr(argv[4]);
+			_instance->set_port(atoi(argv[5]));
+		}
+
+		if (argc == 6 && strcmp(argv[3], "-h") == 0) {
+			PX4_INFO("Simulator using TCP on remote host %s port %s", argv[4], argv[5]);
+			PX4_WARN("Please ensure port %s is not blocked by a firewall.", argv[5]);
+			_instance->set_ip(InternetProtocol::TCP);
+			_instance->set_hostname(argv[4]);
+			_instance->set_port(atoi(argv[5]));
 		}
 
 		_instance->run();
@@ -102,6 +113,7 @@ static void usage()
 	PX4_INFO("Connect using UDP: simulator start -u udp_port");
 	PX4_INFO("Connect using TCP: simulator start -c tcp_port");
 	PX4_INFO("Connect to a remote server using TCP: simulator start -t ip_addr tcp_port");
+	PX4_INFO("Connect to a remote server via hostname using TCP: simulator start -h hostname tcp_port");
 }
 
 __BEGIN_DECLS

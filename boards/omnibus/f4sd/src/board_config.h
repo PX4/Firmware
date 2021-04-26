@@ -132,6 +132,7 @@
 #define GPIO_PPM_IN                  (GPIO_ALT|GPIO_AF2|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN8)
 
 #define RC_SERIAL_PORT               "/dev/ttyS0"
+#define BOARD_SUPPORTS_RC_SERIAL_PORT_OUTPUT
 
 /*
  * One RC_IN

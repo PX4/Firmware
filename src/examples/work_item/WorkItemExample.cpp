@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,10 +33,6 @@
 
 #include "WorkItemExample.hpp"
 
-#include <drivers/drv_hrt.h>
-
-using namespace time_literals;
-
 WorkItemExample::WorkItemExample() :
 	ModuleParams(nullptr),
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::test1)
@@ -51,7 +47,14 @@ WorkItemExample::~WorkItemExample()
 
 bool WorkItemExample::init()
 {
-	ScheduleOnInterval(1000_us); // 1000 us interval, 1000 Hz rate
+	// execute Run() on every sensor_accel publication
+	if (!_sensor_accel_sub.registerCallback()) {
+		PX4_ERR("sensor_accel callback registration failed");
+		return false;
+	}
+
+	// alternatively, Run on fixed interval
+	// ScheduleOnInterval(5000_us); // 2000 us interval, 200 Hz rate
 
 	return true;
 }
@@ -67,25 +70,58 @@ void WorkItemExample::Run()
 	perf_begin(_loop_perf);
 	perf_count(_loop_interval_perf);
 
-
-	// DO WORK
-
-
-
-	// Example
-	// grab latest accelerometer data
-	_sensor_accel_sub.update();
-	const sensor_accel_s &accel = _sensor_accel_sub.get();
+	// Check if parameters have changed
+	if (_parameter_update_sub.updated()) {
+		// clear update
+		parameter_update_s param_update;
+		_parameter_update_sub.copy(&param_update);
+		updateParams(); // update module parameters (in DEFINE_PARAMETERS)
+	}
 
 
 	// Example
-	// publish some data
+	//  update vehicle_status to check arming state
+	if (_vehicle_status_sub.updated()) {
+		vehicle_status_s vehicle_status;
+
+		if (_vehicle_status_sub.copy(&vehicle_status)) {
+
+			const bool armed = (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
+
+			if (armed && !_armed) {
+				PX4_WARN("vehicle armed due to %d", vehicle_status.latest_arming_reason);
+
+			} else if (!armed && _armed) {
+				PX4_INFO("vehicle disarmed due to %d", vehicle_status.latest_disarming_reason);
+			}
+
+			_armed = armed;
+		}
+	}
+
+
+	// Example
+	//  grab latest accelerometer data
+	if (_sensor_accel_sub.updated()) {
+		sensor_accel_s accel;
+
+		if (_sensor_accel_sub.copy(&accel)) {
+			// DO WORK
+
+			// access parameter value (SYS_AUTOSTART)
+			if (_param_sys_autostart.get() == 1234) {
+				// do something if SYS_AUTOSTART is 1234
+			}
+		}
+	}
+
+
+	// Example
+	//  publish some data
 	orb_test_s data{};
+	data.val = 314159;
 	data.timestamp = hrt_absolute_time();
-	data.val = accel.device_id;
 	_orb_test_pub.publish(data);
-
-
 
 
 	perf_end(_loop_perf);

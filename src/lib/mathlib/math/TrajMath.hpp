@@ -91,5 +91,24 @@ inline float computeMaxSpeedInWaypoint(const float alpha, const float accel, con
 
 	return max_speed_in_turn;
 }
+
+/* Compute the braking distance given a maximum acceleration, maximum jerk and a maximum delay acceleration.
+ * We assume a constant acceleration profile with a delay of accel_delay_max/jerk
+ * (time to reach the desired acceleration from opposite max acceleration)
+ * Equation to solve: vel_final^2 = vel_initial^2 - 2*accel*(x - vel_initial*2*accel/jerk)
+ *
+ * @param velocity initial velocity
+ * @param jerk maximum jerk
+ * @param accel maximum target acceleration during the braking maneuver
+ * @param accel_delay_max the acceleration defining the delay described above
+ *
+ * @return braking distance
+ */
+inline float computeBrakingDistanceFromVelocity(const float velocity, const float jerk, const float accel,
+		const float accel_delay_max)
+{
+	return velocity * (velocity / (2.0f * accel) + accel_delay_max / jerk);
+}
+
 } /* namespace traj */
 } /* namespace math */

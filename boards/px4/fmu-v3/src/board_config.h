@@ -168,6 +168,12 @@
 
 #define BOARD_DSHOT_MOTOR_ASSIGNMENT {3, 2, 1, 0, 4, 5};
 
+/* Internal IMU Heater
+ *
+ * Connected to the IO MCU; tell compiler to enable support
+ */
+#define PX4IO_HEATER_ENABLED
+
 __BEGIN_DECLS
 
 /****************************************************************************************************

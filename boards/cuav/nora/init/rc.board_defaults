@@ -3,45 +3,19 @@
 # board specific defaults
 #------------------------------------------------------------------------------
 
-#
-# Bootloader upgrade
-#
-set BL_FILE /etc/extras/cuav_nora_bootloader.bin
-if [ -f $BL_FILE ]
-then
-	if param compare SYS_BL_UPDATE 1
-	then
-		param set SYS_BL_UPDATE 0
-		param save
-		echo "BL update..." >> $LOG_FILE
-		bl_update $BL_FILE
-		echo "BL update done" >> $LOG_FILE
-		reboot
-	fi
-fi
-unset BL_FILE
+# Enables the 2nd bank of mixers
+set AUX_BANK2 yes
 
-if [ $AUTOCNF = yes ]
-then
-	param set BAT_V_DIV 18
-	param set BAT1_V_DIV 18
-	param set BAT2_V_DIV 18
+param set-default BAT_V_DIV 18
+param set-default BAT1_V_DIV 18
+param set-default BAT2_V_DIV 18
 
-	param set BAT_A_PER_V 24
-	param set BAT1_A_PER_V 24
-	param set BAT2_A_PER_V 24
+param set-default BAT_A_PER_V 24
+param set-default BAT1_A_PER_V 24
+param set-default BAT2_A_PER_V 24
 
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
-	param set EKF2_MULTI_MAG 3
-	param set SENS_MAG_MODE 0
-
-	# Enable IMU thermal control
-	param set SENS_EN_THERMAL 1
-fi
-
-set LOGGER_BUF 64
+# Enable IMU thermal control
+param set-default SENS_EN_THERMAL 1
 
 rgbled_pwm start
 safety_button start

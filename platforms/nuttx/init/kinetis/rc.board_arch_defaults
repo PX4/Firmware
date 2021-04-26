@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Kinetis specific defaults
+#------------------------------------------------------------------------------
+
+# Multi-EKF (off by default)
+param set-default EKF2_MULTI_IMU 0
+param set-default SENS_IMU_MODE 1
+param set-default EKF2_MULTI_MAG 0
+param set-default SENS_MAG_MODE 1
+
+set LOGGER_BUF 12
+
+if param greater -s UAVCAN_ENABLE 1
+then
+	# Reduce logger buffer to free up some RAM for UAVCAN servers.
+	set LOGGER_BUF 4
+fi

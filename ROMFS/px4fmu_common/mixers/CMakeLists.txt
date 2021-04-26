@@ -47,6 +47,7 @@ px4_add_romfs_files(
 	coax.main.mix
 	delta.main.mix
 	deltaquad.main.mix
+	direct.main.mix
 	dodeca_bottom_cox.aux.mix
 	dodeca_top_cox.main.mix
 	firefly6.aux.mix
@@ -75,9 +76,9 @@ px4_add_romfs_files(
 	quad_x_cw.main.mix
 	quad_x.main.mix
 	quad_x_vtol.main.mix
+	quad_x_vtol_AAERT.main.mix
 	rover_diff_and_servo.main.mix
 	rover_generic.main.mix
-	stampede.main.mix
 	standard_vtol_hitl.main.mix
 	TF-AutoG2.main.mix
 	tilt_quad.aux.mix
@@ -89,6 +90,7 @@ px4_add_romfs_files(
 	Viper.main.mix
 	vtol_AAERT.aux.mix
 	vtol_AAVVT.aux.mix
+	vtol_TTTTAAER.aux.mix
 	vtol_convergence.main.mix
 	vtol_delta.aux.mix
 	vtol_tailsitter_duo.main.mix

@@ -41,10 +41,8 @@
 
 #include <stdint.h>
 
-
 namespace vmount
 {
-
 
 /**
  * @struct ControlData
@@ -58,7 +56,6 @@ struct ControlData {
 		Neutral = 0,      /**< move to neutral position */
 		Angle,            /**< control the roll, pitch & yaw angle directly */
 		LonLat            /**< control via lon, lat */
-		//TODO: add more, like smooth curve, ... ?
 	};
 
 
@@ -66,13 +63,15 @@ struct ControlData {
 
 	union TypeData {
 		struct TypeAngle {
-			float angles[3];         /**< attitude angles (roll, pitch, yaw) in rad, [-pi, +pi] or rad/s (if is angular rate) */
+			float q[4]; /**< attitude quaternion */
+			float angular_velocity[3]; // angular velocity
 
+			// according to DO_MOUNT_CONFIGURE
 			enum class Frame : uint8_t {
-				AngleBodyFrame = 0, /**< Angle in body frame. */
-				AngularRate,        /**< Angular rate in rad/s. */
-				AngleAbsoluteFrame  /**< Angle in absolute frame. */
-			} frames[3];             /**< Frame of given angle. */
+				AngleBodyFrame = 0, /**< Follow mode, angle relative to vehicle (usually default for yaw axis). */
+				AngularRate = 1, /**< Angular rate set only, for compatibility with MAVLink v1 protocol. */
+				AngleAbsoluteFrame = 2/**< Lock mode, angle relative to horizon/world, lock mode. (usually default for roll and pitch). */
+			} frames[3]; /**< Mode. */
 		} angle;
 
 		struct TypeLonLat {
@@ -89,10 +88,8 @@ struct ControlData {
 
 	bool stabilize_axis[3] = { false, false, false }; /**< whether the vmount driver should stabilize an axis
 	 	 	 	 	 	 	 	 	 	 (if the output supports it, this can also be done externally) */
-
 	bool gimbal_shutter_retract = false; /**< whether to lock the gimbal (only in RC output mode) */
 
 };
-
 
 } /* namespace vmount */

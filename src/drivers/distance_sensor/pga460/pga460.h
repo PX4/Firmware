@@ -402,6 +402,8 @@ private:
 
 	/** @param _start_loop The starting value for the loop time of the main loop. */
 	uint64_t _start_loop{0};
+
+	device::Device::DeviceId _device_id;
 };
 
 #endif

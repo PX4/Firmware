@@ -4,7 +4,6 @@
 # (px4-alias.sh is expected to be in the PATH)
 . px4-alias.sh
 
-uorb start
 muorb start
 
 # We need to wait until the DSP side is ready before
@@ -95,10 +94,9 @@ qshell mc_rate_control start
 
 logger start -b 200 -t
 
-param set MAV_BROADCAST 1
 dataman start
 navigator start
-mavlink start -u 14556 -r 1000000
+mavlink start -u 14556 -r 1000000 -p
 mavlink stream -u 14556 -s HIGHRES_IMU -r 50
 mavlink stream -u 14556 -s ATTITUDE -r 50
 mavlink stream -u 14556 -s RC_CHANNELS -r 20

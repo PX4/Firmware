@@ -116,7 +116,9 @@ PARAM_DEFINE_FLOAT(VT_B_TRANS_DUR, 4.0f);
 
 /**
  * Target throttle value for the transition to fixed wing flight.
+ *
  * standard vtol: pusher
+ *
  * tailsitter, tiltrotor: main throttle
  *
  * @min 0.0
@@ -129,7 +131,9 @@ PARAM_DEFINE_FLOAT(VT_F_TRANS_THR, 1.0f);
 
 /**
  * Target throttle value for the transition to hover flight.
+ *
  * standard vtol: pusher
+ *
  * tailsitter, tiltrotor: main throttle
  *
  * Note for standard vtol:

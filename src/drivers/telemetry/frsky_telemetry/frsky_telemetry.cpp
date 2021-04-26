@@ -115,8 +115,6 @@ uint16_t get_telemetry_flight_mode(int px4_flight_mode)
 
 	case 15: return 20; // stabilized
 
-	case 16: return 21; // rattitude
-
 	case 17: return 25; // takeoff
 
 	case 8:

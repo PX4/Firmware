@@ -48,8 +48,10 @@ enum MCU_REV {
 	MCU_REV_STM32F4_REV_Y = 0x1003,
 	MCU_REV_STM32F4_REV_1 = 0x1007,
 	MCU_REV_STM32F4_REV_3 = 0x2001,
-	MCU_REV_STM32F7_REV_X = MCU_REV_STM32F4_REV_3,
-	MCU_REV_STM32F7_REV_V = 0x2003
+	MCU_REV_STM32F4_REV_5 = 0x2003,
+	MCU_REV_STM32F4_REV_B = MCU_REV_STM32F4_REV_5,
+	MCU_REV_STM32H7_REV_X = MCU_REV_STM32F4_REV_3,
+	MCU_REV_STM32H7_REV_V = 0x2003
 };
 
 /* Define any issues with the Silicon as lines separated by \n
@@ -151,8 +153,10 @@ int board_mcu_version(char *rev, const char **revstr, const char **errata)
 		chip_errata = NULL;
 		break;
 
-	case MCU_REV_STM32F7_REV_V:
-		*rev = 'V';
+	case MCU_REV_STM32F4_REV_5:
+		// MCU_REV_STM32F4_REV_B shares the same REV_ID
+		// MCU_REV_STM32H7_REV_V shares the same REV_ID
+		*rev = chip_version == STM32H74xx_75xx ? 'V' : '5';
 		chip_errata = NULL;
 		break;
 

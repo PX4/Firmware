@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# @name Generic Quadplane VTOL Tiltrotor
+#
+# @type VTOL Tiltrotor
+# @class VTOL
+#
+# @maintainer
+#
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+# @output AUX1 Motor tilt front left
+# @output AUX2 Motor tilt front right
+# @output AUX3 Motor tilt rear left
+# @output AUX4 Motor tilt rear right
+# @output AUX5 Aileron left
+# @output AUX6 Aileron right
+# @output AUX7 Elevator
+# @output AUX8 Rudder
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.vtol_defaults
+
+
+param set-default PWM_MAIN_RATE 400
+
+param set-default VT_IDLE_PWM_MC 1100
+param set-default VT_TYPE 1
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 24
+set MAV_TYPE 21
+
+set MIXER quad_x
+set MIXER_AUX vtol_TTTTAAER
+
+set PWM_OUT 1234

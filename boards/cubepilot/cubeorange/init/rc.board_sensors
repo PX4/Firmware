@@ -13,5 +13,3 @@ icm20948 -s -b 4 -R 10 -M start
 ms5611 -s -b 1 start
 icm20649 -s -b 1 start
 
-# standard Here/Here2 connected to GPS1
-ak09916 -X -b 1 -R 6 start # external AK09916 (Here2) is rotated 270 degrees yaw

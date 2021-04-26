@@ -43,7 +43,7 @@
 const char *const UavcanAirspeedBridge::NAME = "airspeed";
 
 UavcanAirspeedBridge::UavcanAirspeedBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_airspeed", "/dev/uavcan/airspeed", AIRSPEED_BASE_DEVICE_PATH, ORB_ID(airspeed)),
+	UavcanSensorBridgeBase("uavcan_airspeed", ORB_ID(airspeed)),
 	_sub_ias_data(node),
 	_sub_tas_data(node),
 	_sub_oat_data(node)
@@ -51,31 +51,25 @@ UavcanAirspeedBridge::UavcanAirspeedBridge(uavcan::INode &node) :
 
 int UavcanAirspeedBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_ias_data.start(IASCbBinder(this, &UavcanAirspeedBridge::ias_sub_cb));
+	int res = _sub_ias_data.start(IASCbBinder(this, &UavcanAirspeedBridge::ias_sub_cb));
 
 	if (res < 0) {
 		DEVICE_LOG("failed to start uavcan sub: %d", res);
 		return res;
 	}
 
-	res = _sub_tas_data.start(TASCbBinder(this, &UavcanAirspeedBridge::tas_sub_cb));
+	int res2 = _sub_tas_data.start(TASCbBinder(this, &UavcanAirspeedBridge::tas_sub_cb));
 
-	if (res < 0) {
-		DEVICE_LOG("failed to start uavcan sub: %d", res);
-		return res;
+	if (res2 < 0) {
+		DEVICE_LOG("failed to start uavcan sub: %d", res2);
+		return res2;
 	}
 
-	res = _sub_oat_data.start(OATCbBinder(this, &UavcanAirspeedBridge::oat_sub_cb));
+	int res3 = _sub_oat_data.start(OATCbBinder(this, &UavcanAirspeedBridge::oat_sub_cb));
 
-	if (res < 0) {
-		DEVICE_LOG("failed to start uavcan sub: %d", res);
-		return res;
+	if (res3 < 0) {
+		DEVICE_LOG("failed to start uavcan sub: %d", res3);
+		return res3;
 	}
 
 	return 0;

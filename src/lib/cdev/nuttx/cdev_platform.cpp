@@ -40,7 +40,6 @@
 #include "../CDev.hpp"
 
 #include <px4_platform_common/posix.h>
-#include "drivers/drv_device.h"
 #include <sys/ioctl.h>
 
 #ifdef CONFIG_DISABLE_POLL

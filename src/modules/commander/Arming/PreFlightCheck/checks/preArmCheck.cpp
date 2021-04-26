@@ -94,7 +94,7 @@ bool PreFlightCheck::preArmCheck(orb_advert_t *mavlink_log_pub, const vehicle_st
 		}
 	}
 
-	if (arm_requirements.global_position) {
+	if (arm_requirements.global_position && !status_flags.circuit_breaker_engaged_posfailure_check) {
 
 		if (!status_flags.condition_global_position_valid) {
 			if (prearm_ok) {
@@ -135,6 +135,14 @@ bool PreFlightCheck::preArmCheck(orb_advert_t *mavlink_log_pub, const vehicle_st
 	if (arm_requirements.esc_check && status_flags.condition_escs_error) {
 		if (prearm_ok) {
 			if (report_fail) { mavlink_log_critical(mavlink_log_pub, "Arming denied! One or more ESCs are offline"); }
+
+			prearm_ok = false;
+		}
+	}
+
+	if (arm_requirements.esc_check && status_flags.condition_escs_failure) {
+		if (prearm_ok) {
+			if (report_fail) { mavlink_log_critical(mavlink_log_pub, "Arming denied! One or more ESCs have a failure"); }
 
 			prearm_ok = false;
 		}

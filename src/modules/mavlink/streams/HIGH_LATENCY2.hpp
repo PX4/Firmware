@@ -34,7 +34,6 @@
 #ifndef HIGH_LATENCY2_HPP
 #define HIGH_LATENCY2_HPP
 
-#include <commander/px4_custom_mode.h>
 #include <lib/ecl/geo/geo.h>
 #include <lib/mathlib/mathlib.h>
 #include <lib/matrix/matrix/math.hpp>
@@ -49,7 +48,7 @@
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/position_controller_status.h>
 #include <uORB/topics/tecs_status.h>
-#include <uORB/topics/wind_estimate.h>
+#include <uORB/topics/wind.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_gps_position.h>
@@ -134,7 +133,7 @@ private:
 			updated |= write_tecs_status(&msg);
 			updated |= write_vehicle_status(&msg);
 			updated |= write_vehicle_status_flags(&msg);
-			updated |= write_wind_estimate(&msg);
+			updated |= write_wind(&msg);
 
 			if (updated) {
 				msg.timestamp = t / 1000;
@@ -447,9 +446,7 @@ private:
 			}
 
 			// flight mode
-			union px4_custom_mode custom_mode;
-			uint8_t mavlink_base_mode;
-			get_mavlink_navigation_mode(&status, &mavlink_base_mode, &custom_mode);
+			union px4_custom_mode custom_mode {get_px4_custom_mode(status.nav_state)};
 			msg->custom_mode = custom_mode.custom_mode_hl;
 
 			return true;
@@ -477,9 +474,9 @@ private:
 		return false;
 	}
 
-	bool write_wind_estimate(mavlink_high_latency2_t *msg)
+	bool write_wind(mavlink_high_latency2_t *msg)
 	{
-		wind_estimate_s wind;
+		wind_s wind;
 
 		if (_wind_sub.update(&wind)) {
 			msg->wind_heading = static_cast<uint8_t>(math::degrees(matrix::wrap_2pi(atan2f(wind.windspeed_east,
@@ -506,7 +503,7 @@ private:
 		update_local_position();
 		update_gps();
 		update_vehicle_status();
-		update_wind_estimate();
+		update_wind();
 	}
 
 	void update_airspeed()
@@ -525,7 +522,7 @@ private:
 		tecs_status_s tecs_status;
 
 		if (_tecs_status_sub.update(&tecs_status)) {
-			_airspeed_sp.add_value(tecs_status.airspeed_sp, _update_rate_filtered);
+			_airspeed_sp.add_value(tecs_status.true_airspeed_sp, _update_rate_filtered);
 		}
 	}
 
@@ -586,9 +583,9 @@ private:
 		}
 	}
 
-	void update_wind_estimate()
+	void update_wind()
 	{
-		wind_estimate_s wind;
+		wind_s wind;
 
 		if (_wind_sub.update(&wind)) {
 			_windspeed.add_value(sqrtf(wind.windspeed_north * wind.windspeed_north + wind.windspeed_east * wind.windspeed_east),
@@ -642,7 +639,7 @@ private:
 	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
 	uORB::Subscription _status_flags_sub{ORB_ID(vehicle_status_flags)};
 	uORB::Subscription _tecs_status_sub{ORB_ID(tecs_status)};
-	uORB::Subscription _wind_sub{ORB_ID(wind_estimate)};
+	uORB::Subscription _wind_sub{ORB_ID(wind)};
 
 	SimpleAnalyzer _airspeed;
 	SimpleAnalyzer _airspeed_sp;

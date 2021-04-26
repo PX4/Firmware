@@ -38,6 +38,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <cctype>
 #include <fcntl.h>
 #include <dirent.h>
 #include <pthread.h>
@@ -72,6 +73,7 @@
 /*
  * UavcanNode
  */
+
 UavcanServers *UavcanServers::_instance;
 
 UavcanServers::UavcanServers(uavcan::INode &main_node) :
@@ -115,7 +117,7 @@ UavcanServers::stop()
 
 	if (server->_subnode_thread) {
 		PX4_INFO("stopping fw srv thread...");
-		server->_subnode_thread_should_exit = true;
+		server->_subnode_thread_should_exit.store(true);
 		(void)pthread_join(server->_subnode_thread, NULL);
 	}
 
@@ -208,7 +210,7 @@ UavcanServers::init()
 	 * Initialize the fw version checker.
 	 * giving it its path
 	 */
-	ret = _fw_version_checker.createFwPaths(UAVCAN_FIRMWARE_PATH);
+	ret = _fw_version_checker.createFwPaths(UAVCAN_FIRMWARE_PATH, UAVCAN_ROMFS_FW_PATH);
 
 	if (ret < 0) {
 		PX4_ERR("FirmwareVersionChecker init: %d, errno: %d", ret, errno);
@@ -217,7 +219,7 @@ UavcanServers::init()
 
 	/* Start fw file server back */
 
-	ret = _fw_server.start();
+	ret = _fw_server.start(UAVCAN_FIRMWARE_PATH, UAVCAN_ROMFS_FW_PATH);
 
 	if (ret < 0) {
 		PX4_ERR("BasicFileServer init: %d, errno: %d", ret, errno);
@@ -263,7 +265,7 @@ UavcanServers::init()
 	}
 
 	/* Start the fw version checker   */
-	ret = _fw_upgrade_trigger.start(_node_info_retriever, _fw_version_checker.getFirmwarePath());
+	ret = _fw_upgrade_trigger.start(_node_info_retriever);
 
 	if (ret < 0) {
 		PX4_ERR("FirmwareUpdateTrigger init: %d", ret);
@@ -277,15 +279,15 @@ UavcanServers::init()
 pthread_addr_t
 UavcanServers::run(pthread_addr_t)
 {
-	prctl(PR_SET_NAME, "uavcan fw srv", 0);
+	prctl(PR_SET_NAME, "uavcan_fw_srv", 0);
 
 	Lock lock(_subnode_mutex);
 
 	/*
-	Copy any firmware bundled in the ROMFS to the appropriate location on the
-	SD card, unless the user has copied other firmware for that device.
+	Check for firmware in the root directory, move it to appropriate location on
+	the SD card, as defined by the APDesc.
 	*/
-	unpackFwFromROMFS(UAVCAN_FIRMWARE_PATH, UAVCAN_ROMFS_FW_PATH);
+	migrateFWFromRoot(UAVCAN_FIRMWARE_PATH, UAVCAN_SD_ROOT_PATH);
 
 	/* the subscribe call needs to happen in the same thread,
 	 * so not in the constructor */
@@ -309,7 +311,7 @@ UavcanServers::run(pthread_addr_t)
 	memset(_esc_enumeration_ids, 0, sizeof(_esc_enumeration_ids));
 	_esc_enumeration_index = 0;
 
-	while (!_subnode_thread_should_exit) {
+	while (!_subnode_thread_should_exit.load()) {
 
 		if (_check_fw == true) {
 			_check_fw = false;
@@ -345,7 +347,7 @@ UavcanServers::run(pthread_addr_t)
 					int call_res = _param_getset_client.call(request.node_id, req);
 
 					if (call_res < 0) {
-						PX4_ERR("UAVCAN command bridge: couldn't send GetSet: %d", call_res);
+						PX4_ERR("couldn't send GetSet: %d", call_res);
 
 					} else {
 						_param_in_progress = true;
@@ -378,7 +380,7 @@ UavcanServers::run(pthread_addr_t)
 					int call_res = _param_getset_client.call(request.node_id, req);
 
 					if (call_res < 0) {
-						PX4_ERR("UAVCAN command bridge: couldn't send GetSet: %d", call_res);
+						PX4_ERR("couldn't send GetSet: %d", call_res);
 
 					} else {
 						_param_in_progress = true;
@@ -392,7 +394,7 @@ UavcanServers::run(pthread_addr_t)
 					_param_list_node_id = request.node_id;
 					_param_list_all_nodes = false;
 
-					PX4_INFO("UAVCAN command bridge: starting component-specific param list");
+					PX4_DEBUG("starting component-specific param list");
 				}
 
 			} else if (request.node_id == uavcan_parameter_request_s::NODE_ID_ALL) {
@@ -406,7 +408,7 @@ UavcanServers::run(pthread_addr_t)
 					_param_list_node_id = get_next_active_node_id(0);
 					_param_list_all_nodes = true;
 
-					PX4_INFO("UAVCAN command bridge: starting global param list with node %hhu", _param_list_node_id);
+					PX4_DEBUG("starting global param list with node %hhu", _param_list_node_id);
 
 					if (_param_counts[_param_list_node_id] == 0) {
 						param_count(_param_list_node_id);
@@ -425,7 +427,7 @@ UavcanServers::run(pthread_addr_t)
 		// Handle parameter listing index/node ID advancement
 		if (_param_list_in_progress && !_param_in_progress && !_count_in_progress) {
 			if (_param_index >= _param_counts[_param_list_node_id]) {
-				PX4_INFO("UAVCAN command bridge: completed param list for node %hhu", _param_list_node_id);
+				PX4_DEBUG("completed param list for node %hhu", _param_list_node_id);
 				// Reached the end of the current node's parameter set.
 				_param_list_in_progress = false;
 
@@ -447,7 +449,7 @@ UavcanServers::run(pthread_addr_t)
 						// Keep on listing.
 						_param_index = 0;
 						_param_list_in_progress = true;
-						PX4_INFO("UAVCAN command bridge: started param list for node %hhu", _param_list_node_id);
+						PX4_DEBUG("started param list for node %hhu", _param_list_node_id);
 					}
 				}
 			}
@@ -464,7 +466,7 @@ UavcanServers::run(pthread_addr_t)
 
 			if (call_res < 0) {
 				_param_list_in_progress = false;
-				PX4_ERR("UAVCAN command bridge: couldn't send param list GetSet: %d", call_res);
+				PX4_ERR("couldn't send param list GetSet: %d", call_res);
 
 			} else {
 				_param_in_progress = true;
@@ -473,17 +475,19 @@ UavcanServers::run(pthread_addr_t)
 
 		// Check for ESC enumeration commands
 		if (vcmd_sub.updated() && !_cmd_in_progress) {
+			bool acknowledge = false;
 			vehicle_command_s cmd{};
 			vcmd_sub.copy(&cmd);
 
 			uint8_t cmd_ack_result = vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED;
 
 			if (cmd.command == vehicle_command_s::VEHICLE_CMD_PREFLIGHT_UAVCAN) {
+				acknowledge = true;
 				int command_id = static_cast<int>(cmd.param1 + 0.5f);
 				int node_id = static_cast<int>(cmd.param2 + 0.5f);
 				int call_res;
 
-				PX4_INFO("UAVCAN command bridge: received UAVCAN command ID %d, node ID %d", command_id, node_id);
+				PX4_DEBUG("received UAVCAN command ID %d, node ID %d", command_id, node_id);
 
 				switch (command_id) {
 				case 0:
@@ -511,16 +515,17 @@ UavcanServers::run(pthread_addr_t)
 					}
 
 				default: {
-						PX4_ERR("UAVCAN command bridge: unknown command ID %d", command_id);
+						PX4_ERR("unknown command ID %d", command_id);
 						cmd_ack_result = vehicle_command_ack_s::VEHICLE_RESULT_UNSUPPORTED;
 						break;
 					}
 				}
 
 			} else if (cmd.command == vehicle_command_s::VEHICLE_CMD_PREFLIGHT_STORAGE) {
+				acknowledge = true;
 				int command_id = static_cast<int>(cmd.param1 + 0.5f);
 
-				PX4_INFO("UAVCAN command bridge: received storage command ID %d", command_id);
+				PX4_DEBUG("received storage command ID %d", command_id);
 
 				switch (command_id) {
 				case 1: {
@@ -550,33 +555,31 @@ UavcanServers::run(pthread_addr_t)
 				}
 			}
 
-			// Acknowledge the received command
-			vehicle_command_ack_s ack{};
-			ack.timestamp = hrt_absolute_time();
-			ack.command = cmd.command;
-			ack.result = cmd_ack_result;
-			ack.target_system = cmd.source_system;
-			ack.target_component = cmd.source_component;
-
-			_command_ack_pub.publish(ack);
+			if (acknowledge) {
+				// Acknowledge the received command
+				vehicle_command_ack_s ack{};
+				ack.command = cmd.command;
+				ack.result = cmd_ack_result;
+				ack.target_system = cmd.source_system;
+				ack.target_component = cmd.source_component;
+				ack.timestamp = hrt_absolute_time();
+				_command_ack_pub.publish(ack);
+			}
 		}
 
 		// Shut down once armed
 		// TODO (elsewhere): start up again once disarmed?
 		if (armed_sub.updated()) {
-			actuator_armed_s armed{};
-			armed_sub.copy(&armed);
+			actuator_armed_s armed;
 
-			if (armed.armed && !(armed.lockdown || armed.manual_lockdown)) {
-				PX4_INFO("UAVCAN command bridge: system armed, exiting now.");
-				break;
+			if (armed_sub.copy(&armed)) {
+				if (armed.armed) {
+					_subnode_thread_should_exit.store(true);
+				}
 			}
 		}
 	}
 
-	_subnode_thread_should_exit = false;
-
-	PX4_INFO("exiting");
 	return (pthread_addr_t) 0;
 }
 
@@ -607,14 +610,14 @@ UavcanServers::cb_getset(const uavcan::ServiceCallResult<uavcan::protocol::param
 				if (call_res < 0) {
 					_count_in_progress = false;
 					_count_index = 0;
-					PX4_ERR("UAVCAN command bridge: couldn't send GetSet during param count: %d", call_res);
+					PX4_ERR("couldn't send GetSet during param count: %d", call_res);
 					beep(BeepFrequencyError);
 				}
 
 			} else {
 				_count_in_progress = false;
 				_count_index = 0;
-				PX4_INFO("UAVCAN command bridge: completed param count for node %hhu: %hhu", node_id, _param_counts[node_id]);
+				PX4_DEBUG("completed param count for node %hhu: %hhu", node_id, _param_counts[node_id]);
 				beep(BeepFrequencyGenericIndication);
 			}
 
@@ -622,7 +625,7 @@ UavcanServers::cb_getset(const uavcan::ServiceCallResult<uavcan::protocol::param
 			_param_counts[node_id] = 0;
 			_count_in_progress = false;
 			_count_index = 0;
-			PX4_ERR("UAVCAN command bridge: GetSet error during param count");
+			PX4_ERR("GetSet error during param count");
 		}
 
 	} else {
@@ -657,7 +660,7 @@ UavcanServers::cb_getset(const uavcan::ServiceCallResult<uavcan::protocol::param
 			_param_response_pub.publish(response);
 
 		} else {
-			PX4_ERR("UAVCAN command bridge: GetSet error");
+			PX4_ERR("GetSet error");
 		}
 
 		_param_in_progress = false;
@@ -673,12 +676,12 @@ UavcanServers::param_count(uavcan::NodeID node_id)
 	int call_res = _param_getset_client.call(node_id, req);
 
 	if (call_res < 0) {
-		PX4_ERR("UAVCAN command bridge: couldn't start parameter count: %d", call_res);
+		PX4_ERR("couldn't start parameter count: %d", call_res);
 
 	} else {
 		_count_in_progress = true;
 		_count_index = 0;
-		PX4_INFO("UAVCAN command bridge: starting param count");
+		PX4_DEBUG("starting param count");
 	}
 }
 
@@ -690,11 +693,11 @@ UavcanServers::param_opcode(uavcan::NodeID node_id)
 	int call_res = _param_opcode_client.call(node_id, opcode_req);
 
 	if (call_res < 0) {
-		PX4_ERR("UAVCAN command bridge: couldn't send ExecuteOpcode: %d", call_res);
+		PX4_ERR("couldn't send ExecuteOpcode: %d", call_res);
 
 	} else {
 		_cmd_in_progress = true;
-		PX4_INFO("UAVCAN command bridge: sent ExecuteOpcode");
+		PX4_INFO("sent ExecuteOpcode");
 	}
 }
 
@@ -708,23 +711,23 @@ UavcanServers::cb_opcode(const uavcan::ServiceCallResult<uavcan::protocol::param
 	_cmd_in_progress = false;
 
 	if (!result.isSuccessful()) {
-		PX4_ERR("UAVCAN command bridge: save request for node %hhu timed out.", node_id);
+		PX4_ERR("save request for node %hhu timed out.", node_id);
 
 	} else if (!result.getResponse().ok) {
-		PX4_ERR("UAVCAN command bridge: save request for node %hhu rejected.", node_id);
+		PX4_ERR("save request for node %hhu rejected.", node_id);
 
 	} else {
-		PX4_INFO("UAVCAN command bridge: save request for node %hhu completed OK, restarting.", node_id);
+		PX4_INFO("save request for node %hhu completed OK, restarting.", node_id);
 
 		uavcan::protocol::RestartNode::Request restart_req;
 		restart_req.magic_number = restart_req.MAGIC_NUMBER;
 		int call_res = _param_restartnode_client.call(node_id, restart_req);
 
 		if (call_res < 0) {
-			PX4_ERR("UAVCAN command bridge: couldn't send RestartNode: %d", call_res);
+			PX4_ERR("couldn't send RestartNode: %d", call_res);
 
 		} else {
-			PX4_ERR("UAVCAN command bridge: sent RestartNode");
+			PX4_ERR("sent RestartNode");
 			_cmd_in_progress = true;
 		}
 	}
@@ -754,13 +757,13 @@ UavcanServers::cb_restart(const uavcan::ServiceCallResult<uavcan::protocol::Rest
 	_cmd_in_progress = false;
 
 	if (success) {
-		PX4_INFO("UAVCAN command bridge: restart request for node %hhu completed OK.", node_id);
+		PX4_DEBUG("restart request for node %hhu completed OK.", node_id);
 
 		// Clear the dirty flag
 		clear_node_params_dirty(node_id);
 
 	} else {
-		PX4_ERR("UAVCAN command bridge: restart request for node %hhu failed.", node_id);
+		PX4_ERR("restart request for node %hhu failed.", node_id);
 	}
 
 	// Get the next dirty node ID and send the same command to it
@@ -949,259 +952,84 @@ UavcanServers::cb_enumeration_save(const uavcan::ServiceCallResult<uavcan::proto
 	}
 }
 
+
 void
-UavcanServers::unpackFwFromROMFS(const char *sd_path, const char *romfs_path)
+UavcanServers::migrateFWFromRoot(const char *sd_path, const char *sd_root_path)
 {
 	/*
-	Copy the ROMFS firmware directory to the appropriate location on SD, without
+	Copy Any bin files with APDes into appropriate location on SD card
 	overriding any firmware the user has already loaded there.
 
 	The SD firmware directory structure is along the lines of:
 
-		/fs/microsd/fw
-		-	/c
-			-	/nodename-v1-1.0.25d0137d.bin		cache file (copy of /fs/microsd/fw/org.pixhawk.nodename-v1/1.1/nodename-v1-1.0.25d0137d.bin)
-			-	/othernode-v3-1.6.25d0137d.bin		cache file (copy of /fs/microsd/fw/com.example.othernode-v3/1.6/othernode-v3-1.6.25d0137d.bin)
-		-	/org.pixhawk.nodename-v1				device directory for org.pixhawk.nodename-v1
-		-	-	/1.0								version directory for hardware 1.0
-		-	-	/1.1								version directory for hardware 1.1
-		-	-	-	/nodename-v1-1.0.25d0137d.bin	firmware file for org.pixhawk.nodename-v1 nodes, hardware version 1.1
-		-	/com.example.othernode-v3				device directory for com.example.othernode-v3
-		-	-	/1.0								version directory for hardawre 1.0
-		-	-	-	/othernode-v3-1.6.25d0137d.bin	firmware file for com.example.othernode-v3, hardware version 1.6
-
-	The ROMFS directory structure is the same, but located at /etc/uavcan/fw
-	Files located there are prefixed with _ to identify them a comming from the rom
-	file system.
-
-	We iterate over all device directories in the ROMFS base directory, and create
-	corresponding device directories on the SD card if they don't already exist.
-
-	In each device directory, we iterate over each version directory and create a
-	corresponding version directory on the SD card if it doesn't already exist.
-
-	In each version directory, we remove any files with a name starting with "_"
-	in the corresponding directory on the SD card that don't match the bundled firmware
-	filename; if the directory is empty after that process, we copy the bundled firmware.
-
-	todo:This code would benefit from the use of strcat.
-
+	  /fs/microsd/ufw
+	     nnnnn.bin - where n is the board_id
 	*/
+
 	const size_t maxlen = UAVCAN_MAX_PATH_LENGTH;
-	const size_t sd_path_len = strlen(sd_path);
-	const size_t romfs_path_len = strlen(romfs_path);
+	const size_t sd_root_path_len = strlen(sd_root_path);
 	struct stat sb;
 	int rv;
 	char dstpath[maxlen + 1];
 	char srcpath[maxlen + 1];
 
-	DIR *const romfs_dir = opendir(romfs_path);
+	DIR *const sd_root_dir = opendir(sd_root_path);
 
-	if (!romfs_dir) {
+	if (!sd_root_dir) {
 		return;
 	}
 
-	memcpy(dstpath, sd_path, sd_path_len + 1);
-	memcpy(srcpath, romfs_path, romfs_path_len + 1);
+	if (stat(sd_path, &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+		rv = mkdir(sd_path, S_IRWXU | S_IRWXG | S_IRWXO);
 
-	// Iterate over all device directories in ROMFS
-	struct dirent *dev_dirent = NULL;
-
-	while ((dev_dirent = readdir(romfs_dir)) != NULL) {
-		// Skip if not a directory
-		if (!DIRENT_ISDIRECTORY(dev_dirent->d_type)) {
-			continue;
+		if (rv != 0) {
+			PX4_ERR("dev: couldn't create '%s'", sd_path);
+			return;
 		}
-
-		// Make sure the path fits
-		size_t dev_dirname_len = strlen(dev_dirent->d_name);
-		size_t srcpath_dev_len = romfs_path_len + 1 + dev_dirname_len;
-
-		if (srcpath_dev_len > maxlen) {
-			PX4_WARN("dev: srcpath '%s/%s' too long", romfs_path, dev_dirent->d_name);
-			continue;
-		}
-
-		size_t dstpath_dev_len = sd_path_len + 1 + dev_dirname_len;
-
-		if (dstpath_dev_len > maxlen) {
-			PX4_WARN("dev: dstpath '%s/%s' too long", sd_path, dev_dirent->d_name);
-			continue;
-		}
-
-		// Create the device name directory on the SD card if it doesn't already exist
-		dstpath[sd_path_len] = '/';
-		memcpy(&dstpath[sd_path_len + 1], dev_dirent->d_name, dev_dirname_len + 1);
-
-		if (stat(dstpath, &sb) != 0 || !S_ISDIR(sb.st_mode)) {
-			rv = mkdir(dstpath, S_IRWXU | S_IRWXG | S_IRWXO);
-
-			if (rv != 0) {
-				PX4_ERR("dev: couldn't create '%s'", dstpath);
-				continue;
-			}
-		}
-
-		// Set up the source path
-		srcpath[romfs_path_len] = '/';
-		memcpy(&srcpath[romfs_path_len + 1], dev_dirent->d_name, dev_dirname_len + 1);
-
-		DIR *const dev_dir = opendir(srcpath);
-
-		if (!dev_dir) {
-			PX4_ERR("dev: couldn't open '%s'", srcpath);
-			continue;
-		}
-
-		// Iterate over all version directories in the current ROMFS device directory
-		struct dirent *ver_dirent = NULL;
-
-		while ((ver_dirent = readdir(dev_dir)) != NULL) {
-			// Skip if not a directory
-			if (!DIRENT_ISDIRECTORY(ver_dirent->d_type)) {
-				continue;
-			}
-
-			// Make sure the path fits
-			size_t ver_dirname_len = strlen(ver_dirent->d_name);
-			size_t srcpath_ver_len = srcpath_dev_len + 1 + ver_dirname_len;
-
-			if (srcpath_ver_len > maxlen) {
-				PX4_ERR("ver: srcpath '%s/%s' too long", srcpath, ver_dirent->d_name);
-				continue;
-			}
-
-			size_t dstpath_ver_len = dstpath_dev_len + 1 + ver_dirname_len;
-
-			if (dstpath_ver_len > maxlen) {
-				PX4_ERR("ver: dstpath '%s/%s' too long", dstpath, ver_dirent->d_name);
-				continue;
-			}
-
-			// Create the device version directory on the SD card if it doesn't already exist
-			dstpath[dstpath_dev_len] = '/';
-			memcpy(&dstpath[dstpath_dev_len + 1], ver_dirent->d_name, ver_dirname_len + 1);
-
-			if (stat(dstpath, &sb) != 0 || !S_ISDIR(sb.st_mode)) {
-				rv = mkdir(dstpath, S_IRWXU | S_IRWXG | S_IRWXO);
-
-				if (rv != 0) {
-					PX4_ERR("ver: couldn't create '%s'", dstpath);
-					continue;
-				}
-			}
-
-			// Set up the source path
-			srcpath[srcpath_dev_len] = '/';
-			memcpy(&srcpath[srcpath_dev_len + 1], ver_dirent->d_name, ver_dirname_len + 1);
-
-			// Find the name of the bundled firmware file, or move on to the
-			// next directory if there's no file here.
-			DIR *const src_ver_dir = opendir(srcpath);
-
-			if (!src_ver_dir) {
-				PX4_ERR("ver: couldn't open '%s'", srcpath);
-				continue;
-			}
-
-			struct dirent *src_fw_dirent = NULL;
-
-			while ((src_fw_dirent = readdir(src_ver_dir)) != NULL &&
-			       !DIRENT_ISFILE(src_fw_dirent->d_type));
-
-			if (!src_fw_dirent) {
-				(void)closedir(src_ver_dir);
-				continue;
-			}
-
-			size_t fw_len = strlen(src_fw_dirent->d_name);
-
-			bool copy_fw = true;
-
-			// Clear out any romfs_ files in the version directory on the SD card
-			DIR *const dst_ver_dir = opendir(dstpath);
-
-			if (!dst_ver_dir) {
-				PX4_ERR("unlink: couldn't open '%s'", dstpath);
-
-			} else {
-				struct dirent *fw_dirent = NULL;
-
-				while ((fw_dirent = readdir(dst_ver_dir)) != NULL) {
-					// Skip if not a file
-					if (!DIRENT_ISFILE(fw_dirent->d_type)) {
-						continue;
-					}
-
-					if (!memcmp(&fw_dirent->d_name, src_fw_dirent->d_name, fw_len)) {
-						/*
-						 * Exact match between SD card filename and ROMFS filename; must be the same version
-						 * so don't bother deleting and rewriting it.
-						 */
-						copy_fw = false;
-
-					} else if (!memcmp(fw_dirent->d_name, UAVCAN_ROMFS_FW_PREFIX, sizeof(UAVCAN_ROMFS_FW_PREFIX) - 1)) {
-						size_t dst_fw_len = strlen(fw_dirent->d_name);
-						size_t dstpath_fw_len = dstpath_ver_len + dst_fw_len;
-
-						if (dstpath_fw_len > maxlen) {
-							// sizeof(prefix) includes trailing NUL, cancelling out the +1 for the path separator
-							PX4_ERR("unlink: path '%s/%s' too long", dstpath, fw_dirent->d_name);
-
-						} else {
-							// File name starts with "_", delete it.
-							dstpath[dstpath_ver_len] = '/';
-							memcpy(&dstpath[dstpath_ver_len + 1], fw_dirent->d_name, dst_fw_len + 1);
-							unlink(dstpath);
-							PX4_ERR("unlink: removed '%s'", dstpath);
-						}
-
-					} else {
-						// User file, don't copy firmware
-						copy_fw = false;
-					}
-				}
-
-				(void)closedir(dst_ver_dir);
-			}
-
-			// If we need to, copy the file from ROMFS to the SD card
-			if (copy_fw) {
-				size_t srcpath_fw_len = srcpath_ver_len + 1 + fw_len;
-				size_t dstpath_fw_len = dstpath_ver_len + fw_len;
-
-				if (srcpath_fw_len > maxlen) {
-					PX4_ERR("copy: srcpath '%s/%s' too long", srcpath, src_fw_dirent->d_name);
-
-				} else if (dstpath_fw_len > maxlen) {
-					PX4_ERR("copy: dstpath '%s/%s' too long", dstpath, src_fw_dirent->d_name);
-
-				} else {
-					// All OK, make the paths and copy the file
-					srcpath[srcpath_ver_len] = '/';
-					memcpy(&srcpath[srcpath_ver_len + 1], src_fw_dirent->d_name, fw_len + 1);
-
-					dstpath[dstpath_ver_len] = '/';
-					memcpy(&dstpath[dstpath_ver_len + 1], src_fw_dirent->d_name, fw_len + 1);
-
-					rv = copyFw(dstpath, srcpath);
-
-					if (rv != 0) {
-						PX4_ERR("copy: '%s' -> '%s' failed: %d", srcpath, dstpath, rv);
-
-					} else {
-						PX4_INFO("copy: '%s' -> '%s' succeeded", srcpath, dstpath);
-					}
-				}
-			}
-
-			(void)closedir(src_ver_dir);
-		}
-
-		(void)closedir(dev_dir);
 	}
 
-	(void)closedir(romfs_dir);
+	// Iterate over all bin files in root directory
+	struct dirent *dev_dirent = NULL;
+
+	while ((dev_dirent = readdir(sd_root_dir)) != nullptr) {
+
+		uavcan_posix::FirmwareVersionChecker::AppDescriptor descriptor;
+
+		// Looking for all uavcan.bin files.
+
+		if (DIRENT_ISFILE(dev_dirent->d_type) && strstr(dev_dirent->d_name, ".bin") != nullptr) {
+
+			// Make sure the path fits
+
+			size_t filename_len = strlen(dev_dirent->d_name);
+			size_t srcpath_len = sd_root_path_len + 1 + filename_len;
+
+			if (srcpath_len > maxlen) {
+				PX4_WARN("file: srcpath '%s%s' too long", sd_root_path, dev_dirent->d_name);
+				continue;
+			}
+
+			snprintf(srcpath, sizeof(srcpath), "%s%s", sd_root_path, dev_dirent->d_name);
+
+			if (uavcan_posix::FirmwareVersionChecker::getFileInfo(srcpath, descriptor, 1024) != 0) {
+				continue;
+			}
+
+			if (descriptor.image_crc == 0) {
+				continue;
+			}
+
+			snprintf(dstpath, sizeof(dstpath), "%s/%d.bin", sd_path, descriptor.board_id);
+
+			if (copyFw(dstpath, srcpath) >= 0) {
+				unlink(srcpath);
+			}
+		}
+	}
+
+	if (dev_dirent != nullptr) {
+		(void)closedir(dev_dirent);
+	}
 }
 
 int

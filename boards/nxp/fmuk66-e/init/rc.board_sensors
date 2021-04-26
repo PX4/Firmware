@@ -12,8 +12,8 @@ bmm150 -I -R 10 start
 bmp280 -I start
 
 # Internal SPI (accel + mag)
-bmi088 -A -R 4 -s start
-bmi088 -G -R 4 -s start
+bmi088 -A -R 8 -s start
+bmi088 -G -R 8 -s start
 
 # Internal SPI bus ICM-42688
-icm42688p -R 12 -s start
+#icm42688p -R 12 -s start

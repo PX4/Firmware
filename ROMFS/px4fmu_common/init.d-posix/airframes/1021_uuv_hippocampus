@@ -5,16 +5,13 @@
 
 . ${R}etc/init.d/rc.uuv_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	#Set data link loss failsafe mode (0: disabled)
-	param set NAV_DLL_ACT 0
+#Set data link loss failsafe mode (0: disabled)
+param set-default NAV_DLL_ACT 0
 
-	# disable circuit breaker for airspeed sensor
-	param set CBRK_AIRSPD_CHK 162128
+# disable circuit breaker for airspeed sensor
+param set-default CBRK_AIRSPD_CHK 162128
 
-	#param set CBRK_GPSFAIL 240024
-fi
+#param set CBRK_GPSFAIL 240024
 
 set MAV_TYPE 12
 param set MAV_TYPE ${MAV_TYPE}

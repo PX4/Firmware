@@ -300,10 +300,10 @@ bool StateMachineHelperTest::armingStateTransitionTest()
 		armed.ready_to_arm = test->current_state.ready_to_arm;
 
 		// Attempt transition
-		transition_result_t result = arming_state_transition(&status, safety, test->requested_state, &armed,
+		transition_result_t result = arming_state_transition(status, safety, test->requested_state, armed,
 					     true /* enable pre-arm checks */,
 					     nullptr /* no mavlink_log_pub */,
-					     &status_flags,
+					     status_flags,
 					     arm_req,
 					     2e6, /* 2 seconds after boot, everything should be checked */
 					     arm_disarm_reason_t::UNIT_TEST);
@@ -517,7 +517,7 @@ bool StateMachineHelperTest::mainStateTransitionTest()
 
 		// Attempt transition
 		transition_result_t result = main_state_transition(current_vehicle_status, test->to_state, current_status_flags,
-					     &current_commander_state);
+					     current_commander_state);
 
 		// Validate result of transition
 		ut_compare(test->assertMsg, test->expected_transition_result, result);

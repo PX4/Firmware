@@ -54,6 +54,8 @@ static constexpr uint8_t Bit5 = (1 << 5);
 static constexpr uint8_t Bit6 = (1 << 6);
 static constexpr uint8_t Bit7 = (1 << 7);
 
+static constexpr uint32_t I2C_ADDRESS_DEFAULT = 0x69; // 0b110100X
+static constexpr uint32_t I2C_SPEED = 400 * 1000;
 
 static constexpr uint32_t SPI_SPEED = 1 * 1000 * 1000;
 static constexpr uint32_t SPI_SPEED_SENSOR = 10 * 1000 * 1000; // 20MHz for reading sensor and interrupt registers
@@ -106,7 +108,9 @@ enum class Register : uint8_t {
 enum CONFIG_BIT : uint8_t {
 	FIFO_MODE = Bit6, // when the FIFO is full, additional writes will not be written to FIFO
 
-	DLPF_CFG_BYPASS_DLPF_8KHZ = 7, // Rate 8 kHz [2:0]
+	// DLPF_CFG[2:0]
+	DLPF_CFG_Fs_1KHZ          = 1, // Rate 1 kHz,  184 Hz Bandwidth
+	DLPF_CFG_BYPASS_DLPF_8KHZ = 7, // Rate 8 kHz, 3600 Hz Bandwidth
 };
 
 // GYRO_CONFIG
@@ -118,7 +122,7 @@ enum GYRO_CONFIG_BIT : uint8_t {
 	GYRO_FS_SEL_2000_DPS	= Bit4 | Bit3, // 0b11000
 
 	// FCHOICE_B [1:0]
-	FCHOICE_B_8KHZ_BYPASS_DLPF = Bit1 | Bit0, // 0b00 - 3-dB BW: 3281 Noise BW (Hz): 3451.0   8 kHz
+	FCHOICE_B_BYPASS_DLPF   = Bit1 | Bit0, // 0b00 - 3-dB BW: 3281 Noise BW (Hz): 3451.0   8 kHz
 };
 
 // ACCEL_CONFIG
@@ -133,6 +137,9 @@ enum ACCEL_CONFIG_BIT : uint8_t {
 // ACCEL_CONFIG2
 enum ACCEL_CONFIG2_BIT : uint8_t {
 	ACCEL_FCHOICE_B_BYPASS_DLPF = Bit3,
+
+	// [2:0] A_DLPFCFG
+	A_DLPFCFG_BW_218HZ_DLPF = 1, // Rate 1 kHz, 218.1 Hz Bandwidth (DLPF filter Block)
 };
 
 // FIFO_EN
@@ -177,7 +184,8 @@ enum I2C_SLV4_CTRL_BIT : uint8_t {
 
 // INT_PIN_CFG
 enum INT_PIN_CFG_BIT : uint8_t {
-	ACTL = Bit7,
+	ACTL      = Bit7,
+	BYPASS_EN = Bit1, // interface pins(ES_CL and ES_DA) will go into ‘bypass mode’ when the i2c master interface is disabled
 };
 
 // INT_ENABLE

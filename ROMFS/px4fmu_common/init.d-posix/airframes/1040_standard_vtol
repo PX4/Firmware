@@ -7,44 +7,46 @@
 
 . ${R}etc/init.d/rc.vtol_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	param set FW_AIRSPD_MAX 25
-	param set FW_AIRSPD_MIN 14
-	param set FW_AIRSPD_TRIM 16
-	param set FW_L1_PERIOD 12
+param set-default FW_L1_PERIOD 12
+param set-default FW_MAN_P_MAX 30
+param set-default FW_PR_FF 0.2
+param set-default FW_PR_I 0.4
+param set-default FW_PR_P 0.9
+param set-default FW_PSP_OFF 2
+param set-default FW_P_LIM_MAX 32
+param set-default FW_P_LIM_MIN -15
+param set-default FW_RR_FF 0.1
+param set-default FW_RR_P 0.3
+param set-default FW_THR_CRUISE 0.25
+param set-default FW_THR_MAX 0.6
+param set-default FW_THR_MIN 0.05
+param set-default FW_T_ALT_TC 2
+param set-default FW_T_CLMB_MAX 8
+param set-default FW_T_HRATE_FF 0.5
+param set-default FW_T_SINK_MAX 2.7
+param set-default FW_T_SINK_MIN 2.2
+param set-default FW_T_TAS_TC 2
 
-	param set FW_RR_FF 0.1
-	param set FW_RR_P 0.01
+param set-default MC_ROLLRATE_P 0.3
+param set-default MC_YAW_P 1.6
 
-	param set MC_ROLLRATE_P 0.3
+param set-default MIS_TAKEOFF_ALT 10
 
-	param set MIS_LTRMIN_ALT 10
-	param set MIS_TAKEOFF_ALT 10
-	param set MIS_YAW_TMT 10
+param set-default MPC_ACC_HOR_MAX 2
+param set-default MPC_XY_P 0.8
+param set-default MPC_XY_VEL_P_ACC 3
+param set-default MPC_XY_VEL_I_ACC 4
+param set-default MPC_XY_VEL_D_ACC 0.1
 
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_ACC_HOR_MAX 2
-	param set MPC_THR_HOVER 0.58
-	param set MPC_TKO_SPEED 1
-	param set MPC_XY_P 0.8
-	param set MPC_XY_VEL_P_ACC 3
-	param set MPC_XY_VEL_I_ACC 4
-	param set MPC_XY_VEL_D_ACC 0.1
-	param set MPC_Z_VEL_MAX_DN 1.5
+param set-default NAV_ACC_RAD 5
+param set-default NAV_LOITER_RAD 80
 
-	param set NAV_ACC_RAD 5
-	param set NAV_LOITER_RAD 80
-
-	param set VT_F_TRANS_DUR 5
-	param set VT_F_TRANS_THR 0.75
-	param set VT_ARSP_TRANS 16
-	param set VT_MOT_ID 1234
-	param set VT_FW_MOT_OFFID 1234
-	param set VT_TYPE 2
-	param set VT_B_TRANS_DUR 8
-
-fi
+param set-default VT_FWD_THRUST_EN 4
+param set-default VT_F_TRANS_THR 0.75
+param set-default VT_MOT_ID 1234
+param set-default VT_FW_MOT_OFFID 1234
+param set-default VT_B_TRANS_DUR 8
+param set-default VT_TYPE 2
 
 set MAV_TYPE 22
 

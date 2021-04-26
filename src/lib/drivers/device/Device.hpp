@@ -46,7 +46,7 @@
 #include <px4_platform_common/px4_config.h>
 #include <px4_platform_common/posix.h>
 
-#include <drivers/drv_device.h>
+#include <drivers/drv_sensor.h>
 
 #define DEVICE_LOG(FMT, ...) PX4_LOG_NAMED(_name, FMT, ##__VA_ARGS__)
 #define DEVICE_DEBUG(FMT, ...) PX4_LOG_NAMED_COND(_name, _debug_enabled, FMT, ##__VA_ARGS__)
@@ -138,15 +138,7 @@ public:
 	 * @param arg		An argument to the operation.
 	 * @return		Negative errno on error, OK or positive value on success.
 	 */
-	virtual int	ioctl(unsigned operation, unsigned &arg)
-	{
-		switch (operation) {
-		case DEVIOCGDEVICEID:
-			return (int)_device_id.devid;
-		}
-
-		return -ENODEV;
-	}
+	virtual int	ioctl(unsigned operation, unsigned &arg) { return -ENODEV; }
 
 	/** Device bus types for DEVID */
 	enum DeviceBusType {
@@ -155,6 +147,8 @@ public:
 		DeviceBusType_SPI     = 2,
 		DeviceBusType_UAVCAN  = 3,
 		DeviceBusType_SIMULATION = 4,
+		DeviceBusType_SERIAL = 5,
+		DeviceBusType_MAVLINK = 6,
 	};
 
 	/*
@@ -182,7 +176,8 @@ public:
 	 *
 	 * @return The bus type
 	 */
-	DeviceBusType	get_device_bus_type() const { return _device_id.devid_s.bus_type; }
+	DeviceBusType get_device_bus_type() const { return _device_id.devid_s.bus_type; }
+	void          set_device_bus_type(DeviceBusType bus_type) { _device_id.devid_s.bus_type = bus_type; }
 
 	static const char *get_device_bus_string(DeviceBusType bus)
 	{
@@ -199,6 +194,12 @@ public:
 		case DeviceBusType_SIMULATION:
 			return "SIMULATION";
 
+		case DeviceBusType_SERIAL:
+			return "SERIAL";
+
+		case DeviceBusType_MAVLINK:
+			return "MAVLINK";
+
 		case DeviceBusType_UNKNOWN:
 		default:
 			return "UNKNOWN";
@@ -211,6 +212,7 @@ public:
 	 * @return The bus ID
 	 */
 	uint8_t get_device_bus() const { return _device_id.devid_s.bus; }
+	void    set_device_bus(uint8_t bus) { _device_id.devid_s.bus = bus; }
 
 	/**
 	 * Return the bus address of the device.

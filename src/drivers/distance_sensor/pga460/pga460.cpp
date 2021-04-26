@@ -47,6 +47,15 @@ PGA460::PGA460(const char *port)
 	strncpy(_port, port, sizeof(_port) - 1);
 	// Enforce null termination.
 	_port[sizeof(_port) - 1] = '\0';
+
+	_device_id.devid_s.devtype = DRV_DIST_DEVTYPE_PGA460;
+	_device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
+
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/ttySx'
+
+	if (bus_num < 10) {
+		_device_id.devid_s.bus = bus_num;
+	}
 }
 
 PGA460::~PGA460()
@@ -763,6 +772,7 @@ void PGA460::uORB_publish_results(const float object_distance)
 {
 	struct distance_sensor_s report = {};
 	report.timestamp = hrt_absolute_time();
+	report.device_id = _device_id.devid;
 	report.type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
 	report.orientation = distance_sensor_s::ROTATION_DOWNWARD_FACING;
 	report.current_distance = object_distance;

@@ -414,27 +414,11 @@ PARAM_DEFINE_FLOAT(FW_YR_FF, 0.3f);
 PARAM_DEFINE_FLOAT(FW_WR_FF, 0.2f);
 
 /**
- * Roll setpoint offset
- *
- * An airframe specific offset of the roll setpoint in degrees, the value is
- * added to the roll setpoint and should correspond to the typical cruise speed
- * of the airframe.
- *
- * @unit deg
- * @min -90.0
- * @max 90.0
- * @decimal 1
- * @increment 0.5
- * @group FW Attitude Control
- */
-PARAM_DEFINE_FLOAT(FW_RSP_OFF, 0.0f);
-
-/**
- * Pitch setpoint offset
+ * Pitch setpoint offset (pitch at level flight)
  *
  * An airframe specific offset of the pitch setpoint in degrees, the value is
- * added to the pitch setpoint and should correspond to the typical cruise
- * speed of the airframe.
+ * added to the pitch setpoint and should correspond to the pitch at
+ * typical cruise speed of the airframe.
  *
  * @unit deg
  * @min -90.0
@@ -647,20 +631,6 @@ PARAM_DEFINE_FLOAT(FW_ACRO_Y_MAX, 90);
  * @group FW Attitude Control
  */
 PARAM_DEFINE_FLOAT(FW_ACRO_Z_MAX, 45);
-
-/**
- * Threshold for Rattitude mode
- *
- * Manual input needed in order to override attitude control rate setpoints
- * and instead pass manual stick inputs as rate setpoints
- *
- * @min 0.0
- * @max 1.0
- * @decimal 2
- * @increment 0.01
- * @group FW Attitude Control
- */
-PARAM_DEFINE_FLOAT(FW_RATT_TH, 0.8f);
 
 /**
 * Roll trim increment at minimum airspeed

@@ -85,11 +85,12 @@ void Magnetometer::set_external(bool external)
 
 bool Magnetometer::set_offset(const Vector3f &offset)
 {
-	if (Vector3f(_offset - offset).longerThan(0.001f)) {
-		_offset = offset;
-
-		_calibration_count++;
-		return true;
+	if (Vector3f(_offset - offset).longerThan(0.01f)) {
+		if (PX4_ISFINITE(offset(0)) && PX4_ISFINITE(offset(1)) && PX4_ISFINITE(offset(2))) {
+			_offset = offset;
+			_calibration_count++;
+			return true;
+		}
 	}
 
 	return false;
@@ -97,13 +98,17 @@ bool Magnetometer::set_offset(const Vector3f &offset)
 
 bool Magnetometer::set_scale(const Vector3f &scale)
 {
-	if (Vector3f(_scale.diag() - scale).longerThan(0.001f)) {
-		_scale(0, 0) = scale(0);
-		_scale(1, 1) = scale(1);
-		_scale(2, 2) = scale(2);
+	if (Vector3f(_scale.diag() - scale).longerThan(0.01f)) {
+		if ((scale(0) > 0.f) && (scale(1) > 0.f) && (scale(2) > 0.f) &&
+		    PX4_ISFINITE(scale(0)) && PX4_ISFINITE(scale(1)) && PX4_ISFINITE(scale(2))) {
 
-		_calibration_count++;
-		return true;
+			_scale(0, 0) = scale(0);
+			_scale(1, 1) = scale(1);
+			_scale(2, 2) = scale(2);
+
+			_calibration_count++;
+			return true;
+		}
 	}
 
 	return false;
@@ -111,18 +116,21 @@ bool Magnetometer::set_scale(const Vector3f &scale)
 
 bool Magnetometer::set_offdiagonal(const Vector3f &offdiagonal)
 {
-	if (Vector3f(Vector3f{_scale(0, 1), _scale(0, 2), _scale(1, 2)} - offdiagonal).longerThan(0.001f)) {
-		_scale(0, 1) = offdiagonal(0);
-		_scale(1, 0) = offdiagonal(0);
+	if (Vector3f(Vector3f{_scale(0, 1), _scale(0, 2), _scale(1, 2)} - offdiagonal).longerThan(0.01f)) {
+		if (PX4_ISFINITE(offdiagonal(0)) && PX4_ISFINITE(offdiagonal(1)) && PX4_ISFINITE(offdiagonal(2))) {
 
-		_scale(0, 2) = offdiagonal(1);
-		_scale(2, 0) = offdiagonal(1);
+			_scale(0, 1) = offdiagonal(0);
+			_scale(1, 0) = offdiagonal(0);
 
-		_scale(1, 2) = offdiagonal(2);
-		_scale(2, 1) = offdiagonal(2);
+			_scale(0, 2) = offdiagonal(1);
+			_scale(2, 0) = offdiagonal(1);
 
-		_calibration_count++;
-		return true;
+			_scale(1, 2) = offdiagonal(2);
+			_scale(2, 1) = offdiagonal(2);
+
+			_calibration_count++;
+			return true;
+		}
 	}
 
 	return false;
@@ -207,8 +215,14 @@ void Magnetometer::ParametersUpdate()
 
 void Magnetometer::Reset()
 {
-	_rotation.setIdentity();
-	_rotation_enum = ROTATION_NONE;
+	if (_external) {
+		set_rotation(ROTATION_NONE);
+
+	} else {
+		// internal sensors follow board rotation
+		set_rotation(GetBoardRotation());
+	}
+
 	_offset.zero();
 	_scale.setIdentity();
 
@@ -269,7 +283,7 @@ void Magnetometer::PrintStatus()
 	}
 
 #if defined(DEBUG_BUILD)
-	_scale.print()
+	_scale.print();
 #endif // DEBUG_BUILD
 }
 

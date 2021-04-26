@@ -40,30 +40,13 @@
 class MavlinkStreamAttitude : public MavlinkStream
 {
 public:
-	const char *get_name() const override
-	{
-		return MavlinkStreamAttitude::get_name_static();
-	}
+	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamAttitude(mavlink); }
 
-	static constexpr const char *get_name_static()
-	{
-		return "ATTITUDE";
-	}
+	static constexpr const char *get_name_static() { return "ATTITUDE"; }
+	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_ATTITUDE; }
 
-	static constexpr uint16_t get_id_static()
-	{
-		return MAVLINK_MSG_ID_ATTITUDE;
-	}
-
-	uint16_t get_id() override
-	{
-		return get_id_static();
-	}
-
-	static MavlinkStream *new_instance(Mavlink *mavlink)
-	{
-		return new MavlinkStreamAttitude(mavlink);
-	}
+	const char *get_name() const override { return get_name_static(); }
+	uint16_t get_id() override { return get_id_static(); }
 
 	unsigned get_size() override
 	{
@@ -71,17 +54,10 @@ public:
 	}
 
 private:
+	explicit MavlinkStreamAttitude(Mavlink *mavlink) : MavlinkStream(mavlink) {}
+
 	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
-
-	/* do not allow top copying this class */
-	MavlinkStreamAttitude(MavlinkStreamAttitude &) = delete;
-	MavlinkStreamAttitude &operator = (const MavlinkStreamAttitude &) = delete;
-
-
-protected:
-	explicit MavlinkStreamAttitude(Mavlink *mavlink) : MavlinkStream(mavlink)
-	{}
 
 	bool send() override
 	{

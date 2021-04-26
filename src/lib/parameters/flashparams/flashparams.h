@@ -49,7 +49,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include "systemlib/uthash/utarray.h"
 
 __BEGIN_DECLS
 

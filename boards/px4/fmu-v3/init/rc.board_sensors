@@ -63,7 +63,7 @@ fi
 if [ $BOARD_FMUV3 != 0 ]
 then
 	# sensor heating is available, but we disable it for now
-	param set SENS_EN_THERMAL 0
+	param set-default SENS_EN_THERMAL 0
 
 	# l3gd20 (external/isolated SPI4)
 	l3gd20 -s -b 4 -R 4 start

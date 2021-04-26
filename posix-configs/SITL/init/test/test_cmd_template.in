@@ -1,0 +1,14 @@
+#!/bin/sh
+# PX4 commands need the 'px4-' prefix in bash.
+# (px4-alias.sh is expected to be in the PATH)
+. px4-alias.sh
+
+dataman start
+
+simulator start
+tone_alarm start
+pwm_out_sim start
+
+@test_name@
+
+shutdown

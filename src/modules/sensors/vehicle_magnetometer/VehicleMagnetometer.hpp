@@ -92,8 +92,7 @@ private:
 
 	uORB::Publication<sensor_preflight_mag_s> _sensor_preflight_mag_pub{ORB_ID(sensor_preflight_mag)};
 
-	uORB::Publication<vehicle_magnetometer_s> _vehicle_magnetometer_pub{ORB_ID(vehicle_magnetometer)};
-	uORB::PublicationMulti<vehicle_magnetometer_s> _vehicle_magnetometer_multi_pub[MAX_SENSOR_COUNT] {
+	uORB::PublicationMulti<vehicle_magnetometer_s> _vehicle_magnetometer_pub[MAX_SENSOR_COUNT] {
 		{ORB_ID(vehicle_magnetometer)},
 		{ORB_ID(vehicle_magnetometer)},
 		{ORB_ID(vehicle_magnetometer)},

@@ -38,12 +38,11 @@
 #pragma once
 
 #include "sensor_bridge.hpp"
-#include <drivers/drv_baro.h>
 
 #include <uavcan/equipment/air_data/StaticPressure.hpp>
 #include <uavcan/equipment/air_data/StaticTemperature.hpp>
 
-class UavcanBarometerBridge : public UavcanCDevSensorBridgeBase
+class UavcanBarometerBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;

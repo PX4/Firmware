@@ -45,7 +45,6 @@
 #include <string.h>
 
 #include "chip.h"
-#include "stm32.h"
 #include "nvic.h"
 
 #include "board.h"
@@ -55,8 +54,11 @@
 #include "can.h"
 #include "uavcan.h"
 #include "random.h"
-#include "crc.h"
-#include "boot_app_shared.h"
+
+#include <drivers/bootloaders/boot_app_shared.h>
+#include <drivers/bootloaders/boot_alt_app_shared.h>
+#include <drivers/drv_watchdog.h>
+#include <lib/systemlib/crc.h>
 
 //#define DEBUG_APPLICATION_INPLACE    1 /* Never leave defined */
 #define DEBUG_NO_FW_UPDATE           1 /* With DEBUG_APPLICATION_INPLACE
@@ -93,10 +95,11 @@ typedef volatile struct bootloader_t {
 	bool  wait_for_getnodeinfo;
 	bool  app_bl_request;
 	bool sent_node_info_response;
+	uint16_t percentage_done;
 	union {
 		uint32_t l;
 		uint8_t b[sizeof(uint32_t)];
-	} fw_word0;
+	} fw_word0[LATER_FLAHSED_WORDS];
 
 } bootloader_t;
 
@@ -105,7 +108,7 @@ bootloader_t bootloader;
 const uint8_t debug_log_source[uavcan_byte_count(LogMessage, source)] = {'B', 'o', 'o', 't'};
 
 /****************************************************************************
- * Name: start_the_watch_dog
+ * Name: early_start_the_watch_dog
  *
  * Description:
  *   This function will start the hardware watchdog. Once stated the code must
@@ -119,10 +122,31 @@ const uint8_t debug_log_source[uavcan_byte_count(LogMessage, source)] = {'B', 'o
  *
  ****************************************************************************/
 
-static inline void start_the_watch_dog(void)
+static inline void early_start_the_watch_dog(void)
 {
 #ifdef OPT_ENABLE_WD
 #endif
+}
+
+/****************************************************************************
+ * Name: app_start_the_watch_dog
+ *
+ * Description:
+ *   This function will start the hardware watchdog. Once stated the code must
+ *   kick it before it time out a reboot will occur.
+ *
+ * Input Parameters:
+ *   None
+ *
+ * Returned Value:
+ *   None
+ *
+ ****************************************************************************/
+
+static inline void app_start_the_watch_dog(void)
+{
+	watchdog_init();
+	watchdog_pet();
 }
 /****************************************************************************
  * Name: kick_the_watch_dog
@@ -207,7 +231,7 @@ static void node_info_process(bl_timer_id id, void *context)
 			bootloader.fw_image_descriptor->minor_version;
 
 		response.software_version.vcs_commit =
-			bootloader.fw_image_descriptor->vcs_commit;
+			bootloader.fw_image_descriptor->git_hash;
 
 		response.software_version.image_crc =
 			bootloader.fw_image_descriptor->image_crc;
@@ -262,7 +286,7 @@ static void node_status_process(bl_timer_id id, void *context)
 	message.u8 = uavcan_pack(bootloader.sub_mode, NodeStatus, sub_mode)
 		     | uavcan_pack(bootloader.mode, NodeStatus, mode)
 		     | uavcan_pack(bootloader.health, NodeStatus, health);
-	message.vendor_specific_status_code = 0u;
+	message.vendor_specific_status_code = bootloader.percentage_done;
 	uavcan_tx_dsdl(DSDLMsgNodeStatus, &protocol, (const uint8_t *) &message, sizeof(uavcan_NodeStatus_t));
 }
 
@@ -291,9 +315,9 @@ static void find_descriptor(void)
 	app_descriptor_t *descriptor = NULL;
 	union {
 		uint64_t ull;
-		char text[sizeof(uint64_t)];
+		uint8_t bytes[sizeof(uint64_t)];
 	} sig = {
-		.text = {APP_DESCRIPTOR_SIGNATURE}
+		.bytes = APP_DESCRIPTOR_SIGNATURE
 	};
 
 	do {
@@ -311,62 +335,56 @@ static void find_descriptor(void)
  *
  * Description:
  *   This functions validates the applications image based on the validity of
- *   the Application firmware descriptor's crc and the value of the first word
- *   in the FLASH image.
+ *   the Application firmware descriptor's 2 crcs and the value of
+ *   the first word in the FLASH image.
  *
  *
  * Input Parameters:
- *   first_word - the value read from the first word of the Application's
+ *   first_word - pointer the value read from the first 2 words of the Application's
  *   in FLASH image.
  *
  * Returned Value:
  *   true if the application in flash is valid., false otherwise.
  *
  ****************************************************************************/
-static bool is_app_valid(uint32_t first_word)
+static bool is_app_valid(volatile uint32_t *first_words)
 {
-	uint64_t crc;
-	size_t i, length, crc_offset;
-	uint32_t word;
+	uint32_t block_crc1;
+	uint32_t block_crc2;
+	size_t length;
 
 	find_descriptor();
 
-	if (!bootloader.fw_image_descriptor || first_word == 0xFFFFFFFFu) {
+	if (!bootloader.fw_image_descriptor || first_words[0] == 0xFFFFFFFFu) {
 		return false;
 	}
 
 	length = bootloader.fw_image_descriptor->image_size;
 
-	if (length > APPLICATION_SIZE) {
+	if (length > APPLICATION_SIZE || length == 0) {
 		return false;
 	}
 
-	crc_offset = (size_t)(&bootloader.fw_image_descriptor->image_crc) -
-		     (size_t) bootloader.fw_image;
-	crc_offset >>= 2u;
-	length >>= 2u;
+	size_t block2_len = bootloader.fw_image_descriptor->image_size - ((size_t)&bootloader.fw_image_descriptor->major_version
+			    - (size_t)bootloader.fw_image);
 
-	crc = crc64_add_word(CRC64_INITIAL, first_word);
-
-	for (i = 1u; i < length; i++) {
-		if (i == crc_offset || i == crc_offset + 1u) {
-			/* Zero out the CRC field while computing the CRC */
-			word = 0u;
-
-		} else {
-			word = bootloader.fw_image[i];
-		}
-
-		crc = crc64_add_word(crc, word);
+	if (block2_len > APPLICATION_SIZE || block2_len == 0) {
+		return false;
 	}
 
-	crc ^= CRC64_OUTPUT_XOR;
+	block_crc1 = crc32_signature(0, LATER_FLAHSED_WORDS * sizeof(uint32_t), (const uint8_t *)first_words);
+	block_crc1 = crc32_signature(block_crc1, (size_t)(&bootloader.fw_image_descriptor->crc32_block1) -
+				     (size_t)(bootloader.fw_image + LATER_FLAHSED_WORDS), (const uint8_t *)(bootloader.fw_image + LATER_FLAHSED_WORDS));
+
+	block_crc2 = crc32_signature(0, block2_len,
+				     (const uint8_t *) &bootloader.fw_image_descriptor->major_version);
 
 #if defined(DEBUG_APPLICATION_INPLACE)
 	return true;
 #endif
 
-	return crc == bootloader.fw_image_descriptor->image_crc;
+	return block_crc1 == bootloader.fw_image_descriptor->crc32_block1
+	       && block_crc2 == bootloader.fw_image_descriptor->crc32_block2;
 }
 
 /****************************************************************************
@@ -736,22 +754,14 @@ static flash_error_t file_read_and_program(const uavcan_Path_t *fw_path, uint8_t
 	/* Set up the read request */
 	memcpy(&request.path, fw_path, sizeof(uavcan_Path_t));
 
+	bootloader.percentage_done = 0;
+
 	uint8_t retries = UavcanServiceRetries;
 
-	/*
-	 * Rate limiting on read requests:
-	 *
-	 *  2/sec (500  ms) on a 125 Kbaud bus Speed = 1 1000/2
-	 *  4/sec (250  ms) on a 250 Kbaud bus Speed = 2 1000/4
-	 *  8/sec (125  ms) on a 500 Kbaud bus Speed = 3 1000/8
-	 * 16/sec (62.5 ms) on a 1 Mbaud bus   Speed = 4 1000/16
-	 */
-
-	uint32_t read_ms = 1000 >> bootloader.bus_speed;
 	size_t length;
 
 	protocol.tail_init.u8  = 0;
-	bl_timer_id tread = timer_allocate(modeTimeout | modeStarted, read_ms, 0);
+	int a_percent = fw_image_size / 100;
 
 	do {
 		/* reset the rate limit */
@@ -759,8 +769,6 @@ static flash_error_t file_read_and_program(const uavcan_Path_t *fw_path, uint8_t
 		uavcan_status = UavcanError;
 
 		while (retries && uavcan_status != UavcanOk) {
-
-			timer_restart(tread, read_ms);
 
 			length = FixedSizeReadRequest + fw_path_length;
 			protocol.ser.source_node_id = g_server_node_id;
@@ -821,10 +829,15 @@ static flash_error_t file_read_and_program(const uavcan_Path_t *fw_path, uint8_t
 			data[length] = 0xff;
 		}
 
-		/* Save the first word off */
+		/* Save the first words off */
 		if (request.offset == 0u) {
-			bootloader.fw_word0.l = *(uint32_t *)data;
-			*(uint32_t *)data = 0xffffffff;
+			uint32_t *datal = (uint32_t *)data;
+			bootloader.fw_word0[0].l = datal[0];
+			datal[0] = 0xffffffff;
+#if LATER_FLAHSED_WORDS > 1
+			bootloader.fw_word0[1].l = datal[1];
+			datal[1] = 0xffffffff;
+#endif
 		}
 
 		flash_status = bl_flash_write(flash_address + request.offset,
@@ -832,17 +845,11 @@ static flash_error_t file_read_and_program(const uavcan_Path_t *fw_path, uint8_t
 					      length + (length & 1));
 
 		request.offset  += length;
-
-		/* rate limit */
-		while (!timer_expired(tread)) {
-			;
-		}
+		bootloader.percentage_done = (request.offset / a_percent);
 
 	} while (request.offset < fw_image_size &&
 		 length == sizeof(response.data)  &&
 		 flash_status == FLASH_OK);
-
-	timer_free(tread);
 
 	/*
 	 * Return success if the last read succeeded, the last write succeeded, the
@@ -850,7 +857,6 @@ static flash_error_t file_read_and_program(const uavcan_Path_t *fw_path, uint8_t
 	 * was not. */
 	if (uavcan_status == UavcanOk && flash_status == FLASH_OK
 	    && request.offset == fw_image_size && length != 0) {
-
 		return FLASH_OK;
 
 	} else {
@@ -926,7 +932,7 @@ static void application_run(size_t fw_image_size, bootloader_app_shared_t *commo
 
 		__asm__ __volatile__("\tcpsid  i\n");
 
-		stm32_boarddeinitialize();
+		board_deinitialize();
 
 		/* kill the systick interrupt */
 		putreg32(0, NVIC_SYSTICK_CTRL);
@@ -951,6 +957,7 @@ static void application_run(size_t fw_image_size, bootloader_app_shared_t *commo
 		putreg32(APPLICATION_LOAD_ADDRESS, NVIC_VECTAB);
 		__asm volatile("dsb");
 		/* extract the stack and entrypoint from the app vector table and go */
+		app_start_the_watch_dog();
 		do_jump(fw_image[0], fw_image[1]);
 	}
 }
@@ -975,11 +982,16 @@ static void application_run(size_t fw_image_size, bootloader_app_shared_t *commo
 static int autobaud_and_get_dynamic_node_id(bl_timer_id tboot, can_speed_t *speed, uint32_t *node_id)
 {
 	board_indicate(autobaud_start);
-
+	bool autobaud_only = *speed == CAN_UNDEFINED;
 	int rv = can_autobaud(speed, tboot);
 
 	if (rv != CAN_BOOT_TIMEOUT) {
 		board_indicate(autobaud_end);
+
+		if (autobaud_only) {
+			return rv;
+		}
+
 		board_indicate(allocation_start);
 #if defined(DEBUG_APPLICATION_INPLACE)
 		*node_id = 125;
@@ -1017,7 +1029,7 @@ __EXPORT int main(int argc, char *argv[])
 	flash_error_t status;
 	bootloader_app_shared_t common;
 
-	start_the_watch_dog();
+	early_start_the_watch_dog();
 
 	/* Begin with all data zeroed */
 	memset((void *)&bootloader, 0, sizeof(bootloader));
@@ -1061,12 +1073,12 @@ __EXPORT int main(int argc, char *argv[])
 	 *
 	 */
 #if defined(OPT_WAIT_FOR_GETNODEINFO_JUMPER_GPIO)
-	bootloader.wait_for_getnodeinfo = (stm32_gpioread(GPIO_GETNODEINFO_JUMPER) ^
+	bootloader.wait_for_getnodeinfo = (px4_arch_gpioread(GPIO_GETNODEINFO_JUMPER) ^
 					   OPT_WAIT_FOR_GETNODEINFO_JUMPER_GPIO_INVERT);
 #endif
 
 	/* Is the memory in the Application space occupied by a valid application? */
-	bootloader.app_valid = is_app_valid(bootloader.fw_image[0]);
+	bootloader.app_valid = is_app_valid(bootloader.fw_image);
 
 	board_indicate(reset);
 
@@ -1074,6 +1086,20 @@ __EXPORT int main(int argc, char *argv[])
 	bootloader.app_bl_request = (OK == bootloader_app_shared_read(&common, App)) &&
 				    common.bus_speed && common.node_id;
 
+#if defined(SUPPORT_ALT_CAN_BOOTLOADER)
+	/* Was this boot a result of An Alternate Application being told it has a FW update ? */
+
+	bootloader_alt_app_shared_t *ps = (bootloader_alt_app_shared_t *) &_sapp_bl_shared;
+
+	if (!bootloader.app_bl_request && ps->signature == BL_ALT_APP_SHARED_SIGNATURE) {
+
+		common.node_id = ps->node_id;
+		common.bus_speed = CAN_UNDEFINED;
+		bootloader.app_bl_request = ps->node_id != 0;
+		ps->signature = 0;
+	}
+
+#endif
 	/*
 	 * Mark CRC to say this is not from
 	 * auto baud and Node Allocation
@@ -1129,7 +1155,30 @@ __EXPORT int main(int argc, char *argv[])
 	if (bootloader.app_bl_request) {
 
 		bootloader.bus_speed = common.bus_speed;
+
+		/* if the the bootloader_alt_app_shared_t was used there  is not bit rate.
+		 * So let auto baud only as signaled by bootloader.bus_speed == CAN_UNDEFINED
+		 */
+
+		if (common.bus_speed == CAN_UNDEFINED) {
+			if (CAN_OK != autobaud_and_get_dynamic_node_id(tboot, (can_speed_t *)&bootloader.bus_speed, &common.node_id)) {
+				/*
+				 * It is OK that node ID is set to the preferred Appl Node ID because
+				 *  common.crc.valid is not true yet
+				 */
+
+				goto boot;
+
+			}
+		}
+
 		can_init(can_freq2speed(common.bus_speed), CAN_Mode_Normal);
+		/*
+		 * Mark CRC to say this is from
+		 * auto baud and Node Allocation
+		 */
+		common.crc.valid = true;
+
 
 	} else {
 
@@ -1247,7 +1296,6 @@ __EXPORT int main(int argc, char *argv[])
 			      LOGMESSAGE_STAGE_ERASE,
 			      LOGMESSAGE_RESULT_START);
 
-
 	/* Need to signal that the app is no longer valid  if Node Info Request are done */
 	bootloader.app_valid = false;
 
@@ -1270,7 +1318,7 @@ __EXPORT int main(int argc, char *argv[])
 	}
 
 	/* Did we program a valid image ?*/
-	if (!is_app_valid(bootloader.fw_word0.l)) {
+	if (!is_app_valid(&bootloader.fw_word0[0].l)) {
 		bootloader.app_valid = 0u;
 
 		board_indicate(fw_update_invalid_crc);
@@ -1279,14 +1327,16 @@ __EXPORT int main(int argc, char *argv[])
 		goto failure;
 	}
 
-	/* Yes Commit the first word to location 0 of the Application image in flash */
-	status = bl_flash_write((uint32_t) bootloader.fw_image, (uint8_t *) &bootloader.fw_word0.b[0],
-				sizeof(bootloader.fw_word0.b));
+	/* Yes Commit the first word(s) to location 0 of the Application image in flash */
+	status = bl_flash_write((uint32_t) bootloader.fw_image, (uint8_t *) &bootloader.fw_word0[0].b[0],
+				sizeof(bootloader.fw_word0));
 
 	if (status != FLASH_OK) {
 		error_log_stage = LOGMESSAGE_STAGE_FINALIZE;
 		goto failure;
 	}
+
+	bootloader.percentage_done = 100;
 
 	/* Send a completion log allocation_message */
 	uavcan_tx_log_message(LOGMESSAGE_LEVELINFO,

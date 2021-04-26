@@ -47,6 +47,7 @@
 #include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/takeoff_status.h>
 
 #include "LandDetector.h"
 
@@ -73,6 +74,8 @@ protected:
 
 	float _get_max_altitude() override;
 private:
+
+	float _get_gnd_effect_altitude();
 
 	/** Time in us that freefall has to hold before triggering freefall */
 	static constexpr hrt_abstime FREEFALL_TRIGGER_TIME_US = 300_ms;
@@ -111,26 +114,32 @@ private:
 	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 	uORB::Subscription _vehicle_control_mode_sub{ORB_ID(vehicle_control_mode)};
 	uORB::Subscription _vehicle_local_position_setpoint_sub{ORB_ID(vehicle_local_position_setpoint)};
+	uORB::Subscription _takeoff_status_sub{ORB_ID(takeoff_status)};
 
 	hrt_abstime _hover_thrust_estimate_last_valid{0};
+	bool _hover_thrust_estimate_valid{false};
 
 	bool _flag_control_climb_rate_enabled{false};
 	bool _hover_thrust_initialized{false};
 
 	float _actuator_controls_throttle{0.f};
 
+	uint8_t _takeoff_state{takeoff_status_s::TAKEOFF_STATE_DISARMED};
+
 	hrt_abstime _min_thrust_start{0};	///< timestamp when minimum trust was applied first
 	hrt_abstime _landed_time{0};
 
 	bool _in_descend{false};		///< vehicle is desending
 	bool _horizontal_movement{false};	///< vehicle is moving horizontally
+	bool _below_gnd_effect_hgt{false};	///< vehicle height above ground is below height where ground effect occurs
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(
 		LandDetector,
 		(ParamFloat<px4::params::LNDMC_ALT_MAX>)    _param_lndmc_alt_max,
 		(ParamFloat<px4::params::LNDMC_ROT_MAX>)    _param_lndmc_rot_max,
 		(ParamFloat<px4::params::LNDMC_XY_VEL_MAX>) _param_lndmc_xy_vel_max,
-		(ParamFloat<px4::params::LNDMC_Z_VEL_MAX>)  _param_lndmc_z_vel_max
+		(ParamFloat<px4::params::LNDMC_Z_VEL_MAX>)  _param_lndmc_z_vel_max,
+		(ParamFloat<px4::params::LNDMC_ALT_GND>)    _param_lndmc_alt_gnd_effect
 	);
 };
 

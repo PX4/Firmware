@@ -46,7 +46,13 @@
 #include "navigator_mode.h"
 #include "mission_block.h"
 
+#include <uORB/Subscription.hpp>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/rtl_flight_time.h>
+#include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/wind.h>
+#include <matrix/math.hpp>
+#include <lib/ecl/geo/geo.h>
 
 class Navigator;
 
@@ -89,6 +95,8 @@ public:
 
 	bool denyMissionLanding() { return _deny_mission_landing; }
 
+	void get_rtl_xy_z_speed(float &xy, float &z);
+	matrix::Vector2f get_wind();
 private:
 	/**
 	 * Set the RTL item
@@ -107,12 +115,13 @@ private:
 		RTL_STATE_NONE = 0,
 		RTL_STATE_CLIMB,
 		RTL_STATE_RETURN,
-		RTL_STATE_TRANSITION_TO_MC,
 		RTL_STATE_DESCEND,
 		RTL_STATE_LOITER,
+		RTL_STATE_TRANSITION_TO_MC,
 		RTL_MOVE_TO_LAND_HOVER_VTOL,
 		RTL_STATE_LAND,
 		RTL_STATE_LANDED,
+		RTL_STATE_HEAD_TO_CENTER,
 	} _rtl_state{RTL_STATE_NONE};
 
 	struct RTLPosition {
@@ -140,6 +149,7 @@ private:
 
 	float _rtl_alt{0.0f};	// AMSL altitude at which the vehicle should return to the home position
 	bool _rtl_alt_min{false};
+	float _rtl_loiter_rad{50.0f};		// radius at which a fixed wing would loiter while descending
 	bool _climb_and_return_done{false};	// this flag is set to true if RTL is active and we are past the climb state and return state
 	bool _deny_mission_landing{false};
 
@@ -150,6 +160,22 @@ private:
 		(ParamFloat<px4::params::RTL_MIN_DIST>) _param_rtl_min_dist,
 		(ParamInt<px4::params::RTL_TYPE>) _param_rtl_type,
 		(ParamInt<px4::params::RTL_CONE_ANG>) _param_rtl_cone_half_angle_deg,
-		(ParamInt<px4::params::RTL_PLD_MD>) _param_rtl_pld_md
+		(ParamFloat<px4::params::RTL_FLT_TIME>) _param_rtl_flt_time,
+		(ParamInt<px4::params::RTL_PLD_MD>) _param_rtl_pld_md,
+		(ParamFloat<px4::params::RTL_LOITER_RAD>) _param_rtl_loiter_rad
 	)
+
+	// These need to point at different parameters depending on vehicle type.
+	// Can't hard-code them because we have non-MC/FW/Rover builds
+	uint8_t _rtl_vehicle_type{vehicle_status_s::VEHICLE_TYPE_UNKNOWN};
+
+	param_t _param_rtl_xy_speed{PARAM_INVALID};
+	param_t _param_rtl_descent_speed{PARAM_INVALID};
+
+	uORB::SubscriptionData<wind_s>		_wind_sub{ORB_ID(wind)};
+	uORB::Publication<rtl_flight_time_s>		_rtl_flight_time_pub{ORB_ID(rtl_flight_time)};
 };
+
+float time_to_home(const matrix::Vector3f &to_home_vec,
+		   const matrix::Vector2f &wind_velocity, float vehicle_speed_m_s,
+		   float vehicle_descent_speed_m_s);

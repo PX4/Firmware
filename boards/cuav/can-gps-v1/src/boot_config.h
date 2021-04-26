@@ -70,7 +70,7 @@
 #define OPT_NODE_STATUS_RATE_MS         800
 #define OPT_NODE_INFO_RATE_MS           50
 #define OPT_BL_NUMBER_TIMERS            7
-
+#undef  S_RGB_LED_DMA                   // use the poled one
 /*
  *  This Option set is set to 1 ensure a provider of firmware has an
  *  opportunity update the node's firmware.
@@ -101,7 +101,7 @@
 #define OPT_RESTART_TIMEOUT_MS          20000
 
 /* Reserved for the Booloader */
-#define OPT_BOOTLOADER_SIZE_IN_K        (1024*8)
+#define OPT_BOOTLOADER_SIZE_IN_K        (1024*64)
 
 /* Reserved for the application out of the total
  * system flash minus the BOOTLOADER_SIZE_IN_K
@@ -123,18 +123,9 @@
 
 /* If this board uses big flash that have large sectors */
 
-#if defined(CONFIG_STM32_FLASH_CONFIG_E) || \
-   defined(CONFIG_STM32_FLASH_CONFIG_F) || \
-   defined(CONFIG_STM32_FLASH_CONFIG_G) || \
-   defined(CONFIG_STM32_FLASH_CONFIG_I)
 #define OPT_USE_YIELD
-#endif
 
 /* Bootloader Option*****************************************************************
  *
- *   GPIO      Function                                     MPU        Board
- *                                                          Pin #      Name
- * -- ----- --------------------------------             ----------------------------
- *  *  PC[09] PC9/TIM3_CH4                                     40       BOOT0
  */
-#define GPIO_GETNODEINFO_JUMPER (BUTTON_BOOT0n&~(GPIO_EXTI))
+#define GPIO_GETNODEINFO_JUMPER (BUTTON_SAFETY & ~GPIO_EXTI)

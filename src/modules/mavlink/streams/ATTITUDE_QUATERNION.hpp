@@ -41,30 +41,13 @@
 class MavlinkStreamAttitudeQuaternion : public MavlinkStream
 {
 public:
-	const char *get_name() const override
-	{
-		return MavlinkStreamAttitudeQuaternion::get_name_static();
-	}
+	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamAttitudeQuaternion(mavlink); }
 
-	static constexpr const char *get_name_static()
-	{
-		return "ATTITUDE_QUATERNION";
-	}
+	static constexpr const char *get_name_static() { return "ATTITUDE_QUATERNION"; }
+	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_ATTITUDE_QUATERNION; }
 
-	static constexpr uint16_t get_id_static()
-	{
-		return MAVLINK_MSG_ID_ATTITUDE_QUATERNION;
-	}
-
-	uint16_t get_id() override
-	{
-		return get_id_static();
-	}
-
-	static MavlinkStream *new_instance(Mavlink *mavlink)
-	{
-		return new MavlinkStreamAttitudeQuaternion(mavlink);
-	}
+	const char *get_name() const override { return get_name_static(); }
+	uint16_t get_id() override { return get_id_static(); }
 
 	unsigned get_size() override
 	{
@@ -72,17 +55,11 @@ public:
 	}
 
 private:
+	explicit MavlinkStreamAttitudeQuaternion(Mavlink *mavlink) : MavlinkStream(mavlink) {}
+
 	uORB::Subscription _att_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
-
-	/* do not allow top copying this class */
-	MavlinkStreamAttitudeQuaternion(MavlinkStreamAttitudeQuaternion &) = delete;
-	MavlinkStreamAttitudeQuaternion &operator = (const MavlinkStreamAttitudeQuaternion &) = delete;
-
-protected:
-	explicit MavlinkStreamAttitudeQuaternion(Mavlink *mavlink) : MavlinkStream(mavlink)
-	{}
 
 	bool send() override
 	{

@@ -7,12 +7,9 @@
 
 . ${R}etc/init.d-posix/airframes/10016_iris
 
-if [ $AUTOCNF = yes ]
-then
-	# enable fusion of landing target velocity
-	param set LTEST_MODE 1
-	param set PLD_HACC_RAD 0.1
-fi
+# enable fusion of landing target velocity
+param set-default LTEST_MODE 1
+param set-default PLD_HACC_RAD 0.1
 
 # Start up Landing Target Estimator module
 landing_target_estimator start

@@ -46,6 +46,10 @@ static constexpr uint32_t SAMPLE_INTERVAL_MODE_2{1000000 / 50};		// 50 fps
 
 static constexpr uint32_t SPI_SPEED = 2 * 1000 * 1000; // 2MHz SPI serial interface
 
+// Various time delay needed for PAW3902
+static constexpr uint32_t TIME_us_TSWW  = 11; // actually 10.5us
+static constexpr uint32_t TIME_us_TSRAD = 2;
+
 enum Register : uint8_t {
 	Product_ID         = 0x00,
 	Revision_ID        = 0x01,
@@ -76,8 +80,8 @@ enum Product_ID_Bit : uint8_t {
 };
 
 enum class Mode {
-	Bright = 0,
-	LowLight = 1,
+	Bright        = 0,
+	LowLight      = 1,
 	SuperLowLight = 2,
 };
 

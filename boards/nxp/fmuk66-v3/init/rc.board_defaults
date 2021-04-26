@@ -1,13 +1,7 @@
 #!/bin/sh
 #
-# NXP fmuk66-v3 specific board defaults
+# board specific defaults
 #------------------------------------------------------------------------------
-
-
-if [ $AUTOCNF = yes ]
-then
-
-fi
 
 rgbled_pwm start
 safety_button start

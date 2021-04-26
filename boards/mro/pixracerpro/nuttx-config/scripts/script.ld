@@ -167,6 +167,7 @@ SECTIONS
 		_einit = ABSOLUTE(.);
 	} > FLASH
 
+
 	.ARM.extab : {
 		*(.ARM.extab*)
 	} > FLASH
@@ -197,8 +198,12 @@ SECTIONS
 	} > AXI_SRAM
 
 	/* Emit the the D3 power domain section for locating BDMA data */
-	.SRAM4 (NOLOAD) :
+
+	.sram4_reserve (NOLOAD) :
 	{
+		*(.sram4)
+		. = ALIGN(4);
+		_sram4_heap_start = ABSOLUTE(.);
 	} > SRAM4
 
 	/* Stabs debugging sections. */
@@ -214,13 +219,4 @@ SECTIONS
 	.debug_line 0 : { *(.debug_line) }
 	.debug_pubnames 0 : { *(.debug_pubnames) }
 	.debug_aranges 0 : { *(.debug_aranges) }
-
-	.ramfunc : {
-		_sramfuncs = .;
-		*(.ramfunc  .ramfunc.*)
-		. = ALIGN(4);
-		_eramfuncs = .;
-	} > ITCM_RAM AT > FLASH
-
-	_framfuncs = LOADADDR(.ramfunc);
 }

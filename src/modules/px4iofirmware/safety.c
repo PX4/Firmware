@@ -75,8 +75,6 @@ static unsigned blink_counter = 0;
  */
 #define ARM_COUNTER_THRESHOLD	10
 
-static bool safety_button_pressed;
-
 static void safety_check_button(void *arg);
 static void failsafe_blink(void *arg);
 
@@ -97,41 +95,24 @@ failsafe_led_init(void)
 static void
 safety_check_button(void *arg)
 {
-	/*
-	 * Debounce the safety button, change state if it has been held for long enough.
-	 *
-	 */
-	safety_button_pressed = BUTTON_SAFETY;
+	const bool safety_button_pressed = BUTTON_SAFETY;
 
-	/*
-	 * Keep pressed for a while to arm.
+	/* Keep safety button pressed for one second to turn off safety
 	 *
-	 * Note that the counting sequence has to be same length
-	 * for arming / disarming in order to end up as proper
-	 * state machine, keep ARM_COUNTER_THRESHOLD the same
-	 * length in all cases of the if/else struct below.
+	 * Note that safety cannot be turned on again by button because a button
+	 * hardware problem could accidentally disable it in flight.
 	 */
 	if (safety_button_pressed && !(r_status_flags & PX4IO_P_STATUS_FLAGS_SAFETY_OFF) &&
 	    (r_setup_arming & PX4IO_P_SETUP_ARMING_IO_ARM_OK)) {
 
-		if (counter < ARM_COUNTER_THRESHOLD) {
+		if (counter <= ARM_COUNTER_THRESHOLD) {
 			counter++;
 
-		} else if (counter == ARM_COUNTER_THRESHOLD) {
-			/* switch to armed state */
-			atomic_modify_or(&r_status_flags, PX4IO_P_STATUS_FLAGS_SAFETY_OFF);
-			counter++;
 		}
 
-	} else if (safety_button_pressed && (r_status_flags & PX4IO_P_STATUS_FLAGS_SAFETY_OFF)) {
-
-		if (counter < ARM_COUNTER_THRESHOLD) {
-			counter++;
-
-		} else if (counter == ARM_COUNTER_THRESHOLD) {
-			/* change to disarmed state and notify the FMU */
-			atomic_modify_clear(&r_status_flags, PX4IO_P_STATUS_FLAGS_SAFETY_OFF);
-			counter++;
+		if (counter == ARM_COUNTER_THRESHOLD) {
+			// switch safety off -> ready to arm state
+			atomic_modify_or(&r_status_flags, PX4IO_P_STATUS_FLAGS_SAFETY_OFF);
 		}
 
 	} else {

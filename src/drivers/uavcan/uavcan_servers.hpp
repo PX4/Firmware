@@ -113,7 +113,7 @@ public:
 private:
 	pthread_t         _subnode_thread{-1};
 	pthread_mutex_t   _subnode_mutex{};
-	volatile bool     _subnode_thread_should_exit{false};
+	px4::atomic_bool  _subnode_thread_should_exit{false};
 
 	int		init();
 
@@ -220,5 +220,6 @@ private:
 	uavcan::ServiceClient<uavcan::protocol::param::ExecuteOpcode, ExecuteOpcodeCallback> _enumeration_save_client;
 
 	void unpackFwFromROMFS(const char *sd_path, const char *romfs_path);
+	void migrateFWFromRoot(const char *sd_path, const char *sd_root_path);
 	int copyFw(const char *dst, const char *src);
 };

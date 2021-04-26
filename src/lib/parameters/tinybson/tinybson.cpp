@@ -54,17 +54,20 @@
 #define CODER_CHECK(_c)		do { if (_c->dead) { debug("coder dead"); return -1; }} while(0)
 #define CODER_KILL(_c, _reason)	do { debug("killed: %s", _reason); _c->dead = true; return -1; } while(0)
 
-#define BSON_READ  read
-#define BSON_WRITE write
-#define BSON_FSYNC fsync
-
 static int
 read_x(bson_decoder_t decoder, void *p, size_t s)
 {
 	CODER_CHECK(decoder);
 
 	if (decoder->fd > -1) {
-		return (BSON_READ(decoder->fd, p, s) == s) ? 0 : -1;
+		int ret = ::read(decoder->fd, p, s);
+
+		if (ret == s) {
+			decoder->total_decoded_size += ret;
+			return 0;
+		}
+
+		return -1;
 	}
 
 	if (decoder->buf != nullptr) {
@@ -79,6 +82,7 @@ read_x(bson_decoder_t decoder, void *p, size_t s)
 
 		memcpy(p, (decoder->buf + decoder->bufpos), s);
 		decoder->bufpos += s;
+		decoder->total_decoded_size += s;
 		return 0;
 	}
 
@@ -113,8 +117,6 @@ read_double(bson_decoder_t decoder, double *d)
 int
 bson_decoder_init_file(bson_decoder_t decoder, int fd, bson_decoder_callback callback, void *priv)
 {
-	int32_t	junk;
-
 	decoder->fd = fd;
 	decoder->buf = nullptr;
 	decoder->dead = false;
@@ -123,11 +125,16 @@ bson_decoder_init_file(bson_decoder_t decoder, int fd, bson_decoder_callback cal
 	decoder->nesting = 1;
 	decoder->pending = 0;
 	decoder->node.type = BSON_UNDEFINED;
+	decoder->total_decoded_size = 0;
 
-	/* read and discard document size */
-	if (read_int32(decoder, &junk)) {
-		CODER_KILL(decoder, "failed discarding length");
+	// read document size
+	decoder->total_document_size = 0;
+
+	if (read_int32(decoder, &decoder->total_document_size)) {
+		CODER_KILL(decoder, "failed reading length");
 	}
+
+	debug("total document size = %d", decoder->total_document_size);
 
 	/* ready for decoding */
 	return 0;
@@ -137,8 +144,6 @@ int
 bson_decoder_init_buf(bson_decoder_t decoder, void *buf, unsigned bufsize, bson_decoder_callback callback,
 		      void *priv)
 {
-	int32_t	len;
-
 	/* argument sanity */
 	if ((buf == nullptr) || (callback == nullptr)) {
 		return -1;
@@ -162,13 +167,18 @@ bson_decoder_init_buf(bson_decoder_t decoder, void *buf, unsigned bufsize, bson_
 	decoder->nesting = 1;
 	decoder->pending = 0;
 	decoder->node.type = BSON_UNDEFINED;
+	decoder->total_decoded_size = 0;
 
-	/* read and discard document size */
-	if (read_int32(decoder, &len)) {
+	// read document size
+	decoder->total_document_size = 0;
+
+	if (read_int32(decoder, &decoder->total_document_size)) {
 		CODER_KILL(decoder, "failed reading length");
 	}
 
-	if ((len > 0) && (len > (int)decoder->bufsize)) {
+	debug("total document size = %d", decoder->total_document_size);
+
+	if ((decoder->total_document_size > 0) && (decoder->total_document_size > (int)decoder->bufsize)) {
 		CODER_KILL(decoder, "document length larger than buffer");
 	}
 
@@ -340,7 +350,14 @@ write_x(bson_encoder_t encoder, const void *p, size_t s)
 
 	/* bson file encoder (non-buffered) */
 	if (encoder->fd > -1 && encoder->buf == nullptr) {
-		return (BSON_WRITE(encoder->fd, p, s) == (int)s) ? 0 : -1;
+		int ret = ::write(encoder->fd, p, s);
+
+		if (ret == s) {
+			encoder->total_document_size += ret;
+			return 0;
+		}
+
+		return -1;
 	}
 
 	/* do we need to extend the buffer? */
@@ -350,11 +367,12 @@ write_x(bson_encoder_t encoder, const void *p, size_t s)
 		if (encoder->fd > -1) {
 			// write to disk
 			debug("writing buffer (%d) to disk", encoder->bufpos);
-			int ret = BSON_WRITE(encoder->fd, encoder->buf, encoder->bufpos);
+			int ret = ::write(encoder->fd, encoder->buf, encoder->bufpos);
 
 			if (ret == (int)encoder->bufpos) {
 				// reset buffer to beginning and continue
 				encoder->bufpos = 0;
+				encoder->total_document_size += ret;
 
 				if ((encoder->bufpos + s) > encoder->bufsize) {
 					CODER_KILL(encoder, "fixed-size buffer overflow");
@@ -431,6 +449,7 @@ bson_encoder_init_file(bson_encoder_t encoder, int fd)
 	encoder->fd = fd;
 	encoder->buf = nullptr;
 	encoder->dead = false;
+	encoder->total_document_size = 0;
 
 	if (write_int32(encoder, 0)) {
 		CODER_KILL(encoder, "write error on document length");
@@ -448,6 +467,7 @@ bson_encoder_init_buf_file(bson_encoder_t encoder, int fd, void *buf, unsigned b
 	encoder->bufsize = bufsize;
 	encoder->dead = false;
 	encoder->realloc_ok = false;
+	encoder->total_document_size = 0;
 
 	if (write_int32(encoder, 0)) {
 		CODER_KILL(encoder, "write error on document length");
@@ -473,6 +493,8 @@ bson_encoder_init_buf(bson_encoder_t encoder, void *buf, unsigned bufsize)
 		encoder->realloc_ok = false;
 	}
 
+	encoder->total_document_size = 0;
+
 	if (write_int32(encoder, 0)) {
 		CODER_KILL(encoder, "write error on document length");
 	}
@@ -489,23 +511,36 @@ bson_encoder_fini(bson_encoder_t encoder)
 		CODER_KILL(encoder, "write error on document terminator");
 	}
 
-	if (encoder->fd > -1 && encoder->buf != nullptr) {
+	if (encoder->fd > -1 && encoder->buf != nullptr && encoder->bufpos > 0) {
 		/* write final buffer to disk */
-		int ret = BSON_WRITE(encoder->fd, encoder->buf, encoder->bufpos);
+		int ret = ::write(encoder->fd, encoder->buf, encoder->bufpos);
 
-		if (ret != (int)encoder->bufpos) {
+		if (ret == (int)encoder->bufpos) {
+			encoder->total_document_size += ret;
+
+		} else {
 			CODER_KILL(encoder, "write error");
 		}
+	}
+
+	// record document size
+	if (encoder->fd > -1) {
+		if (lseek(encoder->fd, 0, SEEK_SET) == 0) {
+			debug("writing document size %d to beginning of file", encoder->total_document_size);
+
+			if (::write(encoder->fd, &encoder->total_document_size,
+				    sizeof(encoder->total_document_size)) != sizeof(encoder->total_document_size)) {
+
+				CODER_KILL(encoder, "write error on document length");
+			}
+		}
+
+		::fsync(encoder->fd);
 
 	} else if (encoder->buf != nullptr) {
 		/* update buffer length */
 		int32_t len = bson_encoder_buf_size(encoder);
 		memcpy(encoder->buf, &len, sizeof(len));
-	}
-
-	/* sync file */
-	if (encoder->fd > -1) {
-		BSON_FSYNC(encoder->fd);
 	}
 
 	return 0;

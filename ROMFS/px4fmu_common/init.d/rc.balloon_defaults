@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Balloon default parameters
+#
+# NOTE: Script variables are declared/initialized/unset in the rcS script.
+#
+
+set VEHICLE_TYPE fw
+
+#
+# Default parameters for balloon UAVs.
+#
+param set-default SYS_MC_EST_GROUP 1

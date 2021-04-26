@@ -75,8 +75,6 @@ const struct {
 	{"uart_baudchange",	test_uart_baudchange,	OPT_NOJIGTEST},
 	{"uart_break",		test_uart_break,	OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"uart_console",	test_uart_console,	OPT_NOJIGTEST | OPT_NOALLTEST},
-#else
-	{"rc",			rc_tests_main,		0},
 #endif /* __PX4_NUTTX */
 
 	{"adc",			test_adc,		OPT_NOJIGTEST},
@@ -117,16 +115,7 @@ const struct {
 	{"uart_loopback",	test_uart_loopback,	OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"uart_send",		test_uart_send,		OPT_NOJIGTEST | OPT_NOALLTEST},
 	{"versioning",		test_versioning,	0},
-
-
-	/* external tests */
-	{"commander",		commander_tests_main,	0},
-	{"controllib",		controllib_test_main,	0},
-	{"mavlink",		mavlink_tests_main,	0},
-#ifdef __PX4_NUTTX
-	{"lightware_laser",	lightware_laser_test_main,	0},
-#endif
-	{"uorb",		uorb_tests_main,	0},
+	{"cli",			test_cli,		0},
 
 	{NULL,			NULL, 		0}
 };

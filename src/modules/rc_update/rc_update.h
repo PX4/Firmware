@@ -161,6 +161,7 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::Subscription _rc_parameter_map_sub{ORB_ID(rc_parameter_map)};
+	uORB::Subscription _actuator_controls_3_sub{ORB_ID(actuator_controls_3)};
 
 	uORB::Publication<rc_channels_s> _rc_channels_pub{ORB_ID(rc_channels)};
 	uORB::PublicationMulti<manual_control_setpoint_s> _manual_control_setpoint_pub{ORB_ID(manual_control_setpoint)};
@@ -179,6 +180,8 @@ private:
 	hrt_abstime _last_timestamp_signal{0};
 
 	uint16_t _rc_values_previous[RC_MAX_CHAN_COUNT] {};
+	float _last_manual_control_setpoint[3] {};
+	bool _aux_already_active[3] = {false, false, false};
 
 	uint8_t _channel_count_previous{0};
 	uint8_t _input_source_previous{input_rc_s::RC_INPUT_SOURCE_UNKNOWN};
@@ -203,7 +206,6 @@ private:
 		(ParamInt<px4::params::RC_MAP_FLAPS>) _param_rc_map_flaps,
 
 		(ParamInt<px4::params::RC_MAP_RETURN_SW>) _param_rc_map_return_sw,
-		(ParamInt<px4::params::RC_MAP_RATT_SW>) _param_rc_map_ratt_sw,
 		(ParamInt<px4::params::RC_MAP_POSCTL_SW>) _param_rc_map_posctl_sw,
 		(ParamInt<px4::params::RC_MAP_LOITER_SW>) _param_rc_map_loiter_sw,
 		(ParamInt<px4::params::RC_MAP_ACRO_SW>) _param_rc_map_acro_sw,
@@ -226,7 +228,6 @@ private:
 
 		(ParamFloat<px4::params::RC_ASSIST_TH>) _param_rc_assist_th,
 		(ParamFloat<px4::params::RC_AUTO_TH>) _param_rc_auto_th,
-		(ParamFloat<px4::params::RC_RATT_TH>) _param_rc_ratt_th,
 		(ParamFloat<px4::params::RC_POSCTL_TH>) _param_rc_posctl_th,
 		(ParamFloat<px4::params::RC_LOITER_TH>) _param_rc_loiter_th,
 		(ParamFloat<px4::params::RC_ACRO_TH>) _param_rc_acro_th,

@@ -290,6 +290,14 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 	kinetis_netinitialize(0);
 # endif
 
+# ifdef CONFIG_KINETIS_FLEXCAN0
+	kinetis_caninitialize(0);
+# endif
+
+# ifdef CONFIG_KINETIS_FLEXCAN1
+	kinetis_caninitialize(1);
+# endif
+
 #endif
 
 	/* Configure the HW based on the manifest */

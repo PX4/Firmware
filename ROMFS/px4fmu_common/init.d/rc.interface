@@ -11,8 +11,11 @@
 
 set OUTPUT_CMD pwm_out
 set MIXER_AUX_FILE none
-set OUTPUT_AUX_DEV /dev/pwm_output1
+set MIXER_EXTRA_FILE none
+
 set OUTPUT_DEV none
+set OUTPUT_AUX_DEV /dev/pwm_output1
+set OUTPUT_EXTRA_DEV /dev/pwm_output0
 
 #
 # If mount (gimbal) control is enabled and output mode is AUX, set the aux
@@ -27,9 +30,9 @@ then
 fi
 
 # USE_IO is set to 'no' for all boards w/o px4io driver or SYS_USE_IO disabled
-if [ $USE_IO = no ]
+if [ $USE_IO = no -a $AUX_BANK2 = none ]
 then
-	set MIXER_AUX none
+	set AUX_MODE none
 fi
 
 #
@@ -64,22 +67,6 @@ fi
 #
 if [ $OUTPUT_MODE != none ]
 then
-	if [ $OUTPUT_MODE = mkblctrl ]
-	then
-		if [ $MKBLCTRL_MODE = x ]
-		then
-			set MKBLCTRL_ARG "-mkmode x"
-		fi
-		if [ $MKBLCTRL_MODE = + ]
-		then
-			set MKBLCTRL_ARG "-mkmode +"
-		fi
-
-		if ! mkblctrl $MKBLCTRL_ARG
-		then
-			tune_control play error
-		fi
-	fi
 
 	if [ $OUTPUT_MODE = hil -o $OUTPUT_MODE = sim ]
 	then
@@ -150,26 +137,17 @@ then
 		fi
 	fi
 
-	if [ $OUTPUT_MODE = mkblctrl ]
-	then
-		set OUTPUT_DEV /dev/mkblctrl0
-	else
-		set OUTPUT_DEV /dev/pwm_output0
-	fi
+	set OUTPUT_DEV /dev/pwm_output0
 
 	if [ $OUTPUT_MODE = uavcan_esc ]
 	then
 		set OUTPUT_DEV /dev/uavcan/esc
 	fi
 
-	if [ $OUTPUT_MODE = tap_esc ]
-	then
-		set OUTPUT_DEV /dev/tap_esc
-	fi
-
 	if mixer load ${OUTPUT_DEV} ${MIXER_FILE}
 	then
 		echo "INFO  [init] Mixer: ${MIXER_FILE} on ${OUTPUT_DEV}"
+
 	else
 		echo "ERROR  [init] Failed loading mixer: ${MIXER_FILE}"
 		tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
@@ -201,6 +179,7 @@ then
 
 	if [ $MIXER_AUX_FILE != none ]
 	then
+		# Start the output module
 		if $OUTPUT_CMD mode_${AUX_MODE}
 		then
 			# Append aux mixer to main device.
@@ -222,14 +201,13 @@ then
 					echo "ERROR  [init] Failed loading mixer: ${MIXER_AUX_FILE}"
 				fi
 			else
+				echo "INFO  [init] setting PWM_AUX_OUT none"
 				set PWM_AUX_OUT none
-				set FAILSAFE_AUX none
 			fi
 		else
 			echo "ERROR: Could not start: pwm_out mode_pwm"
 			tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
 			set PWM_AUX_OUT none
-			set FAILSAFE_AUX none
 		fi
 
 		# for DShot do not configure pwm values
@@ -243,75 +221,38 @@ then
 				then
 					pwm rate -c ${PWM_AUX_OUT} -r ${PWM_AUX_RATE} -d ${OUTPUT_AUX_DEV}
 				fi
-
-				# Set disarmed, min and max PWM_AUX values.
-				if [ $PWM_AUX_DISARMED != none ]
-				then
-					pwm disarmed -c ${PWM_AUX_OUT} -p ${PWM_AUX_DISARMED} -d ${OUTPUT_AUX_DEV}
-				fi
-				if [ $PWM_AUX_MIN != none ]
-				then
-					pwm min -c ${PWM_AUX_OUT} -p ${PWM_AUX_MIN} -d ${OUTPUT_AUX_DEV}
-				fi
-				if [ $PWM_AUX_MAX != none ]
-				then
-					pwm max -c ${PWM_AUX_OUT} -p ${PWM_AUX_MAX} -d ${OUTPUT_AUX_DEV}
-				fi
 			fi
-
-			#
-			# Per channel disarmed settings.
-			#
-			pwm disarmed -c 1 -p p:PWM_AUX_DIS1 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 2 -p p:PWM_AUX_DIS2 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 3 -p p:PWM_AUX_DIS3 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 4 -p p:PWM_AUX_DIS4 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 5 -p p:PWM_AUX_DIS5 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 6 -p p:PWM_AUX_DIS6 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 7 -p p:PWM_AUX_DIS7 -d ${OUTPUT_AUX_DEV}
-			pwm disarmed -c 8 -p p:PWM_AUX_DIS8 -d ${OUTPUT_AUX_DEV}
-
-			#
-			# Per channel min settings.
-			#
-			pwm min -c 1 -p p:PWM_AUX_MIN1 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 2 -p p:PWM_AUX_MIN2 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 3 -p p:PWM_AUX_MIN3 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 4 -p p:PWM_AUX_MIN4 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 5 -p p:PWM_AUX_MIN5 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 6 -p p:PWM_AUX_MIN6 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 7 -p p:PWM_AUX_MIN7 -d ${OUTPUT_AUX_DEV}
-			pwm min -c 8 -p p:PWM_AUX_MIN8 -d ${OUTPUT_AUX_DEV}
-
-			#
-			# Per channel max settings.
-			#
-			pwm max -c 1 -p p:PWM_AUX_MAX1 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 2 -p p:PWM_AUX_MAX2 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 3 -p p:PWM_AUX_MAX3 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 4 -p p:PWM_AUX_MAX4 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 5 -p p:PWM_AUX_MAX5 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 6 -p p:PWM_AUX_MAX6 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 7 -p p:PWM_AUX_MAX7 -d ${OUTPUT_AUX_DEV}
-			pwm max -c 8 -p p:PWM_AUX_MAX8 -d ${OUTPUT_AUX_DEV}
-
-			if [ $FAILSAFE_AUX != none ]
-			then
-				pwm failsafe -c ${PWM_AUX_OUT} -p ${FAILSAFE} -d ${OUTPUT_AUX_DEV}
-			fi
-
-			#
-			# Per channel failsafe settings.
-			#
-			pwm failsafe -c 1 -p p:PWM_AUX_FAIL1 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 2 -p p:PWM_AUX_FAIL2 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 3 -p p:PWM_AUX_FAIL3 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 4 -p p:PWM_AUX_FAIL4 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 5 -p p:PWM_AUX_FAIL5 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 6 -p p:PWM_AUX_FAIL6 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 7 -p p:PWM_AUX_FAIL7 -d ${OUTPUT_AUX_DEV}
-			pwm failsafe -c 8 -p p:PWM_AUX_FAIL8 -d ${OUTPUT_AUX_DEV}
 		fi
+	fi
+fi
+
+if [ $MIXER_AUX != none -a $AUX_MODE = none -a -e $OUTPUT_AUX_DEV ]
+then
+	#
+	# Load aux mixer.
+	#
+	if [ -f ${SDCARD_MIXERS_PATH}/${MIXER_AUX}.aux.mix ]
+	then
+		set MIXER_AUX_FILE ${SDCARD_MIXERS_PATH}/${MIXER_AUX}.aux.mix
+	else
+
+		if [ -f /etc/mixers/${MIXER_AUX}.aux.mix ]
+		then
+			set MIXER_AUX_FILE /etc/mixers/${MIXER_AUX}.aux.mix
+		fi
+	fi
+
+	if mixer load ${OUTPUT_AUX_DEV} ${MIXER_AUX_FILE}
+	then
+		echo "INFO  [init] Mixer: ${MIXER_AUX_FILE} on ${OUTPUT_AUX_DEV}"
+
+		# Set PWM_AUX output frequency.
+		if [ $PWM_AUX_RATE != none ]
+		then
+			pwm rate -c ${PWM_AUX_OUT} -r ${PWM_AUX_RATE} -d ${OUTPUT_AUX_DEV}
+		fi
+	else
+		echo "ERROR  [init] Failed loading mixer: ${MIXER_AUX_FILE}"
 	fi
 fi
 
@@ -320,81 +261,53 @@ then
 	if [ $PWM_OUT != none ]
 	then
 		# Set PWM output frequency.
-		if [ $PWM_RATE != none ]
+		if [ $PWM_MAIN_RATE != none ]
 		then
-			pwm rate -c ${PWM_OUT} -r ${PWM_RATE}
-		fi
-
-		# Set disarmed, min and max PWM values.
-		if [ $PWM_DISARMED != none ]
-		then
-			pwm disarmed -c ${PWM_OUT} -p ${PWM_DISARMED}
-		fi
-		if [ $PWM_MIN != none ]
-		then
-			pwm min -c ${PWM_OUT} -p ${PWM_MIN}
-		fi
-		if [ $PWM_MAX != none ]
-		then
-			pwm max -c ${PWM_OUT} -p ${PWM_MAX}
+			pwm rate -c ${PWM_OUT} -r ${PWM_MAIN_RATE}
 		fi
 	fi
+fi
 
-	#
-	# Per channel disarmed settings.
-	#
-	pwm disarmed -c 1 -p p:PWM_MAIN_DIS1
-	pwm disarmed -c 2 -p p:PWM_MAIN_DIS2
-	pwm disarmed -c 3 -p p:PWM_MAIN_DIS3
-	pwm disarmed -c 4 -p p:PWM_MAIN_DIS4
-	pwm disarmed -c 5 -p p:PWM_MAIN_DIS5
-	pwm disarmed -c 6 -p p:PWM_MAIN_DIS6
-	pwm disarmed -c 7 -p p:PWM_MAIN_DIS7
-	pwm disarmed -c 8 -p p:PWM_MAIN_DIS8
+if [ $EXTRA_MIXER_MODE != none ]
+then
 
-	#
-	# Per channel min settings.
-	#
-	pwm min -c 1 -p p:PWM_MAIN_MIN1
-	pwm min -c 2 -p p:PWM_MAIN_MIN2
-	pwm min -c 3 -p p:PWM_MAIN_MIN3
-	pwm min -c 4 -p p:PWM_MAIN_MIN4
-	pwm min -c 5 -p p:PWM_MAIN_MIN5
-	pwm min -c 6 -p p:PWM_MAIN_MIN6
-	pwm min -c 7 -p p:PWM_MAIN_MIN7
-	pwm min -c 8 -p p:PWM_MAIN_MIN8
-
-	#
-	# Per channel max settings.
-	#
-	pwm max -c 1 -p p:PWM_MAIN_MAX1
-	pwm max -c 2 -p p:PWM_MAIN_MAX2
-	pwm max -c 3 -p p:PWM_MAIN_MAX3
-	pwm max -c 4 -p p:PWM_MAIN_MAX4
-	pwm max -c 5 -p p:PWM_MAIN_MAX5
-	pwm max -c 6 -p p:PWM_MAIN_MAX6
-	pwm max -c 7 -p p:PWM_MAIN_MAX7
-	pwm max -c 8 -p p:PWM_MAIN_MAX8
-
-	if [ $FAILSAFE != none ]
+	if [ -f ${SDCARD_MIXERS_PATH}/${MIXER_EXTRA}.aux.mix ]
 	then
-		pwm failsafe -c ${PWM_OUT} -p ${FAILSAFE} -d ${OUTPUT_DEV}
+		# Use the mixer file from the SD-card if it exists.
+		set MIXER_EXTRA_FILE ${SDCARD_MIXERS_PATH}/${MIXER_EXTRA}.aux.mix
+	else
+		# Try out the old convention, for backward compatibility.
+		if [ -f ${SDCARD_MIXERS_PATH}/${MIXER_EXTRA}.mix ]
+		then
+			set MIXER_EXTRA_FILE ${SDCARD_MIXERS_PATH}/${MIXER_EXTRA}.mix
+		else
+			set MIXER_EXTRA_FILE /etc/mixers/${MIXER_EXTRA}.aux.mix
+		fi
 	fi
 
-	#
-	# Per channel failsafe settings.
-	#
-	pwm failsafe -c 1 -p p:PWM_MAIN_FAIL1
-	pwm failsafe -c 2 -p p:PWM_MAIN_FAIL2
-	pwm failsafe -c 3 -p p:PWM_MAIN_FAIL3
-	pwm failsafe -c 4 -p p:PWM_MAIN_FAIL4
-	pwm failsafe -c 5 -p p:PWM_MAIN_FAIL5
-	pwm failsafe -c 6 -p p:PWM_MAIN_FAIL6
-	pwm failsafe -c 7 -p p:PWM_MAIN_FAIL7
-	pwm failsafe -c 8 -p p:PWM_MAIN_FAIL8
+
+	if mixer load ${OUTPUT_EXTRA_DEV} ${MIXER_EXTRA_FILE}
+	then
+		echo "INFO  [init] Mixer: ${MIXER_EXTRA_FILE} on ${OUTPUT_EXTRA_DEV}"
+	else
+		echo "ERROR  [init] Failed loading mixer: ${MIXER_EXTRA_FILE}"
+		tune_control play -t 20
+	fi
+
+	if [ $PWM_EXTRA_OUT != none ]
+	then
+		# Set PWM output frequency.
+		if [ $PWM_EXTRA_RATE != none ]
+		then
+			pwm rate -c ${PWM_EXTRA_OUT} -r ${PWM_EXTRA_RATE}
+		fi
+	fi
 fi
 
 unset OUTPUT_CMD
 unset MIXER_AUX_FILE
-unset OUTPUT_AUX_DEV
+unset MIXER_EXTRA_FILE
+
 unset OUTPUT_DEV
+unset OUTPUT_AUX_DEV
+unset OUTPUT_EXTRA_DEV

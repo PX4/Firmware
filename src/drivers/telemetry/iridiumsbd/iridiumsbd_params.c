@@ -20,7 +20,8 @@ PARAM_DEFINE_INT32(ISBD_READ_INT, 0);
 PARAM_DEFINE_INT32(ISBD_SBD_TIMEOUT, 60);
 
 /**
- * Time [ms] the Iridium driver will wait for additional mavlink messages to combine them into one SBD message
+ * Time the Iridium driver will wait for additional mavlink messages to combine them into one SBD message
+ *
  * Value 0 turns the functionality off
  *
  * @unit ms

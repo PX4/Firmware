@@ -43,24 +43,17 @@
 const char *const UavcanRangefinderBridge::NAME = "rangefinder";
 
 UavcanRangefinderBridge::UavcanRangefinderBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_rangefinder", "/dev/uavcan/rangefinder", RANGE_FINDER_BASE_DEVICE_PATH,
-				   ORB_ID(distance_sensor)),
+	UavcanSensorBridgeBase("uavcan_rangefinder", ORB_ID(distance_sensor)),
 	_sub_range_data(node)
 { }
 
 int UavcanRangefinderBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
 	// Initialize min/max range from params
 	param_get(param_find("UAVCAN_RNG_MIN"), &_range_min_m);
 	param_get(param_find("UAVCAN_RNG_MAX"), &_range_max_m);
 
-	res = _sub_range_data.start(RangeCbBinder(this, &UavcanRangefinderBridge::range_sub_cb));
+	int res = _sub_range_data.start(RangeCbBinder(this, &UavcanRangefinderBridge::range_sub_cb));
 
 	if (res < 0) {
 		DEVICE_LOG("failed to start uavcan sub: %d", res);
@@ -70,13 +63,12 @@ int UavcanRangefinderBridge::init()
 	return 0;
 }
 
-void
-UavcanRangefinderBridge::range_sub_cb(const
-				      uavcan::ReceivedDataStructure<uavcan::equipment::range_sensor::Measurement> &msg)
+void UavcanRangefinderBridge::range_sub_cb(const
+		uavcan::ReceivedDataStructure<uavcan::equipment::range_sensor::Measurement> &msg)
 {
 	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
 
-	if (channel == nullptr || channel->class_instance < 0) {
+	if (channel == nullptr || channel->instance < 0) {
 		// Something went wrong - no channel to publish on; return
 		return;
 	}
@@ -90,25 +82,25 @@ UavcanRangefinderBridge::range_sub_cb(const
 
 	if (!_inited) {
 
-		uint8_t device_type = 0;
+		uint8_t rangefinder_type = 0;
 
 		switch (msg.sensor_type) {
 		case uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_SONAR:
-			device_type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
+			rangefinder_type = distance_sensor_s::MAV_DISTANCE_SENSOR_ULTRASOUND;
 			break;
 
 		case uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_RADAR:
-			device_type = distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR;
+			rangefinder_type = distance_sensor_s::MAV_DISTANCE_SENSOR_RADAR;
 			break;
 
 		case uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_LIDAR:
 		case uavcan::equipment::range_sensor::Measurement::SENSOR_TYPE_UNDEFINED:
 		default:
-			device_type = distance_sensor_s::MAV_DISTANCE_SENSOR_LASER;
+			rangefinder_type = distance_sensor_s::MAV_DISTANCE_SENSOR_LASER;
 			break;
 		}
 
-		rangefinder->set_device_type(device_type);
+		rangefinder->set_rangefinder_type(rangefinder_type);
 		rangefinder->set_fov(msg.field_of_view);
 		rangefinder->set_min_distance(_range_min_m);
 		rangefinder->set_max_distance(_range_max_m);
@@ -142,10 +134,10 @@ int UavcanRangefinderBridge::init_driver(uavcan_bridge::Channel *channel)
 
 	PX4Rangefinder *rangefinder = (PX4Rangefinder *)channel->h_driver;
 
-	channel->class_instance = rangefinder->get_class_instance();
+	channel->instance = rangefinder->get_instance();
 
-	if (channel->class_instance < 0) {
-		PX4_ERR("UavcanRangefinder: Unable to get a class instance");
+	if (channel->instance < 0) {
+		PX4_ERR("UavcanRangefinder: Unable to get an instance");
 		delete rangefinder;
 		channel->h_driver = nullptr;
 		return PX4_ERROR;

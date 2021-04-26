@@ -115,6 +115,11 @@
 #define GPIO_TONE_ALARM_IDLE    GPIO_BUZZER_1
 #define GPIO_TONE_ALARM         GPIO_TIM2_CH1OUT_2
 
+/* PWM input driver. Use FMU AUX5 pins attached to timer4 channel 2 */
+#define PWMIN_TIMER                       4
+#define PWMIN_TIMER_CHANNEL    /* T4C2 */ 2
+#define GPIO_PWM_IN            /* PD13 */ GPIO_TIM4_CH2IN_2
+
 /* USB
  *  OTG FS: PA9  OTG_FS_VBUS VBUS sensing
  */

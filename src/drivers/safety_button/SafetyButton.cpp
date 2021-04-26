@@ -71,33 +71,20 @@ SafetyButton::CheckButton()
 {
 	const bool safety_button_pressed = px4_arch_gpioread(GPIO_BTN_SAFETY);
 
-	/*
-	 * Keep pressed for a while to arm.
+	/* Keep safety button pressed for one second to turn off safety
 	 *
-	 * Note that the counting sequence has to be same length
-	 * for arming / disarming in order to end up as proper
-	 * state machine, keep ARM_COUNTER_THRESHOLD the same
-	 * length in all cases of the if/else struct below.
+	 * Note that safety cannot be turned on again by button because a button
+	 * hardware problem could accidentally disable it in flight.
 	 */
 	if (safety_button_pressed && !_safety_btn_off) {
-		if (_button_counter < CYCLE_COUNT) {
-			_button_counter++;
 
-		} else if (_button_counter == CYCLE_COUNT) {
-			// switch to armed state
-			_safety_btn_off = true;
+		if (_button_counter <= CYCLE_COUNT) {
 			_button_counter++;
 		}
 
-	} else if (safety_button_pressed && _safety_btn_off) {
-
-		if (_button_counter < CYCLE_COUNT) {
-			_button_counter++;
-
-		} else if (_button_counter == CYCLE_COUNT) {
-			// change to disarmed state and notify
-			_safety_btn_off = false;
-			_button_counter++;
+		if (_button_counter == CYCLE_COUNT) {
+			// switch safety off -> ready to arm state
+			_safety_btn_off = true;
 		}
 
 	} else {

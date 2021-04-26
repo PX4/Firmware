@@ -5,9 +5,4 @@
 
 echo "[i] doing standalone PX4FMU startup..."
 
-#
-# Start the ORB
-#
-uorb start
-
 echo "[i] startup done"

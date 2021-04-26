@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,19 +58,19 @@
 	/* PA2 */  GPIO_ADC12_INP14,  \
 	/* PA3 */  GPIO_ADC12_INP15,  \
 	/* PA4 */  GPIO_ADC12_INP18,  \
-	/* PC1 */  GPIO_ADC123_INN10
+	/* PC1 */  GPIO_ADC123_INP11
 
-/* Define Channel numbers must match above GPIO pin */
-#define ADC_BATTERY_VOLTAGE_CHANNEL        14 /* PA2 BATT_VOLT_SENS */
-#define ADC_BATTERY_CURRENT_CHANNEL        15 /* PA3 BATT_CURRENT_SENS */
-#define ADC_SCALED_V5_CHANNEL              18 /* PA4 VDD_5V_SENS */
-#define ADC_RSSI_IN_CHANNEL                10 /* PC1 */
+/* Define Channel numbers must match above GPIO pins */
+#define ADC_BATTERY_VOLTAGE_CHANNEL       14 /* PA2 BATT_VOLT_SENS */
+#define ADC_BATTERY_CURRENT_CHANNEL       15 /* PA3 BATT_CURRENT_SENS */
+#define ADC_SCALED_V5_CHANNEL             18 /* PA4 VDD_5V_SENS */
+#define ADC_RC_RSSI_CHANNEL               11 /* PC1 */
 
 #define ADC_CHANNELS \
 	((1 << ADC_BATTERY_VOLTAGE_CHANNEL)       | \
 	 (1 << ADC_BATTERY_CURRENT_CHANNEL)       | \
 	 (1 << ADC_SCALED_V5_CHANNEL)             | \
-	 (1 << ADC_RSSI_IN_CHANNEL))
+	 (1 << ADC_RC_RSSI_CHANNEL))
 
 /* HW has to large of R termination on ADC todo:change when HW value is chosen */
 #define BOARD_ADC_OPEN_CIRCUIT_V     (5.6f)
@@ -108,7 +108,7 @@
 #define GPIO_TONE_ALARM         GPIO_TIM2_CH1OUT_2
 
 /* USB OTG FS */
-#define GPIO_OTGFS_VBUS         /* PA9 */ (GPIO_INPUT|GPIO_PULLDOWN|GPIO_SPEED_100MHz|GPIO_PORTA|GPIO_PIN9)
+#define GPIO_OTGFS_VBUS         /* PA9 */ (GPIO_INPUT|GPIO_OPENDRAIN|GPIO_SPEED_100MHz|GPIO_PORTA|GPIO_PIN9)
 
 /* High-resolution timer */
 #define HRT_TIMER               3  /* use timer3 for the HRT */
@@ -118,7 +118,8 @@
 #define GPIO_PPM_IN             /* PB0 T3C3 */ GPIO_TIM3_CH3IN_1
 
 /* RC Serial port */
-#define RC_SERIAL_PORT          "/dev/ttyS3"
+#define RC_SERIAL_PORT          "/dev/ttyS4"
+#define RC_SERIAL_SINGLEWIRE
 
 #define GPIO_RSSI_IN            /* PC1  */ (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTC|GPIO_PIN1)
 
@@ -143,12 +144,11 @@
  */
 #define BOARD_ADC_USB_CONNECTED (px4_arch_gpioread(GPIO_OTGFS_VBUS))
 #define BOARD_ADC_USB_VALID     BOARD_ADC_USB_CONNECTED
-#define BOARD_ADC_SERVO_VALID   (1) /* never powers off the Servo rail */
 #define BOARD_ADC_BRICK_VALID   (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
 
 #define BOARD_HAS_PWM  DIRECT_PWM_OUTPUT_CHANNELS
 #define BOARD_NUM_IO_TIMERS 3
-#define BOARD_DSHOT_MOTOR_ASSIGNMENT {3, 2, 1, 0, 4, 5};
+#define BOARD_DSHOT_MOTOR_ASSIGNMENT {3, 2, 1, 0, 4, 5, 6, 7};
 #define BOARD_DMA_ALLOC_POOL_SIZE 5120 /* This board provides a DMA pool and APIs */
 #define BOARD_HAS_ON_RESET 1 /* This board provides the board_on_reset interface */
 #define BOARD_ENABLE_CONSOLE_BUFFER

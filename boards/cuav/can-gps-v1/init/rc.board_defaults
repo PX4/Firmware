@@ -3,12 +3,8 @@
 # board specific defaults
 #------------------------------------------------------------------------------
 
+param set-default CBRK_IO_SAFETY 0
 
-if [ $AUTOCNF = yes ]
-then
-	# Disable safety switch by default
-	param set CBRK_IO_SAFETY 22027
-
-fi
-
-#safety_button start
+neopixel start
+safety_button start
+tone_alarm start

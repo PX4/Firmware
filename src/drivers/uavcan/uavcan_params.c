@@ -193,3 +193,20 @@ PARAM_DEFINE_INT32(UAVCAN_LGT_NAV, 3);
  * @group UAVCAN
  */
 PARAM_DEFINE_INT32(UAVCAN_LGT_LAND, 0);
+
+/**
+ * UAVCAN BATTERY_MONITOR battery monitor selection
+ *
+ * This parameter defines that the system will select the battery monitor under the following conditions
+ *
+ *  0 - default battery monitor
+ *  1 - CUAV battery monitor
+ *
+ * @min 0
+ * @max 1
+ * @value 0 default battery monitor
+ * @value 1 CUAV battery monitor
+ * @reboot_required true
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_BAT_MON, 0);

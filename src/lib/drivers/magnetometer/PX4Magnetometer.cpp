@@ -37,23 +37,13 @@
 #include <lib/drivers/device/Device.hpp>
 
 PX4Magnetometer::PX4Magnetometer(uint32_t device_id, enum Rotation rotation) :
-	CDev(nullptr),
-	_sensor_pub{ORB_ID(sensor_mag)},
 	_device_id{device_id},
 	_rotation{rotation}
 {
-	// advertise immediately to keep instance numbering in sync
-	_sensor_pub.advertise();
-
-	_class_device_instance = register_class_devname(MAG_BASE_DEVICE_PATH);
 }
 
 PX4Magnetometer::~PX4Magnetometer()
 {
-	if (_class_device_instance != -1) {
-		unregister_class_devname(MAG_BASE_DEVICE_PATH, _class_device_instance);
-	}
-
 	_sensor_pub.unadvertise();
 }
 

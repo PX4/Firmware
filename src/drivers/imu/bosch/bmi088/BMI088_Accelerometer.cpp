@@ -99,7 +99,13 @@ int BMI088_Accelerometer::probe()
 
 	const uint8_t ACC_CHIP_ID = RegisterRead(Register::ACC_CHIP_ID);
 
-	if (ACC_CHIP_ID != ID) {
+	if (ACC_CHIP_ID == ID_088) {
+		DEVICE_DEBUG("BMI088 Accel");
+
+	} else if (ACC_CHIP_ID == ID_090L) {
+		DEVICE_DEBUG("BMI090L Accel");
+
+	} else {
 		DEVICE_DEBUG("unexpected ACC_CHIP_ID 0x%02x", ACC_CHIP_ID);
 		return PX4_ERROR;
 	}
@@ -122,7 +128,7 @@ void BMI088_Accelerometer::RunImpl()
 		break;
 
 	case STATE::WAIT_FOR_RESET:
-		if (RegisterRead(Register::ACC_CHIP_ID) == ID) {
+		if ((RegisterRead(Register::ACC_CHIP_ID) == ID_088) || (RegisterRead(Register::ACC_CHIP_ID) == ID_090L)) {
 			// ACC_PWR_CONF: Power on sensor
 			RegisterWrite(Register::ACC_PWR_CONF, 0);
 
@@ -294,10 +300,6 @@ void BMI088_Accelerometer::ConfigureAccel()
 
 void BMI088_Accelerometer::ConfigureSampleRate(int sample_rate)
 {
-	if (sample_rate == 0) {
-		sample_rate = 800; // default to 800 Hz
-	}
-
 	// round down to nearest FIFO sample dt * SAMPLES_PER_TRANSFER
 	const float min_interval = FIFO_SAMPLE_DT;
 	_fifo_empty_interval_us = math::max(roundf((1e6f / (float)sample_rate) / min_interval) * min_interval, min_interval);

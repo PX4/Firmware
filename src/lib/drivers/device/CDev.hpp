@@ -75,16 +75,12 @@ public:
 	/**
 	 * Perform an ioctl operation on the device.
 	 *
-	 * The default implementation handles DEVIOCGDEVICEID, and otherwise
-	 * returns -ENOTTY. Subclasses should call the default implementation
-	 * for any command they do not handle themselves.
-	 *
 	 * @param filep		Pointer to the NuttX file structure.
 	 * @param cmd		The ioctl command value.
 	 * @param arg		The ioctl argument value.
 	 * @return		OK on success, or -errno otherwise.
 	 */
-	virtual int	ioctl(file_t *filep, int cmd, unsigned long arg);
+	virtual int	ioctl(file_t *filep, int cmd, unsigned long arg) { return -ENOTTY; }
 
 };
 

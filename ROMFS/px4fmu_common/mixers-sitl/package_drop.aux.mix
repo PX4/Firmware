@@ -1,0 +1,12 @@
+
+# Roll channel for mount
+M: 1
+S: 3 5  10000  10000      0 -10000  10000
+
+# Pitch channel for mount
+M: 1
+S: 3 6  10000  10000      0 -10000  10000
+
+# Yaw channel for mount
+M: 1
+S: 3 7  10000  10000      0 -10000  10000

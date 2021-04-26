@@ -94,7 +94,13 @@ target_include_directories(uavcan_${UAVCAN_DRIVER}_driver PUBLIC
 
 
 # generated DSDL
-set(DSDLC_INPUTS "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/com" "${CMAKE_CURRENT_SOURCE_DIR}/dsdl/ardupilot" "${LIBUAVCAN_DIR}/dsdl/uavcan")
+set(DSDLC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/dsdl")
+set(DSDLC_INPUTS
+	"${DSDLC_DIR}/com"
+	"${DSDLC_DIR}/ardupilot"
+	"${LIBUAVCAN_DIR}/dsdl/uavcan"
+	"${DSDLC_DIR}/cuav"
+)
 set(DSDLC_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/include/dsdlc_generated")
 
 set(DSDLC_INPUT_FILES)
@@ -121,6 +127,8 @@ px4_add_module(
 		${LIBUAVCAN_DIR}/libuavcan_drivers/posix/include
 		${LIBUAVCAN_DIR_DRIVERS}/${UAVCAN_DRIVER}/driver/include
 	SRCS
+		beep.cpp
+		beep.hpp
 		rgbled.cpp
 		rgbled.hpp
 		safety_state.cpp
@@ -144,6 +152,9 @@ px4_add_module(
 		sensors/gnss.cpp
 		sensors/mag.cpp
 		sensors/rangefinder.cpp
+		sensors/accel.cpp
+		sensors/gyro.cpp
+		sensors/cbat.cpp
 
 	DEPENDS
 		px4_uavcan_dsdlc

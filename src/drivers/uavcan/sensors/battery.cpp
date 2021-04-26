@@ -39,7 +39,7 @@
 const char *const UavcanBatteryBridge::NAME = "battery";
 
 UavcanBatteryBridge::UavcanBatteryBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_battery", "/dev/uavcan/battery", "/dev/battery", ORB_ID(battery_status)),
+	UavcanSensorBridgeBase("uavcan_battery", ORB_ID(battery_status)),
 	ModuleParams(nullptr),
 	_sub_battery(node),
 	_warning(battery_status_s::BATTERY_WARNING_NONE),
@@ -47,16 +47,9 @@ UavcanBatteryBridge::UavcanBatteryBridge(uavcan::INode &node) :
 {
 }
 
-int
-UavcanBatteryBridge::init()
+int UavcanBatteryBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_battery.start(BatteryInfoCbBinder(this, &UavcanBatteryBridge::battery_sub_cb));
+	int res = _sub_battery.start(BatteryInfoCbBinder(this, &UavcanBatteryBridge::battery_sub_cb));
 
 	if (res < 0) {
 		PX4_ERR("failed to start uavcan sub: %d", res);

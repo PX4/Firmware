@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2018-20 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
  * @author Mark Sauder <mcsauder@gmail.com>
  * @author Alex Klimaj <alexklimaj@gmail.com>
  * @author Jake Dahl <dahl.jakejacob@gmail.com>
+ * @author Jacob Crabill <jacob@flyvoly.com>
  */
 
 #pragma once
@@ -46,7 +47,9 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/SubscriptionInterval.hpp>
+#include <uORB/topics/heater_status.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/sensor_accel.h>
 
@@ -54,14 +57,8 @@
 
 using namespace time_literals;
 
-#define CONTROLLER_PERIOD_DEFAULT 100000
-
-/**
- * @brief IMU Heater Controller driver used to maintain consistent
- *        temparature at the IMU.
- */
-extern "C" __EXPORT int heater_main(int argc, char *argv[]);
-
+#define CONTROLLER_PERIOD_DEFAULT    10000
+#define TEMPERATURE_TARGET_THRESHOLD 2.5f
 
 class Heater : public ModuleBase<Heater>, public ModuleParams, public px4::ScheduledWorkItem
 {
@@ -97,66 +94,34 @@ public:
 	static int task_spawn(int argc, char *argv[]);
 
 	/**
-	 * @brief Sets and/or reports the heater controller time period value in microseconds.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns 0 iff successful, -1 otherwise.
-	 */
-	int controller_period(char *argv[]);
-
-	/**
-	 * @brief Sets and/or reports the heater controller integrator gain value.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater integrator gain value iff successful, 0.0f otherwise.
-	 */
-	float integrator(char *argv[]);
-
-	/**
-	 * @brief Sets and/or reports the heater controller proportional gain value.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater proportional gain value iff successful, 0.0f otherwise.
-	 */
-	float proportional(char *argv[]);
-
-	/**
-	 * @brief Reports the heater target sensor.
-	 * @return Returns the id of the target sensor
-	 */
-	uint32_t sensor_id();
-
-	/**
 	 * @brief Initiates the heater driver work queue, starts a new background task,
 	 *        and fails if it is already running.
 	 * @return Returns 1 iff start was successful.
 	 */
 	int start();
 
-	/**
-	 * @brief Reports curent status and diagnostic information about the heater driver.
-	 * @return Returns 0 iff successful, -1 otherwise.
-	 */
-	int print_status();
-
-	/**
-	 * @brief Sets and/or reports the heater target temperature.
-	 * @param argv Pointer to the input argument array.
-	 * @return Returns the heater target temperature value iff successful, -1.0f otherwise.
-	 */
-	float temperature_setpoint(char *argv[]);
-
-protected:
-
-	/**
-	 * @brief Called once to initialize uORB topics.
-	 */
-	void initialize_topics();
-
 private:
 
-	/**
-	 * @brief Calculates the heater element on/off time, carries out
-	 *        closed loop feedback and feedforward temperature control,
-	 *        and schedules the next cycle.
-	 */
+	/** Disables the heater (either by GPIO or PX4IO). */
+	void disable_heater();
+
+	/** Turns the heater on (either by GPIO or PX4IO). */
+	void heater_on();
+
+	/** Turns the heater off (either by GPIO or PX4IO). */
+	void heater_off();
+
+	void initialize();
+
+	/** Enables / configures the heater (either by GPIO or PX4IO). */
+	void initialize_heater_io();
+
+	/** @brief Called once to initialize uORB topics. */
+	bool initialize_topics();
+
+	void publish_status();
+
+	/** @brief Calculates the heater element on/off time and schedules the next cycle. */
 	void Run() override;
 
 	/**
@@ -165,31 +130,39 @@ private:
 	 */
 	void update_params(const bool force = false);
 
-	/** Work queue struct for the RTOS scheduler. */
+	/** Work queue struct for the scheduler. */
 	static struct work_s _work;
 
-	int _controller_period_usec = CONTROLLER_PERIOD_DEFAULT;
+	/** File descriptor for PX4IO for heater ioctl's */
+#if defined(PX4IO_HEATER_ENABLED)
+	int _io_fd {-1};
+#endif
 
+	bool _heater_initialized     = false;
+	bool _heater_on              = false;
+	bool _temperature_target_met = false;
+
+	int _controller_period_usec = CONTROLLER_PERIOD_DEFAULT;
 	int _controller_time_on_usec = 0;
 
-	bool _heater_on = false;
+	float _integrator_value   = 0.0f;
+	float _proportional_value = 0.0f;
 
-	float _integrator_value = 0.0f;
+	uORB::Publication<heater_status_s> _heater_status_pub{ORB_ID(heater_status)};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	float _proportional_value = 0.0f;
-
 	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
-	sensor_accel_s _sensor_accel{};
 
-	float _sensor_temperature = 0.0f;
+	uint32_t _sensor_device_id{0};
 
-	/** @note Declare local parameters using defined parameters. */
+	float _temperature_last{NAN};
+
 	DEFINE_PARAMETERS(
+		(ParamFloat<px4::params::SENS_IMU_TEMP_FF>) _param_sens_imu_temp_ff,
 		(ParamFloat<px4::params::SENS_IMU_TEMP_I>)  _param_sens_imu_temp_i,
 		(ParamFloat<px4::params::SENS_IMU_TEMP_P>)  _param_sens_imu_temp_p,
-		(ParamInt<px4::params::SENS_TEMP_ID>) _param_sens_temp_id,
-		(ParamFloat<px4::params::SENS_IMU_TEMP>) _param_sens_imu_temp
+		(ParamFloat<px4::params::SENS_IMU_TEMP>)    _param_sens_imu_temp,
+		(ParamInt<px4::params::SENS_TEMP_ID>)       _param_sens_temp_id
 	)
 };

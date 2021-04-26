@@ -7,25 +7,19 @@
 
 set VEHICLE_TYPE uuv
 
-if [ $AUTOCNF = yes ]
-then
-        param set PWM_MAX 1950
-        param set PWM_MIN 1050
-        param set PWM_DISARMED 1500
-
-fi
+param set-default PWM_MAIN_MAX 1950
+param set-default PWM_MAIN_MIN 1050
+param set-default PWM_MAIN_DISARM 1500
 
 #
 # PWM Hz - 50 Hz is the normal rate in RC cars, boats etc,
 # higher rates may damage analog servos.
 #
-set PWM_RATE 50
+set PWM_MAIN_RATE 50
 
 #
 # Enable servo output on pins 1-4
 set PWM_OUT 1234
-set PWM_DISARMED 1500
-
 
 #
 # This is the gimbal pass mixer.

@@ -44,7 +44,6 @@
  *
  * Roll proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit Hz
  * @min 0.0
  * @max 12
  * @decimal 2
@@ -58,7 +57,6 @@ PARAM_DEFINE_FLOAT(MC_ROLL_P, 6.5f);
  *
  * Pitch proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit Hz
  * @min 0.0
  * @max 12
  * @decimal 2
@@ -72,7 +70,6 @@ PARAM_DEFINE_FLOAT(MC_PITCH_P, 6.5f);
  *
  * Yaw proportional gain, i.e. desired angular speed in rad/s for error 1 rad.
  *
- * @unit Hz
  * @min 0.0
  * @max 5
  * @decimal 2
@@ -91,7 +88,6 @@ PARAM_DEFINE_FLOAT(MC_YAW_P, 2.8f);
  *
  * For yaw control tuning use MC_YAW_P. This ratio has no inpact on the yaw gain.
  *
- * @unit Hz
  * @min 0.0
  * @max 1.0
  * @decimal 2
@@ -151,21 +147,8 @@ PARAM_DEFINE_FLOAT(MC_PITCHRATE_MAX, 220.0f);
 PARAM_DEFINE_FLOAT(MC_YAWRATE_MAX, 200.0f);
 
 /**
- * Threshold for Rattitude mode
- *
- * Manual input needed in order to override attitude control rate setpoints
- * and instead pass manual stick inputs as rate setpoints
- *
- * @min 0.0
- * @max 1.0
- * @decimal 2
- * @increment 0.01
- * @group Multicopter Attitude Control
- */
-PARAM_DEFINE_FLOAT(MC_RATT_TH, 0.8f);
-
-/**
  * Manual tilt input filter time constant
+ *
  * Setting this parameter to 0 disables the filter
  *
  * @unit s

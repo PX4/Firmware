@@ -77,12 +77,14 @@ private:
 
 	struct IntervalAverage {
 		hrt_abstime timestamp_sample_last{0};
-		float interval_sum{0.f};
-		float interval_count{0.f};
+		uint32_t interval_sum{0};
+		uint32_t interval_samples{0};
+		uint32_t interval_count{0};
 		float update_interval{0.f};
+		float update_interval_raw{0.f};
 	};
 
-	bool UpdateIntervalAverage(IntervalAverage &intavg, const hrt_abstime &timestamp_sample);
+	bool UpdateIntervalAverage(IntervalAverage &intavg, const hrt_abstime &timestamp_sample, uint8_t samples = 1);
 	void UpdateIntegratorConfiguration();
 	void UpdateGyroVibrationMetrics(const matrix::Vector3f &delta_angle);
 	void UpdateAccelVibrationMetrics(const matrix::Vector3f &delta_velocity);
@@ -126,6 +128,10 @@ private:
 	vehicle_imu_status_s _status{};
 
 	uint8_t _delta_velocity_clipping{0};
+
+	hrt_abstime _last_clipping_notify_time{0};
+	uint64_t _last_clipping_notify_total_count{0};
+	orb_advert_t _mavlink_log_pub{nullptr};
 
 	bool _intervals_configured{false};
 

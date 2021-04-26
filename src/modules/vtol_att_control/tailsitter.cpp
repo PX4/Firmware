@@ -80,7 +80,16 @@ void Tailsitter::update_vtol_state()
 
 	float pitch = Eulerf(Quatf(_v_att->q)).theta();
 
-	if (!_attc->is_fixed_wing_requested()) {
+	if (_vtol_vehicle_status->vtol_transition_failsafe) {
+		// Failsafe event, switch to MC mode immediately
+		_vtol_schedule.flight_mode = vtol_mode::MC_MODE;
+
+		//reset failsafe when FW is no longer requested
+		if (!_attc->is_fixed_wing_requested()) {
+			_vtol_vehicle_status->vtol_transition_failsafe = false;
+		}
+
+	} else if (!_attc->is_fixed_wing_requested()) {
 
 		switch (_vtol_schedule.flight_mode) { // user switchig to MC mode
 		case vtol_mode::MC_MODE:
@@ -216,8 +225,11 @@ void Tailsitter::update_transition_state()
 	_q_trans_sp.normalize();
 
 	// tilt angle (zero if vehicle nose points up (hover))
-	const float tilt = acosf(_q_trans_sp(0) * _q_trans_sp(0) - _q_trans_sp(1) * _q_trans_sp(1) - _q_trans_sp(2) *
-				 _q_trans_sp(2) + _q_trans_sp(3) * _q_trans_sp(3));
+	float cos_tilt = _q_trans_sp(0) * _q_trans_sp(0) - _q_trans_sp(1) * _q_trans_sp(1) - _q_trans_sp(2) *
+			 _q_trans_sp(2) + _q_trans_sp(3) * _q_trans_sp(3);
+	cos_tilt = cos_tilt >  1.0f ?  1.0f : cos_tilt;
+	cos_tilt = cos_tilt < -1.0f ? -1.0f : cos_tilt;
+	const float tilt = acosf(cos_tilt);
 
 	if (_vtol_schedule.flight_mode == vtol_mode::TRANSITION_FRONT_P1) {
 
@@ -268,11 +280,6 @@ void Tailsitter::update_fw_state()
 {
 	VtolType::update_fw_state();
 
-	// allow fw yawrate control via multirotor roll actuation. this is useful for vehicles
-	// which don't have a rudder to coordinate turns
-	if (_params->diff_thrust == 1) {
-		_mc_roll_weight = 1.0f;
-	}
 }
 
 /**
@@ -292,6 +299,11 @@ void Tailsitter::fill_actuator_outputs()
 
 	if (_vtol_schedule.flight_mode == vtol_mode::FW_MODE) {
 		mc_out[actuator_controls_s::INDEX_THROTTLE] = fw_in[actuator_controls_s::INDEX_THROTTLE];
+
+		/* allow differential thrust if enabled */
+		if (_params->diff_thrust == 1) {
+			mc_out[actuator_controls_s::INDEX_ROLL] = fw_in[actuator_controls_s::INDEX_YAW] * _params->diff_thrust_scale;
+		}
 
 	} else {
 		mc_out[actuator_controls_s::INDEX_THROTTLE] = mc_in[actuator_controls_s::INDEX_THROTTLE];

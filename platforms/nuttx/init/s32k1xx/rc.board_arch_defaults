@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# S32K1XX specific defaults
+#------------------------------------------------------------------------------
+
+set LOGGER_BUF 12
+
+if param greater -s UAVCAN_ENABLE 1
+then
+	# Reduce logger buffer to free up some RAM for UAVCAN servers.
+	set LOGGER_BUF 4
+fi

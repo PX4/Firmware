@@ -65,7 +65,7 @@ def get_version():
 
     if os.path.isdir(os.path.join(px4_dir, '.git')):
         # If inside a clone PX4 Firmware repository, get version from "git describe"
-        cmd = 'git describe --abbrev=0 --tags'
+        cmd = 'git describe --exclude ext/* --abbrev=0 --tags'
         try:
             version = subprocess.check_output(
                 cmd, cwd=px4_dir, shell=True).decode().strip()

@@ -182,8 +182,8 @@ void ICM20948::RunImpl()
 				ScheduleDelayed(100_ms);
 
 			} else {
-				PX4_DEBUG("Reset not complete, check again in 10 ms");
-				ScheduleDelayed(10_ms);
+				PX4_DEBUG("Reset not complete, check again in 100 ms");
+				ScheduleDelayed(100_ms);
 			}
 		}
 
@@ -368,10 +368,6 @@ void ICM20948::ConfigureGyro()
 
 void ICM20948::ConfigureSampleRate(int sample_rate)
 {
-	if (sample_rate == 0) {
-		sample_rate = 800; // default to ~800 Hz
-	}
-
 	// round down to nearest FIFO sample dt * SAMPLES_PER_TRANSFER
 	const float min_interval = FIFO_SAMPLE_DT * SAMPLES_PER_TRANSFER;
 	_fifo_empty_interval_us = math::max(roundf((1e6f / (float)sample_rate) / min_interval) * min_interval, min_interval);
@@ -537,10 +533,11 @@ void ICM20948::RegisterSetAndClearBits(T reg, uint8_t setbits, uint8_t clearbits
 
 uint16_t ICM20948::FIFOReadCount()
 {
+	SelectRegisterBank(REG_BANK_SEL_BIT::USER_BANK_0);
+
 	// read FIFO count
 	uint8_t fifo_count_buf[3] {};
 	fifo_count_buf[0] = static_cast<uint8_t>(Register::BANK_0::FIFO_COUNTH) | DIR_READ;
-	SelectRegisterBank(REG_BANK_SEL_BIT::USER_BANK_0);
 
 	if (transfer(fifo_count_buf, fifo_count_buf, sizeof(fifo_count_buf)) != PX4_OK) {
 		perf_count(_bad_transfer_perf);
@@ -552,9 +549,10 @@ uint16_t ICM20948::FIFOReadCount()
 
 bool ICM20948::FIFORead(const hrt_abstime &timestamp_sample, uint8_t samples)
 {
+	SelectRegisterBank(REG_BANK_SEL_BIT::USER_BANK_0);
+
 	FIFOTransferBuffer buffer{};
 	const size_t transfer_size = math::min(samples * sizeof(FIFO::DATA) + 3, FIFO::SIZE);
-	SelectRegisterBank(REG_BANK_SEL_BIT::USER_BANK_0);
 
 	if (transfer((uint8_t *)&buffer, (uint8_t *)&buffer, transfer_size) != PX4_OK) {
 		perf_count(_bad_transfer_perf);

@@ -106,7 +106,6 @@ BlockLocalPositionEstimator::BlockLocalPositionEstimator() :
 
 	// local to global coversion related variables
 	_is_global_cov_init(false),
-	_global_ref_timestamp(0.0),
 	_ref_lat(0.0),
 	_ref_lon(0.0),
 	_ref_alt(0.0)
@@ -166,6 +165,23 @@ void BlockLocalPositionEstimator::Run()
 		_sensors_sub.unregisterCallback();
 		exit_and_cleanup();
 		return;
+	}
+
+	if (_vehicle_command_sub.updated()) {
+		vehicle_command_s vehicle_command;
+
+		if (_vehicle_command_sub.update(&vehicle_command)) {
+			if (vehicle_command.command == vehicle_command_s::VEHICLE_CMD_SET_GPS_GLOBAL_ORIGIN) {
+				const double latitude = vehicle_command.param5;
+				const double longitude = vehicle_command.param6;
+				const float altitude = vehicle_command.param7;
+
+				map_projection_init_timestamped(&_global_local_proj_ref, latitude, longitude, vehicle_command.timestamp);
+				_global_local_alt0 = altitude;
+
+				PX4_INFO("New NED origin (LLA): %3.10f, %3.10f, %4.3f\n", latitude, longitude, static_cast<double>(altitude));
+			}
+		}
 	}
 
 	sensor_combined_s imu;

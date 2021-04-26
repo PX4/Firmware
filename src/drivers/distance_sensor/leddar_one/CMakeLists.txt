@@ -41,4 +41,6 @@ px4_add_module(
 		leddar_one_main.cpp
 	MODULE_CONFIG
 		module.yaml
+	DEPENDS
+		drivers_rangefinder
 	)

@@ -40,6 +40,7 @@
 #include "mag_calibration.h"
 #include "commander_helper.h"
 #include "calibration_routines.h"
+#include "lm_fit.hpp"
 #include "calibration_messages.h"
 #include "factory_calibration_storage.h"
 
@@ -63,6 +64,7 @@
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_gps_position.h>
+#include <uORB/topics/mag_worker_data.h>
 
 using namespace matrix;
 using namespace time_literals;
@@ -78,6 +80,7 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 /// Data passed to calibration worker routine
 struct mag_worker_data_t {
 	orb_advert_t	*mavlink_log_pub;
+	orb_advert_t	mag_worker_data_pub;
 	bool		append_to_existing_calibration;
 	unsigned	last_mag_progress;
 	unsigned	done_count;
@@ -192,7 +195,7 @@ static calibrate_return check_calibration_result(float offset_x, float offset_y,
 
 	// earth field between 0.25 and 0.65 Gauss
 	if (sphere_radius < 0.2f || sphere_radius >= 0.7f) {
-		calibration_log_emergency(mavlink_log_pub, "Retry calibration (mag %u sphere radius invaid %.3f)", cur_mag,
+		calibration_log_emergency(mavlink_log_pub, "Retry calibration (mag %u sphere radius invalid %.3f)", cur_mag,
 					  (double)sphere_radius);
 		return calibrate_return_error;
 	}
@@ -388,6 +391,38 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 					}
 				}
 
+				hrt_abstime now = hrt_absolute_time();
+				mag_worker_data_s status;
+				status.timestamp = now;
+				status.timestamp_sample = now;
+				status.done_count = worker_data->done_count;
+				status.calibration_points_perside = worker_data->calibration_points_perside;
+				status.calibration_interval_perside_us = worker_data->calibration_interval_perside_us;
+
+				for (size_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
+					status.calibration_counter_total[cur_mag] = worker_data->calibration_counter_total[cur_mag];
+					status.side_data_collected[cur_mag] = worker_data->side_data_collected[cur_mag];
+
+					if (worker_data->calibration[cur_mag].device_id() != 0) {
+						const unsigned int sample = worker_data->calibration_counter_total[cur_mag] - 1;
+						status.x[cur_mag] = worker_data->x[cur_mag][sample];
+						status.y[cur_mag] = worker_data->y[cur_mag][sample];
+						status.z[cur_mag] = worker_data->z[cur_mag][sample];
+
+					} else {
+						status.x[cur_mag] = 0.f;
+						status.y[cur_mag] = 0.f;
+						status.z[cur_mag] = 0.f;
+					}
+				}
+
+				if (worker_data->mag_worker_data_pub == nullptr) {
+					worker_data->mag_worker_data_pub = orb_advertise(ORB_ID(mag_worker_data), &status);
+
+				} else {
+					orb_publish(ORB_ID(mag_worker_data), worker_data->mag_worker_data_pub, &status);
+				}
+
 				calibration_counter_side++;
 
 				unsigned new_progress = progress_percentage(worker_data) +
@@ -435,6 +470,8 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 	calibrate_return result = calibrate_return_ok;
 
 	mag_worker_data_t worker_data{};
+
+	worker_data.mag_worker_data_pub = nullptr;
 
 	// keep and update the existing calibration when we are not doing a full 6-axis calibration
 	worker_data.append_to_existing_calibration = cal_mask < ((1 << 6) - 1);
@@ -533,69 +570,38 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 				// enough to reliably estimate both scales and offsets with 2 sides only (even if the existing calibration
 				// is already close)
 				bool sphere_fit_only = worker_data.calibration_sides <= 2;
+
+				sphere_params sphere_data;
+				sphere_data.radius = sphere_radius[cur_mag];
+				sphere_data.offset = matrix::Vector3f(sphere[cur_mag](0), sphere[cur_mag](1), sphere[cur_mag](2));
+				sphere_data.diag = matrix::Vector3f(diag[cur_mag](0), diag[cur_mag](1), diag[cur_mag](2));
+				sphere_data.offdiag = matrix::Vector3f(offdiag[cur_mag](0), offdiag[cur_mag](1), offdiag[cur_mag](2));
+
 				bool sphere_fit_success = false;
-				{
-					float fitness = 1.0e30f;
-					float sphere_lambda = 1.0f;
-					static constexpr int max_iterations = 100;
+				bool ellipsoid_fit_success = false;
+				int ret = lm_mag_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
+						     worker_data.calibration_counter_total[cur_mag], sphere_data, false);
 
-					for (int i = 0; i < max_iterations; i++) {
-						int ret = run_lm_sphere_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
-									    fitness, sphere_lambda, worker_data.calibration_counter_total[cur_mag],
-									    &sphere[cur_mag](0), &sphere[cur_mag](1), &sphere[cur_mag](2),
-									    &sphere_radius[cur_mag],
-									    &diag[cur_mag](0), &diag[cur_mag](1), &diag[cur_mag](2),
-									    &offdiag[cur_mag](0), &offdiag[cur_mag](1), &offdiag[cur_mag](2));
+				if (ret == PX4_OK) {
+					sphere_fit_success = true;
+					PX4_INFO("Mag: %d sphere radius: %.4f", cur_mag, (double)sphere_data.radius);
 
-						if (ret == PX4_OK) {
-							sphere_fit_success = true;
+					if (!sphere_fit_only) {
+						int ellipsoid_ret = lm_mag_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
+									       worker_data.calibration_counter_total[cur_mag], sphere_data, true);
 
-						} else {
-							// stop here if fit has previously succeeded
-							if (sphere_fit_success) {
-								break;
-							}
+						if (ellipsoid_ret == PX4_OK) {
+							ellipsoid_fit_success  = true;
 						}
-
-						PX4_DEBUG("Mag: %d (%d/%d) sphere fit ret=%d, fitness: %.5f, lambda: %.5f, radius: %.3f, offset: [%.3f, %.3f %.3f]",
-							  cur_mag, i, max_iterations, ret, (double)fitness, (double)sphere_lambda, (double)sphere_radius[cur_mag],
-							  (double)sphere[cur_mag](0), (double)sphere[cur_mag](1), (double)sphere[cur_mag](2));
 					}
-
-					PX4_INFO("Mag: %d sphere fitness: %.5f radius: %.4f", cur_mag, (double)fitness, (double)sphere_radius[cur_mag]);
 				}
 
-				bool ellipsoid_fit_success = false;
+				sphere_radius[cur_mag] = sphere_data.radius;
 
-				if (!sphere_fit_only) {
-					float fitness = 1.0e30f;
-					float ellipsoid_lambda = 1.0f;
-					static constexpr int max_iterations = 100;
-
-					for (int i = 0; i < max_iterations; i++) {
-						int ret = run_lm_ellipsoid_fit(worker_data.x[cur_mag], worker_data.y[cur_mag], worker_data.z[cur_mag],
-									       fitness, ellipsoid_lambda, worker_data.calibration_counter_total[cur_mag],
-									       &sphere[cur_mag](0), &sphere[cur_mag](1), &sphere[cur_mag](2),
-									       &sphere_radius[cur_mag],
-									       &diag[cur_mag](0), &diag[cur_mag](1), &diag[cur_mag](2),
-									       &offdiag[cur_mag](0), &offdiag[cur_mag](1), &offdiag[cur_mag](2));
-
-						if (ret == PX4_OK) {
-							ellipsoid_fit_success = true;
-
-						} else {
-							// stop here if fit has previously succeeded
-							if (ellipsoid_fit_success) {
-								break;
-							}
-						}
-
-						PX4_DEBUG("Mag: %d (%d/%d) ellipsoid fit ret=%d, fitness: %.5f, lambda: %.5f, radius: %.3f, offset: [%.3f, %.3f %.3f]",
-							  cur_mag, i, max_iterations, ret, (double)fitness, (double)ellipsoid_lambda, (double)sphere_radius[cur_mag],
-							  (double)sphere[cur_mag](0), (double)sphere[cur_mag](1), (double)sphere[cur_mag](2));
-					}
-
-					PX4_INFO("Mag: %d ellipsoid fitness: %.5f", cur_mag, (double)fitness);
+				for (int i = 0; i < 3; i++) {
+					sphere[cur_mag](i) = sphere_data.offset(i);
+					diag[cur_mag](i) = sphere_data.diag(i);
+					offdiag[cur_mag](i) = sphere_data.offdiag(i);
 				}
 
 				if (!sphere_fit_success && !ellipsoid_fit_success) {

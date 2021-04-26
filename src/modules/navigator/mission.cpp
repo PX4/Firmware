@@ -146,12 +146,14 @@ void
 Mission::on_inactivation()
 {
 	// Disable camera trigger
-	vehicle_command_s cmd = {};
+	vehicle_command_s cmd {};
 	cmd.command = vehicle_command_s::VEHICLE_CMD_DO_TRIGGER_CONTROL;
 	// Pause trigger
 	cmd.param1 = -1.0f;
 	cmd.param3 = 1.0f;
 	_navigator->publish_vehicle_cmd(&cmd);
+
+	_navigator->release_gimbal_control();
 
 	if (_navigator->get_precland()->is_activated()) {
 		_navigator->get_precland()->on_inactivation();
@@ -752,11 +754,6 @@ Mission::set_mission_items()
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					/* ignore yaw here, otherwise it might yaw before heading_sp_update takes over */
 					_mission_item.yaw = NAN;
-					/* since _mission_item.time_inside and and _mission_item.pitch_min build a union, we need to set time_inside to zero
-					 * since in NAV_CMD_TAKEOFF mode there is currently no time_inside.
-					 * Note also that resetting time_inside to zero will cause pitch_min to be zero as well.
-					 */
-					_mission_item.time_inside = 0.0f;
 
 				} else if (_mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF
 					   && _work_item_type == WORK_ITEM_TYPE_DEFAULT
@@ -783,10 +780,6 @@ Mission::set_mission_items()
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					/* ignore yaw here, otherwise it might yaw before heading_sp_update takes over */
 					_mission_item.yaw = NAN;
-					/* since _mission_item.time_inside and and _mission_item.pitch_min build a union, we need to set time_inside to zero
-					 * since in NAV_CMD_TAKEOFF mode there is currently no time_inside.
-					 */
-					_mission_item.time_inside = 0.0f;
 				}
 
 				/* if we just did a VTOL takeoff, prepare transition */
@@ -1165,7 +1158,11 @@ Mission::set_mission_items()
 		}
 
 	} else {
-		if (_mission_item.autocontinue && get_time_inside(_mission_item) < FLT_EPSILON) {
+		/* allow the vehicle to decelerate before reaching a wp with a hold time */
+		const bool brake_for_hold = _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
+					    && get_time_inside(_mission_item) > FLT_EPSILON;
+
+		if (_mission_item.autocontinue && !brake_for_hold) {
 			/* try to process next mission item */
 			if (has_next_position_item) {
 				/* got next mission item, update setpoint triplet */
@@ -1841,10 +1838,6 @@ bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const posit
 {
 	return ((p1->valid == p2->valid) &&
 		(p1->type == p2->type) &&
-		(fabsf(p1->x - p2->x) < FLT_EPSILON) &&
-		(fabsf(p1->y - p2->y) < FLT_EPSILON) &&
-		(fabsf(p1->z - p2->z) < FLT_EPSILON) &&
-		(p1->position_valid == p2->position_valid) &&
 		(fabsf(p1->vx - p2->vx) < FLT_EPSILON) &&
 		(fabsf(p1->vy - p2->vy) < FLT_EPSILON) &&
 		(fabsf(p1->vz - p2->vz) < FLT_EPSILON) &&
@@ -1860,12 +1853,6 @@ bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const posit
 		(p1->yawspeed_valid == p2->yawspeed_valid) &&
 		(fabsf(p1->loiter_radius - p2->loiter_radius) < FLT_EPSILON) &&
 		(p1->loiter_direction == p2->loiter_direction) &&
-		(fabsf(p1->pitch_min - p2->pitch_min) < FLT_EPSILON) &&
-		(fabsf(p1->a_x - p2->a_x) < FLT_EPSILON) &&
-		(fabsf(p1->a_y - p2->a_y) < FLT_EPSILON) &&
-		(fabsf(p1->a_z - p2->a_z) < FLT_EPSILON) &&
-		(p1->acceleration_valid == p2->acceleration_valid) &&
-		(p1->acceleration_is_force == p2->acceleration_is_force) &&
 		(fabsf(p1->acceptance_radius - p2->acceptance_radius) < FLT_EPSILON) &&
 		(fabsf(p1->cruising_speed - p2->cruising_speed) < FLT_EPSILON) &&
 		((fabsf(p1->cruising_throttle - p2->cruising_throttle) < FLT_EPSILON) || (!PX4_ISFINITE(p1->cruising_throttle)

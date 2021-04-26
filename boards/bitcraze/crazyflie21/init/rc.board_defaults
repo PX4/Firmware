@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# board specific defaults
+#------------------------------------------------------------------------------
+
+# system_power unavailable
+param set-default CBRK_SUPPLY_CHK 894281
+
+param set-default SYS_AUTOSTART 4901
+
+# don't probe external I2C
+param set-default SENS_EXT_I2C_PRB 0

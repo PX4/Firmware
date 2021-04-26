@@ -37,37 +37,7 @@
 #pragma once
 
 #include <drivers/drv_hrt.h>
-
-/**
- * Least-squares fit of a sphere to a set of points.
- *
- * Fits a sphere to a set of points on the sphere surface.
- *
- * @param x point coordinates on the X axis
- * @param y point coordinates on the Y axis
- * @param z point coordinates on the Z axis
- * @param size number of points
- * @param max_iterations abort if maximum number of iterations have been reached. If unsure, set to 100.
- * @param sphere_x coordinate of the sphere center on the X axis
- * @param sphere_y coordinate of the sphere center on the Y axis
- * @param sphere_z coordinate of the sphere center on the Z axis
- * @param sphere_radius sphere radius
- *
- * @return 0 on success, 1 on failure
- */
-int run_lm_sphere_fit(const float x[], const float y[], const float z[],
-		      float &fitness, float &sphere_lambda, unsigned int size,
-		      float *offset_x, float *offset_y, float *offset_z,
-		      float *sphere_radius,
-		      float *diag_x, float *diag_y, float *diag_z,
-		      float *offdiag_x, float *offdiag_y, float *offdiag_z);
-
-int run_lm_ellipsoid_fit(const float x[], const float y[], const float z[],
-			 float &fitness, float &sphere_lambda, unsigned int size,
-			 float *offset_x, float *offset_y, float *offset_z,
-			 float *sphere_radius,
-			 float *diag_x, float *diag_y, float *diag_z,
-			 float *offdiag_x, float *offdiag_y, float *offdiag_z);
+#include <uORB/Publication.hpp>
 
 // The order of these cannot change since the calibration calculations depend on them in this order
 enum detect_orientation_return {

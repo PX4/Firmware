@@ -11,6 +11,9 @@ uint32 gyro_error_count
 float32 accel_rate_hz
 float32 gyro_rate_hz
 
+float32 accel_raw_rate_hz       # full raw sensor sample rate (Hz)
+float32 gyro_raw_rate_hz        # full raw sensor sample rate (Hz)
+
 float32 accel_vibration_metric  # high frequency vibration level in the IMU delta velocity data (m/s)
 float32 gyro_vibration_metric   # high frequency vibration level in the IMU delta velocity data (m/s)
 float32 gyro_coning_vibration   # Level of coning vibration in the IMU delta angles (rad^2)

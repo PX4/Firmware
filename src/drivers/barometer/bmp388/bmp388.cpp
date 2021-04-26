@@ -66,7 +66,7 @@ int
 BMP388::init()
 {
 	if (!soft_reset()) {
-		PX4_WARN("failed to reset baro during init");
+		PX4_DEBUG("failed to reset baro during init");
 		return -EIO;
 	}
 
@@ -112,7 +112,8 @@ BMP388::start()
 {
 	_collect_phase = false;
 
-	ScheduleOnInterval(_measure_interval, _measure_interval);
+	// wait a bit longer for the first measurement, as otherwise the first readout might fail
+	ScheduleOnInterval(_measure_interval, _measure_interval * 3);
 }
 
 void

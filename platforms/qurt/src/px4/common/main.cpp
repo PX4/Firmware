@@ -184,7 +184,7 @@ const char *get_commands()
 	// All that needs to be started automatically on the DSP side
 	// are uorb and qshell. After that, everything else can get
 	// started from the main startup script on the Linux side.
-	static const char *commands = "uorb start\nqshell start\n";
+	static const char *commands = "qshell start\n";
 
 	return commands;
 }

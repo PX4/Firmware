@@ -35,7 +35,7 @@
 #define WIND_COV_HPP
 
 #include <uORB/topics/vehicle_local_position.h>
-#include <uORB/topics/wind_estimate.h>
+#include <uORB/topics/wind.h>
 
 class MavlinkStreamWindCov : public MavlinkStream
 {
@@ -50,29 +50,29 @@ public:
 
 	unsigned get_size() override
 	{
-		return _wind_estimate_sub.advertised() ? MAVLINK_MSG_ID_WIND_COV_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+		return _wind_sub.advertised() ? MAVLINK_MSG_ID_WIND_COV_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
 	}
 
 private:
 	explicit MavlinkStreamWindCov(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
-	uORB::Subscription _wind_estimate_sub{ORB_ID(wind_estimate)};
+	uORB::Subscription _wind_sub{ORB_ID(wind)};
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 
 	bool send() override
 	{
-		wind_estimate_s wind_estimate;
+		wind_s wind;
 
-		if (_wind_estimate_sub.update(&wind_estimate)) {
+		if (_wind_sub.update(&wind)) {
 			mavlink_wind_cov_t msg{};
 
-			msg.time_usec = wind_estimate.timestamp;
+			msg.time_usec = wind.timestamp;
 
-			msg.wind_x = wind_estimate.windspeed_north;
-			msg.wind_y = wind_estimate.windspeed_east;
+			msg.wind_x = wind.windspeed_north;
+			msg.wind_y = wind.windspeed_east;
 			msg.wind_z = 0.0f;
 
-			msg.var_horiz = wind_estimate.variance_north + wind_estimate.variance_east;
+			msg.var_horiz = wind.variance_north + wind.variance_east;
 			msg.var_vert = 0.0f;
 
 			vehicle_local_position_s lpos{};

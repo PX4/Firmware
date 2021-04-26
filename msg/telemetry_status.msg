@@ -17,14 +17,23 @@ bool ftp
 
 uint8 streams
 
-float32 data_rate
+float32 data_rate                       # configured maximum data rate (Bytes/s)
 
 float32 rate_multiplier
 
-float32 rate_rx
+float32 tx_rate_avg                     # transmit rate average (Bytes/s)
+float32 tx_error_rate_avg               # transmit error rate average (Bytes/s)
+uint32 tx_message_count                 # total message sent count
+uint32 tx_buffer_overruns               # number of TX buffer overruns
 
-float32 rate_tx
-float32 rate_txerr
+float32 rx_rate_avg                     # transmit rate average (Bytes/s)
+uint32 rx_message_count                 # count of total messages received
+uint32 rx_message_count_supported       # count of total messages received from supported systems and components (for loss statistics)
+uint32 rx_message_lost_count
+uint32 rx_buffer_overruns               # number of RX buffer overruns
+uint32 rx_parse_errors                  # number of parse errors
+uint32 rx_packet_drop_count             # number of packet drops
+float32 rx_message_lost_rate
 
 
 uint64 HEARTBEAT_TIMEOUT_US = 1500000       # Heartbeat timeout 1.5 seconds

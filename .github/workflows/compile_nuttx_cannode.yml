@@ -1,0 +1,61 @@
+name: NuttX UAVCAN firmware
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: px4io/px4-dev-nuttx-focal:2021-02-04
+    strategy:
+      matrix:
+        config: [
+          ark_can-flow_default,
+          cuav_can-gps-v1_default,
+          holybro_can-gps-v1_default,
+          #nxp_ucans32k146_default,
+          px4_fmu-v4_cannode
+          ]
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{matrix.config}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
+        restore-keys: ${{matrix.config}}-ccache-
+    - name: setup ccache
+      run: |
+          mkdir -p ~/.ccache
+          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 5" >> ~/.ccache/ccache.conf
+          echo "max_size = 100M" >> ~/.ccache/ccache.conf
+          ccache -s
+          ccache -z
+
+    - name: make ${{matrix.config}}
+      run: make ${{matrix.config}}
+
+    - name: ccache post-run
+      run: ccache -s
+
+    - name: Upload px4 package
+      uses: actions/upload-artifact@v2
+      with:
+        name: px4_cannode_${{matrix.config}}
+        path: build/${{matrix.config}}/*.uavcan.bin

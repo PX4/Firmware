@@ -194,3 +194,15 @@ TEST(FunctionsTest, sqrt_linear)
 	EXPECT_FLOAT_EQ(sqrt_linear(2.f), 2.f);
 	EXPECT_FLOAT_EQ(sqrt_linear(120.f), 120.f);
 }
+
+TEST(FunctionsTest, lerp)
+{
+	EXPECT_FLOAT_EQ(lerp(0.f, 1.f, -.123f), -.123f);
+	EXPECT_FLOAT_EQ(lerp(0.f, 1.f, 0.f), 0.f);
+	EXPECT_FLOAT_EQ(lerp(0.f, 1.f, .123f), .123f);
+	EXPECT_FLOAT_EQ(lerp(0.f, 1.f, 1.f), 1.f);
+	EXPECT_FLOAT_EQ(lerp(0.f, 1.f, 1.123f), 1.123f);
+
+	EXPECT_FLOAT_EQ(lerp(.2f, .3f, -.1f), .19f);
+	EXPECT_FLOAT_EQ(lerp(-.4f, .3f, 1.1f), .37f);
+}

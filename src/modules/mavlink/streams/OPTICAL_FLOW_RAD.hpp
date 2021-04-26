@@ -39,52 +39,29 @@
 class MavlinkStreamOpticalFlowRad : public MavlinkStream
 {
 public:
-	const char *get_name() const override
-	{
-		return MavlinkStreamOpticalFlowRad::get_name_static();
-	}
+	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamOpticalFlowRad(mavlink); }
 
-	static constexpr const char *get_name_static()
-	{
-		return "OPTICAL_FLOW_RAD";
-	}
+	static constexpr const char *get_name_static() { return "OPTICAL_FLOW_RAD"; }
+	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_OPTICAL_FLOW_RAD; }
 
-	static constexpr uint16_t get_id_static()
-	{
-		return MAVLINK_MSG_ID_OPTICAL_FLOW_RAD;
-	}
-
-	uint16_t get_id() override
-	{
-		return get_id_static();
-	}
-
-	static MavlinkStream *new_instance(Mavlink *mavlink)
-	{
-		return new MavlinkStreamOpticalFlowRad(mavlink);
-	}
+	const char *get_name() const override { return MavlinkStreamOpticalFlowRad::get_name_static(); }
+	uint16_t get_id() override { return get_id_static(); }
 
 	unsigned get_size() override
 	{
-		return _flow_sub.advertised() ? (MAVLINK_MSG_ID_OPTICAL_FLOW_RAD_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
+		return _optical_flow_sub.advertised() ? (MAVLINK_MSG_ID_OPTICAL_FLOW_RAD_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES) : 0;
 	}
 
 private:
-	uORB::Subscription _flow_sub{ORB_ID(optical_flow)};
+	explicit MavlinkStreamOpticalFlowRad(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
-	/* do not allow top copying this class */
-	MavlinkStreamOpticalFlowRad(MavlinkStreamOpticalFlowRad &) = delete;
-	MavlinkStreamOpticalFlowRad &operator = (const MavlinkStreamOpticalFlowRad &) = delete;
-
-protected:
-	explicit MavlinkStreamOpticalFlowRad(Mavlink *mavlink) : MavlinkStream(mavlink)
-	{}
+	uORB::Subscription _optical_flow_sub{ORB_ID(optical_flow)};
 
 	bool send() override
 	{
 		optical_flow_s flow;
 
-		if (_flow_sub.update(&flow)) {
+		if (_optical_flow_sub.update(&flow)) {
 			mavlink_optical_flow_rad_t msg{};
 
 			msg.time_usec = flow.timestamp;

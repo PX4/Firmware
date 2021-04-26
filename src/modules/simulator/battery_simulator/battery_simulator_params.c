@@ -44,8 +44,9 @@
 PARAM_DEFINE_FLOAT(SIM_BAT_DRAIN, 60);
 
 /**
- * Simulator Battery minimal percentage. Can be used to alter
- * the battery level during SITL- or HITL-simulation on the fly.
+ * Simulator Battery minimal percentage.
+ *
+ * Can be used to alter the battery level during SITL- or HITL-simulation on the fly.
  * Particularly useful for testing different low-battery behaviour.
  *
  * @min 0

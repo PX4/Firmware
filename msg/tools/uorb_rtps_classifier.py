@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ################################################################################
 #
-# Copyright (c) 2018-2019 PX4 Development Team. All rights reserved.
+# Copyright (c) 2018-2021 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -49,7 +49,7 @@ class Classifier():
         self.msg_folder = msg_folder
         self.all_msgs_list = self.set_all_msgs()
         self.msg_id_map = self.parse_yaml_msg_id_file(yaml_file)
-        self.alias_space_init_id = 150
+        self.alias_space_init_id = 170
 
         # Checkers
         self.check_if_listed(yaml_file)
@@ -68,7 +68,22 @@ class Classifier():
         msg_list = []
         for filename in os.listdir(self.msg_folder):
             if '.msg' in filename:
+                # add base messages
                 msg_list.append(re.sub(".msg", "", filename))
+
+                # add alias / multi-topics messages
+                with open(os.path.join(self.msg_folder, filename), 'r') as f:
+                    alias_msgs = []
+                    lines = f.readlines()
+                    for line in lines:
+                        if '# TOPICS' in line:
+                            fileUpdated = True
+                            alias_msgs += line.split()
+                            alias_msgs.remove('#')
+                            alias_msgs.remove('TOPICS')
+                            for msg in alias_msgs:
+                                if msg not in msg_list:
+                                    msg_list.append(msg)
         return msg_list
 
     def set_msgs_to_send(self):
@@ -140,7 +155,7 @@ class Classifier():
                 "\n%s %s: " % (error_msg, yaml_file) + ", ".join('%s' % msg for msg in none_listed_msgs) +
                 "\n\nPlease add them to the yaml file with the respective ID and, if applicable, mark them " +
                 "to be sent or received by the micro-RTPS bridge.\n"
-                "NOTE: If the message has multi-topics (#TOPICS), these should be added as well.\n")
+                "NOTE: If the message is an alias / part of multi-topics (#TOPICS) of a base message, it should be added as well.\n")
 
     def check_base_type(self):
         """
@@ -180,11 +195,11 @@ class Classifier():
 
         if len(incorrect_base_ids) > 0:
             raise AssertionError(
-                ('\n' + '\n'.join('\t- The message \'{} with ID \'{}\' is in the wrong ID space. Please use any of the available IDs from 0 to 149'.format(k, v) for k, v in list(incorrect_base_ids.items()))))
+                ('\n' + '\n'.join('\t- The message \'{} with ID \'{}\' is in the wrong ID space. Please use any of the available IDs from 0 to 169'.format(k, v) for k, v in list(incorrect_base_ids.items()))))
 
         if len(incorrect_alias_ids) > 0:
             raise AssertionError(
-                ('\n' + '\n'.join('\t- The alias message \'{}\' with ID \'{}\' is in the wrong ID space. Please use any of the available IDs from 149 to 255'.format(k, v) for k, v in list(incorrect_alias_ids.items()))))
+                ('\n' + '\n'.join('\t- The alias message \'{}\' with ID \'{}\' is in the wrong ID space. Please use any of the available IDs from 170 to 255'.format(k, v) for k, v in list(incorrect_alias_ids.items()))))
 
     @staticmethod
     def parse_yaml_msg_id_file(yaml_file):

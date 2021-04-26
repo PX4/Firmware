@@ -49,7 +49,8 @@ static constexpr uint8_t Bit7 = (1 << 7);
 static constexpr uint32_t SPI_SPEED = 10 * 1000 * 1000; // 10MHz SPI serial interface
 static constexpr uint8_t DIR_READ = 0x80;
 
-static constexpr uint8_t ID = 0x1E;
+static constexpr uint8_t ID_088 = 0x1E;
+static constexpr uint8_t ID_090L = 0x1A;
 
 enum class Register : uint8_t {
 	ACC_CHIP_ID        = 0x00,

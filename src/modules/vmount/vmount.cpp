@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -88,8 +88,8 @@ static volatile ThreadData *g_thread_data = nullptr;
 struct Parameters {
 	int32_t mnt_mode_in;
 	int32_t mnt_mode_out;
-	int32_t mnt_mav_sysid;
-	int32_t mnt_mav_compid;
+	int32_t mnt_mav_sys_id_v1;
+	int32_t mnt_mav_comp_id_v1;
 	float mnt_ob_lock_mode;
 	float mnt_ob_norm_mode;
 	int32_t mnt_man_pitch;
@@ -102,6 +102,10 @@ struct Parameters {
 	float mnt_off_pitch;
 	float mnt_off_roll;
 	float mnt_off_yaw;
+	int32_t mav_sys_id;
+	int32_t mav_comp_id;
+	float mnt_rate_pitch;
+	float mnt_rate_yaw;
 
 	bool operator!=(const Parameters &p)
 	{
@@ -109,8 +113,8 @@ struct Parameters {
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 		return mnt_mode_in != p.mnt_mode_in ||
 		       mnt_mode_out != p.mnt_mode_out ||
-		       mnt_mav_sysid != p.mnt_mav_sysid ||
-		       mnt_mav_compid != p.mnt_mav_compid ||
+		       mnt_mav_sys_id_v1 != p.mnt_mav_sys_id_v1 ||
+		       mnt_mav_comp_id_v1 != p.mnt_mav_comp_id_v1 ||
 		       fabsf(mnt_ob_lock_mode - p.mnt_ob_lock_mode) > 1e-6f ||
 		       fabsf(mnt_ob_norm_mode - p.mnt_ob_norm_mode) > 1e-6f ||
 		       mnt_man_pitch != p.mnt_man_pitch ||
@@ -122,7 +126,9 @@ struct Parameters {
 		       mnt_range_yaw != p.mnt_range_yaw ||
 		       mnt_off_pitch != p.mnt_off_pitch ||
 		       mnt_off_roll != p.mnt_off_roll ||
-		       mnt_off_yaw != p.mnt_off_yaw;
+		       mnt_off_yaw != p.mnt_off_yaw ||
+		       mav_sys_id != p.mav_sys_id ||
+		       mav_comp_id != p.mav_comp_id;
 #pragma GCC diagnostic pop
 
 	}
@@ -131,8 +137,8 @@ struct Parameters {
 struct ParameterHandles {
 	param_t mnt_mode_in;
 	param_t mnt_mode_out;
-	param_t mnt_mav_sysid;
-	param_t mnt_mav_compid;
+	param_t mnt_mav_sys_id_v1;
+	param_t mnt_mav_comp_id_v1;
 	param_t mnt_ob_lock_mode;
 	param_t mnt_ob_norm_mode;
 	param_t mnt_man_pitch;
@@ -145,6 +151,10 @@ struct ParameterHandles {
 	param_t mnt_off_pitch;
 	param_t mnt_off_roll;
 	param_t mnt_off_yaw;
+	param_t mav_sys_id;
+	param_t mav_comp_id;
+	param_t mnt_rate_pitch;
+	param_t mnt_rate_yaw;
 };
 
 
@@ -223,14 +233,14 @@ static int vmount_thread_main(int argc, char *argv[])
 
 			output_config.gimbal_normal_mode_value = params.mnt_ob_norm_mode;
 			output_config.gimbal_retracted_mode_value = params.mnt_ob_lock_mode;
-			output_config.pitch_scale = 1.0f / ((params.mnt_range_pitch / 2.0f) * M_DEG_TO_RAD_F);
-			output_config.roll_scale = 1.0f / ((params.mnt_range_roll / 2.0f) * M_DEG_TO_RAD_F);
-			output_config.yaw_scale = 1.0f / ((params.mnt_range_yaw / 2.0f) * M_DEG_TO_RAD_F);
-			output_config.pitch_offset = params.mnt_off_pitch * M_DEG_TO_RAD_F;
-			output_config.roll_offset = params.mnt_off_roll * M_DEG_TO_RAD_F;
-			output_config.yaw_offset = params.mnt_off_yaw * M_DEG_TO_RAD_F;
-			output_config.mavlink_sys_id = params.mnt_mav_sysid;
-			output_config.mavlink_comp_id = params.mnt_mav_compid;
+			output_config.pitch_scale = 1.0f / (math::radians(params.mnt_range_pitch / 2.0f));
+			output_config.roll_scale = 1.0f / (math::radians(params.mnt_range_roll / 2.0f));
+			output_config.yaw_scale = 1.0f / (math::radians(params.mnt_range_yaw / 2.0f));
+			output_config.pitch_offset = math::radians(params.mnt_off_pitch);
+			output_config.roll_offset = math::radians(params.mnt_off_roll);
+			output_config.yaw_offset = math::radians(params.mnt_off_yaw);
+			output_config.mavlink_sys_id_v1 = params.mnt_mav_sys_id_v1;
+			output_config.mavlink_comp_id_v1 = params.mnt_mav_comp_id_v1;
 
 			bool alloc_failed = false;
 			thread_data.input_objs_len = 1;
@@ -243,20 +253,22 @@ static int vmount_thread_main(int argc, char *argv[])
 				case 0:
 
 					// Automatic
-					thread_data.input_objs[0] = new InputMavlinkCmdMount(params.mnt_do_stab);
+					thread_data.input_objs[0] = new InputMavlinkCmdMount();
 					thread_data.input_objs[1] = new InputMavlinkROI();
 
 					// RC is on purpose last here so that if there are any mavlink
 					// messages, they will take precedence over RC.
 					// This logic is done further below while update() is called.
-					thread_data.input_objs[2] = new InputRC(params.mnt_do_stab, params.mnt_man_roll, params.mnt_man_pitch,
+					thread_data.input_objs[2] = new InputRC(params.mnt_man_roll,
+										params.mnt_man_pitch,
 										params.mnt_man_yaw);
 					thread_data.input_objs_len = 3;
 
 					break;
 
 				case 1: //RC
-					thread_data.input_objs[0] = new InputRC(params.mnt_do_stab, params.mnt_man_roll, params.mnt_man_pitch,
+					thread_data.input_objs[0] = new InputRC(params.mnt_man_roll,
+										params.mnt_man_pitch,
 										params.mnt_man_yaw);
 					break;
 
@@ -265,7 +277,15 @@ static int vmount_thread_main(int argc, char *argv[])
 					break;
 
 				case 3: //MAVLINK_DO_MOUNT
-					thread_data.input_objs[0] = new InputMavlinkCmdMount(params.mnt_do_stab);
+					thread_data.input_objs[0] = new InputMavlinkCmdMount();
+					break;
+
+				case 4: //MAVLINK_V2
+					thread_data.input_objs[0] = new InputMavlinkGimbalV2(
+						params.mav_sys_id,
+						params.mav_comp_id,
+						params.mnt_rate_pitch,
+						params.mnt_rate_yaw);
 					break;
 
 				default:
@@ -288,8 +308,15 @@ static int vmount_thread_main(int argc, char *argv[])
 
 				break;
 
-			case 1: //MAVLINK
-				thread_data.output_obj = new OutputMavlink(output_config);
+			case 1: //MAVLink v1 gimbal protocol
+				thread_data.output_obj = new OutputMavlinkV1(output_config);
+
+				if (!thread_data.output_obj) { alloc_failed = true; }
+
+				break;
+
+			case 2: //MAVLink v2 gimbal protocol
+				thread_data.output_obj = new OutputMavlinkV2(params.mav_sys_id, params.mav_comp_id, output_config);
 
 				if (!thread_data.output_obj) { alloc_failed = true; }
 
@@ -327,6 +354,17 @@ static int vmount_thread_main(int argc, char *argv[])
 
 			for (int i = 0; i < thread_data.input_objs_len; ++i) {
 
+				if (params.mnt_do_stab == 1) {
+					thread_data.input_objs[i]->set_stabilize(true, true, true);
+
+				} else if (params.mnt_do_stab == 2) {
+					thread_data.input_objs[i]->set_stabilize(false, false, true);
+
+				} else {
+					thread_data.input_objs[i]->set_stabilize(false, false, false);
+				}
+
+
 				bool already_active = (last_active == i);
 
 				ControlData *control_data_to_check = nullptr;
@@ -352,9 +390,9 @@ static int vmount_thread_main(int argc, char *argv[])
 				break;
 			}
 
-			//only publish the mount orientation if the mode is not mavlink
-			//if the gimbal speaks mavlink it publishes its own orientation
-			if (params.mnt_mode_out != 1) { // 1 = MAVLINK
+			// Only publish the mount orientation if the mode is not mavlink v1 or v2
+			// If the gimbal speaks mavlink it publishes its own orientation.
+			if (params.mnt_mode_out != 1 && params.mnt_mode_out != 2) { // 1 = MAVLink v1, 2 = MAVLink v2
 				thread_data.output_obj->publish();
 			}
 
@@ -527,8 +565,8 @@ void update_params(ParameterHandles &param_handles, Parameters &params, bool &go
 	Parameters prev_params = params;
 	param_get(param_handles.mnt_mode_in, &params.mnt_mode_in);
 	param_get(param_handles.mnt_mode_out, &params.mnt_mode_out);
-	param_get(param_handles.mnt_mav_sysid, &params.mnt_mav_sysid);
-	param_get(param_handles.mnt_mav_compid, &params.mnt_mav_compid);
+	param_get(param_handles.mnt_mav_sys_id_v1, &params.mnt_mav_sys_id_v1);
+	param_get(param_handles.mnt_mav_comp_id_v1, &params.mnt_mav_comp_id_v1);
 	param_get(param_handles.mnt_ob_lock_mode, &params.mnt_ob_lock_mode);
 	param_get(param_handles.mnt_ob_norm_mode, &params.mnt_ob_norm_mode);
 	param_get(param_handles.mnt_man_pitch, &params.mnt_man_pitch);
@@ -541,6 +579,10 @@ void update_params(ParameterHandles &param_handles, Parameters &params, bool &go
 	param_get(param_handles.mnt_off_pitch, &params.mnt_off_pitch);
 	param_get(param_handles.mnt_off_roll, &params.mnt_off_roll);
 	param_get(param_handles.mnt_off_yaw, &params.mnt_off_yaw);
+	param_get(param_handles.mav_sys_id, &params.mav_sys_id);
+	param_get(param_handles.mav_comp_id, &params.mav_comp_id);
+	param_get(param_handles.mnt_rate_pitch, &params.mnt_rate_pitch);
+	param_get(param_handles.mnt_rate_yaw, &params.mnt_rate_yaw);
 
 	got_changes = prev_params != params;
 }
@@ -549,8 +591,8 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 {
 	param_handles.mnt_mode_in = param_find("MNT_MODE_IN");
 	param_handles.mnt_mode_out = param_find("MNT_MODE_OUT");
-	param_handles.mnt_mav_sysid = param_find("MNT_MAV_SYSID");
-	param_handles.mnt_mav_compid = param_find("MNT_MAV_COMPID");
+	param_handles.mnt_mav_sys_id_v1 = param_find("MNT_MAV_SYSID");
+	param_handles.mnt_mav_comp_id_v1 = param_find("MNT_MAV_COMPID");
 	param_handles.mnt_ob_lock_mode = param_find("MNT_OB_LOCK_MODE");
 	param_handles.mnt_ob_norm_mode = param_find("MNT_OB_NORM_MODE");
 	param_handles.mnt_man_pitch = param_find("MNT_MAN_PITCH");
@@ -563,11 +605,15 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 	param_handles.mnt_off_pitch = param_find("MNT_OFF_PITCH");
 	param_handles.mnt_off_roll = param_find("MNT_OFF_ROLL");
 	param_handles.mnt_off_yaw = param_find("MNT_OFF_YAW");
+	param_handles.mav_sys_id = param_find("MAV_SYS_ID");
+	param_handles.mav_comp_id = param_find("MAV_COMP_ID");
+	param_handles.mnt_rate_pitch = param_find("MNT_RATE_PITCH");
+	param_handles.mnt_rate_yaw = param_find("MNT_RATE_YAW");
 
 	if (param_handles.mnt_mode_in == PARAM_INVALID ||
 	    param_handles.mnt_mode_out == PARAM_INVALID ||
-	    param_handles.mnt_mav_sysid == PARAM_INVALID ||
-	    param_handles.mnt_mav_compid == PARAM_INVALID ||
+	    param_handles.mnt_mav_sys_id_v1 == PARAM_INVALID ||
+	    param_handles.mnt_mav_comp_id_v1 == PARAM_INVALID ||
 	    param_handles.mnt_ob_lock_mode == PARAM_INVALID ||
 	    param_handles.mnt_ob_norm_mode == PARAM_INVALID ||
 	    param_handles.mnt_man_pitch == PARAM_INVALID ||
@@ -579,7 +625,12 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 	    param_handles.mnt_range_yaw == PARAM_INVALID ||
 	    param_handles.mnt_off_pitch == PARAM_INVALID ||
 	    param_handles.mnt_off_roll == PARAM_INVALID ||
-	    param_handles.mnt_off_yaw == PARAM_INVALID) {
+	    param_handles.mnt_off_yaw == PARAM_INVALID ||
+	    param_handles.mav_sys_id == PARAM_INVALID ||
+	    param_handles.mav_comp_id == PARAM_INVALID ||
+	    param_handles.mnt_rate_pitch == PARAM_INVALID ||
+	    param_handles.mnt_rate_yaw == PARAM_INVALID
+	   ) {
 		return false;
 	}
 

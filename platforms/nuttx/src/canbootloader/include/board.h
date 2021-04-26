@@ -62,7 +62,7 @@ typedef enum {
 #ifndef __ASSEMBLY__
 
 /************************************************************************************
- * Name: stm32_boarddeinitialize
+ * Name: board_deinitialize
  *
  * Description:
  *   This function is called by the bootloader code priore to booting
@@ -70,7 +70,7 @@ typedef enum {
  *
  ************************************************************************************/
 
-void stm32_boarddeinitialize(void);
+void board_deinitialize(void);
 
 /****************************************************************************
  * Name: board_get_product_name

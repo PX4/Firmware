@@ -36,5 +36,6 @@ px4_add_module(
 	SRCS
 		lightware_laser_i2c.cpp
 	DEPENDS
+		drivers_rangefinder
 	)
 

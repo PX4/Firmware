@@ -32,8 +32,7 @@
  ****************************************************************************/
 #pragma once
 
-
-#include <px4_platform/micro_hal.h>
+#include "../../../nxp_common/include/px4_arch/micro_hal.h"
 
 __BEGIN_DECLS
 

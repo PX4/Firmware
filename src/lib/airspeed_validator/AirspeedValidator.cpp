@@ -46,12 +46,6 @@ AirspeedValidator::update_airspeed_validator(const airspeed_validator_update_dat
 	// get indicated airspeed from input data (raw airspeed)
 	_IAS = input_data.airspeed_indicated_raw;
 
-	// to be able to detect missing data, save timestamp (used in data_missing check)
-	if (input_data.airspeed_timestamp != _previous_airspeed_timestamp && input_data.airspeed_timestamp > 0) {
-		_time_last_airspeed = input_data.timestamp;
-		_previous_airspeed_timestamp = input_data.airspeed_timestamp;
-	}
-
 	update_CAS_scale();
 	update_CAS_TAS(input_data.air_pressure_pa, input_data.air_temperature_celsius);
 	update_wind_estimator(input_data.timestamp, input_data.airspeed_true_raw, input_data.lpos_valid, input_data.lpos_vx,
@@ -64,15 +58,20 @@ AirspeedValidator::update_airspeed_validator(const airspeed_validator_update_dat
 }
 
 void
+AirspeedValidator::reset_airspeed_to_invalid(const uint64_t timestamp)
+{
+	_airspeed_valid = false;
+	_time_checks_failed = timestamp;
+}
+
+void
 AirspeedValidator::update_wind_estimator(const uint64_t time_now_usec, float airspeed_true_raw, bool lpos_valid,
 		float lpos_vx, float lpos_vy,
 		float lpos_vz, float lpos_evh, float lpos_evv, const float att_q[4])
 {
-	bool att_valid = true; // att_valid could also be a input_data state
-
 	_wind_estimator.update(time_now_usec);
 
-	if (lpos_valid && att_valid && _in_fixed_wing_flight) {
+	if (lpos_valid && _in_fixed_wing_flight) {
 
 		Vector3f vI(lpos_vx, lpos_vy, lpos_vz);
 		Quatf q(att_q);
@@ -83,16 +82,14 @@ AirspeedValidator::update_wind_estimator(const uint64_t time_now_usec, float air
 
 		// sideslip fusion
 		_wind_estimator.fuse_beta(time_now_usec, vI, q);
-
-
 	}
 }
 
 // this function returns the current states of the wind estimator to be published in the airspeed module
-wind_estimate_s
+airspeed_wind_s
 AirspeedValidator::get_wind_estimator_states(uint64_t timestamp)
 {
-	wind_estimate_s wind_est = {};
+	airspeed_wind_s wind_est = {};
 
 	wind_est.timestamp = timestamp;
 	float wind[2];
@@ -127,7 +124,6 @@ AirspeedValidator::update_CAS_scale()
 	} else {
 		_CAS_scale = _airspeed_scale_manual;
 	}
-
 }
 
 void
@@ -148,51 +144,41 @@ AirspeedValidator::check_airspeed_innovation(uint64_t time_now, float estimator_
 		_time_wind_estimator_initialized = time_now;
 	}
 
-	/* Reset states if we are not flying */
-	if (!_in_fixed_wing_flight) {
-		// not in a flight condition that enables use of this check, thus pass check
+	// reset states if we are not flying or wind estimator was just initialized/reset
+	if (!_in_fixed_wing_flight || (time_now - _time_wind_estimator_initialized) < 10_s) {
 		_innovations_check_failed = false;
 		_time_last_tas_pass = time_now;
-		_time_last_tas_fail = 0;
-		_airspeed_valid = true;
-		_time_last_aspd_innov_check = time_now;
 
 	} else {
-		float dt_s = math::max((time_now - _time_last_aspd_innov_check) / 1e6f, 0.01f); // limit to 100Hz
+		const float dt_s = math::constrain((time_now - _time_last_aspd_innov_check) / 1e6f, 0.01f, 0.2f); // limit to [100,5] Hz
 
-		if (dt_s < 1.0f) {
-			// Compute the ratio of innovation to gate size
-			float tas_test_ratio = _wind_estimator.get_tas_innov() * _wind_estimator.get_tas_innov()
-					       / (fmaxf(_tas_gate, 1.0f) * fmaxf(_tas_gate, 1.0f) * _wind_estimator.get_tas_innov_var());
+		if ((estimator_status_vel_test_ratio < 1.f) && (estimator_status_mag_test_ratio < 1.f)) {
+			// nav velocity data is likely good so airspeed innovations are able to be used
+			// compute the ratio of innovation to gate size
+			const float tas_test_ratio = _wind_estimator.get_tas_innov() * _wind_estimator.get_tas_innov()
+						     / (fmaxf(_tas_gate, 1.0f) * fmaxf(_tas_gate, 1.f) * _wind_estimator.get_tas_innov_var());
 
-			if (tas_test_ratio <= _tas_innov_threshold) {
-				// record pass and reset integrator used to trigger
-				_time_last_tas_pass = time_now;
-				_apsd_innov_integ_state = 0.0f;
+			if (tas_test_ratio > _tas_innov_threshold) {
+				_apsd_innov_integ_state += dt_s * (tas_test_ratio - _tas_innov_threshold); // integrate exceedance
 
 			} else {
-				// integrate exceedance
-				_apsd_innov_integ_state += dt_s * (tas_test_ratio - _tas_innov_threshold);
-			}
+				// reset integrator used to trigger and record pass if integrator check is disabled
+				_apsd_innov_integ_state = 0.f;
 
-			if ((estimator_status_vel_test_ratio < 1.0f) && (estimator_status_mag_test_ratio < 1.0f)) {
-				// nav velocity data is likely good so airspeed innovations are able to be used
-				if ((_tas_innov_integ_threshold > 0.0f) && (_apsd_innov_integ_state > _tas_innov_integ_threshold)) {
-					_time_last_tas_fail = time_now;
+				if (_tas_innov_integ_threshold <= 0.f) {
+					_time_last_tas_pass = time_now;
 				}
 			}
 
-			if (!_innovations_check_failed) {
-				_innovations_check_failed = (time_now - _time_last_tas_pass) > TAS_INNOV_FAIL_DELAY;
-
-			} else {
-				_innovations_check_failed = ((time_now - _time_last_tas_fail) < TAS_INNOV_FAIL_DELAY * 100)
-							    || (time_now - _time_wind_estimator_initialized) < TAS_INNOV_FAIL_DELAY * 100;
+			if (_tas_innov_integ_threshold > 0.f && _apsd_innov_integ_state < _tas_innov_integ_threshold) {
+				_time_last_tas_pass = time_now;
 			}
 		}
 
-		_time_last_aspd_innov_check = time_now;
+		_innovations_check_failed = (time_now - _time_last_tas_pass) > TAS_INNOV_FAIL_DELAY;
 	}
+
+	_time_last_aspd_innov_check = time_now;
 }
 
 
@@ -201,52 +187,30 @@ AirspeedValidator::check_load_factor(float accel_z)
 {
 	// Check if the airpeed reading is lower than physically possible given the load factor
 
-	const bool bad_number_fail = false; // disable this for now
-
 	if (_in_fixed_wing_flight) {
 
-		if (!bad_number_fail) {
-			float max_lift_ratio = fmaxf(_CAS, 0.7f) / fmaxf(_airspeed_stall, 1.0f);
-			max_lift_ratio *= max_lift_ratio;
-
-			_load_factor_ratio = 0.95f * _load_factor_ratio + 0.05f * (fabsf(accel_z) / 9.81f) / max_lift_ratio;
-			_load_factor_ratio = math::constrain(_load_factor_ratio, 0.25f, 2.0f);
-			_load_factor_check_failed = (_load_factor_ratio > 1.1f);
-
-		} else {
-			_load_factor_check_failed = true; // bad number fail
-		}
+		float max_lift_ratio = fmaxf(_CAS, 0.7f) / fmaxf(_airspeed_stall, 1.0f);
+		max_lift_ratio *= max_lift_ratio;
+		_load_factor_ratio = 0.95f * _load_factor_ratio + 0.05f * (fabsf(accel_z) / 9.81f) / max_lift_ratio;
+		_load_factor_ratio = math::constrain(_load_factor_ratio, 0.25f, 2.0f);
+		_load_factor_check_failed = (_load_factor_ratio > 1.1f);
 
 	} else {
-
 		_load_factor_ratio = 0.5f; // reset if not in fixed-wing flight (and not in takeoff condition)
 	}
-
 }
 
 
 void
 AirspeedValidator::update_airspeed_valid_status(const uint64_t timestamp)
 {
-
-	const bool bad_number_fail = false; // disable this for now
-
-	// Check if sensor data is missing - assume a minimum 5Hz data rate.
-	const bool data_missing = (timestamp - _time_last_airspeed) > 200_ms;
-
-	// Declare data stopped if not received for longer than 1 second
-	_data_stopped_failed = (timestamp - _time_last_airspeed) > 1_s;
-
-	if (_innovations_check_failed || _load_factor_check_failed || data_missing || bad_number_fail) {
-		// either innovation, load factor or data missing check failed, so declare airspeed failing and record timestamp
+	if (_innovations_check_failed || _load_factor_check_failed) {
+		// either innovation or load factor check failed, so record timestamp
 		_time_checks_failed = timestamp;
-		_airspeed_failing = true;
 
-	} else if (!_innovations_check_failed && !_load_factor_check_failed && !data_missing && !bad_number_fail) {
-		// All checks must pass to declare airspeed good
+	} else if (!_innovations_check_failed && !_load_factor_check_failed) {
+		// both innovation or load factor checks must pass to declare airspeed good
 		_time_checks_passed = timestamp;
-		_airspeed_failing = false;
-
 	}
 
 	if (_airspeed_valid) {
@@ -254,16 +218,17 @@ AirspeedValidator::update_airspeed_valid_status(const uint64_t timestamp)
 		// airspeed measurement fault has developed, so a fault should be declared immediately
 		const bool both_checks_failed = (_innovations_check_failed && _load_factor_check_failed);
 
-		// Because the innovation, load factor and data missing checks are subject to short duration false positives
+		// Because the innovation and load factor checks are subject to short duration false positives
 		// a timeout period is applied.
 		const bool single_check_fail_timeout = (timestamp - _time_checks_passed) > _checks_fail_delay * 1_s;
 
-		if (_data_stopped_failed || both_checks_failed || single_check_fail_timeout || bad_number_fail) {
+		if (both_checks_failed || single_check_fail_timeout) {
 
 			_airspeed_valid = false;
 		}
 
-	} else if ((timestamp - _time_checks_failed) > _checks_clear_delay * 1_s) {
+	} else if (_checks_clear_delay > 0.f && (timestamp - _time_checks_failed) > _checks_clear_delay * 1_s) {
+		// disable the re-enabling if the clear delay is negative
 		_airspeed_valid = true;
 	}
 }

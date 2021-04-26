@@ -129,22 +129,6 @@ struct pwm_output_values {
  */
 typedef uint16_t	servo_position_t;
 
-/**
- * RC config values for a channel
- *
- * This allows for PX4IO_PAGE_RC_CONFIG values to be set without a
- * param_get() dependency
- */
-struct pwm_output_rc_config {
-	uint8_t channel;
-	uint16_t rc_min;
-	uint16_t rc_trim;
-	uint16_t rc_max;
-	uint16_t rc_dz;
-	uint16_t rc_assignment;
-	bool     rc_reverse;
-};
-
 /*
  * ioctl() definitions
  *
@@ -186,9 +170,6 @@ struct pwm_output_rc_config {
 /** start DSM bind */
 #define DSM_BIND_START	_PX4_IOC(_PWM_SERVO_BASE, 10)
 
-/** power up DSM receiver */
-#define DSM_BIND_POWER_UP _PX4_IOC(_PWM_SERVO_BASE, 11)
-
 /** set the PWM value for failsafe */
 #define PWM_SERVO_SET_FAILSAFE_PWM	_PX4_IOC(_PWM_SERVO_BASE, 12)
 
@@ -213,15 +194,8 @@ struct pwm_output_rc_config {
 /** get the maximum PWM value the output will send */
 #define PWM_SERVO_GET_MAX_PWM	_PX4_IOC(_PWM_SERVO_BASE, 19)
 
-/** set the TRIM value the output will send */
-#define PWM_SERVO_SET_TRIM_PWM	_PX4_IOC(_PWM_SERVO_BASE, 20)
-
 /** get the TRIM value the output will send */
 #define PWM_SERVO_GET_TRIM_PWM	_PX4_IOC(_PWM_SERVO_BASE, 21)
-
-/** set the number of servos in (unsigned)arg - allows change of
- * split between servos and GPIO */
-#define PWM_SERVO_SET_COUNT	_PX4_IOC(_PWM_SERVO_BASE, 22)
 
 /** set the lockdown override flag to enable outputs in HIL */
 #define PWM_SERVO_SET_DISABLE_LOCKDOWN		_PX4_IOC(_PWM_SERVO_BASE, 23)
@@ -244,9 +218,6 @@ struct pwm_output_rc_config {
 /** setup OVERRIDE_IMMEDIATE behaviour on FMU fail */
 #define PWM_SERVO_SET_OVERRIDE_IMMEDIATE	_PX4_IOC(_PWM_SERVO_BASE, 32)
 
-/** set SBUS output frame rate in Hz */
-#define PWM_SERVO_SET_SBUS_RATE			_PX4_IOC(_PWM_SERVO_BASE, 33)
-
 /** set auxillary output mode. These correspond to enum Mode in px4fmu/fmu.cpp */
 #define PWM_SERVO_MODE_NONE         0
 #define PWM_SERVO_MODE_1PWM         1
@@ -261,12 +232,13 @@ struct pwm_output_rc_config {
 #define PWM_SERVO_MODE_5PWM1CAP    10
 #define PWM_SERVO_MODE_6PWM        11
 #define PWM_SERVO_MODE_8PWM        12
-#define PWM_SERVO_MODE_14PWM       13
-#define PWM_SERVO_MODE_4CAP        14
-#define PWM_SERVO_MODE_5CAP        15
-#define PWM_SERVO_MODE_6CAP        16
-#define PWM_SERVO_ENTER_TEST_MODE  17
-#define PWM_SERVO_EXIT_TEST_MODE   18
+#define PWM_SERVO_MODE_12PWM       13
+#define PWM_SERVO_MODE_14PWM       14
+#define PWM_SERVO_MODE_4CAP        15
+#define PWM_SERVO_MODE_5CAP        16
+#define PWM_SERVO_MODE_6CAP        17
+#define PWM_SERVO_ENTER_TEST_MODE  18
+#define PWM_SERVO_EXIT_TEST_MODE   19
 #define PWM_SERVO_SET_MODE         _PX4_IOC(_PWM_SERVO_BASE, 34)
 
 /*

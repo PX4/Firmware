@@ -52,7 +52,8 @@ namespace vmount
 class InputBase
 {
 public:
-	virtual ~InputBase() {}
+	InputBase() = default;
+	virtual ~InputBase() = default;
 
 	/**
 	 * Wait for an input update, with a timeout.
@@ -71,6 +72,8 @@ public:
 
 	/** report status to stdout */
 	virtual void print_status() = 0;
+
+	void set_stabilize(bool roll_stabilize, bool pitch_stabilize, bool yaw_stabilize);
 
 protected:
 	virtual int update_impl(unsigned int timeout_ms, ControlData **control_data, bool already_active) = 0;

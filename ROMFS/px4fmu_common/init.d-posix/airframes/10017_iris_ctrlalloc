@@ -1,0 +1,48 @@
+#!/bin/sh
+#
+# @name 3DR Iris Quadrotor SITL
+#
+# @type Quadrotor Wide
+#
+# @maintainer Julian Oes <julian@oes.ch>
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.ctrlalloc
+
+param set-default MPC_USE_HTE 0
+
+param set-default VM_MASS 1.5
+param set-default VM_INERTIA_XX 0.03
+param set-default VM_INERTIA_YY 0.03
+param set-default VM_INERTIA_ZZ 0.05
+
+param set-default CA_AIRFRAME 0
+param set-default CA_METHOD 1
+param set-default CA_ACT0_MIN 0.0
+param set-default CA_ACT1_MIN 0.0
+param set-default CA_ACT2_MIN 0.0
+param set-default CA_ACT3_MIN 0.0
+param set-default CA_ACT0_MAX 1.0
+param set-default CA_ACT1_MAX 1.0
+param set-default CA_ACT2_MAX 1.0
+param set-default CA_ACT3_MAX 1.0
+
+param set-default CA_MC_R0_PX 0.1515
+param set-default CA_MC_R0_PY 0.245
+param set-default CA_MC_R0_CT 6.5
+param set-default CA_MC_R0_KM 0.05
+param set-default CA_MC_R1_PX -0.1515
+param set-default CA_MC_R1_PY -0.1875
+param set-default CA_MC_R1_CT 6.5
+param set-default CA_MC_R1_KM 0.05
+param set-default CA_MC_R2_PX 0.1515
+param set-default CA_MC_R2_PY -0.245
+param set-default CA_MC_R2_CT 6.5
+param set-default CA_MC_R2_KM -0.05
+param set-default CA_MC_R3_PX -0.1515
+param set-default CA_MC_R3_PY 0.1875
+param set-default CA_MC_R3_CT 6.5
+param set-default CA_MC_R3_KM -0.05
+
+set MIXER direct

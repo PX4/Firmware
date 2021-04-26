@@ -138,8 +138,6 @@ static crsf_parser_state_t parser_state = crsf_parser_state_t::unsynced;
  */
 static bool crsf_parse_buffer(uint16_t *values, uint16_t *num_values, uint16_t max_channels);
 
-static uint8_t crc8_dvb_s2(uint8_t crc, uint8_t a);
-static uint8_t crc8_dvb_s2_buf(uint8_t *buf, int len);
 uint8_t crsf_frame_CRC(const crsf_frame_t &frame);
 
 
@@ -200,33 +198,6 @@ bool crsf_parse(const uint64_t now, const uint8_t *frame, unsigned len, uint16_t
 
 
 	return ret;
-}
-
-static uint8_t crc8_dvb_s2(uint8_t crc, uint8_t a)
-{
-	crc ^= a;
-
-	for (int i = 0; i < 8; ++i) {
-		if (crc & 0x80) {
-			crc = (crc << 1) ^ 0xD5;
-
-		} else {
-			crc = crc << 1;
-		}
-	}
-
-	return crc;
-}
-
-static uint8_t crc8_dvb_s2_buf(uint8_t *buf, int len)
-{
-	uint8_t crc = 0;
-
-	for (int i = 0; i < len; ++i) {
-		crc = crc8_dvb_s2(crc, buf[i]);
-	}
-
-	return crc;
 }
 
 uint8_t crsf_frame_CRC(const crsf_frame_t &frame)

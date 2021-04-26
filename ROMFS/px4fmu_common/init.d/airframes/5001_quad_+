@@ -19,7 +19,6 @@
 #
 # @maintainer Lorenz Meier <lorenz@px4.io>
 #
-# @board intel_aerofc-v1 exclude
 # @board bitcraze_crazyflie exclude
 #
 

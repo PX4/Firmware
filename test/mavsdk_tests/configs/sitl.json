@@ -13,13 +13,13 @@
         {
             "model": "standard_vtol",
             "vehicle": "standard_vtol",
-            "test_filter": "[multicopter][vtol]",
+            "test_filter": "[vtol]",
             "timeout_min": 10
         },
         {
             "model": "tailsitter",
             "vehicle": "tailsitter",
-            "test_filter": "[multicopter][vtol]",
+            "test_filter": "[vtol]",
             "timeout_min": 10
         }
     ]

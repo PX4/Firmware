@@ -68,13 +68,15 @@
 #include <px4_platform_common/module.h>
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/posix.h>
-#include <systemlib/uthash/utlist.h>
 #include <uORB/Publication.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/radio_status.h>
 #include <uORB/topics/telemetry_status.h>
+#include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/vehicle_command_ack.h>
+#include <uORB/topics/vehicle_status.h>
 
 #include "mavlink_command_sender.h"
 #include "mavlink_messages.h"
@@ -100,7 +102,7 @@ enum class Protocol {
 
 using namespace time_literals;
 
-class Mavlink : public ModuleParams
+class Mavlink final : public ModuleParams
 {
 
 public:
@@ -136,8 +138,6 @@ public:
 	static int		instance_count();
 
 	static Mavlink		*new_instance();
-
-	static Mavlink		*get_instance(int instance);
 
 	static Mavlink 		*get_instance_for_device(const char *device_name);
 
@@ -191,7 +191,8 @@ public:
 		MAVLINK_MODE_MINIMAL,
 		MAVLINK_MODE_EXTVISION,
 		MAVLINK_MODE_EXTVISIONMIN,
-
+		MAVLINK_MODE_GIMBAL,
+		MAVLINK_MODE_ONBOARD_LOW_BANDWIDTH,
 		MAVLINK_MODE_COUNT
 	};
 
@@ -240,6 +241,12 @@ public:
 		case MAVLINK_MODE_EXTVISIONMIN:
 			return "ExtVisionMin";
 
+		case MAVLINK_MODE_GIMBAL:
+			return "Gimbal";
+
+		case MAVLINK_MODE_ONBOARD_LOW_BANDWIDTH:
+			return "OnboardLowBandwidth";
+
 		default:
 			return "Unknown";
 		}
@@ -262,7 +269,9 @@ public:
 #if defined(MAVLINK_UDP)
 	static Mavlink 		*get_instance_for_network_port(unsigned long port);
 
-	bool			broadcast_enabled() { return _param_mav_broadcast.get() == BROADCAST_MODE_ON; }
+	bool			broadcast_enabled() { return _mav_broadcast == BROADCAST_MODE_ON; }
+
+	bool			multicast_enabled() { return _mav_broadcast == BROADCAST_MODE_MULTICAST; }
 #endif // MAVLINK_UDP
 
 	/**
@@ -490,9 +499,6 @@ public:
 		if (_mavlink_ulog) { _mavlink_ulog_stop_requested = true; }
 	}
 
-
-	void set_uorb_main_fd(int fd, unsigned int interval);
-
 	bool ftp_enabled() const { return _ftp_on; }
 
 	bool hash_check_enabled() const { return _param_mav_hash_chk_en.get(); }
@@ -518,8 +524,7 @@ public:
 
 	static hrt_abstime &get_first_start_time() { return _first_start_time; }
 
-protected:
-	Mavlink			*next{nullptr};
+	bool radio_status_critical() const { return _radio_status_critical; }
 
 private:
 	int			_instance_id{0};
@@ -530,13 +535,17 @@ private:
 
 	orb_advert_t		_mavlink_log_pub{nullptr};
 
-	uORB::PublicationMulti<telemetry_status_s> _telem_status_pub{ORB_ID(telemetry_status)};
+	uORB::Publication<vehicle_command_ack_s> _vehicle_command_ack_pub{ORB_ID(vehicle_command_ack)};
+	uORB::PublicationMulti<telemetry_status_s> _telemetry_status_pub{ORB_ID(telemetry_status)};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
+	uORB::Subscription _vehicle_command_ack_sub{ORB_ID(vehicle_command_ack)};
+	uORB::Subscription _vehicle_status_sub{ORB_ID(vehicle_status)};
 
 	bool			_task_running{true};
 	static bool		_boot_complete;
-	static constexpr int	MAVLINK_MAX_INSTANCES{4};
+
 	static constexpr int	MAVLINK_MIN_INTERVAL{1500};
 	static constexpr int	MAVLINK_MAX_INTERVAL{10000};
 	static constexpr float	MAVLINK_MIN_MULTIPLIER{0.0005f};
@@ -604,9 +613,11 @@ private:
 	unsigned		_bytes_tx{0};
 	unsigned		_bytes_txerr{0};
 	unsigned		_bytes_rx{0};
-	uint64_t		_bytes_timestamp{0};
+	hrt_abstime		_bytes_timestamp{0};
 
 #if defined(MAVLINK_UDP)
+	BROADCAST_MODE		_mav_broadcast {BROADCAST_MODE_OFF};
+
 	sockaddr_in		_myaddr {};
 	sockaddr_in		_src_addr {};
 	sockaddr_in		_bcast_addr {};
@@ -656,9 +667,6 @@ private:
 		(ParamInt<px4::params::MAV_TYPE>) _param_mav_type,
 		(ParamBool<px4::params::MAV_USEHILGPS>) _param_mav_usehilgps,
 		(ParamBool<px4::params::MAV_FWDEXTSP>) _param_mav_fwdextsp,
-#if defined(MAVLINK_UDP)
-		(ParamInt<px4::params::MAV_BROADCAST>) _param_mav_broadcast,
-#endif // MAVLINK_UDP
 		(ParamBool<px4::params::MAV_HASH_CHK_EN>) _param_mav_hash_chk_en,
 		(ParamBool<px4::params::MAV_HB_FORW_EN>) _param_mav_hb_forw_en,
 		(ParamBool<px4::params::MAV_ODOM_LP>) _param_mav_odom_lp,
@@ -670,7 +678,6 @@ private:
 	perf_counter_t _loop_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": tx run elapsed")};                      /**< loop performance counter */
 	perf_counter_t _loop_interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME": tx run interval")};           /**< loop interval performance counter */
 	perf_counter_t _send_byte_error_perf{perf_alloc(PC_COUNT, MODULE_NAME": send_bytes error")};           /**< send bytes error count */
-	perf_counter_t _send_start_tx_buf_low{perf_alloc(PC_COUNT, MODULE_NAME": send_start tx buffer full")}; /**< available tx buffer smaller than message */
 
 	void			mavlink_update_parameters();
 
@@ -740,7 +747,7 @@ private:
 
 	void set_channel();
 
-	void set_instance_id();
+	bool set_instance_id();
 
 	/**
 	 * Main mavlink task.

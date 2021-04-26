@@ -327,7 +327,6 @@ void FollowTarget::update_position_sp(bool use_velocity, bool use_position, floa
 	mission_apply_limitation(_mission_item);
 	mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 	pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET;
-	pos_sp_triplet->current.position_valid = use_position;
 	pos_sp_triplet->current.velocity_valid = use_velocity;
 	pos_sp_triplet->current.vx = _current_vel(0);
 	pos_sp_triplet->current.vy = _current_vel(1);

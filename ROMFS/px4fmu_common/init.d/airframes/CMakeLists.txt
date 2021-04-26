@@ -70,6 +70,7 @@ px4_add_romfs_files(
 	4015_holybro_s500
 	4016_holybro_px4vision
 	4017_nxp_hovergames
+	4018_s500_ctrlalloc
 	4020_hk_micro_pcb
 	4030_3dr_solo
 	4031_3dr_quad
@@ -80,7 +81,6 @@ px4_add_romfs_files(
 	4052_holybro_qav250
 	4053_holybro_kopis2
 	4060_dji_matrice_100
-	4070_aerofc
 	4071_ifo
 	4072_draco
 	4073_ifo-s
@@ -90,6 +90,7 @@ px4_add_romfs_files(
 	4250_teal
 	4500_clover4
 	4900_crazyflie
+	4901_crazyflie21
 
 	# [5000, 5999] Quadrotor +"
 	5001_quad_+
@@ -97,6 +98,7 @@ px4_add_romfs_files(
 	# [6000, 6999] Hexarotor x"
 	6001_hexa_x
 	6002_draco_r
+	6003_hexa_x_ctrlalloc
 
 	# [7000, 7999] Hexarotor +"
 	7001_hexa_+
@@ -135,6 +137,7 @@ px4_add_romfs_files(
 	13012_convergence
 	13013_deltaquad
 	13014_vtol_babyshark
+	13030_generic_vtol_quad_tiltrotor
 	13050_generic_vtol_octo
 	13200_generic_vtol_tailsitter
 
@@ -146,13 +149,18 @@ px4_add_romfs_files(
 
 	16001_helicopter
 
+	# [17000, 17999] Autogyro
 	17002_TF-AutoG2
+	17003_TF-G2
+
+	# [18000, 18999] High-altitude balloons
+	18001_TF-B1
+
+	# [22000, 22999] Reserve for custom models
 
 	24001_dodeca_cox
 
 	50000_generic_ground_vehicle
-	50001_axialracing_ax10
-	50002_traxxas_stampede_2wd
 	50003_aion_robotics_r1_rover
 	50004_nxpcup_car_dfrobot_gpx
 

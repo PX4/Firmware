@@ -48,6 +48,8 @@
 class SMBus : public device::I2C
 {
 public:
+	static constexpr uint8_t MAX_BLOCK_LEN = 34;
+
 	SMBus(int bus_num, uint16_t address);
 	~SMBus() override;
 
@@ -55,7 +57,7 @@ public:
 	 * @brief Sends a block write command.
 	 * @param cmd_code The command code.
 	 * @param data The data to be written.
-	 * @param length The number of bytes being written.
+	 * @param length The number of bytes being written. Maximum is SMBus::MAX_BLOCK_LEN.
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
 	int block_write(const uint8_t cmd_code, const void *data, uint8_t byte_count, const bool use_pec);
@@ -63,8 +65,8 @@ public:
 	/**
 	 * @brief Sends a block read command.
 	 * @param cmd_code The command code.
-	 * @param data The returned data. The returned data will always contain 2 bytes of address information followed by data[length].
-	 * @param length The number of bytes being read.
+	 * @param data The returned data.
+	 * @param length The number of bytes being read. Maximum is SMBus::MAX_BLOCK_LEN.
 	 * @return Returns PX4_OK on success, -errno on failure.
 	 */
 	int block_read(const uint8_t cmd_code, void *data, const uint8_t length, const bool use_pec);

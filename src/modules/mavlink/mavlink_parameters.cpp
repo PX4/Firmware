@@ -309,7 +309,6 @@ MavlinkParametersManager::send()
 		param_find("SENS_BOARD_Y_OFF");
 		param_find("SENS_BOARD_Z_OFF");
 		param_find("SENS_DPRES_OFF");
-		param_find("SYS_PARAM_VER");
 		param_find("TRIG_MODE");
 		param_find("UAVCAN_ENABLE");
 
@@ -329,7 +328,8 @@ MavlinkParametersManager::send()
 	int i = 0;
 
 	// Send while burst is not exceeded, we still have buffer space and still something to send
-	while ((i++ < max_num_to_send) && (_mavlink->get_free_tx_buf() >= get_size()) && send_params()) {}
+	while ((i++ < max_num_to_send) && (_mavlink->get_free_tx_buf() >= get_size()) && !_mavlink->radio_status_critical()
+	       && send_params()) {}
 }
 
 bool
@@ -390,7 +390,8 @@ MavlinkParametersManager::send_untransmitted()
 					break;
 				}
 			}
-		} while ((_mavlink->get_free_tx_buf() >= get_size()) && (_param_update_index < (int) param_count()));
+		} while ((_mavlink->get_free_tx_buf() >= get_size()) && !_mavlink->radio_status_critical()
+			 && (_param_update_index < (int) param_count()));
 
 		// Flag work as done once all params have been sent
 		if (_param_update_index >= (int) param_count()) {

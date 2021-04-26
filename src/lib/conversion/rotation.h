@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2013-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2013-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,8 +37,7 @@
  * Vector rotation library
  */
 
-#ifndef ROTATION_H_
-#define ROTATION_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -149,20 +148,256 @@ static constexpr rot_lookup_t rot_lookup[ROTATION_MAX] = {
 /**
  * Get the rotation matrix
  */
-__EXPORT matrix::Dcmf
-get_rot_matrix(enum Rotation rot);
+__EXPORT matrix::Dcmf get_rot_matrix(enum Rotation rot);
 
 /**
  * Get the rotation quaternion
  */
-__EXPORT matrix::Quatf
-get_rot_quaternion(enum Rotation rot);
+__EXPORT matrix::Quatf get_rot_quaternion(enum Rotation rot);
+
+template<typename T>
+static constexpr bool rotate_3(enum Rotation rot, T &x, T &y, T &z)
+{
+	switch (rot) {
+	case ROTATION_NONE:
+		return true;
+
+	case ROTATION_YAW_90: {
+			T tmp = x;
+			x = math::negate(y);
+			y = tmp;
+		}
+
+		return true;
+
+	case ROTATION_YAW_180: {
+			x = math::negate(x);
+			y = math::negate(y);
+		}
+
+		return true;
+
+	case ROTATION_YAW_270: {
+			T tmp = x;
+			x = y;
+			y = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_180: {
+			y = math::negate(y);
+			z = math::negate(z);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_180_YAW_90:
+
+	// FALLTHROUGH
+	case ROTATION_PITCH_180_YAW_270: {
+			T tmp = x;
+			x = y;
+			y = tmp;
+			z = math::negate(z);
+		}
+
+		return true;
+
+	case ROTATION_PITCH_180: {
+			x = math::negate(x);
+			z = math::negate(z);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_180_YAW_270:
+
+	// FALLTHROUGH
+	case ROTATION_PITCH_180_YAW_90: {
+			T tmp = x;
+			x = math::negate(y);
+			y = math::negate(tmp);
+			z = math::negate(z);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90: {
+			T tmp = z;
+			z = y;
+			y = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_YAW_90: {
+			T tmp = x;
+			x = z;
+			z = y;
+			y = tmp;
+		}
+
+		return true;
+
+	case ROTATION_ROLL_270: {
+			T tmp = z;
+			z = math::negate(y);
+			y = tmp;
+		}
+
+		return true;
+
+	case ROTATION_ROLL_270_YAW_90: {
+			T tmp = x;
+			x = math::negate(z);
+			z = math::negate(y);
+			y = tmp;
+		}
+
+		return true;
+
+	case ROTATION_PITCH_90: {
+			T tmp = z;
+			z = math::negate(x);
+			x = tmp;
+		}
+
+		return true;
+
+	case ROTATION_PITCH_270: {
+			T tmp = z;
+			z = x;
+			x = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_180_PITCH_270: {
+			T tmp = z;
+			z = x;
+			x = tmp;
+			y = math::negate(y);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_YAW_270: {
+			T tmp = x;
+			x = math::negate(z);
+			z = y;
+			y = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_PITCH_90: {
+			T tmp = x;
+			x = y;
+			y = math::negate(z);
+			z = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_180_PITCH_90: {
+			T tmp = x;
+			x = math::negate(z);
+			y = math::negate(y);
+			z = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_270_PITCH_90: {
+			T tmp = x;
+			x = math::negate(y);
+			y = z;
+			z = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_PITCH_180: {
+			T tmp = y;
+			x = math::negate(x);
+			y = math::negate(z);
+			z = math::negate(tmp);
+		}
+
+		return true;
+
+	case ROTATION_ROLL_270_PITCH_180: {
+			T tmp = y;
+			x = math::negate(x);
+			y = z;
+			z = tmp;
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_PITCH_270: {
+			T tmp = x;
+			x = math::negate(y);
+			y = math::negate(z);
+			z = tmp;
+		}
+
+		return true;
+
+	case ROTATION_ROLL_270_PITCH_270: {
+			T tmp = x;
+			x = y;
+			y = z;
+			z = tmp;
+		}
+
+		return true;
+
+	case ROTATION_ROLL_90_PITCH_180_YAW_90: {
+			T tmp = x;
+			x = z;
+			z = math::negate(y);
+			y = math::negate(tmp);
+		}
+
+		return true;
+
+	default:
+		break;
+	}
+
+	return false;
+}
+
+/**
+ * rotate a 3 element int16_t vector in-place
+ */
+__EXPORT inline void rotate_3i(enum Rotation rot, int16_t &x, int16_t &y, int16_t &z)
+{
+	if (!rotate_3(rot, x, y, z)) {
+		// otherwise use full rotation matrix for valid rotations
+		if (rot < ROTATION_MAX) {
+			const matrix::Vector3f r{get_rot_matrix(rot) *matrix::Vector3f{(float)x, (float)y, (float)z}};
+			x = math::constrain(roundf(r(0)), (float)INT16_MIN, (float)INT16_MAX);
+			y = math::constrain(roundf(r(1)), (float)INT16_MIN, (float)INT16_MAX);
+			z = math::constrain(roundf(r(2)), (float)INT16_MIN, (float)INT16_MAX);
+		}
+	}
+}
 
 /**
  * rotate a 3 element float vector in-place
  */
-__EXPORT void
-rotate_3f(enum Rotation rot, float &x, float &y, float &z);
-
-
-#endif /* ROTATION_H_ */
+__EXPORT inline void rotate_3f(enum Rotation rot, float &x, float &y, float &z)
+{
+	if (!rotate_3(rot, x, y, z)) {
+		// otherwise use full rotation matrix for valid rotations
+		if (rot < ROTATION_MAX) {
+			const matrix::Vector3f r{get_rot_matrix(rot) *matrix::Vector3f{x, y, z}};
+			x = r(0);
+			y = r(1);
+			z = r(2);
+		}
+	}
+}

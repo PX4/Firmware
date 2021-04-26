@@ -52,3 +52,4 @@ px4_add_module(
 	DEPENDS
 		git_gps_devices
 	)
+target_link_libraries(drivers__gps PRIVATE m)

@@ -62,6 +62,7 @@ PARAM_DEFINE_INT32(RWTO_HDG, 0);
 
 /**
  * Altitude AGL at which we have enough ground clearance to allow some roll.
+ *
  * Until RWTO_NAV_ALT is reached the plane is held level and only
  * rudder is used to keep the heading (see RWTO_HDG). This should be below
  * FW_CLMBOUT_DIFF if FW_CLMBOUT_DIFF > 0.
@@ -77,7 +78,8 @@ PARAM_DEFINE_FLOAT(RWTO_NAV_ALT, 5.0);
 
 /**
  * Max throttle during runway takeoff.
- * (Can be used to test taxi on runway)
+ *
+ * Can be used to test taxi on runway
  *
  * @unit norm
  * @min 0.0
@@ -90,8 +92,9 @@ PARAM_DEFINE_FLOAT(RWTO_MAX_THR, 1.0);
 
 /**
  * Pitch setpoint during taxi / before takeoff airspeed is reached.
- * A taildragger with stearable wheel might need to pitch up
- * a little to keep it's wheel on the ground before airspeed
+ *
+ * A taildragger with steerable wheel might need to pitch up
+ * a little to keep its wheel on the ground before airspeed
  * to takeoff is reached.
  *
  * @unit deg
@@ -105,6 +108,7 @@ PARAM_DEFINE_FLOAT(RWTO_PSP, 0.0);
 
 /**
  * Max pitch during takeoff.
+ *
  * Fixed-wing settings are used if set to 0. Note that there is also a minimum
  * pitch of 10 degrees during takeoff, so this must be larger if set.
  *
@@ -119,6 +123,7 @@ PARAM_DEFINE_FLOAT(RWTO_MAX_PITCH, 20.0);
 
 /**
  * Max roll during climbout.
+ *
  * Roll is limited during climbout to ensure enough lift and prevents aggressive
  * navigation before we're on a safe height.
  *
@@ -132,7 +137,8 @@ PARAM_DEFINE_FLOAT(RWTO_MAX_PITCH, 20.0);
 PARAM_DEFINE_FLOAT(RWTO_MAX_ROLL, 25.0);
 
 /**
- * Min. airspeed scaling factor for takeoff.
+ * Min airspeed scaling factor for takeoff.
+ *
  * Pitch up will be commanded when the following airspeed is reached:
  * FW_AIRSPD_MIN * RWTO_AIRSPD_SCL
  *

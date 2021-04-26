@@ -79,7 +79,9 @@ usage()
 	PRINT_MODULE_USAGE_PARAM_INT('r', 5, 1, 1000, "Number of runs", true);
 	PRINT_MODULE_USAGE_PARAM_INT('d', 2000, 1, 100000, "Duration of a run in ms", true);
 	PRINT_MODULE_USAGE_PARAM_FLAG('s', "Call fsync after each block (default=at end of each run)", true);
+	PRINT_MODULE_USAGE_PARAM_FLAG('u', "Test performance with unaligned data)", true);
 }
+
 
 int
 sd_bench_main(int argc, char *argv[])
@@ -91,8 +93,10 @@ sd_bench_main(int argc, char *argv[])
 	synchronized = false;
 	num_runs = 5;
 	run_duration = 2000;
+	bool aligned = true;
+	uint8_t *block =  NULL;
 
-	while ((ch = px4_getopt(argc, argv, "b:r:d:s", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "b:r:d:su", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'b':
 			block_size = strtol(myoptarg, NULL, 0);
@@ -108,6 +112,10 @@ sd_bench_main(int argc, char *argv[])
 
 		case 's':
 			synchronized = true;
+			break;
+
+		case 'u':
+			aligned = false;
 			break;
 
 		default:
@@ -130,7 +138,12 @@ sd_bench_main(int argc, char *argv[])
 	}
 
 	//create some data block
-	uint8_t *block = (uint8_t *)malloc(block_size);
+	if (aligned) {
+		block = (uint8_t *)px4_cache_aligned_alloc(block_size);
+
+	} else {
+		block = (uint8_t *)malloc(block_size);
+	}
 
 	if (!block) {
 		PX4_ERR("Failed to allocate memory block");

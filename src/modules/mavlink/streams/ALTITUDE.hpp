@@ -34,8 +34,10 @@
 #ifndef ALTITUDE_HPP
 #define ALTITUDE_HPP
 
+#include <uORB/topics/home_position.h>
+#include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_local_position.h>
-#include <uORB/topics/wind_estimate.h>
+#include <uORB/topics/wind.h>
 
 class MavlinkStreamAltitude : public MavlinkStream
 {
@@ -56,9 +58,9 @@ public:
 private:
 	explicit MavlinkStreamAltitude(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
-	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
-	uORB::Subscription _home_sub{ORB_ID(home_position)};
 	uORB::Subscription _air_data_sub{ORB_ID(vehicle_air_data)};
+	uORB::Subscription _home_sub{ORB_ID(home_position)};
+	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
 
 	bool send() override
 	{

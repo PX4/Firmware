@@ -1,0 +1,9 @@
+Device @DEBUG_DEVICE@
+eoe 1
+si SWD
+speed auto
+r
+h
+loadbin @BOARD_FIRMWARE_BIN@,@BOARD_FIRMWARE_APP_OFFSET@
+go
+qc

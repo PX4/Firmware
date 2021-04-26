@@ -31,6 +31,12 @@
 #
 ############################################################################
 
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+	if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS_EQUAL 7)
+		message(FATAL_ERROR "GCC 7 or older no longer supported. https://docs.px4.io/master/en/dev_setup/dev_env.html")
+	endif()
+endif()
+
 if(NOT PX4_BOARD)
 	message(FATAL_ERROR "PX4_BOARD must be set (eg px4_fmu-v2)")
 endif()

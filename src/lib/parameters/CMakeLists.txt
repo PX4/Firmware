@@ -31,6 +31,8 @@
 #
 ############################################################################
 
+add_compile_options(${MAX_CUSTOM_OPT_LEVEL})
+
 add_subdirectory(tinybson)
 
 if (NOT PARAM_DEFAULT_OVERRIDES)
@@ -73,6 +75,9 @@ file(GLOB jinja_templates ${PX4_SOURCE_DIR}/Tools/serial/*.jinja)
 if (px4_constrained_flash_build)
 	set(added_arguments --constrained-flash)
 endif()
+if(PX4_ETHERNET)
+	set(added_arguments ${added_arguments} --ethernet)
+endif()
 add_custom_command(OUTPUT ${generated_serial_params_file}
 	COMMAND ${CMAKE_COMMAND} -E make_directory ${generated_params_dir}
 	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/Tools/serial/generate_config.py
@@ -88,8 +93,8 @@ add_custom_command(OUTPUT ${generated_serial_params_file}
 
 set(parameters_xml ${PX4_BINARY_DIR}/parameters.xml)
 set(parameters_json ${PX4_BINARY_DIR}/parameters.json)
-file(GLOB_RECURSE param_src_files ${PX4_SOURCE_DIR}/src/*params.c)
-add_custom_command(OUTPUT ${parameters_xml} ${parameters_json} ${parameters_json}.gz
+file(GLOB_RECURSE param_src_files ${PX4_SOURCE_DIR}/src/*params.c ${PX4_SOURCE_DIR}/src/*parameters.c)
+add_custom_command(OUTPUT ${parameters_xml} ${parameters_json} ${parameters_json}.xz
 	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/px_process_params.py
 		--src-path ${module_list} ${generated_params_dir}
 		--xml ${parameters_xml}
@@ -113,16 +118,14 @@ add_custom_command(OUTPUT ${parameters_xml} ${parameters_json} ${parameters_json
 )
 add_custom_target(parameters_xml DEPENDS ${parameters_xml})
 
-# generate px4_parameters.c and px4_parameters{,_public}.h
-add_custom_command(OUTPUT px4_parameters.c px4_parameters.h px4_parameters_public.h
+# generate px4_parameters.hpp
+add_custom_command(OUTPUT px4_parameters.hpp
 	COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/px_generate_params.py
 		--xml ${parameters_xml} --dest ${CMAKE_CURRENT_BINARY_DIR}
 	DEPENDS
 		${PX4_BINARY_DIR}/parameters.xml
 		px_generate_params.py
-		templates/px4_parameters.c.jinja
-		templates/px4_parameters.h.jinja
-		templates/px4_parameters_public.h.jinja
+		templates/px4_parameters.hpp.jinja
 	)
 
 set(SRCS)
@@ -147,16 +150,10 @@ endif()
 if (NOT "${PX4_BOARD}" MATCHES "px4_io")
 	add_library(parameters
 		${SRCS}
-		px4_parameters.c
-		px4_parameters.h
-		px4_parameters_public.h
-		)
+		px4_parameters.hpp
+	)
 
-	if ("${CONFIG_SHMEM}" STREQUAL "1")
-		target_link_libraries(parameters PRIVATE px4_layer)
-	endif()
-
-	target_link_libraries(parameters PRIVATE perf tinybson)
+	target_link_libraries(parameters PRIVATE perf tinybson px4_layer)
 	target_compile_definitions(parameters PRIVATE -DMODULE_NAME="parameters")
 	target_compile_options(parameters
 		PRIVATE

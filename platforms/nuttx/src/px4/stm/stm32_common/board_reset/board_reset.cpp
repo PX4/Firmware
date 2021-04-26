@@ -38,6 +38,7 @@
  */
 
 #include <px4_platform_common/px4_config.h>
+#include <systemlib/px4_macros.h>
 #include <errno.h>
 #include <stm32_pwr.h>
 #include <stm32_rtc.h>
@@ -45,20 +46,53 @@
 
 #ifdef CONFIG_BOARDCTL_RESET
 
-static int board_reset_enter_bootloader()
+/****************************************************************************
+ * Name: board_configure_reset
+ *
+ * Description:
+ *   Configures the device that maintains the state shared by the
+ *   application and boot loader. This is usually an RTC.
+ *
+ * Input Parameters:
+ *   mode  - The type of reset. See reset_mode_e
+ *
+ * Returned Value:
+ *   0 for Success
+ *   1 if invalid argument
+ *
+ ****************************************************************************/
+
+static const uint32_t modes[] = {
+	/*                                      to  tb   */
+	/* BOARD_RESET_MODE_CLEAR                5   y   */  0,
+	/* BOARD_RESET_MODE_BOOT_TO_BL           0   n   */  0xb0070001,
+	/* BOARD_RESET_MODE_BOOT_TO_VALID_APP    0   y   */  0xb0070002,
+	/* BOARD_RESET_MODE_CAN_BL               10  n   */  0xb0080000,
+	/* BOARD_RESET_MODE_RTC_BOOT_FWOK        0   n   */  0xb0093a26
+};
+
+int board_configure_reset(reset_mode_e mode, uint32_t arg)
 {
-	stm32_pwr_enablebkp(true);
+	int rv = -1;
 
-	uint32_t regvalue = 0xb007b007;
+	if (mode < arraySize(modes)) {
 
-// Check if we can to use the new register definition
+		stm32_pwr_enablebkp(true);
+
+		arg = mode == BOARD_RESET_MODE_CAN_BL ? arg & ~0xff : 0;
+
+		// Check if we can to use the new register definition
+
 #ifndef STM32_RTC_BK0R
-	*(uint32_t *)STM32_BKP_BASE = regvalue;
+		*(uint32_t *)STM32_BKP_BASE = modes[mode] | arg;
 #else
-	*(uint32_t *)STM32_RTC_BK0R = regvalue;
+		*(uint32_t *)STM32_RTC_BK0R = modes[mode] | arg;
 #endif
-	stm32_pwr_enablebkp(false);
-	return OK;
+		stm32_pwr_enablebkp(false);
+		rv = OK;
+	}
+
+	return rv;
 }
 
 /****************************************************************************
@@ -84,7 +118,7 @@ static int board_reset_enter_bootloader()
 int board_reset(int status)
 {
 	if (status == 1) {
-		board_reset_enter_bootloader();
+		board_configure_reset(BOARD_RESET_MODE_BOOT_TO_BL, 0);
 	}
 
 #if defined(BOARD_HAS_ON_RESET)
@@ -96,3 +130,27 @@ int board_reset(int status)
 }
 
 #endif /* CONFIG_BOARDCTL_RESET */
+
+#if defined(SUPPORT_ALT_CAN_BOOTLOADER)
+/****************************************************************************
+ * Name: board_booted_by_px4
+ *
+ * Description:
+ *   Determines if the the boot loader was PX4
+ *
+ * Input Parameters:
+ *   none
+ *
+ * Returned Value:
+ *   true if booted byt a PX4 bootloader.
+ *
+ ****************************************************************************/
+bool board_booted_by_px4(void)
+{
+	uint32_t *vectors = (uint32_t *) STM32_FLASH_BASE;
+
+	/* Nuttx uses common vector */
+
+	return (vectors[2] == vectors[3]) && (vectors[4] == vectors[5]);
+}
+#endif

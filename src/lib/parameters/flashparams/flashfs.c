@@ -86,11 +86,10 @@ typedef enum  flash_flags_t {
 } flash_flags_t;
 
 
-/* File flash_entry_header_t will be sizeof(h_magic_t) aligned
+/* The struct flash_entry_header_t will be sizeof(uint32_t) aligned
  * The Size will be the actual length of the header plus the data
  * and any padding needed to have the size be an even multiple of
- * sizeof(h_magic_t)
- *  The
+ * sizeof(uint32_t)
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
@@ -102,7 +101,7 @@ typedef begin_packed_struct struct flash_entry_header_t {
                                                * Will result the offset of the next active file or
                                                * free space. */
 	flash_file_token_t   file_token;      /* file token type - essentially the name/type */
-} end_packed_struct flash_entry_header_t;
+} end_packed_struct flash_entry_header_t __attribute__((aligned(sizeof(uint32_t))));
 #pragma GCC diagnostic pop
 
 /****************************************************************************
@@ -876,11 +875,13 @@ parameter_flashfs_write(flash_file_token_t token, uint8_t *buffer, size_t buf_si
 				}
 
 				pf = (flash_entry_header_t *) current_sector->address;
+
+				if (!blank_check(pf, total_size)) {
+					rv = erase_sector(current_sector, pf);
+				}
+
 			}
 
-			if (!blank_check(pf, total_size)) {
-				rv = erase_sector(current_sector, pf);
-			}
 		}
 
 		flash_entry_header_t *pn = (flash_entry_header_t *)(buffer - sizeof(flash_entry_header_t));

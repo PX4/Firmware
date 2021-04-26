@@ -175,6 +175,7 @@ PARAM_DEFINE_FLOAT(LPE_GPS_Z, 3.0f);
 
 /**
  * GPS xy velocity standard deviation.
+ *
  * EPV used if greater than this value.
  *
  * @group Local Position Estimator
@@ -316,6 +317,7 @@ PARAM_DEFINE_FLOAT(LPE_PN_T, 0.001f);
 
 /**
  * Terrain maximum percent grade, hilly/outdoor (100 = 45 deg), flat/Indoor (0 = 0 deg)
+ *
  * Used to calculate increased terrain random walk nosie due to movement.
  *
  * @group Local Position Estimator
@@ -339,7 +341,8 @@ PARAM_DEFINE_FLOAT(LPE_FGYRO_HP, 0.001f);
 
 /**
  * Enable publishing of a fake global position (e.g for AUTO missions using Optical Flow)
- * by initializing the estimator to the LPE_LAT/LON parameters when global information is unavailable
+ *
+ * By initializing the estimator to the LPE_LAT/LON parameters when global information is unavailable
  *
  * @group Local Position Estimator
  * @min 0

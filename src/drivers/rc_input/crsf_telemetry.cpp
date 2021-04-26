@@ -182,10 +182,6 @@ bool CRSFTelemetry::send_flight_mode()
 	case vehicle_status_s::NAVIGATION_STATE_STAB:
 		flight_mode = "Stabilized";
 		break;
-
-	case vehicle_status_s::NAVIGATION_STATE_RATTITUDE:
-		flight_mode = "Rattitude";
-		break;
 	}
 
 	return crsf_send_telemetry_flight_mode(_uart_fd, flight_mode);

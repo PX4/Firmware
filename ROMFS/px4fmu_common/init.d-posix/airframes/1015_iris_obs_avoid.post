@@ -1,2 +1,2 @@
 # shellcheck disable=SC2154
-mavlink start -x -u 14558 -r 4000000 -m onboard -o 14541 # add mavlink stream for SDK
+mavlink start -x -u 14558 -r 4000000 -m onboard -o 14541 -p # add mavlink stream for SDK

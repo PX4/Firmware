@@ -2,14 +2,12 @@
 # tests
 #
 
-# TODO: find a way to keep this in sync with tests_main
+# tests command arguments
 set(tests
 	atomic_bitset
 	bezier
 	bitset
 	bson
-	commander
-	controllib
 	conv
 	dataman
 	file2
@@ -30,27 +28,11 @@ set(tests
 	param
 	parameters
 	perf
-	rc
 	search_min
 	servo
-	#lightware_laser
 	sleep
-	uorb
 	versioning
-	)
-
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-	list(REMOVE_ITEM tests
-		mixer
-		uorb
-	)
-endif()
-
-if (CMAKE_SYSTEM_NAME STREQUAL "CYGWIN")
-	list(REMOVE_ITEM tests
-		uorb
-	)
-endif()
+)
 
 foreach(test_name ${tests})
 	set(test_name_prefix sitl-${test_name})
@@ -71,6 +53,35 @@ foreach(test_name ${tests})
 endforeach()
 
 
+# standalone tests
+set(cmd_tests
+	commander_tests
+	controllib_test
+	lightware_laser_test
+	rc_tests
+	uorb_tests
+)
+
+foreach(test_name ${cmd_tests})
+	set(test_name_prefix sitl-${test_name})
+	configure_file(${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_cmd_template.in ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated)
+
+	add_test(NAME ${test_name_prefix}
+		COMMAND $<TARGET_FILE:px4>
+			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_${test_name}_generated
+			-t ${PX4_SOURCE_DIR}/test_data
+			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+		WORKING_DIRECTORY ${SITL_WORKING_DIR}
+	)
+
+	set_tests_properties(${test_name_prefix} PROPERTIES FAIL_REGULAR_EXPRESSION "FAIL")
+	set_tests_properties(${test_name_prefix} PROPERTIES PASS_REGULAR_EXPRESSION "PASS")
+
+	sanitizer_fail_test_on_error(${test_name_prefix})
+endforeach()
+
+
+
 # Mavlink test requires mavlink running
 add_test(NAME sitl-mavlink
 	COMMAND $<TARGET_FILE:px4>
@@ -80,25 +91,26 @@ add_test(NAME sitl-mavlink
 	WORKING_DIRECTORY ${SITL_WORKING_DIR}
 )
 
-set_tests_properties(sitl-mavlink PROPERTIES FAIL_REGULAR_EXPRESSION "mavlink FAILED")
-set_tests_properties(sitl-mavlink PROPERTIES PASS_REGULAR_EXPRESSION "mavlink PASSED")
+set_tests_properties(sitl-mavlink PROPERTIES FAIL_REGULAR_EXPRESSION "FAIL")
+set_tests_properties(sitl-mavlink PROPERTIES PASS_REGULAR_EXPRESSION "ALL TESTS PASSED")
 sanitizer_fail_test_on_error(sitl-mavlink)
 
-# A mystery why this fails on Cygwin currently.
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "CYGWIN")
-	# Shutdown test
-	add_test(NAME sitl-shutdown
-		COMMAND $<TARGET_FILE:px4>
-			-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_shutdown
-			-t ${PX4_SOURCE_DIR}/test_data
-			${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
-		WORKING_DIRECTORY ${SITL_WORKING_DIR}
-	)
 
-	#set_tests_properties(shutdown PROPERTIES FAIL_REGULAR_EXPRESSION "shutdown FAILED")
-	set_tests_properties(sitl-shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
-	sanitizer_fail_test_on_error(sitl-shutdown)
-endif()
+
+# # Shutdown test
+# add_test(NAME sitl-shutdown
+# 	COMMAND $<TARGET_FILE:px4>
+# 		-s ${PX4_SOURCE_DIR}/posix-configs/SITL/init/test/test_shutdown
+# 		-t ${PX4_SOURCE_DIR}/test_data
+# 		${PX4_SOURCE_DIR}/ROMFS/px4fmu_test
+# 	WORKING_DIRECTORY ${SITL_WORKING_DIR}
+# )
+
+# #set_tests_properties(shutdown PROPERTIES FAIL_REGULAR_EXPRESSION "shutdown FAILED")
+# set_tests_properties(sitl-shutdown PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
+# sanitizer_fail_test_on_error(sitl-shutdown)
+
+
 
 # Dynamic module loading test
 add_test(NAME dyn
@@ -114,6 +126,7 @@ add_test(NAME dyn
 	WORKING_DIRECTORY ${SITL_WORKING_DIR})
 set_tests_properties(dyn PROPERTIES PASS_REGULAR_EXPRESSION "1: PASSED")
 sanitizer_fail_test_on_error(dyn)
+
 
 # run arbitrary commands
 set(test_cmds
@@ -136,6 +149,7 @@ foreach(cmd_name ${test_cmds})
 	sanitizer_fail_test_on_error(posix_${cmd_name})
 	set_tests_properties(posix_${cmd_name} PROPERTIES PASS_REGULAR_EXPRESSION "Exiting NOW.")
 endforeach()
+
 
 if(CMAKE_BUILD_TYPE STREQUAL Coverage)
 	setup_target_for_coverage(test_coverage "${CMAKE_CTEST_COMMAND} --output-on-failure -T Test" tests)

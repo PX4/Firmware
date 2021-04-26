@@ -163,26 +163,6 @@ dm_restart(
 	dm_reset_reason restart_type	/* The last reset type */
 );
 
-#if defined(FLASH_BASED_DATAMAN)
-typedef struct dm_sector_descriptor_t {
-	uint8_t       page;
-	uint32_t      size;
-	uint32_t      address;
-} dm_sector_descriptor_t;
-
-/**
- * Set the flash sector description were data should persist data
- *
- * Important: do not use a Flash sector from the same bank that STM32 read
- * instructions or the CPU will held for sometime during Flash erase and write
- * and this could cause your drone to fall.
- */
-__EXPORT int
-dm_flash_sector_description_set(
-	const dm_sector_descriptor_t *description
-);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

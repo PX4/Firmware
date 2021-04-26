@@ -130,23 +130,15 @@ public:
 
 	/**
 	 * @@brief Get clock monotonic time (raw) in nanoseconds
-	 * @@return System CLOCK_MONOTONIC_RAW time in nanoseconds
+	 * @@return System CLOCK_MONOTONIC time in nanoseconds
 	 */
-	inline int64_t getMonoRawTimeNSec() {
-		timespec t;
-		clock_gettime(CLOCK_MONOTONIC_RAW, &t);
-		return static_cast<int64_t>(t.tv_sec * 1000000000LL + t.tv_nsec);
-	}
+	static int64_t getTimeNSec();
 
 	/**
 	 * @@brief Get system monotonic time in microseconds
 	 * @@return System CLOCK_MONOTONIC time in microseconds
 	 */
-	inline int64_t getMonoTimeUSec() {
-		timespec t;
-		clock_gettime(CLOCK_MONOTONIC, &t);
-		return static_cast<int64_t>(t.tv_sec * 1000000000LL + t.tv_nsec) / 1000LL;
-	}
+	static int64_t getTimeUSec();
 
 	/**
 	 * @@brief Adds a time offset measurement to be filtered

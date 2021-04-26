@@ -3,8 +3,6 @@
 # (px4-alias.sh is expected to be in the PATH)
 . px4-alias.sh
 
-uorb start
-
 param load
 param set CBRK_SUPPLY_CHK 894281
 param set SYS_RESTART_TYPE 0

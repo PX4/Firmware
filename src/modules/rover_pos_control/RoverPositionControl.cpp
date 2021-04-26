@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017, 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,14 +58,26 @@ extern "C" __EXPORT int rover_pos_control_main(int argc, char *argv[]);
 
 RoverPositionControl::RoverPositionControl() :
 	ModuleParams(nullptr),
+	WorkItem(MODULE_NAME, px4::wq_configurations::nav_and_controllers),
 	/* performance counters */
-	_loop_perf(perf_alloc(PC_ELAPSED, "rover position control")) // TODO : do we even need these perf counters
+	_loop_perf(perf_alloc(PC_ELAPSED,  MODULE_NAME": cycle")) // TODO : do we even need these perf counters
 {
 }
 
 RoverPositionControl::~RoverPositionControl()
 {
 	perf_free(_loop_perf);
+}
+
+bool
+RoverPositionControl::init()
+{
+	if (!_vehicle_angular_velocity_sub.registerCallback()) {
+		PX4_ERR("vehicle angular velocity callback registration failed!");
+		return false;
+	}
+
+	return true;
 }
 
 void RoverPositionControl::parameters_update(bool force)
@@ -96,60 +108,95 @@ void RoverPositionControl::parameters_update(bool force)
 void
 RoverPositionControl::vehicle_control_mode_poll()
 {
-	bool updated;
-	orb_check(_control_mode_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(vehicle_control_mode), _control_mode_sub, &_control_mode);
+	if (_control_mode_sub.updated()) {
+		_control_mode_sub.copy(&_control_mode);
 	}
 }
 
 void
 RoverPositionControl::manual_control_setpoint_poll()
 {
-	bool manual_updated;
-	orb_check(_manual_control_setpoint_sub, &manual_updated);
+	if (_control_mode.flag_control_manual_enabled) {
+		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
+			float dt = math::constrain(hrt_elapsed_time(&_manual_setpoint_last_called) * 1e-6f,  0.0002f, 0.04f);
 
-	if (manual_updated) {
-		orb_copy(ORB_ID(manual_control_setpoint), _manual_control_setpoint_sub, &_manual_control_setpoint);
+			if (!_control_mode.flag_control_climb_rate_enabled &&
+			    !_control_mode.flag_control_offboard_enabled) {
+
+				if (_control_mode.flag_control_attitude_enabled) {
+					// STABILIZED mode generate the attitude setpoint from manual user inputs
+					_att_sp.roll_body = 0.0;
+					_att_sp.pitch_body = 0.0;
+
+					/* reset yaw setpoint to current position if needed */
+					if (_reset_yaw_sp) {
+						const float vehicle_yaw = Eulerf(Quatf(_vehicle_att.q)).psi();
+						_manual_yaw_sp = vehicle_yaw;
+						_reset_yaw_sp = false;
+
+					} else {
+						const float yaw_rate = math::radians(_param_gnd_man_y_max.get());
+						_att_sp.yaw_sp_move_rate = _manual_control_setpoint.y * yaw_rate;
+						_manual_yaw_sp = wrap_pi(_manual_yaw_sp + _att_sp.yaw_sp_move_rate * dt);
+					}
+
+					_att_sp.yaw_body = _manual_yaw_sp;
+					_att_sp.thrust_body[0] = _manual_control_setpoint.z;
+
+					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
+					q.copyTo(_att_sp.q_d);
+
+					_att_sp.timestamp = hrt_absolute_time();
+
+
+					_attitude_sp_pub.publish(_att_sp);
+
+				} else {
+					_act_controls.control[actuator_controls_s::INDEX_ROLL] = 0.0f; // Nominally roll: _manual_control_setpoint.y;
+					_act_controls.control[actuator_controls_s::INDEX_PITCH] = 0.0f; // Nominally pitch: -_manual_control_setpoint.x;
+					// Set heading from the manual roll input channel
+					_act_controls.control[actuator_controls_s::INDEX_YAW] =
+						_manual_control_setpoint.y; // Nominally yaw: _manual_control_setpoint.r;
+					// Set throttle from the manual throttle channel
+					_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
+					_reset_yaw_sp = true;
+				}
+
+			} else {
+				_reset_yaw_sp = true;
+			}
+
+			_manual_setpoint_last_called = hrt_absolute_time();
+		}
 	}
 }
 
 void
 RoverPositionControl::position_setpoint_triplet_poll()
 {
-	bool pos_sp_triplet_updated;
-	orb_check(_pos_sp_triplet_sub, &pos_sp_triplet_updated);
-
-	if (pos_sp_triplet_updated) {
-		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+	if (_pos_sp_triplet_sub.updated()) {
+		_pos_sp_triplet_sub.copy(&_pos_sp_triplet);
 	}
 }
 
 void
 RoverPositionControl::attitude_setpoint_poll()
 {
-	bool att_sp_updated;
-	orb_check(_att_sp_sub, &att_sp_updated);
-
-	if (att_sp_updated) {
-		orb_copy(ORB_ID(vehicle_attitude_setpoint), _att_sp_sub, &_att_sp);
+	if (_att_sp_sub.updated()) {
+		_att_sp_sub.copy(&_att_sp);
 	}
 }
 
 void
 RoverPositionControl::vehicle_attitude_poll()
 {
-	bool att_updated;
-	orb_check(_vehicle_attitude_sub, &att_updated);
-
-	if (att_updated) {
-		orb_copy(ORB_ID(vehicle_attitude), _vehicle_attitude_sub, &_vehicle_att);
+	if (_att_sub.updated()) {
+		_att_sub.copy(&_vehicle_att);
 	}
 }
 
 bool
-RoverPositionControl::control_position(const matrix::Vector2f &current_position,
+RoverPositionControl::control_position(const matrix::Vector2d &current_position,
 				       const matrix::Vector3f &ground_speed, const position_setpoint_triplet_s &pos_sp_triplet)
 {
 	float dt = 0.01; // Using non zero value to a avoid division by zero
@@ -172,14 +219,14 @@ RoverPositionControl::control_position(const matrix::Vector2f &current_position,
 		//bool was_circle_mode = _gnd_control.circle_mode();
 
 		/* current waypoint (the one currently heading for) */
-		matrix::Vector2f curr_wp((float)pos_sp_triplet.current.lat, (float)pos_sp_triplet.current.lon);
+		matrix::Vector2d curr_wp(pos_sp_triplet.current.lat, pos_sp_triplet.current.lon);
 
 		/* previous waypoint */
-		matrix::Vector2f prev_wp = curr_wp;
+		matrix::Vector2d prev_wp = curr_wp;
 
 		if (pos_sp_triplet.previous.valid) {
-			prev_wp(0) = (float)pos_sp_triplet.previous.lat;
-			prev_wp(1) = (float)pos_sp_triplet.previous.lon;
+			prev_wp(0) = pos_sp_triplet.previous.lat;
+			prev_wp(1) = pos_sp_triplet.previous.lon;
 		}
 
 		matrix::Vector2f ground_speed_2d(ground_speed);
@@ -280,18 +327,15 @@ RoverPositionControl::control_position(const matrix::Vector2f &current_position,
 }
 
 void
-RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity,
-				       const position_setpoint_triplet_s &pos_sp_triplet)
+RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity)
 {
-
+	const Vector3f desired_velocity{_trajectory_setpoint.vx, _trajectory_setpoint.vy, _trajectory_setpoint.vz};
 	float dt = 0.01; // Using non zero value to a avoid division by zero
 
 	const float mission_throttle = _param_throttle_cruise.get();
-	const matrix::Vector3f desired_velocity{pos_sp_triplet.current.vx, pos_sp_triplet.current.vy, pos_sp_triplet.current.vz};
 	const float desired_speed = desired_velocity.norm();
 
 	if (desired_speed > 0.01f) {
-
 		const Dcmf R_to_body(Quatf(_vehicle_att.q).inversed());
 		const Vector3f vel = R_to_body * Vector3f(current_velocity(0), current_velocity(1), current_velocity(2));
 
@@ -305,13 +349,12 @@ RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity,
 
 		Vector3f desired_body_velocity;
 
-		if (pos_sp_triplet.current.velocity_frame == position_setpoint_s::VELOCITY_FRAME_BODY_NED) {
+		if (_velocity_frame == VelocityFrame::NED) {
 			desired_body_velocity = desired_velocity;
 
 		} else {
 			// If the frame of the velocity setpoint is unknown, assume it is in local frame
 			desired_body_velocity = R_to_body * desired_velocity;
-
 		}
 
 		const float desired_theta = atan2f(desired_body_velocity(1), desired_body_velocity(0));
@@ -324,7 +367,6 @@ RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity,
 
 		_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = 0.0f;
 		_act_controls.control[actuator_controls_s::INDEX_YAW] = 0.0f;
-
 	}
 }
 
@@ -347,96 +389,64 @@ RoverPositionControl::control_attitude(const vehicle_attitude_s &att, const vehi
 }
 
 void
-RoverPositionControl::run()
+RoverPositionControl::Run()
 {
-	_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
-	_global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
-	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
-	_manual_control_setpoint_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
-	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
-	_att_sp_sub = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
-
-	_vehicle_attitude_sub = orb_subscribe(ORB_ID(vehicle_attitude));
-	_sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
-
-	/* rate limit control mode updates to 5Hz */
-	orb_set_interval(_control_mode_sub, 200);
-
-	/* rate limit position updates to 50 Hz */
-	orb_set_interval(_global_pos_sub, 20);
-	orb_set_interval(_local_pos_sub, 20);
-
 	parameters_update(true);
 
-	/* wakeup source(s) */
-	px4_pollfd_struct_t fds[5];
+	/* run controller on gyro changes */
+	vehicle_angular_velocity_s angular_velocity;
 
-	/* Setup of loop */
-	fds[0].fd = _global_pos_sub;
-	fds[0].events = POLLIN;
-	fds[1].fd = _manual_control_setpoint_sub;
-	fds[1].events = POLLIN;
-	fds[2].fd = _sensor_combined_sub;
-	fds[2].events = POLLIN;
-	fds[3].fd = _vehicle_attitude_sub; // Poll attitude
-	fds[3].events = POLLIN;
-	fds[4].fd = _local_pos_sub;  // Added local position as source of position
-	fds[4].events = POLLIN;
-
-	while (!should_exit()) {
-
-		/* wait for up to 500ms for data */
-		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 500);
-
-		/* this is undesirable but not much we can do - might want to flag unhappy status */
-		if (pret < 0) {
-			warn("poll error %d, %d", pret, errno);
-			continue;
-		}
+	if (_vehicle_angular_velocity_sub.update(&angular_velocity)) {
 
 		/* check vehicle control mode for changes to publication state */
 		vehicle_control_mode_poll();
 		attitude_setpoint_poll();
-		//manual_control_setpoint_poll();
+		vehicle_attitude_poll();
+		manual_control_setpoint_poll();
 
 		_vehicle_acceleration_sub.update();
 
 		/* update parameters from storage */
 		parameters_update();
 
-		bool manual_mode = _control_mode.flag_control_manual_enabled;
-
 		/* only run controller if position changed */
-		if (fds[0].revents & POLLIN || fds[4].revents & POLLIN) {
-			perf_begin(_loop_perf);
+		if (_local_pos_sub.update(&_local_pos)) {
 
 			/* load local copies */
-			orb_copy(ORB_ID(vehicle_global_position), _global_pos_sub, &_global_pos);
-			orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
+			_global_pos_sub.update(&_global_pos);
 
 			position_setpoint_triplet_poll();
 
-			//Convert Local setpoints to global setpoints
+			// Convert Local setpoints to global setpoints
 			if (_control_mode.flag_control_offboard_enabled) {
-				if (!globallocalconverter_initialized()) {
-					globallocalconverter_init(_local_pos.ref_lat, _local_pos.ref_lon,
-								  _local_pos.ref_alt, _local_pos.ref_timestamp);
+				if (!map_projection_initialized(&_global_local_proj_ref)
+				    || (_global_local_proj_ref.timestamp != _local_pos.ref_timestamp)) {
 
-				} else {
-					globallocalconverter_toglobal(_pos_sp_triplet.current.x, _pos_sp_triplet.current.y, _pos_sp_triplet.current.z,
-								      &_pos_sp_triplet.current.lat, &_pos_sp_triplet.current.lon, &_pos_sp_triplet.current.alt);
+					map_projection_init_timestamped(&_global_local_proj_ref, _local_pos.ref_lat, _local_pos.ref_lon,
+									_local_pos.ref_timestamp);
 
+					_global_local_alt0 = _local_pos.ref_alt;
 				}
+
+				_trajectory_setpoint_sub.update(&_trajectory_setpoint);
+
+				// local -> global
+				map_projection_reproject(&_global_local_proj_ref,
+							 _trajectory_setpoint.x, _trajectory_setpoint.y,
+							 &_pos_sp_triplet.current.lat, &_pos_sp_triplet.current.lon);
+
+				_pos_sp_triplet.current.alt = _global_local_alt0 - _trajectory_setpoint.z;
+				_pos_sp_triplet.current.valid = true;
 			}
 
 			// update the reset counters in any case
 			_pos_reset_counter = _global_pos.lat_lon_reset_counter;
 
 			matrix::Vector3f ground_speed(_local_pos.vx, _local_pos.vy,  _local_pos.vz);
-			matrix::Vector2f current_position((float)_global_pos.lat, (float)_global_pos.lon);
+			matrix::Vector2d current_position(_global_pos.lat, _global_pos.lon);
 			matrix::Vector3f current_velocity(_local_pos.vx, _local_pos.vy, _local_pos.vz);
 
-			if (!manual_mode && _control_mode.flag_control_position_enabled) {
+			if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_position_enabled) {
 
 				if (control_position(current_position, ground_speed, _pos_sp_triplet)) {
 
@@ -444,7 +454,7 @@ RoverPositionControl::run()
 					float turn_distance = _param_l1_distance.get(); //_gnd_control.switch_distance(100.0f);
 
 					// publish status
-					position_controller_status_s pos_ctrl_status = {};
+					position_controller_status_s pos_ctrl_status{};
 
 					pos_ctrl_status.nav_roll = 0.0f;
 					pos_ctrl_status.nav_pitch = 0.0f;
@@ -462,113 +472,55 @@ RoverPositionControl::run()
 					pos_ctrl_status.timestamp = hrt_absolute_time();
 
 					_pos_ctrl_status_pub.publish(pos_ctrl_status);
-
-
 				}
 
-			} else if (!manual_mode && _control_mode.flag_control_velocity_enabled) {
-
-				control_velocity(current_velocity, _pos_sp_triplet);
-
-			}
-
-
-			perf_end(_loop_perf);
-		}
-
-		if (fds[3].revents & POLLIN) {
-
-			vehicle_attitude_poll();
-
-			if (!manual_mode && _control_mode.flag_control_attitude_enabled
-			    && !_control_mode.flag_control_position_enabled
-			    && !_control_mode.flag_control_velocity_enabled) {
-
-				control_attitude(_vehicle_att, _att_sp);
-
-			}
-
-		}
-
-		if (fds[1].revents & POLLIN) {
-
-			// This should be copied even if not in manual mode. Otherwise, the poll(...) call will keep
-			// returning immediately and this loop will eat up resources.
-			orb_copy(ORB_ID(manual_control_setpoint), _manual_control_setpoint_sub, &_manual_control_setpoint);
-
-			if (manual_mode) {
-				/* manual/direct control */
-				//PX4_INFO("Manual mode!");
-				_act_controls.control[actuator_controls_s::INDEX_ROLL] = _manual_control_setpoint.y;
-				_act_controls.control[actuator_controls_s::INDEX_PITCH] = -_manual_control_setpoint.x;
-				_act_controls.control[actuator_controls_s::INDEX_YAW] = _manual_control_setpoint.r; //TODO: Readd yaw scale param
-				_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
+			} else if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_velocity_enabled) {
+				_trajectory_setpoint_sub.update(&_trajectory_setpoint);
+				control_velocity(current_velocity);
 			}
 		}
 
-		if (fds[2].revents & POLLIN) {
+		// Respond to an attitude update and run the attitude controller if enabled
+		if (_control_mode.flag_control_attitude_enabled
+		    && !_control_mode.flag_control_position_enabled
+		    && !_control_mode.flag_control_velocity_enabled) {
+			control_attitude(_vehicle_att, _att_sp);
 
-			orb_copy(ORB_ID(sensor_combined), _sensor_combined_sub, &_sensor_combined);
+		}
 
-			//orb_copy(ORB_ID(vehicle_attitude), _vehicle_attitude_sub, &_vehicle_att);
+		/* Only publish if any of the proper modes are enabled */
+		if (_control_mode.flag_control_velocity_enabled ||
+		    _control_mode.flag_control_attitude_enabled ||
+		    _control_mode.flag_control_position_enabled ||
+		    _control_mode.flag_control_manual_enabled) {
+			// timestamp and publish controls
 			_act_controls.timestamp = hrt_absolute_time();
-
-			/* Only publish if any of the proper modes are enabled */
-			if (_control_mode.flag_control_velocity_enabled ||
-			    _control_mode.flag_control_attitude_enabled ||
-			    _control_mode.flag_control_position_enabled ||
-			    manual_mode) {
-				/* publish the actuator controls */
-				_actuator_controls_pub.publish(_act_controls);
-			}
+			_actuator_controls_pub.publish(_act_controls);
 		}
-
 	}
-
-	orb_unsubscribe(_control_mode_sub);
-	orb_unsubscribe(_global_pos_sub);
-	orb_unsubscribe(_local_pos_sub);
-	orb_unsubscribe(_manual_control_setpoint_sub);
-	orb_unsubscribe(_pos_sp_triplet_sub);
-	orb_unsubscribe(_vehicle_attitude_sub);
-	orb_unsubscribe(_sensor_combined_sub);
-
-	warnx("exiting.\n");
 }
 
 int RoverPositionControl::task_spawn(int argc, char *argv[])
 {
-	/* start the task */
-	_task_id = px4_task_spawn_cmd("rover_pos_ctrl",
-				      SCHED_DEFAULT,
-				      SCHED_PRIORITY_POSITION_CONTROL,
-				      1700,
-				      (px4_main_t)&RoverPositionControl::run_trampoline,
-				      nullptr);
-
-	if (_task_id < 0) {
-		warn("task start failed");
-		return -errno;
-	}
-
-	return OK;
-}
-
-RoverPositionControl *RoverPositionControl::instantiate(int argc, char *argv[])
-{
-
-	if (argc > 0) {
-		PX4_WARN("Command 'start' takes no arguments.");
-		return nullptr;
-	}
-
 	RoverPositionControl *instance = new RoverPositionControl();
 
-	if (instance == nullptr) {
-		PX4_ERR("Failed to instantiate RoverPositionControl object");
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
+
+		if (instance->init()) {
+			return PX4_OK;
+		}
+
+	} else {
+		PX4_ERR("alloc failed");
 	}
 
-	return instance;
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
 }
 
 int RoverPositionControl::custom_command(int argc, char *argv[])
@@ -587,7 +539,7 @@ int RoverPositionControl::print_usage(const char *reason)
 ### Description
 Controls the position of a ground rover using an L1 controller.
 
-Publishes `actuator_controls_0` messages at a constant 250Hz.
+Publishes `actuator_controls_0` messages at IMU_GYRO_RATEMAX.
 
 ### Implementation
 Currently, this implementation supports only a few modes:

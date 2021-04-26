@@ -107,4 +107,32 @@ __BEGIN_DECLS
 
 #define PX4_GPIO_PIN_OFF(def) (((def) & (GPIO_PORT_MASK | GPIO_PIN_MASK)) | (GPIO_INPUT|GPIO_FLOAT|GPIO_SPEED_2MHz))
 
+/* CAN bootloader usage */
+
+#define TIMER_HRT_CYCLES_PER_US (STM32_HCLK_FREQUENCY/1000000)
+#define TIMER_HRT_CYCLES_PER_MS (STM32_HCLK_FREQUENCY/1000)
+
+/*  CAN_FiRx where (i=0..27|13, x=1, 2)
+ *                      STM32_CAN1_FIR(i,x)
+ * Using i = 2 does not requier there block
+ * to be enabled nor FINIT in CAN_FMR to be set.
+ * todo:Validate this claim on F2, F3
+ */
+
+#define crc_HiLOC       STM32_CAN1_FIR(2,1)
+#define crc_LoLOC       STM32_CAN1_FIR(2,2)
+#define signature_LOC   STM32_CAN1_FIR(3,1)
+#define bus_speed_LOC   STM32_CAN1_FIR(3,2)
+#define node_id_LOC     STM32_CAN1_FIR(4,1)
+
+#if defined(CONFIG_ARMV7M_DCACHE)
+#  define PX4_ARCH_DCACHE_ALIGNMENT ARMV7M_DCACHE_LINESIZE
+#  define px4_cache_aligned_data() aligned_data(ARMV7M_DCACHE_LINESIZE)
+#  define px4_cache_aligned_alloc(s) memalign(ARMV7M_DCACHE_LINESIZE,(s))
+#else
+#  define px4_cache_aligned_data()
+#  define px4_cache_aligned_alloc malloc
+#endif
+
+
 __END_DECLS

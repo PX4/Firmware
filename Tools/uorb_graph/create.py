@@ -3,12 +3,14 @@
 from __future__ import print_function
 
 import argparse
-import os
 import codecs
-import re
 import colorsys
 import json
+import logging
+import os
+import re
 import sys
+from typing import Optional, Set, Tuple
 
 
 parser = argparse.ArgumentParser(
@@ -20,13 +22,18 @@ parser.add_argument('-s', '--src-path', action='append',
 parser.add_argument('-e', '--exclude-path', action='append',
                     help='Excluded path(s), can be specified multiple times',
                     default=[])
+parser.add_argument('--merge-depends', action='store_true',
+                    help='Merge library topics inte the modules that depend on them.')
+parser.add_argument('-v','--verbosity', action='count',
+                    help='increase output verbosity; primarily for debugging; repeat for more detail',
+                    default=0)
 parser.add_argument('-f', '--file', metavar='file', action='store',
                     help='output file name prefix',
                     default='graph')
 parser.add_argument('-o', '--output', metavar='output', action='store',
                     help='output format (json or graphviz)',
                     default='json')
-parser.add_argument('--use-topic-union', action='store_true',
+parser.add_argument('-u','--use-topic-union', action='store_true',
                     help='''
 Use the union of all publication and subscription topics (useful for complete
 graphs or only few/single module(s)). The default is to use the intersection
@@ -36,14 +43,9 @@ parser.add_argument('-m', '--modules', action='store',
                     'MAIN, e.g. from a startup script)',
                     default='')
 
-args = parser.parse_args()
 
-
-g_debug = False
-def dbg_print(string):
-    if g_debug:
-        print(string)
-
+logging.basicConfig(level=logging.WARNING,format='%(message)s')
+log = logging.getLogger()
 
 def get_N_colors(N, s=0.8, v=0.9):
     """ get N distinct colors as a list of hex strings """
@@ -59,7 +61,10 @@ class PubSub(object):
     """ Collects either publication or subscription information for nodes
     (modules and topics) & edges """
 
-    def __init__(self, is_publication, topic_blacklist, orb_pub_sub_regexes, special_cases):
+    # special value to signal an ambiguous was found -- don't record this topic, and stop processing.
+    AMBIGUOUS_SITE_TOPIC = "AMBIGUOUS"
+
+    def __init__(self, name, topic_blacklist, regexes):
         """
             :param is_publication: if True, publications, False for
             subscriptions
@@ -68,192 +73,195 @@ class PubSub(object):
                 (e.g. orb_subscribe). They need to have 2 captures, the second
                 one is the one capturing ORB_ID(<topic>
         """
-        self._module_pubsubs = {} # key = module name, value = set of topic names
-        self._special_cases = special_cases
-        self._special_cases_matched = None
+        self._name = name
         self._topic_blacklist = topic_blacklist
-        self._orb_pub_sub_regexes = orb_pub_sub_regexes
-        if is_publication:
-            self._method = 'Publication'
-        else:
-            self._method = 'Subscription'
+        self._regexes = set([ re.compile(regex) for regex in regexes])
 
-    def reset(self):
-        self._special_cases_matched = [False]*len(self._special_cases)
-
-    def filter_modules(self, module_whitelist):
-        remove = [k for k in self._module_pubsubs if k not in module_whitelist]
-        for k in remove: del self._module_pubsubs[k]
-
-
-    def check_if_match_found(self, modules):
-        """ check if all special cases got a match (if not, it means the source
-            code got changed)
-        """
-        for i, (module_match, file_match_re, src_match_re, _) in enumerate(self._special_cases):
-            if module_match in modules and src_match_re is not None:
-                if not self._special_cases_matched[i]:
-                    raise Exception('Module '+module_match+
-                            ': no match for '+self._method+' special case'+
-                            src_match_re.pattern+'. The case needs to be updated')
-
-
-    def extract(self, file_name, src_str, module, orb_id_vehicle_attitude_controls_topic):
+    def match(self, source_line: str) -> str:
         """ Extract subscribed/published topics from a source string
         :param src_str: string of C/C++ code with comments and whitespace removed
+        :return: if any topic was found, returned as a str.   On error, raise on exception.  On ambiguous line, return `AMBIGUOUS_SITE_TOPIC`.  Otherwise, return `None`
         """
 
-        orb_pubsub_matches = []
-        for regex in self._orb_pub_sub_regexes:
-            orb_pubsub_matches += re.findall(regex, src_str)
+        for regex in self._regexes:
+            # just the matches for this particular pattern:
+            match = regex.search(source_line)
 
-        orb_id = 'ORB_ID('
+            if match is None:
+                continue
 
-        for _, match in orb_pubsub_matches:
-            if match == 'ORB_ID_VEHICLE_ATTITUDE_CONTROLS': # special case
-                match = orb_id+orb_id_vehicle_attitude_controls_topic
+            # # all regexes should contain 2 capture groups  (or else this code block crashes)
+            route_group, topic_group = match.groups()
+
+            log.debug("          ####:{}:  {}, {}".format( self._name, route_group, topic_group))
+
+            # # TODO: handle this case... but not sure where, yet
+            # if match == 'ORB_ID_VEHICLE_ATTITUDE_CONTROLS': # special case
+            #     match = orb_id+orb_id_vehicle_attitude_controls_topic
 
             # match has the form: '[ORB_ID(]<topic_name>'
-            if match.startswith(orb_id):
-                topic_name = match[len(orb_id):]
-                self._add_topic(topic_name, file_name, module)
+            if route_group:
+                if route_group == 'ORB_ID':
+                    log.debug("            >>> Found ORB_ID topic: " + topic_group +  "    w/regex: " + str(regex.pattern))
+                    return self._filter_topic(topic_group)
+                elif route_group == '[':
+                    if not topic_group:
+                        log.debug("            !! found an ambiguous site => return an empty set")
+                        return PubSub.AMBIGUOUS_SITE_TOPIC
+                else:
+                    raise SyntaxError('!!! Encountered regex case:  `route_group` contains unrecognized value!: '+ route_group+'  (::'+str(regex.pattern)+')\n'
+                                        + "        ("+ route_group+', '+topic_group +")\n"
+                                        + "        " + source_line)
+            elif route_group.empty() and topic_group.empty():
+                log.debug('!!! Found ambiguous site, without `ORB_ID` or topic (::'+str(regex.pattern))
+                return PubSub.AMBIGUOUS_SITE_TOPIC
+
             else:
-                ignore_found = False
-                for module_match, file_match_re, _, ignore_re in self._special_cases:
-                    if module == module_match:
-                        if file_match_re.search(file_name):
-                            if ignore_re.search(match):
-                                ignore_found = True
-                if not ignore_found:
-                    # If we land here, we need to add another special case
-                    raise Exception(self._method+' w/o ORB_ID(): '+match+' in '
-                            +file_name+' ('+module+'). You need to add another special case.')
+                raise SyntaxError("            !!! unhandled case:  unknown-variant: "+route_group+", " + topic_group + " ....from regex: " + str(regex.pattern))
 
-        # handle special cases
-        for i, (module_match, file_match_re, src_match_re, _) in enumerate(self._special_cases):
-            if src_match_re is None:
-                continue
-            if module == module_match:
-                if file_match_re.search(file_name):
-                    matches = src_match_re.findall(src_str)
-                    for match in matches:
-                        # match has the form: '[ORB_ID(]<topic_name>'
-                        if match.startswith(orb_id):
-                            topic_name = match[len(orb_id):]
-                            dbg_print('Found '+self._method+' for special case in '
-                                      +module+': '+topic_name)
-                            self._add_topic(topic_name, file_name, module)
-                            self._special_cases_matched[i] = True
-                        else:
-                            # this is not fatal, as it could be a method delaration/definition
-                            dbg_print('Special case '+self._method+' w/o ORB_ID(): '
-                                      +match+' in '+file_name+' ('+module+')')
+        return None
 
-    def _add_topic(self, topic_name, file_name, module):
-        """ add a subscription/publication for a module
-        """
+    def _filter_topic(self, topic_name: str) -> str:
+        """ add topic to set, unless the topic is ignored """
         if topic_name in self._topic_blacklist:
-            dbg_print('ignoring blacklisted topic '+topic_name)
-            return
+            log.debug("                    XX Ignoring blacklisted topic " + topic_name)
+            return None
+        else:
+            return topic_name
 
-        if module is None:
-            if not file_name.endswith('hott/messages.cpp'): # hott has a special module structure. just ignore it
-                print('Warning: found '+self._method+' without associated module: '
-                      +topic_name+' in '+file_name)
-            return
+class Publications(PubSub):
+    """ Collects topic publication information for scopes """
 
-        if not module in self._module_pubsubs:
-            self._module_pubsubs[module] = set()
-        self._module_pubsubs[module].add(topic_name)
+    def __init__(self, topic_blacklist, regexes):
+        super().__init__('PUB', topic_blacklist, regexes)
 
 
-    def get_topics(self, modules):
-        """ get the set of topics
-            :param modules: list of modules to take into account
-        """
-        topics = set()
-        for module in modules:
-            if module in self._module_pubsubs:
-                topics |= self._module_pubsubs[module]
-        return topics
+class Subscriptions(PubSub):
+    """ Collects topic subscription information for scopes """
+
+    def __init__(self, topic_blacklist, regexes):
+        super().__init__('SUB', topic_blacklist, regexes)
+
+
+class Ambiguities(PubSub):
+    """ Collects topic information that cannot be classified """
+
+    def __init__(self, topic_blacklist, regexes):
+        super().__init__('AMB', topic_blacklist, regexes)
+
+
+class Scope(object):
+    """ Defines a scope to add dependencies or topics to """
+    def __init__(self, typename, name):
+        self.publications = set()
+        self.subscriptions = set()
+        self.dependencies = set()
+        self.ambiguities = set()
+        self._name = name
+        self._typename = typename
+
+    def add_dependency(self, dependency_name: str):
+        if isinstance( dependency_name, str):
+            self.dependencies.add(dependency_name)
+
+    def is_empty(self):
+        return (0 == len(self.publications)) and (0==len(self.subscriptions))
 
     @property
-    def pubsubs(self):
-        """ get dict of all publication/subscriptions (key=modules, value=set of
-            topic names"""
-        return self._module_pubsubs
+    def name(self):
+        return self._name
 
+    def reduce_ambiguities(self) -> Set[str]:
+        self.ambiguities = self.ambiguities - self.subscriptions - self.publications
+        return self.dependencies
+
+    @property
+    def typename(self):
+        return self._typename
+
+    # define these so we can hash these classes in dicts and sets
+    def __hash__(self):
+        return self._name.__hash__()
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self._name == other
+        else:
+            return self._name == other._name
+
+class LibraryScope(Scope):
+    def __init__(self, name):
+        super().__init__('Library',name)
+
+class ModuleScope(Scope):
+    def __init__(self, name):
+        super().__init__('Module',name)
 
 class Graph(object):
     """ Collects Node and Edge information by parsing the source tree """
-    def __init__(self, module_whitelist=[], topic_blacklist=[]):
-        self._current_module = [] # stack with current module (they can be nested)
-        self._all_modules = set() # set of all found modules
 
-        self._comment_remove_pattern = re.compile(
-            r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
-            re.DOTALL | re.MULTILINE)
+    def __init__(self, **kwargs):
+        """
+        :kwargs:
+            - scope_whitelist
+            - scope_blacklist
+            - topic_blacklist
+        """
+
         self._whitespace_pattern = re.compile(r'\s+')
-        self._module_whitelist = module_whitelist
-        self._excluded_paths = []
+
+        self._scope_blacklist = set(kwargs.get('scope_blacklist',set()))
+        self._scope_whitelist = set(kwargs.get('scope_whitelist',set()))
+
+        self._path_blacklist = []
+
+        self._topic_blacklist = set(kwargs.get('topic_blacklist',set()))
 
         self._orb_id_vehicle_attitude_controls_topic = 'actuator_controls_0'
-        self._orb_id_vehicle_attitude_controls_re = \
-            re.compile(r'\#define\s+ORB_ID_VEHICLE_ATTITUDE_CONTROLS\s+([^,)]+)')
+        self._orb_id_vehicle_attitude_controls_re = re.compile(r'\#define\s+ORB_ID_VEHICLE_ATTITUDE_CONTROLS\s+([^,)]+)')
 
-        self._module_subscriptions = {} # key = module name, value = set of topic names
-        self._module_publications = {} # key = module name, value = set of topic names
+        self._warnings = [] # list of all ambiguous scan sites
 
-        self._modules = set() # all modules
-        self._topics = set() # all topics
+        self._current_scope = [] # stack with current module (they can be nested)
+
+        self._found_modules = {}   # dict of all found modules
+        self._found_libraries = {} # dict of all found modules
+
+        self._print_nodes = set()  # combination of libraries + modules
+        self._print_topics = set() # all topics
         self._topic_colors = {} # key = topic, value = color (html string)
 
-    # handle special cases
-    # format: list of tuples with 4 entries:
-    # - module name to match (module MAIN)
-    # - regex for file name(s) to match within the module (matched against the full path)
-    # - regex to extract the topic name: the match must be ORB_ID(<topic_name>
-    #   Note: whitespace is removed from source code, so it does not need to be
-    #   accounted for in the regex.
-    #   If this is None, it will just be ignored
-    # - regex to ignore matches in the form orb_[subscribe|advertise](<match>
-    #   (the expectation is that the previous matching ORB_ID() will be passed
-    #   to this, so that we can ignore it)
-        special_cases_sub = [
-    ('listener', r'.*', None, r'^(id)$'),
-    ('logger', r'.*', None, r'^(topic|sub\.metadata|_polling_topic_meta)$'),
+        # note: the source-file-string is pre-processed to remove whitespace -- regexes should ignore whitespace
+        # note: the regexes should 2 capture groups '()' to correctly register with downstream code
+        capture_cases_sub = [r"orb_subscribe\w*\((ORB_ID)(?:\(|::)(\w+)",
+                             r"orb_copy\((ORB_ID)(?:\(|::)(\w+)",
+                             r"Subscription\w*(?:<[^>]+>|)\w*(?:\[[^]]+\]|)[\{\(](ORB_ID)(?:\(|::)(\w+)",
+                             r"SubscriptionCallbackWorkItem\w+\{this,(ORB_ID)(?:\(|::)(\w+)",
+                            ]
+        self._subscriptions = Subscriptions( self._topic_blacklist, capture_cases_sub)
 
-    ('tap_esc', r'.*', r'\b_control_topics\[[0-9]\]=([^,)]+)', r'^_control_topics\[i\]$'),
-    ('snapdragon_pwm_out', r'.*', r'\b_controls_topics\[[0-9]\]=([^,)]+)', r'^_controls_topics\[i\]$'),
-    ('linux_pwm_out', r'.*', r'\b_controls_topics\[[0-9]\]=([^,)]+)', r'^_controls_topics\[i\]$'),
-    ]
-        special_cases_sub = [(a, re.compile(b), re.compile(c) if c is not None else None, re.compile(d))
-                                   for a,b,c,d in special_cases_sub]
+        # note: the source-file-string is pre-processed to remove whitespace -- regexes should ignore whitespace
+        # note: the regexes should 2 capture groups '()' to correctly register with downstream code
+        capture_cases_pub = [r"orb_advertise(?:_multi|_queue|_multi_queue|)\((ORB_ID)(?:\(|::)(\w+)",
+                             r"orb_publish(?:_auto|)\((ORB_ID)(?:\(|::)(\w+)",
+                             r"Publication\w*<\w+>\w+(?:\[[^]]+\]|)[\(\{]*(ORB_ID)(?:\(|::)(\w+)",
+                            ]
+        self._publications = Publications( self._topic_blacklist, capture_cases_pub)
 
-        self._subscriptions = PubSub(False, topic_blacklist,
-                [r"\borb_subscribe(_multi|)\b\(([^,)]+)"],
-                special_cases_sub)
+        # note: the source-file-string is pre-processed to remove whitespace -- regexes should ignore whitespace
+        # note: the regexes should 2 capture groups '()' to correctly register with downstream code
+        capture_cases_ambiguous = [ r"Publication\w*(?:\<\w+\>|)\w+(\[)()",
+                                    r"Subscription\w*(?:\<\w+\>|)\w+(\[)()",
+                                    r"(ORB_ID)(?:\(|::)(\w+)",
+                                  ]
+        self._ambiguities = Ambiguities( self._topic_blacklist, capture_cases_ambiguous)
 
-
-        special_cases_pub = [
-    ('replay', r'Replay\.cpp$', None, r'^sub\.orb_meta$'),
-
-    ('uavcan', r'sensors/.*\.cpp$', r'\bUavcanCDevSensorBridgeBase\([^{]*DEVICE_PATH,([^,)]+)', r'^_orb_topic$'),
-    ]
-        special_cases_pub = [(a, re.compile(b), re.compile(c) if c is not None else None, re.compile(d))
-                                   for a,b,c,d in special_cases_pub]
-        self._publications = PubSub(True, topic_blacklist,
-                [r"\borb_advertise(_multi|_queue|_multi_queue|)\b\(([^,)]+)",
-                 r"\borb_publish_auto()\b\(([^,)]+)"],
-                special_cases_pub)
-
-
-    def _get_current_module(self):
-        if len(self._current_module) == 0:
+    def _get_current_scope(self):
+        if len(self._current_scope) == 0:
             return None
-        return self._current_module[-1]
+        return self._current_scope[-1]
 
-    def build(self, src_path_list, excluded_paths=[], use_topic_pubsub_union=True):
+    def build(self, src_path_list, **kwargs):
         """ parse the source tree & extract pub/sub information.
             :param use_topic_pubsub_union: if true, use all topics that have a
             publisher or subscriber. If false, use only topics with at least one
@@ -262,71 +270,137 @@ class Graph(object):
             fill in self._module_subsciptions & self._module_publications
         """
 
-        self._subscriptions.reset()
-        self._publications.reset()
 
-        self._excluded_paths = [os.path.normpath(p) for p in excluded_paths]
+        self._path_blacklist =  set([ os.path.normpath(p) for p in kwargs.get('path_blacklist',[]) ])
+
         for path in src_path_list:
-            self._build_recursive(path)
+            log.info("## Add src path: " + path )
+            self._build_recursive(path, **kwargs)
 
-        # filter by whitelist
-        if len(self._module_whitelist) > 0:
-            self._subscriptions.filter_modules(self._module_whitelist)
-            self._publications.filter_modules(self._module_whitelist)
+        # Summarize the found counts: (all topics are defined in 'dependency' library)
+        log.info('### Summary: Total Scanned:')
+        log.info('    Library Count:      '+str(len(self._found_libraries)))
+        log.info('    Module Count:       '+str(len(self._found_modules)))
+        log.info('    Warning Count:      '+str(len(self._warnings)))
 
-        # modules & topics sets
-        self._modules = set(list(self._publications.pubsubs.keys()) +
-                list(self._subscriptions.pubsubs.keys()))
-        print('number of modules: '+str(len(self._modules)))
-        self._topics = self._get_topics(use_topic_pubsub_union=use_topic_pubsub_union)
-        print('number of topics: '+str(len(self._topics)))
+        if kwargs['merge_depends']:
+            graph.merge_depends()
+
+        # filter all scopes, topics into only the scopes + topics to output
+        self._generate_print_lists(use_topic_pubsub_union=kwargs['use_topic_pubsub_union'], merge_depends=kwargs['merge_depends'])
+
+        # Summarize the found counts:
+        log.info('### Summary (in-scope):')
+        log.info('    Scope Count:        '+str(len(self._print_scopes)))
+        log.info('    Ambiguous Topics:   '+str(len(self._print_ambiguities)))
+        log.info('    Linked Topics:      '+str(len(self._print_topics)))
+        log.info('    Warnings:           '+str(len(self._warnings)))
+
+        if 0 < len(self._warnings):
+            # print out the list of warning-sites:
+            log.info('## Warning Sites:')
+            for w in self._warnings:
+                scope_name = 'no-scope'
+                if None is not w[0]:
+                    scope_name = w[0].name
+                # warnings tuple contains: (current_scope, file_name, line_number, line)
+                log.info("    -['{}']:{:<64s}:{} = {}".format(scope_name, w[1].lstrip('/.'), w[2], w[3] ))
 
         # initialize colors
-        color_list = get_N_colors(len(self._topics), 0.7, 0.85)
+        color_list = get_N_colors(len(self._print_topics), 0.7, 0.85)
         self._topic_colors = {}
-        for i, topic in enumerate(self._topics):
+        for i, topic in enumerate(self._print_topics):
             self._topic_colors[topic] = color_list[i]
 
 
-        # validate that all special rules got used
-        self._subscriptions.check_if_match_found(self._all_modules)
-        self._publications.check_if_match_found(self._all_modules)
+    def _generate_print_lists(self, use_topic_pubsub_union, merge_depends):
+        """ generate the set of scopes (modules + libraries) and topics to print to output """
 
+        subscribed_topics = set()
+        published_topics = set()
+        ambiguous_topics = set()
 
-    def _get_topics(self, use_topic_pubsub_union=True):
-        """ get the set of topics
-        """
-        subscribed_topics = self._subscriptions.get_topics(self._modules)
-        published_topics = self._publications.get_topics(self._modules)
+        # gather all found scopes:
+        all_scopes = { **self._found_libraries, **self._found_modules }
+
+        if 0 == len(self._scope_whitelist):
+            select_scopes = self._found_modules
+        else:
+            select_scopes = {}
+            for scope_name in self._scope_whitelist:
+                if scope_name in all_scopes:
+                    select_scopes[scope_name] = all_scopes[scope_name]
+        if not isinstance(select_scopes, dict) or 0 == len(select_scopes):
+            log.error("!! No requested modules not found -- exiting.")
+            sys.exit(0)
+
+        log.debug('### Condensing found topics: scope -> total')
+        for name,scope in select_scopes.items():
+            log.debug('    # Scope: '+ name )
+
+            log.debug('        ## Subs: ' + str(len(scope.subscriptions)))
+            for topic in sorted(scope.subscriptions):
+                log.debug('            - ' + topic)
+                subscribed_topics.add(topic)
+
+            log.debug('        ## Pubs: ' + str(len(scope.publications)))
+            for topic in sorted(scope.publications):
+                log.debug('            - ' + topic )
+                published_topics.add(topic)
+
+            scope.reduce_ambiguities()
+
+            log.debug('        ## Ambiguities: ' + str(len(scope.ambiguities)))
+            for topic in sorted(scope.ambiguities):
+                log.debug('            - ' + topic )
+                ambiguous_topics.add(topic)
+
+        # filter modules iff they have at least a subscription or a publication
+        scopes_with_topic = {}
+        for name,scope in select_scopes.items():
+            if not scope.is_empty():
+                scopes_with_topic[name] = scope
+
+        self._print_ambiguities = ambiguous_topics
         if use_topic_pubsub_union:
-            return subscribed_topics | published_topics
-        return subscribed_topics & published_topics
+            self._print_topics = subscribed_topics | published_topics
+            self._print_scopes = scopes_with_topic
+        else:
+            self._print_topics = subscribed_topics & published_topics
 
-    def _build_recursive(self, path):
+            # cull scopes to only those that pub or sub to a topic that has both
+            intersect_scopes = {}
+            for name,scope in scopes_with_topic.items():
+                all_scope_topics = scope.publications | scope.subscriptions
+                for topic in all_scope_topics:
+                    if topic in self._print_topics:
+                        intersect_scopes[scope.name] = scope
+                        break
+            self._print_scopes = intersect_scopes
 
-        if os.path.normpath(path) in self._excluded_paths:
-            dbg_print('ignoring excluded path '+path)
+
+    def _build_recursive(self, path, **kwargs):
+        if os.path.normpath(path) in self._path_blacklist:
+            log.debug('ignoring excluded path '+path)
             return
 
         entries = os.listdir(path)
 
-        # check if entering a new module
+        # check if entering a new scope
         cmake_file = 'CMakeLists.txt'
-        new_module = False
+        new_scope = False
         if cmake_file in entries:
-            new_module = self._extract_module_name(os.path.join(path, cmake_file))
+            new_scope = self._extract_build_information(os.path.join(path, cmake_file), **kwargs)
 
         # iterate directories recursively
         for entry in entries:
             file_name = os.path.join(path, entry)
             if os.path.isdir(file_name):
-                self._build_recursive(file_name)
+                self._build_recursive(file_name, **kwargs)
 
 
         # iterate source files
-        # Note: we could skip the entries if we're not in a module, but we don't
-        # so that we get appropriate error messages to know where we miss subs
-        # or pubs
+        # Note: Skip all entries if we're not in a scope -- both finding known pubs/subs and emitting warnings
         for entry in entries:
             file_name = os.path.join(path, entry)
             if os.path.isfile(file_name):
@@ -334,32 +408,70 @@ class Graph(object):
                 if ext in ['.cpp', '.c', '.h', '.hpp']:
                     self._process_source_file(file_name)
 
+        if new_scope:
+            self._current_scope.pop()
 
-        if new_module:
-            self._current_module.pop()
 
+    def _extract_build_information(self, file_name, **kwargs):
+        """ extract the module or library name from a CMakeLists.txt file and store
+            in self._current_scope if there is any
+            Also records dependencies, if any are specified.
+        """
 
-    def _extract_module_name(self, file_name):
-        """ extract the module name from a CMakeLists.txt file and store
-            in self._current_module if there is any """
         datafile = open(file_name)
         found_module_def = False
+        found_module_depends = False
+        found_library_def = False
         for line in datafile:
             if 'px4_add_module' in line: # must contain 'px4_add_module'
                 found_module_def = True
+            elif 'px4_add_library' in line: # must contain 'px4_add_module'
+                tokens = line.split('(')
+                if 1 < len(tokens):
+                    found_library_def = True
+                    library_name = tokens[1].split()[0].strip().rstrip(')')
+                    library_scope = LibraryScope(library_name)
+                    self._current_scope.append(library_scope)
+                    self._found_libraries[library_name] = library_scope
+                    if self._in_scope():
+                        log.debug('    >> found library: ' + library_name)
+
+                    # we can return early because we have no further information to collect from libraries
+                    return True
+            elif found_module_def and 'DEPENDS' in line.upper():
+                found_module_depends = True
+            elif found_module_depends:
+                # two tabs is a *sketchy* heuristic -- spacing isn't guaranteed by cmake;
+                # ... but the hard-tabs *is* specified by PX4 coding standards, so it's likely to be consistent
+                if line.startswith('\t\t'):
+                    depends = [dep.strip() for dep in line.split()]
+                    for name in depends:
+                        self._current_scope[-1].add_dependency(name)
+                        if kwargs['merge_depends']:
+                            if (0 < len(self._scope_whitelist)) and self._current_scope[-1].name in self._scope_whitelist:
+                                # if we whitelist a module with dependencies, whitelist the dependencies, too
+                                self._scope_whitelist.add(name)
+
+                else:
+                    found_module_depends = False  ## done with the 'DEPENDS' section.
 
             words = line.split()
             # get the definition of MAIN
             if found_module_def and 'MAIN' in words and len(words) >= 2:
-                self._current_module.append(words[1])
-                self._all_modules.add(words[1])
-                dbg_print('Found module name: '+words[1])
-                return True
-        return False
+                module_name = words[1]
+                module_scope = ModuleScope(module_name)
+                self._current_scope.append(module_scope)
+                self._found_modules[module_name] = module_scope
+                if self._in_scope():
+                    log.debug('    >> Found module name: ' + module_scope.name)
+
+        return (found_library_def or found_module_def)
 
 
     def _process_source_file(self, file_name):
         """ extract information from a single source file """
+
+        log.debug( "        >> extracting topics from file: " + file_name )
 
         with codecs.open(file_name, 'r', 'utf-8') as f:
             try:
@@ -369,82 +481,101 @@ class Graph(object):
                 return
 
 
-            current_module = self._get_current_module()
-            if current_module == 'uorb_tests': # skip this
-                return
-            if current_module == 'uorb':
+            current_scope = self._get_current_scope()
+            if current_scope:
+                if current_scope.name in self._scope_blacklist:
+                    return
+                elif current_scope.name == 'uorb_tests': # skip this
+                    return
+                elif current_scope.name == 'uorb':
 
-                # search and validate the ORB_ID_VEHICLE_ATTITUDE_CONTROLS define
-                matches = self._orb_id_vehicle_attitude_controls_re.findall(content)
-                for match in matches:
-                    if match != 'ORB_ID('+self._orb_id_vehicle_attitude_controls_topic:
-                        # if we land here, you need to change _orb_id_vehicle_attitude_controls_topic
-                        raise Exception(
-                            'The extracted define for ORB_ID_VEHICLE_ATTITUDE_CONTROLS '
-                            'is '+match+' but expected ORB_ID('+
-                            self._orb_id_vehicle_attitude_controls_topic)
+                    # search and validate the ORB_ID_VEHICLE_ATTITUDE_CONTROLS define
+                    matches = self._orb_id_vehicle_attitude_controls_re.findall(content)
+                    for match in matches:
+                        if match != 'ORB_ID('+self._orb_id_vehicle_attitude_controls_topic:
+                            # if we land here, you need to change _orb_id_vehicle_attitude_controls_topic
+                            raise Exception(
+                                'The extracted define for ORB_ID_VEHICLE_ATTITUDE_CONTROLS '
+                                'is '+match+' but expected ORB_ID('+
+                                self._orb_id_vehicle_attitude_controls_topic)
 
-                return # skip uorb module for the rest
+                    return # skip uorb module for the rest
 
+            line_number = 0
+            for full_line in content.splitlines():
+                line_number += 1
 
+                short_line = re.sub(self._whitespace_pattern, '', full_line)
 
-            if content.lower().find('orb_') != -1: # approximative filter to quickly
-                                           # discard files we're not interested in
-                                           # (speedup the parsing)
-                src = self._comment_remover(content)
-                src = re.sub(self._whitespace_pattern, '', src) # remove all whitespace
+                topic = self._publications.match(short_line)
+                if topic:
+                    if current_scope:
+                        current_scope.publications.add(topic)
+                        continue
+                    else:
+                        raise AssertionError("Encountered Publication topic outside of any scope! " + file_name + " Aborting!")
 
+                topic = self._subscriptions.match(short_line)
+                if topic:
+                    if current_scope:
+                        current_scope.subscriptions.add(topic)
+                        continue
+                    else:
+                        raise AssertionError("Encountered Subscription topic outside of any scope! " + file_name + " Aborting!")
 
-                # subscriptions
-                self._subscriptions.extract(file_name, src, current_module,
-                        self._orb_id_vehicle_attitude_controls_topic)
+                topic = self._ambiguities.match(short_line)
+                if topic:
+                    if current_scope:
+                        if topic != PubSub.AMBIGUOUS_SITE_TOPIC:
+                            current_scope.ambiguities.add(topic)
+                        self._warnings.append((current_scope, file_name, line_number, full_line))
+                        continue
+                    else:
+                        raise AssertionError("Encountered Ambiguous topic outside of any scope! " + file_name + " Aborting!")
 
-                # publications
-                self._publications.extract(file_name, src, current_module,
-                        self._orb_id_vehicle_attitude_controls_topic)
+    def _in_scope(self, scope_name = None):
+        if 0 < len(self._current_scope):
+            if None is scope_name:
+                scope_name = self._current_scope[-1].name
+            if scope_name in self._scope_whitelist:
+                return True
 
-                # TODO: handle Publication & Subscription template classes
+        return False
 
+    def merge_depends(self):
+        log.info('### Merge Depends:')
 
+        for modname,module in self._found_modules.items():
+            if modname in self._scope_whitelist or 0==len(self._scope_whitelist):
+                for depname in module.dependencies:
+                    if depname in self._found_libraries:
+                        dep = self._found_libraries[depname]
+                        # copy topics from library to depending library
+                        for topic in dep.publications:
+                            module.publications.add(topic)
+                        for topic in dep.subscriptions:
+                            module.subscriptions.add(topic)
+                        for topic in dep.ambiguities:
+                            module.ambiguities
 
-    def _comment_remover(self, text):
-        """ remove C++ & C style comments.
-            Source: https://stackoverflow.com/a/241506 """
-        def replacer(match):
-            s = match.group(0)
-            if s.startswith('/'):
-                return " " # note: a space and not an empty string
-            else:
-                return s
-        return re.sub(self._comment_remove_pattern, replacer, text)
+        # omit all libraries -- they've already been merged into their respective dependees
+        self._scope_whitelist = set([ str(s) for s in self._scope_whitelist if s not in self._found_libraries])
 
 
     @property
-    def modules(self):
+    def output_scopes(self):
         """ get the set of all modules """
-        return self._modules
+        return self._print_scopes
 
     @property
-    def topics(self):
+    def output_topics(self):
         """ get set set of all topics """
-        return self._topics
+        return self._print_topics
 
     @property
     def topic_colors(self):
         """ get a dict of all topic colors with key=topic, value=color """
         return self._topic_colors
-
-    @property
-    def module_subscriptions(self):
-        """ get a dict of all subscriptions with key=module name, value=set(topic names) """
-        return self._subscriptions.pubsubs
-
-    @property
-    def module_publications(self):
-        """ get a dict of all publications with key=module name, value=set(topic names) """
-        return self._publications.pubsubs
-
-
 
 class OutputGraphviz(object):
     """ write graph using Graphviz """
@@ -466,44 +597,40 @@ class OutputGraphviz(object):
 
         ratio = 1 # aspect ratio
 
-        modules = self._graph.modules
-        topics = self._graph.topics
+        output_topics = self._graph.output_topics
+        output_scopes = self._graph.output_scopes
         topic_colors = self._graph.topic_colors
-        module_publications = self._graph.module_publications
-        module_subscriptions = self._graph.module_subscriptions
 
         graph_attr={'splines': 'true', 'ratio': str(ratio), 'overlap': 'false'}
         graph_attr['sep'] = '"+15,15"' # increase spacing between nodes
         graph = Digraph(comment='autogenerated graph with graphviz using uorb_graph.py',
                 engine=engine, graph_attr=graph_attr)
 
-
-        # nodes
-        for module in modules:
-            graph.node('m_'+module, module, shape='box', fontcolor='#ffffff',
+        # scopes: modules
+        log.info('    > Writing scopes')
+        for name,_ in output_scopes.items():
+            graph.node('m_'+name, name, shape='box', fontcolor='#ffffff',
                     style='filled', color='#666666', fontsize='16')
 
-        for topic in topics:
+        log.info('    > Writing topics')
+        for topic in output_topics:
             graph.node('t_'+topic, topic, shape='ellipse', fontcolor='#ffffff',
                     style='filled', color=topic_colors[topic])
 
-
         # edges
+        log.info('    > Writing publish edges')
         if show_publications:
-            for module in modules:
-                if module in module_publications:
-                    for topic in module_publications[module]:
-                        if topic in topics:
-                            graph.edge('m_'+module, 't_'+topic,
-                                    color=topic_colors[topic], style='dashed')
+            for scope_name,scope in output_scopes.items():
+                for topic in scope.publications:
+                    if topic in output_topics:
+                        graph.edge('m_'+scope_name, 't_'+topic, color=topic_colors[topic], style='dashed')
 
+        log.info('    > Writing subscribe edges')
         if show_subscriptions:
-            for module in modules:
-                if module in module_subscriptions:
-                    for topic in module_subscriptions[module]:
-                        if topic in topics:
-                            graph.edge('t_'+topic, 'm_'+module,
-                                    color=topic_colors[topic])
+            for scope_name,scope in output_scopes.items():
+                for topic in scope.subscriptions:
+                    if topic in output_topics:
+                        graph.edge('t_'+topic, 'm_'+scope_name, color=topic_colors[topic])
 
         graph.render(file_name, view=False)
 
@@ -518,11 +645,9 @@ class OutputJSON(object):
 
         print('Writing to '+file_name)
 
-        modules = self._graph.modules
-        topics = self._graph.topics
+        output_topics = self._graph.output_topics
+        output_scopes = self._graph.output_scopes
         topic_colors = self._graph.topic_colors
-        module_publications = self._graph.module_publications
-        module_subscriptions = self._graph.module_subscriptions
 
         data = {}
         nodes = []
@@ -531,16 +656,16 @@ class OutputJSON(object):
         # (sort by length, such that short names are last. The rendering order
         # will be the same, so that in case of an overlap, the shorter label
         # will be on top)
-        for module in sorted(modules, key=len, reverse=True):
+        for scope_tuple in sorted(output_scopes.items(), key=(lambda st: len(st[0])), reverse=True):
             node = {}
-            node['id'] = 'm_'+module
-            node['name'] = module
-            node['type'] = 'module'
+            node['id'] = 'm_'+scope_tuple[0]
+            node['name'] = scope_tuple[0]
+            node['type'] = scope_tuple[1].typename
             node['color'] = '#666666'
             # TODO: add url to open module documentation?
             nodes.append(node)
 
-        for topic in sorted(topics, key=len, reverse=True):
+        for topic in sorted(output_topics, key=len, reverse=True):
             node = {}
             node['id'] = 't_'+topic
             node['name'] = topic
@@ -555,28 +680,27 @@ class OutputJSON(object):
 
         edges = []
 
-        # edges
-        for module in modules:
-            if module in module_publications:
-                for topic in module_publications[module]:
-                    if topic in topics:
-                        edge = {}
-                        edge['source'] = 'm_'+module
-                        edge['target'] = 't_'+topic
-                        edge['color'] = topic_colors[topic]
-                        edge['style'] = 'dashed'
-                        edges.append(edge)
 
-        for module in modules:
-            if module in module_subscriptions:
-                for topic in module_subscriptions[module]:
-                    if topic in topics:
-                        edge = {}
-                        edge['source'] = 't_'+topic
-                        edge['target'] = 'm_'+module
-                        edge['color'] = topic_colors[topic]
-                        edge['style'] = 'normal'
-                        edges.append(edge)
+        # edges
+        for name,scope in output_scopes.items():
+            for topic in scope.publications:
+                if topic in output_topics:
+                    edge = {}
+                    edge['source'] = 'm_'+name
+                    edge['target'] = 't_'+topic
+                    edge['color'] = topic_colors[topic]
+                    edge['style'] = 'dashed'
+                    edges.append(edge)
+
+        for name,scope in output_scopes.items():
+            for topic in scope.subscriptions:
+                if topic in output_topics:
+                    edge = {}
+                    edge['source'] = 't_'+topic
+                    edge['target'] = 'm_'+name
+                    edge['color'] = topic_colors[topic]
+                    edge['style'] = 'normal'
+                    edges.append(edge)
 
         data['links'] = edges
 
@@ -584,41 +708,76 @@ class OutputJSON(object):
             json.dump(data, outfile) # add indent=2 for readable formatting
 
 
+if "__main__" == __name__:
 
-# ignore topics that are subscribed/published by many topics, but are not really
-# useful to show in the graph
-topic_blacklist = [ 'parameter_update', 'mavlink_log', 'log_message' ]
-print('Excluded topics: '+str(topic_blacklist))
+    args = parser.parse_args()
 
-if len(args.modules) == 0:
-    module_whitelist = []
-else:
-    module_whitelist = [ m.strip() for m in args.modules.split(',')]
+    if 0 < args.verbosity:
+        if 1 == args.verbosity:
+            log.setLevel(logging.INFO)
+            print("set log level to INFO")
+        else: # implicity 1<
+            log.setLevel(logging.DEBUG)
+            print("set log level to DEBUG")
 
-graph = Graph(module_whitelist=module_whitelist, topic_blacklist=topic_blacklist)
-if len(args.src_path) == 0:
-    args.src_path = ['src']
-graph.build(args.src_path, args.exclude_path, use_topic_pubsub_union=args.use_topic_union)
+    # ignore topics that are subscribed/published by many topics, but are not really
+    # useful to show in the graph
+    topic_blacklist = [ 'parameter_update', 'mavlink_log', 'log_message' ]
+    print('Excluded topics: '+str(topic_blacklist))
 
+    if len(args.modules) == 0:
+        scope_whitelist = []
+    else:
+        scope_whitelist = [ m.strip() for m in args.modules.split(',')]
+        scope_whitelist = set(scope_whitelist)
 
-if args.output == 'json':
-    output_json = OutputJSON(graph)
-    output_json.write(args.file+'.json')
+    graph = Graph(scope_whitelist=scope_whitelist, topic_blacklist=topic_blacklist)
 
-elif args.output == 'graphviz':
-    try:
-        from graphviz import Digraph
-    except ImportError as e:
-        print("Failed to import graphviz: " + e)
-        print("")
-        print("You may need to install it with:")
-        print("    pip3 install --user graphviz")
-        print("")
-        sys.exit(1)
-    output_graphviz = OutputGraphviz(graph)
-    engine='fdp' # use neato or fdp
-    output_graphviz.write(args.file+'.fv', engine=engine)
-    output_graphviz.write(args.file+'_subs.fv', show_publications=False, engine=engine)
-    output_graphviz.write(args.file+'_pubs.fv', show_subscriptions=False, engine=engine)
-else:
-    print('Error: unknown output format '+args.output)
+    # if no source paths are supplied, guess that we're in the project root, and apply it to the entire 'src/' tree
+    if len(args.src_path) == 0:
+        args.src_path = ['src']
+
+    # transcribe only the source paths that actually exist:
+    source_paths = []
+    for path in args.src_path:
+        if os.path.exists(path):
+            source_paths.append(path)
+        else:
+            log.warn("Could not find path: " + path)
+
+    if 0 == len(source_paths):
+        print("!! None of the source directories were valid -- Exiting.")
+        sys.exit(-1)
+
+    # ignore certain paths
+    path_blacklist = ['src/lib/parameters/']
+    if 0 < len(args.exclude_path):
+        path_blacklist = args.exclude_path
+    if path_blacklist:
+        print('Excluded Path: '+str(path_blacklist))
+
+    graph.build(source_paths, path_blacklist=path_blacklist, use_topic_pubsub_union=args.use_topic_union, merge_depends=args.merge_depends)
+
+    if args.output == 'json':
+        output_json = OutputJSON(graph)
+        output_json.write(args.file+'.json')
+
+    elif args.output in ('graphviz','gv'):
+        try:
+            from graphviz import Digraph
+        except ImportError as e:
+            print("Failed to import graphviz: " + str(e))
+            print("")
+            print("You may need to install it with:")
+            print("    pip3 install --user graphviz")
+            print("")
+            sys.exit(1)
+        output_graphviz = OutputGraphviz(graph)
+        engine='fdp' # use neato or fdp
+        output_graphviz.write(args.file+'.fv', engine=engine)
+        output_graphviz.write(args.file+'_subs.fv', show_publications=False, engine=engine)
+        output_graphviz.write(args.file+'_pubs.fv', show_subscriptions=False, engine=engine)
+    elif args.output == 'none':
+        pass
+    else:
+        print('Error: unknown output format '+args.output)

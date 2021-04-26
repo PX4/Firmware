@@ -45,7 +45,7 @@
 
 #include <uavcan/equipment/air_data/RawAirData.hpp>
 
-class UavcanDifferentialPressureBridge : public UavcanCDevSensorBridgeBase
+class UavcanDifferentialPressureBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;
@@ -57,11 +57,9 @@ public:
 	int init() override;
 
 private:
-	float _diff_pres_offset {0.0f};
+	float _diff_pres_offset{0.f};
 
 	math::LowPassFilter2p _filter{10.f, 1.1f}; /// Adapted from MS5525 driver
-
-	int ioctl(struct file *filp, int cmd, unsigned long arg) override;
 
 	void air_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::air_data::RawAirData> &msg);
 

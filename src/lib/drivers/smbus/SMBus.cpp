@@ -108,8 +108,12 @@ int SMBus::write_word(const uint8_t cmd_code, uint16_t data)
 int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, const bool use_pec)
 {
 	uint8_t byte_count = 0;
-	// addr(wr), cmd_code, addr(r), byte_count, data (32 bytes max), pec
-	uint8_t rx_data[32 + 5];
+	// addr(wr), cmd_code, addr(r), byte_count, data (MAX_BLOCK_LEN bytes max), pec
+	uint8_t rx_data[MAX_BLOCK_LEN + 5];
+
+	if (length > MAX_BLOCK_LEN) {
+		return -EINVAL;
+	}
 
 	int result = transfer(&cmd_code, 1, (uint8_t *)&rx_data[3], length + 2);
 
@@ -122,7 +126,7 @@ int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, 
 	rx_data[0] = (device_address << 1) | 0x00;
 	rx_data[1] = cmd_code;
 	rx_data[2] = (device_address << 1) | 0x01;
-	byte_count = math::min(rx_data[3], (uint8_t)32);
+	byte_count = math::min(rx_data[3], MAX_BLOCK_LEN);
 
 	// ensure data is not longer than given buffer
 	memcpy(data, &rx_data[4], math::min(byte_count, length));
@@ -131,7 +135,7 @@ int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, 
 		uint8_t pec = get_pec(rx_data, byte_count + 4);
 
 		if (pec != rx_data[byte_count + 4]) {
-			result = -EINVAL;
+			result = -EIO;
 			perf_count(_interface_errors);
 		}
 	}
@@ -141,8 +145,12 @@ int SMBus::block_read(const uint8_t cmd_code, void *data, const uint8_t length, 
 
 int SMBus::block_write(const uint8_t cmd_code, const void *data, uint8_t byte_count, const bool use_pec)
 {
-	// cmd code[1], byte count[1], data[byte_count] (32max), pec[1] (optional)
-	uint8_t buf[32 + 2];
+	// cmd code[1], byte count[1], data[byte_count] (MAX_BLOCK_LEN max), pec[1] (optional)
+	uint8_t buf[MAX_BLOCK_LEN + 2];
+
+	if (byte_count > MAX_BLOCK_LEN) {
+		return -EINVAL;
+	}
 
 	buf[0] = cmd_code;
 	buf[1] = (uint8_t)byte_count;

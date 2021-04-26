@@ -34,6 +34,7 @@
 #include "VehicleIMU.hpp"
 
 #include <px4_platform_common/log.h>
+#include <lib/systemlib/mavlink_log.h>
 
 #include <float.h>
 
@@ -141,50 +142,54 @@ void VehicleIMU::ParametersUpdate(bool force)
 	}
 }
 
-bool VehicleIMU::UpdateIntervalAverage(IntervalAverage &intavg, const hrt_abstime &timestamp_sample)
+bool VehicleIMU::UpdateIntervalAverage(IntervalAverage &intavg, const hrt_abstime &timestamp_sample, uint8_t samples)
 {
 	bool updated = false;
 
 	// conservative maximum time between samples to reject large gaps and reset averaging
-	float max_interval_us = 10000; // 100 Hz
-	float min_interval_us = 100;   // 10,000 Hz
+	uint32_t max_interval_us = 10000; // 100 Hz
+	uint32_t min_interval_us = 100;   // 10,000 Hz
 
-	if (intavg.update_interval > 0) {
+	if (intavg.update_interval > 0.f) {
 		// if available use previously calculated interval as bounds
-		max_interval_us = 1.5f * intavg.update_interval;
-		min_interval_us = 0.5f * intavg.update_interval;
+		max_interval_us = roundf(1.5f * intavg.update_interval);
+		min_interval_us = roundf(0.5f * intavg.update_interval);
 	}
 
-	const float interval_us = (timestamp_sample - intavg.timestamp_sample_last);
+	const uint32_t interval_us = (timestamp_sample - intavg.timestamp_sample_last);
 
 	if ((intavg.timestamp_sample_last > 0) && (interval_us < max_interval_us) && (interval_us > min_interval_us)) {
 
 		intavg.interval_sum += interval_us;
+		intavg.interval_samples += samples;
 		intavg.interval_count++;
 
 		// periodically calculate sensor update rate
 		if (intavg.interval_count > 10000 || ((intavg.update_interval <= FLT_EPSILON) && intavg.interval_count > 100)) {
 
-			const float sample_interval_avg = intavg.interval_sum / intavg.interval_count;
+			const float sample_interval_avg = (float)intavg.interval_sum / (float)intavg.interval_count;
 
 			if (PX4_ISFINITE(sample_interval_avg) && (sample_interval_avg > 0.f)) {
 				// update if interval has changed by more than 0.5%
 				if ((fabsf(intavg.update_interval - sample_interval_avg) / intavg.update_interval) > 0.005f) {
 
 					intavg.update_interval = sample_interval_avg;
+					intavg.update_interval_raw = (float)intavg.interval_sum / (float)intavg.interval_samples;
 					updated = true;
 				}
 			}
 
 			// reset sample interval accumulator
 			intavg.interval_sum = 0.f;
-			intavg.interval_count = 0.f;
+			intavg.interval_samples = 0;
+			intavg.interval_count = 0;
 		}
 
 	} else {
 		// reset
 		intavg.interval_sum = 0.f;
-		intavg.interval_count = 0.f;
+		intavg.interval_samples = 0;
+		intavg.interval_count = 0;
 	}
 
 	intavg.timestamp_sample_last = timestamp_sample;
@@ -222,10 +227,11 @@ void VehicleIMU::Run()
 
 		} else {
 			// collect sample interval average for filters
-			if (!_intervals_configured && UpdateIntervalAverage(_gyro_interval, gyro.timestamp_sample)) {
+			if (!_intervals_configured && UpdateIntervalAverage(_gyro_interval, gyro.timestamp_sample, gyro.samples)) {
 				update_integrator_config = true;
 				publish_status = true;
 				_status.gyro_rate_hz = 1e6f / _gyro_interval.update_interval;
+				_status.gyro_raw_rate_hz = 1e6f / _gyro_interval.update_interval_raw;
 			}
 		}
 
@@ -268,10 +274,11 @@ void VehicleIMU::Run()
 
 		} else {
 			// collect sample interval average for filters
-			if (!_intervals_configured && UpdateIntervalAverage(_accel_interval, accel.timestamp_sample)) {
+			if (!_intervals_configured && UpdateIntervalAverage(_accel_interval, accel.timestamp_sample, accel.samples)) {
 				update_integrator_config = true;
 				publish_status = true;
 				_status.accel_rate_hz = 1e6f / _accel_interval.update_interval;
+				_status.accel_raw_rate_hz = 1e6f / _accel_interval.update_interval_raw;
 			}
 		}
 
@@ -320,6 +327,17 @@ void VehicleIMU::Run()
 			}
 
 			publish_status = true;
+
+			if (_accel_calibration.enabled() && (hrt_elapsed_time(&_last_clipping_notify_time) > 3_s)) {
+				// start notifying the user periodically if there's significant continuous clipping
+				const uint64_t clipping_total = _status.accel_clipping[0] + _status.accel_clipping[1] + _status.accel_clipping[2];
+
+				if (clipping_total > _last_clipping_notify_total_count + 1000) {
+					mavlink_log_critical(&_mavlink_log_pub, "Accel %d clipping, not safe to fly!", _instance);
+					_last_clipping_notify_time = accel.timestamp_sample;
+					_last_clipping_notify_total_count = clipping_total;
+				}
+			}
 		}
 
 		// break once caught up to gyro

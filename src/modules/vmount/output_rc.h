@@ -43,6 +43,7 @@
 
 #include <uORB/Publication.hpp>
 #include <uORB/topics/actuator_controls.h>
+#include <uORB/topics/gimbal_device_attitude_status.h>
 
 namespace vmount
 {
@@ -63,7 +64,10 @@ public:
 	virtual void print_status();
 
 private:
+	void _stream_device_attitude_status();
+
 	uORB::Publication <actuator_controls_s>	_actuator_controls_pub{ORB_ID(actuator_controls_2)};
+	uORB::Publication <gimbal_device_attitude_status_s>	_attitude_status_pub{ORB_ID(gimbal_device_attitude_status)};
 
 	bool _retract_gimbal = true;
 };

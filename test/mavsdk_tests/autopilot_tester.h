@@ -40,19 +40,35 @@
 #include <mavsdk/plugins/info/info.h>
 #include <mavsdk/plugins/manual_control/manual_control.h>
 #include <mavsdk/plugins/mission/mission.h>
+#include <mavsdk/plugins/mission_raw/mission_raw.h>
 #include <mavsdk/plugins/offboard/offboard.h>
 #include <mavsdk/plugins/telemetry/telemetry.h>
 #include <mavsdk/plugins/param/param.h>
 #include "catch2/catch.hpp"
+#include <atomic>
 #include <chrono>
+#include <ctime>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <thread>
 
 extern std::string connection_url;
+extern std::optional<float> speed_factor;
 
 using namespace mavsdk;
 using namespace mavsdk::geometry;
+
+
+inline std::string time_str()
+{
+	time_t rawtime;
+	time(&rawtime);
+	struct tm *timeinfo = localtime(&rawtime);
+	char time_buffer[18];
+	strftime(time_buffer, 18, "[%I:%M:%S|Info ] ", timeinfo);
+	return time_buffer;
+}
 
 class AutopilotTester
 {
@@ -68,6 +84,9 @@ public:
 		Baro,
 		Gps
 	};
+
+	AutopilotTester();
+	~AutopilotTester();
 
 	void connect(const std::string uri);
 	void wait_until_ready();
@@ -92,6 +111,8 @@ public:
 	void execute_mission_and_get_mag_stuck();
 	void execute_mission_and_lose_baro();
 	void execute_mission_and_get_baro_stuck();
+	void load_qgc_mission_raw_and_move_here(const std::string &plan_file);
+	void execute_mission_raw();
 	void execute_rtl();
 	void offboard_goto(const Offboard::PositionNedYaw &target, float acceptance_radius_m = 0.3f,
 			   std::chrono::seconds timeout_duration = std::chrono::seconds(60));
@@ -114,30 +135,38 @@ private:
 	bool ground_truth_horizontal_position_far_from(const Telemetry::GroundTruth &target_pos, float min_distance_m);
 	bool estimated_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
 	bool estimated_horizontal_position_close_to(const Offboard::PositionNedYaw &target_pos, float acceptance_radius_m);
+	void start_and_wait_for_first_mission_item();
+	void wait_for_flight_mode(Telemetry::FlightMode flight_mode, std::chrono::seconds timeout);
+	void wait_for_landed_state(Telemetry::LandedState landed_state, std::chrono::seconds timeout);
+	void wait_for_mission_finished(std::chrono::seconds timeout);
+	void wait_for_mission_raw_finished(std::chrono::seconds timeout);
+	void move_mission_raw_here(std::vector<mavsdk::MissionRaw::MissionItem> &mission_items);
 
-	std::chrono::milliseconds adjust_to_lockstep_speed(std::chrono::milliseconds duration_ms);
+	void report_speed_factor();
 
 	template<typename Rep, typename Period>
 	bool poll_condition_with_timeout(
 		std::function<bool()> fun, std::chrono::duration<Rep, Period> duration)
 	{
-		const std::chrono::milliseconds duration_ms(duration);
+		static constexpr unsigned check_resolution = 100;
 
-		if (_info && _info->get_flight_information().first == mavsdk::Info::Result::Success) {
+		const std::chrono::microseconds duration_us(duration);
+
+		if (_telemetry && _telemetry->attitude_quaternion().timestamp_us != 0) {
 			// A system is connected. We can base the timeouts on the autopilot time.
-			uint32_t start_time = _info->get_flight_information().second.time_boot_ms;
+			const int64_t start_time_us = _telemetry->attitude_quaternion().timestamp_us;
 
 			while (!fun()) {
-				std::this_thread::sleep_for(duration_ms / 100);
+				std::this_thread::sleep_for(duration_us / check_resolution);
 
 				// This might potentially loop forever and the test needs to be killed by a watchdog outside.
 				// The reason not to include an absolute timeout here is that it can happen if the host is
 				// busy and PX4 doesn't run fast enough.
-				const int64_t elapsed_time_ms = _info->get_flight_information().second.time_boot_ms - start_time;
+				const int64_t elapsed_time_us = _telemetry->attitude_quaternion().timestamp_us - start_time_us;
 
-				if (elapsed_time_ms > duration_ms.count()) {
-					std::cout << "Timeout, connected to vehicle but waiting for test for " << elapsed_time_ms / 1000.0 << " seconds" <<
-						  std::endl;
+				if (elapsed_time_us > duration_us.count()) {
+					std::cout << time_str() << "Timeout, connected to vehicle but waiting for test for " << static_cast<double>
+						  (elapsed_time_us) / 1e6 << " seconds\n";
 					return false;
 				}
 			}
@@ -147,12 +176,15 @@ private:
 			const auto start_time = std::chrono::steady_clock::now();
 
 			while (!fun()) {
-				std::this_thread::sleep_for(duration_ms / 100);
-				const int64_t elapsed_time_us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() -
-								start_time).count();
+				std::this_thread::sleep_for(duration_us / check_resolution);
+				const auto elapsed_time_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() -
+							     start_time);
 
-				if (elapsed_time_us > duration_ms.count() * 1000) {
-					std::cout << "Timeout, waiting for the vehicle for " << elapsed_time_us / 1000000.0 << " seconds" << std::endl;
+				if (elapsed_time_us > duration_us) {
+					std::cout << time_str() << "Timeout, waiting for the vehicle for "
+						  << elapsed_time_us.count() * std::chrono::steady_clock::period::num
+						  / static_cast<double>(std::chrono::steady_clock::period::den)
+						  << " seconds\n";
 					return false;
 				}
 			}
@@ -161,15 +193,44 @@ private:
 		return true;
 	}
 
+	template<typename Rep, typename Period>
+	void sleep_for(std::chrono::duration<Rep, Period> duration)
+	{
+		const std::chrono::microseconds duration_us(duration);
+
+		if (_telemetry && _telemetry->attitude_quaternion().timestamp_us != 0) {
+
+			const int64_t start_time_us = _telemetry->attitude_quaternion().timestamp_us;
+
+			while (true) {
+				// Hopefully this is often enough not to have PX4 time out on us.
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+				const int64_t elapsed_time_us = _telemetry->attitude_quaternion().timestamp_us - start_time_us;
+
+				if (elapsed_time_us > duration_us.count()) {
+					return;
+				}
+			}
+
+		} else {
+			std::this_thread::sleep_for(duration);
+		}
+	}
+
 	mavsdk::Mavsdk _mavsdk{};
 	std::unique_ptr<mavsdk::Action> _action{};
 	std::unique_ptr<mavsdk::Failure> _failure{};
 	std::unique_ptr<mavsdk::Info> _info{};
 	std::unique_ptr<mavsdk::ManualControl> _manual_control{};
 	std::unique_ptr<mavsdk::Mission> _mission{};
+	std::unique_ptr<mavsdk::MissionRaw> _mission_raw{};
 	std::unique_ptr<mavsdk::Offboard> _offboard{};
 	std::unique_ptr<mavsdk::Param> _param{};
 	std::unique_ptr<mavsdk::Telemetry> _telemetry{};
 
 	Telemetry::GroundTruth _home{NAN, NAN, NAN};
+
+	std::atomic<bool> _should_exit {false};
+	std::thread _real_time_report_thread {};
 };

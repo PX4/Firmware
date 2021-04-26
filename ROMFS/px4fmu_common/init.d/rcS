@@ -23,9 +23,6 @@ set +e
 set R /
 set AUTOCNF no
 set AUX_MODE pwm
-set DATAMAN_OPT ""
-set FAILSAFE none
-set FAILSAFE_AUX none
 set FCONFIG /fs/microsd/etc/config.txt
 set FEXTRAS /fs/microsd/etc/extras.txt
 set FMU_MODE pwm
@@ -38,31 +35,21 @@ set MAV_TYPE none
 set MIXER none
 set MIXER_AUX none
 set MIXER_FILE none
-set MK_MODE none
-set MKBLCTRL_ARG ""
+set MIXER_EXTRA none
 set OUTPUT_MODE none
 set PARAM_FILE /fs/microsd/params
-set PWM_AUX_DISARMED p:PWM_AUX_DISARMED
-set PWM_AUX_MAX p:PWM_AUX_MAX
-set PWM_AUX_MIN p:PWM_AUX_MIN
+set PWM_OUT none
+set PWM_MAIN_RATE p:PWM_MAIN_RATE
 set PWM_AUX_OUT none
 set PWM_AUX_RATE p:PWM_AUX_RATE
-set PWM_DISARMED p:PWM_DISARMED
-set PWM_MAX p:PWM_MAX
-set PWM_MIN p:PWM_MIN
-set PWM_OUT none
-set PWM_RATE p:PWM_RATE
+set PWM_EXTRA_OUT none
+set PWM_EXTRA_RATE p:PWM_EXTRA_RATE
+set EXTRA_MIXER_MODE none
 set RC_INPUT_ARGS ""
 set SDCARD_MIXERS_PATH /fs/microsd/etc/mixers
 set STARTUP_TUNE 1
 set USE_IO no
 set VEHICLE_TYPE none
-
-# Airframe parameter versioning: airframe maintainers can set this in the
-# airframe startup script, and then increase it by one whenever an airframe
-# parameter is updated - it will ensure that these parameters will be updated
-# when the firmware is flashed.
-set PARAM_DEFAULTS_VER 1
 
 #
 # Mount the procfs.
@@ -78,13 +65,6 @@ sercon
 # Print full system version.
 #
 ver all
-
-#
-# Start the ORB (first app to start)
-# tone_alarm and tune_control
-# is dependent.
-#
-uorb start
 
 #
 # Try to mount the microSD card.
@@ -175,20 +155,31 @@ else
 	then
 		param reset_all
 	fi
+	if ver hwtypecmp V5X00 V5X90 V5Xa0
+	then
+		netman update -i eth0
+	fi
 
 	#
 	# Set AUTOCNF flag to use it in AUTOSTART scripts.
 	#
 	if param greater SYS_AUTOCONFIG 0
 	then
-		if param compare SYS_AUTOCONFIG 1
-		then
-			# Wipe out params except RC*, flight modes, total flight time, accel cal, gyro cal, next flight UUID
-			param reset_all SYS_AUTOSTART SYS_AUTOCONFIG RC* COM_FLTMODE* LND_FLIGHT_T_* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT_UUID
-		fi
-
+		# Wipe out params except RC*, flight modes, total flight time, calibration parameters, next flight UUID
+		param reset_all SYS_AUTO* RC* COM_FLTMODE* LND_FLIGHT* TC_* CAL_ACC* CAL_GYRO* COM_FLIGHT*
 		set AUTOCNF yes
 	fi
+
+	#
+	# Optional board architecture defaults: rc.board_arch_defaults
+	#
+	set BOARD_ARCH_RC_DEFAULTS ${R}etc/init.d/rc.board_arch_defaults
+	if [ -f $BOARD_ARCH_RC_DEFAULTS ]
+	then
+		echo "Board architecture defaults: ${BOARD_ARCH_RC_DEFAULTS}"
+		. $BOARD_ARCH_RC_DEFAULTS
+	fi
+	unset BOARD_ARCH_RC_DEFAULTS
 
 	#
 	# Optional board defaults: rc.board_defaults
@@ -220,7 +211,7 @@ else
 	# Waypoint storage.
 	# REBOOTWORK this needs to start in parallel.
 	#
-	dataman start $DATAMAN_OPT
+	dataman start
 
 	#
 	# Start the socket communication send_event handler.
@@ -237,14 +228,6 @@ else
 	#
 	rgbled start -X -q
 	rgbled_ncp5623c start -X -q
-
-	if param greater -s LIGHT_EN_BLINKM 0
-	then
-		if blinkm start -X
-		then
-			blinkm systemstate
-		fi
-	fi
 
 	#
 	# Set parameters and env variables for selected AUTOSTART.
@@ -272,11 +255,31 @@ else
 	fi
 
 	#
-	# Set USE_IO flag.
+	# Check if UAVCAN is enabled, default to it for ESCs.
 	#
-	if param compare -s SYS_USE_IO 1
+	if param greater -s UAVCAN_ENABLE 0
 	then
-		set USE_IO yes
+		# Start core UAVCAN module.
+		if uavcan start
+		then
+			if param greater UAVCAN_ENABLE 1
+			then
+				# Start UAVCAN firmware update server and dynamic node ID allocation server.
+				uavcan start fw
+				tune_control play -t 1
+				if param greater UAVCAN_ENABLE 2
+				then
+					set OUTPUT_MODE uavcan_esc
+				fi
+			fi
+		else
+			tune_control play error
+		fi
+	else
+		if param greater -s UAVCAN_V1_ENABLE 0
+		then
+			uavcan_v1 start
+		fi
 	fi
 
 	#
@@ -284,49 +287,51 @@ else
 	# Assumption IOFW set to firmware file and IO_PRESENT = no
 	#
 
-	if [ -f $IOFW -a $USE_IO = yes ]
+	if [ -f $IOFW ]
 	then
-		if px4io checkcrc ${IOFW}
+		# Check for the mini using build with px4io fw file
+		# but not a px4IO
+		if ver hwtypecmp V540 V560
 		then
-			set IO_PRESENT yes
+			param set SYS_USE_IO 0
 		else
-			# tune Program PX4IO
-			tune_control play -t 16 # tune 16 = PROG_PX4IO
-
-			if px4io start
+			if px4io checkcrc ${IOFW}
 			then
-				# Try to safety px4 io so motor outputs don't go crazy.
-				if ! px4io safety_on
+				set IO_PRESENT yes
+			else
+				# tune Program PX4IO
+				tune_control play -t 16 # tune 16 = PROG_PX4IO
+
+				if px4io update ${IOFW}
 				then
-					# px4io did not respond to the safety command.
-					px4io stop
+					usleep 10000
+					tune_control stop
+					if px4io checkcrc ${IOFW}
+					then
+						tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
+						set IO_PRESENT yes
+					else
+						tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
+					fi
+				else
+					tune_control stop
 				fi
 			fi
-
-			if px4io forceupdate 14662 ${IOFW}
-			then
-				usleep 10000
-				tune_control stop
-				if px4io checkcrc ${IOFW}
-				then
-					echo "PX4IO CRC OK after updating"
-					tune_control play -t 17 # tune 17 = PROG_PX4IO_OK
-					set IO_PRESENT yes
-				fi
-			fi
-
-			if [ $IO_PRESENT = no ]
-			then
-				echo "PX4IO update failed"
-				tune_control play -t 18 # tune 18 = PROG_PX4IO_ERR
-			fi
 		fi
+	fi
 
-		if [ $USE_IO = yes -a $IO_PRESENT = no ]
-		then
-			echo "PX4IO not found"
-			tune_control play error
-		fi
+	#
+	# Set USE_IO flag.
+	#
+	if param compare -s SYS_USE_IO 1
+	then
+		set USE_IO yes
+	fi
+
+	if [ $USE_IO = yes -a $IO_PRESENT = no ]
+	then
+		echo "PX4IO not found"
+		tune_control play error
 	fi
 
 	#
@@ -422,29 +427,6 @@ else
 	fi
 
 	#
-	# Check if UAVCAN is enabled, default to it for ESCs.
-	#
-	if param greater -s UAVCAN_ENABLE 0
-	then
-		# Start core UAVCAN module.
-		if uavcan start
-		then
-			if param greater UAVCAN_ENABLE 1
-			then
-				# Start UAVCAN firmware update server and dynamic node ID allocation server.
-				uavcan start fw
-
-				if param greater UAVCAN_ENABLE 2
-				then
-					set OUTPUT_MODE uavcan_esc
-				fi
-			fi
-		else
-			tune_control play error
-		fi
-	fi
-
-	#
 	# Optional board mavlink streams: rc.board_mavlink
 	#
 	set BOARD_RC_MAVLINK ${R}etc/init.d/rc.board_mavlink
@@ -518,6 +500,11 @@ else
 		gyro_fft start
 	fi
 
+	if param compare -s IMU_GYRO_CAL_EN 1
+	then
+		gyro_calibration start
+	fi
+
 	#
 	# Optional board supplied extras: rc.board_extras
 	#
@@ -551,13 +538,20 @@ else
 		. ${R}etc/init.d/rc.autostart.post
 	fi
 
-	if ! param compare SYS_PARAM_VER ${PARAM_DEFAULTS_VER}
+	#
+	# Bootloader upgrade
+	#
+	if param compare -s SYS_BL_UPDATE 1
 	then
-		echo "Switched to different parameter version. Resetting parameters."
-		param set SYS_PARAM_VER ${PARAM_DEFAULTS_VER}
-		param set SYS_AUTOCONFIG 2
-		param save
-		reboot
+		if [ -f "/etc/extras/bootloader.bin" ]
+		then
+			param set SYS_BL_UPDATE 0
+			param save
+			echo "bootloader update..."
+			bl_update "/etc/extras/bootloader.bin"
+			echo "bootloader update done, rebooting"
+			reboot
+		fi
 	fi
 
 #
@@ -571,9 +565,6 @@ fi
 unset R
 unset AUTOCNF
 unset AUX_MODE
-unset DATAMAN_OPT
-unset FAILSAFE
-unset FAILSAFE_AUX
 unset FCONFIG
 unset FEXTRAS
 unset FMU_MODE
@@ -586,21 +577,14 @@ unset MAV_TYPE
 unset MIXER
 unset MIXER_AUX
 unset MIXER_FILE
-unset MK_MODE
-unset MKBLCTRL_ARG
 unset OUTPUT_MODE
-unset PARAM_DEFAULTS_VER
 unset PARAM_FILE
-unset PWM_AUX_DISARMED
-unset PWM_AUX_MAX
-unset PWM_AUX_MIN
 unset PWM_AUX_OUT
 unset PWM_AUX_RATE
-unset PWM_DISARMED
-unset PWM_MAX
-unset PWM_MIN
+unset PWM_MAIN_RATE
 unset PWM_OUT
-unset PWM_RATE
+unset PWM_EXTRA_OUT
+unset PWM_EXTRA_RATE
 unset RC_INPUT_ARGS
 unset SDCARD_MIXERS_PATH
 unset STARTUP_TUNE

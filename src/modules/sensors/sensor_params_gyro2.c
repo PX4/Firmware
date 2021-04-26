@@ -118,6 +118,7 @@ PARAM_DEFINE_INT32(CAL_GYRO2_ROT, -1);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_GYRO2_XOFF, 0.0f);
 
@@ -126,6 +127,7 @@ PARAM_DEFINE_FLOAT(CAL_GYRO2_XOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_GYRO2_YOFF, 0.0f);
 
@@ -134,5 +136,6 @@ PARAM_DEFINE_FLOAT(CAL_GYRO2_YOFF, 0.0f);
  *
  * @category system
  * @group Sensor Calibration
+ * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_GYRO2_ZOFF, 0.0f);

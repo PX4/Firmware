@@ -1,0 +1,77 @@
+name: Deploy metadata for all targets
+
+on:
+  push:
+    branches:
+    - 'master'
+    - 'release/*'
+    - 'pr-metadata-test'
+
+jobs:
+  enumerate_targets:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+    - id: set-matrix
+      run: echo "::set-output name=matrix::$(./Tools/generate_board_targets_json.py)"
+  build:
+    runs-on: ubuntu-latest
+    needs: enumerate_targets
+    strategy:
+      matrix: ${{fromJson(needs.enumerate_targets.outputs.matrix)}}
+    container: px4io/px4-dev-${{ matrix.container }}:2021-02-04
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        token: ${{secrets.ACCESS_TOKEN}}
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+        path: ~/.ccache
+        key: ${{matrix.target}}-ccache-${{steps.ccache_cache_timestamp.outputs.timestamp}}
+        restore-keys: ${{matrix.target}}-ccache-
+    - name: setup ccache
+      run: |
+          mkdir -p ~/.ccache
+          echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
+          echo "compression = true" >> ~/.ccache/ccache.conf
+          echo "compression_level = 5" >> ~/.ccache/ccache.conf
+          echo "max_size = 100M" >> ~/.ccache/ccache.conf
+          ccache -s
+          ccache -z
+
+    - name: make ${{matrix.target}}
+      run: make ${{matrix.target}}
+    - name: ccache post-run
+      run: ccache -s
+
+    - name: parameter metadata
+      run: |
+        make ${{matrix.target}} ver_gen
+        ./src/lib/version/get_git_tag_or_branch_version.sh build/${{ matrix.target }} >> $GITHUB_ENV
+        cd build/${{ matrix.target }}
+        mkdir _metadata || true
+        cp parameters.* _metadata
+
+    - uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read
+      env:
+        AWS_S3_BUCKET: 'px4-travis'
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: 'us-west-1'
+        SOURCE_DIR: 'build/${{ matrix.target }}/_metadata/'
+        DEST_DIR: 'Firmware/${{ env.version }}/${{ matrix.target }}/'
+

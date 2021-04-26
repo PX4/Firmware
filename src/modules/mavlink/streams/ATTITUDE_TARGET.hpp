@@ -40,30 +40,13 @@
 class MavlinkStreamAttitudeTarget : public MavlinkStream
 {
 public:
-	const char *get_name() const override
-	{
-		return MavlinkStreamAttitudeTarget::get_name_static();
-	}
+	static MavlinkStream *new_instance(Mavlink *mavlink) { return new MavlinkStreamAttitudeTarget(mavlink); }
 
-	static constexpr const char *get_name_static()
-	{
-		return "ATTITUDE_TARGET";
-	}
+	static constexpr const char *get_name_static() { return "ATTITUDE_TARGET"; }
+	static constexpr uint16_t get_id_static() { return MAVLINK_MSG_ID_ATTITUDE_TARGET; }
 
-	static constexpr uint16_t get_id_static()
-	{
-		return MAVLINK_MSG_ID_ATTITUDE_TARGET;
-	}
-
-	uint16_t get_id() override
-	{
-		return get_id_static();
-	}
-
-	static MavlinkStream *new_instance(Mavlink *mavlink)
-	{
-		return new MavlinkStreamAttitudeTarget(mavlink);
-	}
+	const char *get_name() const override { return get_name_static(); }
+	uint16_t get_id() override { return get_id_static(); }
 
 	unsigned get_size() override
 	{
@@ -71,23 +54,16 @@ public:
 	}
 
 private:
+	explicit MavlinkStreamAttitudeTarget(Mavlink *mavlink) : MavlinkStream(mavlink) {}
+
 	uORB::Subscription _att_sp_sub{ORB_ID(vehicle_attitude_setpoint)};
 	uORB::Subscription _att_rates_sp_sub{ORB_ID(vehicle_rates_setpoint)};
-
-	/* do not allow top copying this class */
-	MavlinkStreamAttitudeTarget(MavlinkStreamAttitudeTarget &) = delete;
-	MavlinkStreamAttitudeTarget &operator = (const MavlinkStreamAttitudeTarget &) = delete;
-
-protected:
-	explicit MavlinkStreamAttitudeTarget(Mavlink *mavlink) : MavlinkStream(mavlink)
-	{}
 
 	bool send() override
 	{
 		vehicle_attitude_setpoint_s att_sp;
 
 		if (_att_sp_sub.update(&att_sp)) {
-
 			mavlink_attitude_target_t msg{};
 
 			msg.time_boot_ms = att_sp.timestamp / 1000;
@@ -100,7 +76,7 @@ protected:
 			msg.body_pitch_rate = att_rates_sp.pitch;
 			msg.body_yaw_rate = att_rates_sp.yaw;
 
-			msg.thrust = att_sp.thrust_body[0];
+			msg.thrust = matrix::Vector3f(att_sp.thrust_body).norm();
 
 			mavlink_msg_attitude_target_send_struct(_mavlink->get_channel(), &msg);
 

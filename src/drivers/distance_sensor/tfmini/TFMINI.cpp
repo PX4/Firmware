@@ -33,17 +33,31 @@
 
 #include "TFMINI.hpp"
 
+#include <lib/drivers/device/Device.hpp>
 #include <fcntl.h>
 
 TFMINI::TFMINI(const char *port, uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
-	_px4_rangefinder(0 /* TODO: device id */, rotation)
+	_px4_rangefinder(0, rotation)
 {
 	// store port name
 	strncpy(_port, port, sizeof(_port) - 1);
 
 	// enforce null termination
 	_port[sizeof(_port) - 1] = '\0';
+
+	device::Device::DeviceId device_id;
+	device_id.devid_s.devtype = DRV_DIST_DEVTYPE_TFMINI;
+	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
+
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/ttySx'
+
+	if (bus_num < 10) {
+		device_id.devid_s.bus = bus_num;
+	}
+
+	_px4_rangefinder.set_device_id(device_id.devid);
+	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_LASER);
 }
 
 TFMINI::~TFMINI()

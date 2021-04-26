@@ -78,6 +78,7 @@ PARAM_DEFINE_INT32(NAV_FT_FS, 1);
 
 /**
  * Dynamic filtering algorithm responsiveness to target movement
+ *
  * lower numbers increase the responsiveness to changing long lat
  * but also ignore less noise
  *

@@ -2,10 +2,10 @@ uint64 timestamp		# time since system start (microseconds)
 
 float32 nav_roll
 float32 nav_pitch
-float32 nav_bearing
+float32 nav_bearing 	# set to NAN if not valid
 
-float32 target_bearing
-float32 xtrack_error
+float32 target_bearing	# set to NAN if not valid
+float32 xtrack_error	# set to NAN if not valid
 
 float32 wp_dist
 

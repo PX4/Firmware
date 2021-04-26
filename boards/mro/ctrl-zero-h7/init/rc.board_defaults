@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# board specific defaults
+#------------------------------------------------------------------------------
+
+param set-default BAT_V_DIV 10.1
+param set-default BAT1_V_DIV 10.1
+
+param set-default BAT_A_PER_V 24
+param set-default BAT1_A_PER_V 24
+
+
+safety_button start

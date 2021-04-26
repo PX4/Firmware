@@ -7,50 +7,50 @@
 
 set VEHICLE_TYPE fw
 
-if [ $AUTOCNF = yes ]
-then
-	#
-	# Default parameters for fixed wing UAVs.
-	#
-	param set COM_POS_FS_DELAY 5
-	param set COM_POS_FS_EPH 15
-	param set COM_POS_FS_EPV 30
-	param set COM_POS_FS_GAIN 0
-	param set COM_POS_FS_PROB 1
-	param set COM_VEL_FS_EVH 5
+#
+# Default parameters for fixed wing UAVs.
+#
+param set-default COM_POS_FS_DELAY 5
+param set-default COM_POS_FS_EPH 15
+param set-default COM_POS_FS_EPV 30
+param set-default COM_POS_FS_GAIN 0
+param set-default COM_POS_FS_PROB 1
+param set-default COM_VEL_FS_EVH 5
+# Disable preflight disarm to not interfere with external launching
+param set-default COM_DISARM_PRFLT -1
 
-	param set EKF2_ARSP_THR 8
-	param set EKF2_FUSE_BETA 1
-	param set EKF2_GPS_CHECK 21
-	param set EKF2_MAG_ACCLIM 0
-	param set EKF2_MAG_YAWLIM 0
-	param set EKF2_REQ_EPH 10
-	param set EKF2_REQ_EPV 10
-	param set EKF2_REQ_HDRIFT 0.5
-	param set EKF2_REQ_SACC 1
-	param set EKF2_REQ_VDRIFT 1.0
+param set-default EKF2_ARSP_THR 8
+param set-default EKF2_FUSE_BETA 1
+param set-default EKF2_GPS_CHECK 21
+param set-default EKF2_MAG_ACCLIM 0
+param set-default EKF2_MAG_YAWLIM 0
+param set-default EKF2_REQ_EPH 10
+param set-default EKF2_REQ_EPV 10
+param set-default EKF2_REQ_HDRIFT 0.5
+param set-default EKF2_REQ_SACC 1
+param set-default EKF2_REQ_VDRIFT 1.0
 
-	param set RTL_TYPE 1
-	param set RTL_RETURN_ALT 100
-	param set RTL_DESCEND_ALT 100
-	param set RTL_LAND_DELAY -1
+param set-default RTL_TYPE 1
+param set-default RTL_RETURN_ALT 100
+param set-default RTL_DESCEND_ALT 100
+param set-default RTL_LAND_DELAY -1
 
-	#
-	# FW uses L1 distance for acceptance radius.
-	# Set a smaller NAV_ACC_RAD for vertical acceptance distance.
-	#
-	param set NAV_ACC_RAD 10
+#
+# FW uses L1 distance for acceptance radius.
+# Set a smaller NAV_ACC_RAD for vertical acceptance distance.
+#
+param set-default NAV_ACC_RAD 10
 
-	param set MIS_LTRMIN_ALT 25
-	param set MIS_TAKEOFF_ALT 25
+param set-default MIS_DIST_WPS 5000
+param set-default MIS_LTRMIN_ALT 25
+param set-default MIS_TAKEOFF_ALT 25
 
-	param set PWM_RATE 50
+param set-default PWM_MAIN_RATE 50
 
-	#
-	# FW takeoff acceleration can easily exceed ublox GPS 2G default.
-	#
-	param set GPS_UBX_DYNMODEL 8
-fi
+#
+# FW takeoff acceleration can easily exceed ublox GPS 2G default.
+#
+param set-default GPS_UBX_DYNMODEL 8
 
 #
 # This is the gimbal pass mixer.

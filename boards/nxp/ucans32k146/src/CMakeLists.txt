@@ -30,26 +30,49 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
+if("${PX4_BOARD_LABEL}" STREQUAL  "canbootloader")
 
-add_library(drivers_board
-	autoleds.c
-	boot.c
-	bringup.c
-	buttons.c
-	clockconfig.c
-	# i2c.cpp # TODO
-	init.c
-	periphclocks.c
-	spi.c
-	timer_config.cpp
-	userleds.c
-)
-
-target_link_libraries(drivers_board
-	PRIVATE
-		nuttx_arch # sdio
-		nuttx_drivers # sdio
-		drivers__led # drv_led_start
-		px4_layer
-		arch_io_pins
+	add_library(drivers_board
+		can_boot.c
+		led.cpp
+		clockconfig.c
+		periphclocks.c
+		timer_config.cpp
 	)
+
+	target_link_libraries(drivers_board
+		PRIVATE
+			nuttx_arch
+			nuttx_drivers
+			canbootloader
+			arch_io_pins
+			arch_led_pwm
+	)
+	target_include_directories(drivers_board PRIVATE ${PX4_SOURCE_DIR}/platforms/nuttx/src/canbootloader)
+
+else()
+
+	add_library(drivers_board
+		autoleds.c
+		boot.c
+		bringup.c
+		buttons.c
+		clockconfig.c
+		# i2c.cpp # TODO
+		init.c
+		mtd.cpp
+		periphclocks.c
+		spi.c
+		timer_config.cpp
+		userleds.c
+	)
+
+	target_link_libraries(drivers_board
+		PRIVATE
+			nuttx_arch # sdio
+			nuttx_drivers # sdio
+			drivers__led # drv_led_start
+			px4_layer
+			arch_io_pins
+		)
+endif()

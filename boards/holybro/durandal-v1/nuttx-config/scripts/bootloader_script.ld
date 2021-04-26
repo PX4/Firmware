@@ -167,14 +167,6 @@ SECTIONS
 		_einit = ABSOLUTE(.);
 	} > flash
 
-	/*
-	 * Construction data for parameters.
-	 */
-	__param ALIGN(4): {
-		__param_start = ABSOLUTE(.);
-		KEEP(*(__param*))
-		__param_end = ABSOLUTE(.);
-	} > flash
 
 	.ARM.extab : {
 		*(.ARM.extab*)

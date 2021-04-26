@@ -174,7 +174,19 @@
 /* Define the source for ADC_SCALED_V3V3_SENSORS_SENSE */
 
 #if defined(ADC_SCALED_VDD_3V3_SENSORS_CHANNEL)
-#  define ADC_SCALED_V3V3_SENSORS_SENSE ADC_SCALED_VDD_3V3_SENSORS_CHANNEL
+#  define ADC_SCALED_V3V3_SENSORS_SENSE { ADC_SCALED_VDD_3V3_SENSORS_CHANNEL }
+#  define ADC_SCALED_V3V3_SENSORS_COUNT 1
+#elif defined(ADC_SCALED_VDD_3V3_SENSORS4_CHANNEL)
+#  define ADC_SCALED_V3V3_SENSORS_SENSE { ADC_SCALED_VDD_3V3_SENSORS1_CHANNEL, ADC_SCALED_VDD_3V3_SENSORS2_CHANNEL, \
+		ADC_SCALED_VDD_3V3_SENSORS3_CHANNEL, ADC_SCALED_VDD_3V3_SENSORS4_CHANNEL }
+#  define ADC_SCALED_V3V3_SENSORS_COUNT 4
+#elif defined(ADC_SCALED_VDD_3V3_SENSORS3_CHANNEL)
+#  define ADC_SCALED_V3V3_SENSORS_SENSE { ADC_SCALED_VDD_3V3_SENSORS1_CHANNEL, ADC_SCALED_VDD_3V3_SENSORS2_CHANNEL, \
+		ADC_SCALED_VDD_3V3_SENSORS3_CHANNEL }
+#  define ADC_SCALED_V3V3_SENSORS_COUNT 3
+#elif defined(ADC_SCALED_VDD_3V3_SENSORS2_CHANNEL)
+#  define ADC_SCALED_V3V3_SENSORS_SENSE { ADC_SCALED_VDD_3V3_SENSORS1_CHANNEL, ADC_SCALED_VDD_3V3_SENSORS2_CHANNEL }
+#  define ADC_SCALED_V3V3_SENSORS_COUNT 2
 #endif
 
 /* Define an overridable default of 0.0f V for batery v div
@@ -327,11 +339,11 @@ typedef enum PX4_SOC_ARCH_ID_t {
 
 	PX4_SOC_ARCH_ID_EAGLE          =  0x1001,
 	PX4_SOC_ARCH_ID_QURT           =  0x1002,
-	PX4_SOC_ARCH_ID_OCPOC          =  0x1003,
+
 	PX4_SOC_ARCH_ID_RPI            =  0x1004,
 	PX4_SOC_ARCH_ID_SIM            =  0x1005,
 	PX4_SOC_ARCH_ID_SITL           =  0x1006,
-	PX4_SOC_ARCH_ID_BEBOP          =  0x1007,
+
 	PX4_SOC_ARCH_ID_BBBLUE         =  0x1008,
 
 } PX4_SOC_ARCH_ID_t;
@@ -575,6 +587,52 @@ int board_power_off(int status);
 int board_reset(int status);
 #endif
 
+/****************************************************************************
+ * Name: board_configure_reset
+ *
+ * Description:
+ *   Configures the device that maintains the state shared by the
+ *   application and boot loader. This is usually an RTC.
+ *
+ * Input Parameters:
+ *   mode  - The type of reset. See reset_mode_e
+ *
+ * Returned Value:
+ *   0 for Success
+ *   1 if invalid argument
+ *
+ ****************************************************************************/
+
+#ifdef CONFIG_BOARDCTL_RESET
+
+typedef enum  reset_mode_e {
+	BOARD_RESET_MODE_CLEAR             = 0, /* Clear the mode */
+	BOARD_RESET_MODE_BOOT_TO_BL        = 1, /* Reboot and stay in the bootloader */
+	BOARD_RESET_MODE_BOOT_TO_VALID_APP = 2, /* Reboot to a valid app or stay in bootloader */
+	BOARD_RESET_MODE_CAN_BL            = 3, /* Used to pass a node ID and stay in the can bootloader */
+	BOARD_RESET_MODE_RTC_BOOT_FWOK     = 4  /* Set by a a watch dogged application after running > 30 Seconds */
+} reset_mode_e;
+
+int board_configure_reset(reset_mode_e mode, uint32_t arg);
+#endif
+
+#if defined(SUPPORT_ALT_CAN_BOOTLOADER)
+/****************************************************************************
+ * Name: board_booted_by_px4
+ *
+ * Description:
+ *   Determines if the the boot loader was PX4
+ *
+ * Input Parameters:
+ *   none
+ *
+ * Returned Value:
+ *   true if booted byt a PX4 bootloader.
+ *
+ ****************************************************************************/
+
+bool board_booted_by_px4(void);
+#endif
 /************************************************************************************
  * Name: board_query_manifest
  *

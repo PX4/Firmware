@@ -3,8 +3,10 @@ px4_add_board(
 	PLATFORM nuttx
 	VENDOR omnibus
 	MODEL f4sd
+	LABEL default
 	TOOLCHAIN arm-none-eabi
 	ARCHITECTURE cortex-m4
+	CONSTRAINED_MEMORY
 	ROMFSROOT px4fmu_common
 	CONSTRAINED_FLASH
 	SERIAL_PORTS
@@ -23,22 +25,18 @@ px4_add_board(
 		imu/invensense/icm20602
 		imu/invensense/mpu6000
 		#irlock
-		#lights/blinkm
 		lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
-		#mkblctrl
-		optical_flow/px4flow
+		#optical_flow # all available optical flow drivers
 		osd
 		#pca9685
 		#pwm_input
 		#pwm_out_sim
 		pwm_out
 		rc_input
-		#tap_esc
 		#telemetry # all available telemetry drivers
 		telemetry/frsky_telemetry
-		#test_ppm
 	MODULES
 		#airspeed_selector
 		attitude_estimator_q
@@ -47,10 +45,13 @@ px4_add_board(
 		commander
 		dataman
 		ekf2
+		#esc_battery
 		events
 		flight_mode_manager
 		#fw_att_control
 		#fw_pos_control_l1
+		gyro_calibration
+		#gyro_fft
 		land_detector
 		#landing_target_estimator
 		load_mon
@@ -61,12 +62,15 @@ px4_add_board(
 		mc_hover_thrust_estimator
 		mc_pos_control
 		mc_rate_control
+		#micrortps_bridge
 		navigator
 		rc_update
 		#rover_pos_control
 		sensors
 		#sih
 		#temperature_compensation
+		#uuv_att_control
+		#uuv_pos_control
 		#vmount
 		#vtol_att_control
 	SYSTEMCMDS
@@ -74,6 +78,7 @@ px4_add_board(
 		dmesg
 		dumpfile
 		esc_calib
+		#gpio
 		hardfault_log
 		i2cdetect
 		led_control
@@ -89,21 +94,13 @@ px4_add_board(
 		reboot
 		reflect
 		sd_bench
-		#tests # tests and test runner
+		#serial_test
+		#system_time
 		top
 		#topic_listener
 		tune_control
+		uorb
 		usb_connected
 		ver
 		work_queue
-	EXAMPLES
-		#fixedwing_control # Tutorial code from https://px4.io/dev/example_fixedwing_control
-		#hello
-		#hwtest # Hardware test
-		#matlab_csv_serial
-		#px4_mavlink_debug # Tutorial code from http://dev.px4.io/en/debug/debug_values.html
-		#px4_simple_app # Tutorial code from http://dev.px4.io/en/apps/hello_sky.html
-		#rover_steering_control # Rover example app
-		#uuv_example_app
-		#work_item
 	)

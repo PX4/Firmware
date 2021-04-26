@@ -33,7 +33,8 @@
 
 /**
  * PCF8583 rotorfreq (i2c) pool interval
- * How often the sensor is readout.
+ *
+ * Determines how often the sensor is read out.
  *
  * @reboot_required true
  * @group Sensors

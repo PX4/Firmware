@@ -1,7 +1,6 @@
 #!/bin/sh
 #
-# ModalAI FC-v1 specific board defaults
-# Maintainer: travis@modalai.com
+# board specific defaults
 #------------------------------------------------------------------------------
 
 #
@@ -18,88 +17,11 @@
 #
 # Common settings across Flight Core configurations
 #
-if [ $AUTOCNF = yes ]
-then
-	#
-	# Disable safety switch by default (pull high to 3.3V to enable)
-	#  V106 - J13 pin 5
-	#  V110 - J1011 pin 5
-	#
-	param set CBRK_IO_SAFETY 22027
 
-	# Multi-EKF
-	param set EKF2_MULTI_IMU 3
-	param set SENS_IMU_MODE 0
-fi
 
-#
-# Stand Alone configuration
-#
-if ver hwtypecmp V106
-then
-	echo "Configuring Flight Core - V106"
-
-	#
-	# In Flight Core, J1 can be setup to be used as a serial port for TELEM2
-	# and connected to VOXL via cables.  We'll configure this out of the box.
-	# The user can later change this if they want, as these are configurable
-	# and not necessarily required to be used with VOXL.
-	#
-	if [ $AUTOCNF = no ]
-	then
-		if param compare MAV_1_CONFIG 0
-		then
-			echo "V106 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
-			param set MAV_1_CONFIG 102 # TELEM2
-			param set MAV_1_MODE 2	# Onboard
-			param set SER_TEL2_BAUD 921600 # VIO data
-		fi
-	fi
-
-	# User is setting defaults, so let's do it!
-	if [ $AUTOCNF = yes ]
-	then
-		echo "V106 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
-		param set MAV_1_CONFIG 102 # TELEM2
-		param set MAV_1_MODE 2	# Onboard
-		param set SER_TEL2_BAUD 921600 # VIO data
-	fi
-fi
-
-#
-# VOXL-Flight configuration
-#
-if ver hwtypecmp V110
-then
-	echo "Configuring VOXL-Flight - V110"
-
-	#
-	# TELEM2 port is physically routed in the PCB, thus not configurable.
-	# The following will detect a fresh install, or if the user has changed the setting and
-	# revert to the VOXL-Flight defaults.  This does allow the user to change the mode and
-	# baud rates and mode if they choose to do so, although VOXL is expecting what is set below
-	#
-	if [ $AUTOCNF = no ]
-	then
-		if ! param compare MAV_1_CONFIG 102
-		then
-			echo "V110 - Defualt configuration TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
-			param set MAV_1_CONFIG 102 # TELEM2
-			param set MAV_1_MODE 2	# Onboard
-			param set SER_TEL2_BAUD 921600
-		fi
-	fi
-
-	# User is setting defaults, so let's do it!
-	if [ $AUTOCNF = yes ]
-	then
-		echo "V110 - Auto Configuring TELEM2 on /dev/ttyS4 at 921600 in Normal Mode"
-		param set MAV_1_CONFIG 102 # TELEM2
-		param set MAV_1_MODE 2	# Onboard
-		param set SER_TEL2_BAUD 921600
-	fi
-fi
-
-set LOGGER_BUF 64
+# TELEM2
+param set-default MAV_1_CONFIG 102
+param set-default MAV_1_MODE 2
+param set-default SER_TEL2_BAUD 921600
 
 safety_button start

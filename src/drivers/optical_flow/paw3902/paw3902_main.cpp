@@ -47,7 +47,7 @@ I2CSPIDriverBase *PAW3902::instantiate(const BusCLIArguments &cli, const BusInst
 				       int runtime_instance)
 {
 	PAW3902 *instance = new PAW3902(iterator.configuredBusOption(), iterator.bus(), iterator.devid(), cli.bus_frequency,
-					cli.spi_mode, cli.custom1);
+					cli.spi_mode, iterator.DRDYGPIO(), cli.custom1);
 
 	if (!instance) {
 		PX4_ERR("alloc failed");

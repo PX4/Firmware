@@ -36,7 +36,5 @@ px4_add_module(
 	MAIN template_module
 	SRCS
 		template_module.cpp
-	DEPENDS
-		modules__uORB
 	)
 

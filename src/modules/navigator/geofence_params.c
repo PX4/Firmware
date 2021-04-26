@@ -62,7 +62,7 @@
  * @value 5 Land mode
  * @group Geofence
  */
-PARAM_DEFINE_INT32(GF_ACTION, 1);
+PARAM_DEFINE_INT32(GF_ACTION, 2);
 
 /**
  * Geofence altitude mode

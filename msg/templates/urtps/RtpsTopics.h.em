@@ -63,6 +63,7 @@ except AttributeError:
 #include <fastcdr/Cdr.h>
 #include <condition_variable>
 #include <queue>
+#include <type_traits>
 
 #include "microRTPS_timesync.h"
 
@@ -116,10 +117,27 @@ private:
 @[end for]@
 @[end if]@
 
+    // SFINAE
+    template<typename T> struct hasTimestampSample{
+    private:
+      static void detect(...);
+      template<typename U> static decltype(std::declval<U>().timestamp_sample()) detect(const U&);
+    public:
+      static constexpr bool value = std::is_same<uint64_t, decltype(detect(std::declval<T>()))>::value;
+    };
+
+    template<typename T>
+    inline typename std::enable_if<!hasTimestampSample<T>::value, uint64_t>::type
+    getMsgTimestampSample_impl(const T*) { return 0; }
+
     /** Msg metada Getters **/
 @[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
     template <class T>
     inline uint64_t getMsgTimestamp(const T* msg) { return msg->timestamp_(); }
+
+    template<typename T>
+    inline typename std::enable_if<hasTimestampSample<T>::value, uint64_t>::type
+    getMsgTimestampSample_impl(const T* msg) { return msg->timestamp_sample_(); }
 
     template <class T>
     inline uint8_t getMsgSysID(const T* msg) { return msg->sys_id_(); }
@@ -130,6 +148,10 @@ private:
     template <class T>
     inline uint64_t getMsgTimestamp(const T* msg) { return msg->timestamp(); }
 
+    template<typename T>
+    inline typename std::enable_if<hasTimestampSample<T>::value, uint64_t>::type
+    getMsgTimestampSample_impl(const T* msg) { return msg->timestamp_sample(); }
+
     template <class T>
     inline uint8_t getMsgSysID(const T* msg) { return msg->sys_id(); }
 
@@ -137,10 +159,21 @@ private:
     inline uint8_t getMsgSeq(const T* msg) { return msg->seq(); }
 @[end if]@
 
+    template <class T>
+    inline uint64_t getMsgTimestampSample(const T* msg) { return getMsgTimestampSample_impl(msg); }
+
+    template<typename T>
+    inline typename std::enable_if<!hasTimestampSample<T>::value, void>::type
+    setMsgTimestampSample_impl(T*, const uint64_t&) {}
+
     /** Msg metadata Setters **/
 @[if version.parse(fastrtps_version) <= version.parse('1.7.2') or not ros2_distro]@
     template <class T>
     inline void setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp_() = timestamp; }
+
+    template <class T>
+    inline typename std::enable_if<hasTimestampSample<T>::value, void>::type
+    setMsgTimestampSample_impl(T* msg, const uint64_t& timestamp_sample) { msg->timestamp_sample_() = timestamp_sample; }
 
     template <class T>
     inline void setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id_() = sys_id; }
@@ -152,11 +185,18 @@ private:
     inline void setMsgTimestamp(T* msg, const uint64_t& timestamp) { msg->timestamp() = timestamp; }
 
     template <class T>
+    inline typename std::enable_if<hasTimestampSample<T>::value, void>::type
+    setMsgTimestampSample_impl(T* msg, const uint64_t& timestamp_sample) { msg->timestamp_sample() = timestamp_sample; }
+
+    template <class T>
     inline void setMsgSysID(T* msg, const uint8_t& sys_id) { msg->sys_id() = sys_id; }
 
     template <class T>
     inline void setMsgSeq(T* msg, const uint8_t& seq) { msg->seq() = seq; }
 @[end if]@
+
+    template <class T>
+    inline void setMsgTimestampSample(T* msg, const uint64_t& timestamp_sample) { setMsgTimestampSample_impl(msg, timestamp_sample); }
 
     /**
      * @@brief Timesync object ptr.

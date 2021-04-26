@@ -57,8 +57,7 @@ PARAM_DEFINE_INT32(SYS_AUTOSTART, 0);
  * RC* parameters are preserved.
  *
  * @value 0 Keep parameters
- * @value 1 Reset parameters
- * @value 2 Reload airframe parameters
+ * @value 1 Reset parameters to airframe defaults
  * @group System
  */
 PARAM_DEFINE_INT32(SYS_AUTOCONFIG, 0);
@@ -113,19 +112,6 @@ PARAM_DEFINE_INT32(SYS_RESTART_TYPE, 2);
  * @group System
  */
 PARAM_DEFINE_INT32(SYS_MC_EST_GROUP, 2);
-
-/**
- * Parameter version
- *
- * This is used internally only: an airframe configuration might set an expected
- * parameter version value via PARAM_DEFAULTS_VER. This is checked on bootup
- * against SYS_PARAM_VER, and if they do not match, parameters from the airframe
- * configuration are reloaded.
- *
- * @min 0
- * @group System
- */
-PARAM_DEFINE_INT32(SYS_PARAM_VER, 1);
 
 /**
  * Enable auto start of rate gyro thermal calibration at the next power up.

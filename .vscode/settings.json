@@ -27,7 +27,6 @@
         "cSpell.showStatus": false,
         "cSpell.words": [
                 "acro",
-                "rattitude",
                 "nuttx",
                 "esc"
         ],
@@ -128,7 +127,6 @@
                 "${workspaceFolder}/build": true
         },
         "search.showLineNumbers": true,
-        "search.smartCase": true,
         "telemetry.enableTelemetry": false,
         "terminal.integrated.copyOnSelection": true,
         "terminal.integrated.rightClickBehavior": "paste",

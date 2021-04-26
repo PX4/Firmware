@@ -17,3 +17,9 @@ if param compare "$PRT" {{ serial_device.index }}; then
 fi
 
 {% endfor %}
+
+{% for config in ethernet_configuration -%}
+if param compare "$PRT" {{ config.index }}; then
+	set SERIAL_DEV ethernet
+fi
+{% endfor %}

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2015-2017 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,567 +31,340 @@
  *
  ****************************************************************************/
 
-#include <errno.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include "linux_pwm_out.hpp"
 
-#include <math.h>
-
-#include <px4_platform_common/tasks.h>
-#include <px4_platform_common/getopt.h>
-#include <px4_platform_common/posix.h>
-
-#include <uORB/Subscription.hpp>
-#include <uORB/SubscriptionInterval.hpp>
-#include <uORB/topics/actuator_controls.h>
-#include <uORB/topics/actuator_outputs.h>
-#include <uORB/topics/actuator_armed.h>
-#include <uORB/topics/rc_channels.h>
-#include <uORB/topics/parameter_update.h>
-
+#include <board_pwm_out.h>
 #include <drivers/drv_hrt.h>
-#include <drivers/drv_mixer.h>
-#include <lib/mixer/MixerGroup.hpp>
-#include <lib/mixer/mixer_load.h>
-#include <parameters/param.h>
-#include <output_limit/output_limit.h>
-#include <perf/perf_counter.h>
 
-#include "common.h"
-#include "navio_sysfs.h"
-#include "PCA9685.h"
-#include "ocpoc_mmap.h"
-#include "bbblue_pwm_rc.h"
+using namespace pwm_out;
 
-using namespace time_literals;
-
-namespace linux_pwm_out
+LinuxPWMOut::LinuxPWMOut() :
+	CDev("/dev/pwm_out"),
+	OutputModuleInterface(MODULE_NAME, px4::wq_configurations::hp_default),
+	_cycle_perf(perf_alloc(PC_ELAPSED, MODULE_NAME": cycle")),
+	_interval_perf(perf_alloc(PC_INTERVAL, MODULE_NAME": interval"))
 {
-static px4_task_t _task_handle = -1;
-volatile bool _task_should_exit = false;
-static bool _is_running = false;
-
-static char _device[64] = "/sys/class/pwm/pwmchip0";
-static char _protocol[64] = "navio";
-static int _max_num_outputs = 8; ///< maximum number of outputs the driver should use
-static char _mixer_filename[64] = "etc/mixers/quad_x.main.mix";
-
-// subscriptions
-int     _controls_subs[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
-int     _armed_sub = -1;
-
-// publications
-orb_advert_t    _outputs_pub = nullptr;
-orb_advert_t    _rc_pub = nullptr;
-
-perf_counter_t	_perf_control_latency = nullptr;
-
-// topic structures
-actuator_controls_s _controls[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
-orb_id_t 			_controls_topics[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
-actuator_outputs_s  _outputs;
-actuator_armed_s    _armed;
-
-// polling
-uint8_t _poll_fds_num = 0;
-px4_pollfd_struct_t _poll_fds[actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS];
-
-// control groups related
-uint32_t	_groups_required = 0;
-uint32_t	_groups_subscribed = 0;
-
-output_limit_t     _pwm_limit;
-
-// esc parameters
-int32_t _pwm_disarmed;
-int32_t _pwm_min;
-int32_t _pwm_max;
-
-MixerGroup *_mixer_group = nullptr;
-
-static void usage();
-
-static void start();
-
-static void stop();
-
-static int task_main_trampoline(int argc, char *argv[]);
-
-static void subscribe();
-
-static void task_main(int argc, char *argv[]);
-
-static void update_params(Mixer::Airmode &airmode);
-
-/* mixer initialization */
-int initialize_mixer(const char *mixer_filename);
-int mixer_control_callback(uintptr_t handle, uint8_t control_group, uint8_t control_index, float &input);
-
-
-int mixer_control_callback(uintptr_t handle,
-			   uint8_t control_group,
-			   uint8_t control_index,
-			   float &input)
-{
-	const actuator_controls_s *controls = (actuator_controls_s *)handle;
-	input = controls[control_group].control[control_index];
-
-	return 0;
+	_mixing_output.setAllMinValues(PWM_DEFAULT_MIN);
+	_mixing_output.setAllMaxValues(PWM_DEFAULT_MAX);
 }
 
-
-void update_params(Mixer::Airmode &airmode)
+LinuxPWMOut::~LinuxPWMOut()
 {
-	// multicopter air-mode
-	param_t param_handle = param_find("MC_AIRMODE");
+	/* clean up the alternate device node */
+	unregister_class_devname(PWM_OUTPUT_BASE_DEVICE_PATH, _class_instance);
 
-	if (param_handle != PARAM_INVALID) {
-		param_get(param_handle, (int32_t *)&airmode);
+	perf_free(_cycle_perf);
+	perf_free(_interval_perf);
+	delete _pwm_out;
+}
+
+int LinuxPWMOut::init()
+{
+	/* do regular cdev init */
+	int ret = CDev::init();
+
+	if (ret != OK) {
+		return ret;
 	}
+
+	/* try to claim the generic PWM output device node as well - it's OK if we fail at this */
+	_class_instance = register_class_devname(PWM_OUTPUT_BASE_DEVICE_PATH);
+
+	_mixing_output.setDriverInstance(_class_instance);
+
+	_pwm_out = new BOARD_PWM_OUT_IMPL(MAX_ACTUATORS);
+
+	ret = _pwm_out->init();
+
+	if (ret != 0) {
+		PX4_ERR("PWM output init failed");
+		delete _pwm_out;
+		_pwm_out = nullptr;
+		return ret;
+	}
+
+	update_params();
+
+	ScheduleNow();
+
+	return ret;
 }
 
-
-int initialize_mixer(const char *mixer_filename)
+int LinuxPWMOut::task_spawn(int argc, char *argv[])
 {
-	char buf[4096];
-	unsigned buflen = sizeof(buf);
-	memset(buf, '\0', buflen);
+	LinuxPWMOut *instance = new LinuxPWMOut();
 
-	_mixer_group = new MixerGroup();
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
 
-	// PX4_INFO("Trying to initialize mixer from config file %s", mixer_filename);
-
-	if (load_mixer_file(mixer_filename, buf, buflen) == 0) {
-		if (_mixer_group->load_from_buf(mixer_control_callback, (uintptr_t) &_controls, buf, buflen) == 0) {
-			PX4_INFO("Loaded mixer from file %s", mixer_filename);
-			return 0;
-
-		} else {
-			PX4_ERR("Unable to parse from mixer config file %s", mixer_filename);
+		if (instance->init() == PX4_OK) {
+			return PX4_OK;
 		}
 
 	} else {
-		PX4_ERR("Unable to load config file %s", mixer_filename);
+		PX4_ERR("alloc failed");
 	}
 
-	if (_mixer_group->count() <= 0) {
-		PX4_ERR("Mixer initialization failed");
-		return -1;
-	}
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
 
-	return 0;
+	return PX4_ERROR;
 }
 
-
-void subscribe()
+bool LinuxPWMOut::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
+				unsigned num_outputs, unsigned num_control_groups_updated)
 {
-	memset(_controls, 0, sizeof(_controls));
-	memset(_poll_fds, 0, sizeof(_poll_fds));
-
-	/* set up ORB topic names */
-	_controls_topics[0] = ORB_ID(actuator_controls_0);
-	_controls_topics[1] = ORB_ID(actuator_controls_1);
-	_controls_topics[2] = ORB_ID(actuator_controls_2);
-	_controls_topics[3] = ORB_ID(actuator_controls_3);
-
-	// Subscribe for orb topics
-	for (uint8_t i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-		if (_groups_required & (1 << i)) {
-			PX4_DEBUG("subscribe to actuator_controls_%d", i);
-			_controls_subs[i] = orb_subscribe(_controls_topics[i]);
-
-		} else {
-			_controls_subs[i] = -1;
-		}
-
-		if (_controls_subs[i] >= 0) {
-			_poll_fds[_poll_fds_num].fd = _controls_subs[i];
-			_poll_fds[_poll_fds_num].events = POLLIN;
-			_poll_fds_num++;
-		}
-
-		_armed_sub = orb_subscribe(ORB_ID(actuator_armed));
-
-	}
+	_pwm_out->send_output_pwm(outputs, num_outputs);
+	return true;
 }
 
-void task_main(int argc, char *argv[])
+void LinuxPWMOut::Run()
 {
-	_is_running = true;
+	if (should_exit()) {
+		ScheduleClear();
+		_mixing_output.unregister();
 
-	_perf_control_latency = perf_alloc(PC_ELAPSED, "linux_pwm_out control latency");
-
-	// Set up mixer
-	if (initialize_mixer(_mixer_filename) < 0) {
-		PX4_ERR("Mixer initialization failed.");
+		exit_and_cleanup();
 		return;
 	}
 
-	PWMOutBase *pwm_out;
+	perf_begin(_cycle_perf);
+	perf_count(_interval_perf);
 
-	if (strcmp(_protocol, "pca9685") == 0) {
-		PX4_INFO("Starting PWM output in PCA9685 mode");
-		pwm_out = new PCA9685();
+	_mixing_output.update();
 
-	} else if (strcmp(_protocol, "ocpoc_mmap") == 0) {
-		PX4_INFO("Starting PWM output in ocpoc_mmap mode");
-		pwm_out = new OcpocMmapPWMOut(_max_num_outputs);
+	// check for parameter updates
+	if (_parameter_update_sub.updated()) {
+		// clear update
+		parameter_update_s pupdate;
+		_parameter_update_sub.copy(&pupdate);
 
-#ifdef CONFIG_ARCH_BOARD_BEAGLEBONE_BLUE
-
-	} else if (strcmp(_protocol, "bbblue_rc") == 0) {
-		PX4_INFO("Starting PWM output in bbblue_rc mode");
-		pwm_out = new BBBlueRcPWMOut(_max_num_outputs);
-#endif
-
-	} else { /* navio */
-		PX4_INFO("Starting PWM output in Navio mode");
-		pwm_out = new NavioSysfsPWMOut(_device, _max_num_outputs);
+		// update parameters from storage
+		update_params();
 	}
 
-	if (pwm_out->init() != 0) {
-		PX4_ERR("PWM output init failed");
-		delete pwm_out;
+	_mixing_output.updateSubscriptions(false);
+
+	perf_end(_cycle_perf);
+}
+
+void LinuxPWMOut::update_params()
+{
+	updateParams();
+
+	// skip update when armed
+	if (_mixing_output.armed().armed) {
 		return;
 	}
 
-	_mixer_group->groups_required(_groups_required);
+	int32_t pwm_min_default = PWM_DEFAULT_MIN;
+	int32_t pwm_max_default = PWM_DEFAULT_MAX;
+	int32_t pwm_disarmed_default = 0;
 
-	// subscribe and set up polling
-	subscribe();
+	const char *prefix;
 
-	Mixer::Airmode airmode = Mixer::Airmode::disabled;
-	update_params(airmode);
-	uORB::SubscriptionInterval parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	if (_class_instance == CLASS_DEVICE_PRIMARY) {
+		prefix = "PWM_MAIN";
 
-	int rc_channels_sub = -1;
+		param_get(param_find("PWM_MAIN_MIN"), &pwm_min_default);
+		param_get(param_find("PWM_MAIN_MAX"), &pwm_max_default);
+		param_get(param_find("PWM_MAIN_DISARM"), &pwm_disarmed_default);
 
-	// Start disarmed
-	_armed.armed = false;
-	_armed.prearmed = false;
+	} else if (_class_instance == CLASS_DEVICE_SECONDARY) {
+		prefix = "PWM_AUX";
 
-	output_limit_init(&_pwm_limit);
+		param_get(param_find("PWM_AUX_MIN"), &pwm_min_default);
+		param_get(param_find("PWM_AUX_MAX"), &pwm_max_default);
+		param_get(param_find("PWM_AUX_DISARM"), &pwm_disarmed_default);
 
-	while (!_task_should_exit) {
+	} else if (_class_instance == CLASS_DEVICE_TERTIARY) {
+		prefix = "PWM_EXTRA";
 
-		bool updated;
-		orb_check(_armed_sub, &updated);
+		param_get(param_find("PWM_EXTRA_MIN"), &pwm_min_default);
+		param_get(param_find("PWM_EXTRA_MAX"), &pwm_max_default);
+		param_get(param_find("PWM_EXTRA_DISARM"), &pwm_disarmed_default);
 
-		if (updated) {
-			orb_copy(ORB_ID(actuator_armed), _armed_sub, &_armed);
-		}
+	} else {
+		PX4_ERR("invalid class instance %d", _class_instance);
+		return;
+	}
 
-		if (_mixer_group) {
-			_mixer_group->set_airmode(airmode);
-		}
+	char str[17];
 
-		int pret = px4_poll(_poll_fds, _poll_fds_num, 10);
+	for (unsigned i = 0; i < MAX_ACTUATORS; i++) {
+		// PWM_MAIN_MINx
+		{
+			sprintf(str, "%s_MIN%u", prefix, i + 1);
+			int32_t pwm_min = -1;
 
-		/* Timed out, do a periodic check for _task_should_exit. */
-		if (pret == 0 && !_armed.in_esc_calibration_mode) {
-			continue;
-		}
+			if (param_get(param_find(str), &pwm_min) == PX4_OK && pwm_min >= 0) {
+				_mixing_output.minValue(i) = math::constrain(pwm_min, PWM_LOWEST_MIN, PWM_HIGHEST_MIN);
 
-		/* This is undesirable but not much we can do. */
-		if (pret < 0) {
-			PX4_WARN("poll error %d, %d", pret, errno);
-			/* sleep a bit before next try */
-			usleep(10000);
-			continue;
-		}
-
-		/* get controls for required topics */
-		unsigned poll_id = 0;
-
-		for (uint8_t i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-			if (_controls_subs[i] >= 0) {
-				if (_poll_fds[poll_id].revents & POLLIN) {
-					orb_copy(_controls_topics[i], _controls_subs[i], &_controls[i]);
+				if (pwm_min != _mixing_output.minValue(i)) {
+					int32_t pwm_min_new = _mixing_output.minValue(i);
+					param_set(param_find(str), &pwm_min_new);
 				}
 
-				poll_id++;
+			} else {
+				_mixing_output.minValue(i) = pwm_min_default;
 			}
 		}
 
-		if (_armed.in_esc_calibration_mode) {
-			if (rc_channels_sub == -1) {
-				// only subscribe when really needed: esc calibration is not something we use regularily
-				rc_channels_sub = orb_subscribe(ORB_ID(rc_channels));
-			}
+		// PWM_MAIN_MAXx
+		{
+			sprintf(str, "%s_MAX%u", prefix, i + 1);
+			int32_t pwm_max = -1;
 
-			rc_channels_s rc_channels;
-			int ret = orb_copy(ORB_ID(rc_channels), rc_channels_sub, &rc_channels);
-			_controls[0].control[0] = 0.f;
-			_controls[0].control[1] = 0.f;
-			_controls[0].control[2] = 0.f;
-			int channel = rc_channels.function[rc_channels_s::FUNCTION_THROTTLE];
+			if (param_get(param_find(str), &pwm_max) == PX4_OK && pwm_max >= 0) {
+				_mixing_output.maxValue(i) = math::constrain(pwm_max, PWM_LOWEST_MAX, PWM_HIGHEST_MAX);
 
-			if (ret == 0 && channel >= 0 && channel < (int)(sizeof(rc_channels.channels) / sizeof(rc_channels.channels[0]))) {
-				_controls[0].control[3] = rc_channels.channels[channel];
+				if (pwm_max != _mixing_output.maxValue(i)) {
+					int32_t pwm_max_new = _mixing_output.maxValue(i);
+					param_set(param_find(str), &pwm_max_new);
+				}
 
 			} else {
-				_controls[0].control[3] = 1.f;
+				_mixing_output.maxValue(i) = pwm_max_default;
 			}
-
-			/* Switch off the PWM limit ramp for the calibration. */
-			_pwm_limit.state = OUTPUT_LIMIT_STATE_ON;
 		}
 
-		if (_mixer_group != nullptr) {
-			/* do mixing */
-			_outputs.noutputs = _mixer_group->mix(_outputs.output, actuator_outputs_s::NUM_ACTUATOR_OUTPUTS);
+		// PWM_MAIN_FAILx
+		{
+			sprintf(str, "%s_FAIL%u", prefix, i + 1);
+			int32_t pwm_failsafe = -1;
 
-			/* disable unused ports by setting their output to NaN */
-			for (size_t i = _outputs.noutputs; i < _outputs.NUM_ACTUATOR_OUTPUTS; i++) {
-				_outputs.output[i] = NAN;
+			if (param_get(param_find(str), &pwm_failsafe) == PX4_OK && pwm_failsafe >= 0) {
+				_mixing_output.failsafeValue(i) = math::constrain(pwm_failsafe, 0, PWM_HIGHEST_MAX);
+
+				if (pwm_failsafe != _mixing_output.failsafeValue(i)) {
+					int32_t pwm_fail_new = _mixing_output.failsafeValue(i);
+					param_set(param_find(str), &pwm_fail_new);
+				}
 			}
+		}
 
-			const uint16_t reverse_mask = 0;
-			uint16_t disarmed_pwm[actuator_outputs_s::NUM_ACTUATOR_OUTPUTS];
-			uint16_t min_pwm[actuator_outputs_s::NUM_ACTUATOR_OUTPUTS];
-			uint16_t max_pwm[actuator_outputs_s::NUM_ACTUATOR_OUTPUTS];
+		// PWM_MAIN_DISx
+		{
+			sprintf(str, "%s_DIS%u", prefix, i + 1);
+			int32_t pwm_dis = -1;
 
-			for (unsigned int i = 0; i < actuator_outputs_s::NUM_ACTUATOR_OUTPUTS; i++) {
-				disarmed_pwm[i] = _pwm_disarmed;
-				min_pwm[i] = _pwm_min;
-				max_pwm[i] = _pwm_max;
+			if (param_get(param_find(str), &pwm_dis) == PX4_OK && pwm_dis >= 0) {
+				_mixing_output.disarmedValue(i) = math::constrain(pwm_dis, 0, PWM_HIGHEST_MAX);
+
+				if (pwm_dis != _mixing_output.disarmedValue(i)) {
+					int32_t pwm_dis_new = _mixing_output.disarmedValue(i);
+					param_set(param_find(str), &pwm_dis_new);
+				}
+
+			} else {
+				_mixing_output.disarmedValue(i) = pwm_disarmed_default;
 			}
+		}
 
-			uint16_t pwm[actuator_outputs_s::NUM_ACTUATOR_OUTPUTS];
+		// PWM_MAIN_REVx
+		{
+			sprintf(str, "%s_REV%u", prefix, i + 1);
+			int32_t pwm_rev = 0;
 
-			// TODO FIXME: pre-armed seems broken
-			output_limit_calc(_armed.armed,
-					  false/*_armed.prearmed*/,
-					  _outputs.noutputs,
-					  reverse_mask,
-					  disarmed_pwm,
-					  min_pwm,
-					  max_pwm,
-					  _outputs.output,
-					  pwm,
-					  &_pwm_limit);
+			if (param_get(param_find(str), &pwm_rev) == PX4_OK) {
+				uint16_t &reverse_pwm_mask = _mixing_output.reverseOutputMask();
 
-			if (_armed.lockdown || _armed.manual_lockdown) {
-				pwm_out->send_output_pwm(disarmed_pwm, _outputs.noutputs);
-
-			} else if (_armed.in_esc_calibration_mode) {
-
-				uint16_t pwm_value;
-
-				if (_controls[0].control[3] > 0.5f) { // use throttle to decide which value to use
-					pwm_value = _pwm_max;
+				if (pwm_rev >= 1) {
+					reverse_pwm_mask = reverse_pwm_mask | (2 << i);
 
 				} else {
-					pwm_value = _pwm_min;
-				}
-
-				for (uint32_t i = 0; i < _outputs.noutputs; ++i) {
-					pwm[i] = pwm_value;
-				}
-
-				pwm_out->send_output_pwm(pwm, _outputs.noutputs);
-
-			} else {
-				pwm_out->send_output_pwm(pwm, _outputs.noutputs);
-			}
-
-			_outputs.timestamp = hrt_absolute_time();
-
-			if (_outputs_pub != nullptr) {
-				orb_publish(ORB_ID(actuator_outputs), _outputs_pub, &_outputs);
-
-			} else {
-				_outputs_pub = orb_advertise(ORB_ID(actuator_outputs), &_outputs);
-			}
-
-			// use first valid timestamp_sample for latency tracking
-			for (int i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-				const bool required = _groups_required & (1 << i);
-				const hrt_abstime &timestamp_sample = _controls[i].timestamp_sample;
-
-				if (required && (timestamp_sample > 0)) {
-					perf_set_elapsed(_perf_control_latency, _outputs.timestamp - timestamp_sample);
-					break;
+					reverse_pwm_mask = reverse_pwm_mask & ~(2 << i);
 				}
 			}
-
-		} else {
-			PX4_ERR("Could not mix output! Exiting...");
-			_task_should_exit = true;
-		}
-
-		// check for parameter updates
-		if (parameter_update_sub.updated()) {
-			// clear update
-			parameter_update_s pupdate;
-			parameter_update_sub.copy(&pupdate);
-
-			// update parameters from storage
-			update_params(airmode);
 		}
 	}
 
-	delete pwm_out;
+	if (_mixing_output.mixers()) {
+		int16_t values[MAX_ACTUATORS] {};
 
-	for (uint8_t i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
-		if (_controls_subs[i] >= 0) {
-			orb_unsubscribe(_controls_subs[i]);
+		for (unsigned i = 0; i < MAX_ACTUATORS; i++) {
+			sprintf(str, "%s_TRIM%u", prefix, i + 1);
+
+			float pval = 0.0f;
+			param_get(param_find(str), &pval);
+			values[i] = roundf(10000 * pval);
 		}
+
+		// copy the trim values to the mixer offsets
+		_mixing_output.mixers()->set_trims(values, MAX_ACTUATORS);
 	}
-
-	if (_armed_sub != -1) {
-		orb_unsubscribe(_armed_sub);
-		_armed_sub = -1;
-	}
-
-	if (rc_channels_sub != -1) {
-		orb_unsubscribe(rc_channels_sub);
-	}
-
-	perf_free(_perf_control_latency);
-
-	_is_running = false;
-
 }
 
-int task_main_trampoline(int argc, char *argv[])
+int LinuxPWMOut::ioctl(device::file_t *filp, int cmd, unsigned long arg)
 {
-	task_main(argc, argv);
+	int ret = OK;
+
+	PX4_DEBUG("ioctl cmd: %d, arg: %ld", cmd, arg);
+
+	lock();
+
+	switch (cmd) {
+	case MIXERIOCRESET:
+		_mixing_output.resetMixerThreadSafe();
+		break;
+
+	case MIXERIOCLOADBUF: {
+			const char *buf = (const char *)arg;
+			unsigned buflen = strlen(buf);
+			ret = _mixing_output.loadMixerThreadSafe(buf, buflen);
+			update_params();
+			break;
+		}
+
+	default:
+		ret = -ENOTTY;
+		break;
+	}
+
+	unlock();
+
+	if (ret == -ENOTTY) {
+		ret = CDev::ioctl(filp, cmd, arg);
+	}
+
+	return ret;
+}
+
+int LinuxPWMOut::custom_command(int argc, char *argv[])
+{
+	return print_usage("unknown command");
+}
+
+int LinuxPWMOut::print_status()
+{
+	perf_print_counter(_cycle_perf);
+	perf_print_counter(_interval_perf);
+	_mixing_output.printStatus();
 	return 0;
 }
 
-void start()
+int LinuxPWMOut::print_usage(const char *reason)
 {
-	_task_should_exit = false;
-
-	/* start the task */
-	_task_handle = px4_task_spawn_cmd("pwm_out_main",
-					  SCHED_DEFAULT,
-					  SCHED_PRIORITY_MAX,
-					  1500,
-					  (px4_main_t)&task_main_trampoline,
-					  nullptr);
-
-	if (_task_handle < 0) {
-		PX4_ERR("task start failed");
-		return;
+	if (reason) {
+		PX4_WARN("%s\n", reason);
 	}
 
-}
+	PRINT_MODULE_DESCRIPTION(
+		R"DESCR_STR(
+### Description
+Linux PWM output driver with board-specific backend implementation.
+)DESCR_STR");
 
-void stop()
-{
-	_task_should_exit = true;
-
-	while (_is_running) {
-		usleep(200000);
-		PX4_INFO(".");
-	}
-
-	_task_handle = -1;
-}
-
-void usage()
-{
-	PX4_INFO("usage: pwm_out start [-d pwmdevice] [-m mixerfile] [-p protocol]");
-	PX4_INFO("       -d pwmdevice : sysfs device for pwm generation (only for Navio)");
-	PX4_INFO("                       (default /sys/class/pwm/pwmchip0)");
-	PX4_INFO("       -m mixerfile : path to mixerfile");
-	PX4_INFO("                       (default etc/mixers/quad_x.main.mix)");
-	PX4_INFO("       -p protocol : driver output protocol (navio|pca9685|ocpoc_mmap|bbblue_rc)");
-	PX4_INFO("                       (default is navio)");
-	PX4_INFO("       -n num_outputs : maximum number of outputs the driver should use");
-	PX4_INFO("                       (default is 8)");
-	PX4_INFO("       pwm_out stop");
-	PX4_INFO("       pwm_out status");
-}
-
-} // namespace linux_pwm_out
-
-/* driver 'main' command */
-extern "C" __EXPORT int linux_pwm_out_main(int argc, char *argv[]);
-
-int linux_pwm_out_main(int argc, char *argv[])
-{
-	int ch;
-	int myoptind = 1;
-	const char *myoptarg = nullptr;
-
-	char *verb = nullptr;
-
-	if (argc >= 2) {
-		verb = argv[1];
-
-	} else {
-		return 1;
-	}
-
-	while ((ch = px4_getopt(argc, argv, "d:m:p:n:", &myoptind, &myoptarg)) != EOF) {
-		switch (ch) {
-		case 'd':
-			strncpy(linux_pwm_out::_device, myoptarg, sizeof(linux_pwm_out::_device) - 1);
-			break;
-
-		case 'm':
-			strncpy(linux_pwm_out::_mixer_filename, myoptarg, sizeof(linux_pwm_out::_mixer_filename) - 1);
-			break;
-
-		case 'p':
-			strncpy(linux_pwm_out::_protocol, myoptarg, sizeof(linux_pwm_out::_protocol) - 1);
-			break;
-
-		case 'n': {
-				unsigned long max_num = strtoul(myoptarg, nullptr, 10);
-
-				if (max_num <= 0) {
-					max_num = 8;
-				}
-
-				if (max_num > actuator_outputs_s::NUM_ACTUATOR_OUTPUTS) {
-					max_num = actuator_outputs_s::NUM_ACTUATOR_OUTPUTS;
-				}
-
-				linux_pwm_out::_max_num_outputs = max_num;
-			}
-			break;
-		}
-	}
-
-	/** gets the parameters for the esc's pwm */
-	param_get(param_find("PWM_DISARMED"), &linux_pwm_out::_pwm_disarmed);
-	param_get(param_find("PWM_MIN"), &linux_pwm_out::_pwm_min);
-	param_get(param_find("PWM_MAX"), &linux_pwm_out::_pwm_max);
-
-	/*
-	 * Start/load the driver.
-	 */
-	if (!strcmp(verb, "start")) {
-		if (linux_pwm_out::_is_running) {
-			PX4_WARN("pwm_out already running");
-			return 1;
-		}
-
-		linux_pwm_out::start();
-	}
-
-	else if (!strcmp(verb, "stop")) {
-		if (!linux_pwm_out::_is_running) {
-			PX4_WARN("pwm_out is not running");
-			return 1;
-		}
-
-		linux_pwm_out::stop();
-	}
-
-	else if (!strcmp(verb, "status")) {
-		PX4_WARN("pwm_out is %s", linux_pwm_out::_is_running ? "running" : "not running");
-		return 0;
-
-	} else {
-		linux_pwm_out::usage();
-		return 1;
-	}
+	PRINT_MODULE_USAGE_NAME("linux_pwm_out", "driver");
+	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
+}
+
+extern "C" __EXPORT int linux_pwm_out_main(int argc, char *argv[])
+{
+	return LinuxPWMOut::main(argc, argv);
 }

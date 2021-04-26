@@ -3,7 +3,7 @@
 # board sensors init
 #------------------------------------------------------------------------------
 
-#board_adc start
+gps start -d /dev/ttyS1 -g 38400 -p ubx
 
 # Internal SPI
 ms5611 -s start

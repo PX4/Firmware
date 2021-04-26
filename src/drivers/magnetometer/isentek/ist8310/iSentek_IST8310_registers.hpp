@@ -134,10 +134,12 @@ enum CNTL3_BIT : uint8_t {
 // AVGCNTL
 enum AVGCNTL_BIT : uint8_t {
 	// 5:3 Average times for y sensor data. Times of average will be done before switch to next channel
-	Y_16TIMES  = Bit5, // 3’b100 average by 16 times (ODRmax=166Hz)
+	Y_16TIMES_SET   = Bit5, // 3’b100 average by 16 times (ODRmax=166Hz)
+	Y_16TIMES_CLEAR = Bit4 | Bit3,
 
 	// 2:0 Average times for x & z sensor data. Times of average will be done before switch to next channel
-	XZ_16TIMES = Bit2, // average by 16 times (ODRmax=166Hz)
+	XZ_16TIMES_SET   = Bit2, // average by 16 times (ODRmax=166Hz)
+	XZ_16TIMES_CLEAR = Bit1 | Bit0,
 };
 
 // PDCNTL

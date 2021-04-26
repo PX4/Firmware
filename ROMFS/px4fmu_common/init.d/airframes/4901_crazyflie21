@@ -1,0 +1,79 @@
+#!/bin/sh
+#
+# @name Crazyflie 2.1
+#
+# @type Quadrotor x
+# @class Copter
+#
+# @maintainer Dennis Shtatov <densht@gmail.com>
+#
+# @board px4_fmu-v2 exclude
+# @board px4_fmu-v3 exclude
+# @board px4_fmu-v4 exclude
+# @board px4_fmu-v4pro exclude
+# @board px4_fmu-v5 exclude
+# @board px4_fmu-v5x exclude
+#
+. ${R}etc/init.d/rc.mc_defaults
+
+set MIXER quad_x_cw
+set PWM_OUT 1234
+
+param set-default SYS_MC_EST_GROUP 2
+param set-default SYS_HAS_MAG 0
+param set-default EKF2_AID_MASK 2
+param set-default EKF2_MAG_TYPE 5
+
+param set-default BAT_N_CELLS 1
+param set-default BAT1_N_CELLS 1
+param set-default BAT1_SOURCE 1
+
+param set-default CBRK_SUPPLY_CHK 894281
+param set-default CBRK_USB_CHK 197848
+param set-default COM_RC_IN_MODE 1
+
+param set-default IMU_GYRO_CUTOFF 100
+param set-default IMU_ACCEL_CUTOFF 30
+
+param set-default MC_AIRMODE 1
+param set-default IMU_DGYRO_CUTOFF 70
+param set-default MC_PITCHRATE_D 0.002
+param set-default MC_PITCHRATE_I 0.2
+param set-default MC_PITCHRATE_P 0.07
+param set-default MC_PITCH_P 6.5
+param set-default MC_ROLLRATE_D 0.002
+param set-default MC_ROLLRATE_I 0.2
+param set-default MC_ROLLRATE_P 0.07
+param set-default MC_ROLL_P 6.5
+param set-default MC_YAW_P 3
+
+param set-default MPC_THR_HOVER 0.7
+param set-default MPC_THR_MAX 1
+param set-default MPC_Z_P 1.5
+param set-default MPC_Z_VEL_P_ACC 8
+param set-default MPC_Z_VEL_I_ACC 6
+param set-default MPC_HOLD_MAX_XY 0.1
+param set-default MPC_MAX_FLOW_HGT 3
+#param set IMU_GYRO_NF_FREQ 10
+#param set IMU_GYRO_NF_BW 20
+
+param set-default NAV_RCL_ACT 3
+
+param set-default PWM_MAIN_DISARM 0
+param set-default PWM_MAIN_MIN 20
+param set-default PWM_MAIN_MAX 255
+
+# Run the motors at 328.125 kHz (recommended)
+param set-default PWM_MAIN_RATE 3921
+
+param set-default SDLOG_PROFILE 1
+
+param set-default SENS_FLOW_MINRNG 0.05
+
+
+set PWM_MAIN_DISARM none
+set PWM_MAIN_MAX none
+set PWM_MAIN_MIN none
+
+syslink start
+mavlink start -d /dev/bridge0 -b 57600 -m osd -r 40000

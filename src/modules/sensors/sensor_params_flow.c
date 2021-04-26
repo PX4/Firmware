@@ -87,6 +87,7 @@ PARAM_DEFINE_FLOAT(SENS_FLOW_MAXHGT, 3.0f);
 
 /**
  * Magnitude of maximum angular flow rate reliably measurable by the optical flow sensor.
+ *
  * Optical flow data will not fused by the estimators if the magnitude of the flow rate exceeds this value and
  * control loops will be instructed to limit ground speed such that the flow rate produced by movement over ground
  * is less than 50% of this value.

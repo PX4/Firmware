@@ -50,6 +50,7 @@ int main(int argc, char **argv)
 
 		if (argv_string == "-h") {
 			usage(argv[0]);
+			return 0;
 		}
 
 		if (argv_string == "--url") {
@@ -57,9 +58,37 @@ int main(int argc, char **argv)
 				connection_url = argv[i + 1];
 				remove_argv(argc, argv, i);
 				remove_argv(argc, argv, i);
+				--i;
 
 			} else {
 				std::cerr << "No connection URL supplied" << std::endl;
+				usage(argv[0]);
+				return -1;
+			}
+
+		}
+
+		if (argv_string == "--speed-factor") {
+			if (argc > i + 1) {
+				try {
+					speed_factor = std::make_optional(std::stof(argv[i + 1]));
+
+				} catch (const std::invalid_argument &) {
+					std::cerr << "Speed factor could not be parsed" << std::endl;
+					return -1;
+
+				} catch (const std::out_of_range &) {
+					std::cerr << "Speed factor is out of range" << std::endl;
+					return -1;
+				}
+
+				remove_argv(argc, argv, i);
+				remove_argv(argc, argv, i);
+				--i;
+
+
+			} else {
+				std::cerr << "No speed factor supplied" << std::endl;
 				usage(argv[0]);
 				return -1;
 			}
@@ -79,13 +108,16 @@ int main(int argc, char **argv)
 void usage(const std::string &bin_name)
 {
 	std::cout << std::endl
-		  << "Usage : " << bin_name << " [--url CONNECTION_URL] [catch2 arguments]" << std::endl
-		  << "Connection URL format should be :" << std::endl
-		  << " For TCP : tcp://[server_host][:server_port]" << std::endl
-		  << " For UDP : udp://[bind_host][:bind_port]" << std::endl
-		  << " For Serial : serial:///path/to/serial/dev[:baudrate]" << std::endl
-		  << "For example, to connect to the simulator use URL: udp://:14540" << std::endl
-		  << std::endl;
+		  << "Usage : " << bin_name << " [--url CONNECTION_URL] [--speed-factor SPEED_FACTOR] [catch2 arguments]\n"
+		  << "\n"
+		  << "  --url          Connection URL format should be :\n"
+		  << "                   For TCP : tcp://[server_host][:server_port]\n"
+		  << "                   For UDP : udp://[bind_host][:bind_port]\n"
+		  << "                   For Serial : serial:///path/to/serial/dev[:baudrate]\n"
+		  << "                 For example, to connect to the simulator use URL: udp://:14540\n"
+		  << "\n"
+		  << "  --speed-factor Speed factor to compare against, for information only\n"
+		  << std::flush;
 }
 
 void remove_argv(int &argc, char **argv, int pos)

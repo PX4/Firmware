@@ -37,11 +37,14 @@
  *
  * @author Julian Oes <julian@oes.ch>
  * @author Anton Babushkin <anton.babushkin@me.com>
+ * @author Julian Kent <julian@auterion.com>
  */
 
 #include "rtl.h"
 #include "navigator.h"
 #include <dataman/dataman.h>
+
+#include <lib/ecl/geo/geo.h>
 
 
 static constexpr float DELAY_SIGMA = 0.01f;
@@ -153,7 +156,7 @@ void RTL::find_RTL_destination()
 	}
 
 	// compare to safe landing positions
-	mission_safe_point_s closest_safe_point {} ;
+	mission_safe_point_s closest_safe_point {};
 	mission_stats_entry_s stats;
 	int ret = dm_read(DM_KEY_SAFE_POINTS, 0, &stats, sizeof(mission_stats_entry_s));
 	int num_safe_points = 0;
@@ -212,6 +215,23 @@ void RTL::find_RTL_destination()
 		}
 	}
 
+	// figure out how long the RTL will take
+	float rtl_xy_speed, rtl_z_speed;
+	get_rtl_xy_z_speed(rtl_xy_speed, rtl_z_speed);
+
+	matrix::Vector3f to_destination_vec;
+	get_vector_to_next_waypoint(global_position.lat, global_position.lon, _destination.lat, _destination.lon,
+				    &to_destination_vec(0), &to_destination_vec(1));
+	to_destination_vec(2) = _destination.alt - global_position.alt;
+
+	float time_to_home_s = time_to_home(to_destination_vec, get_wind(), rtl_xy_speed, rtl_z_speed);
+
+	float rtl_flight_time_ratio = time_to_home_s / (60 * _param_rtl_flt_time.get());
+	rtl_flight_time_s rtl_flight_time{};
+	rtl_flight_time.timestamp = hrt_absolute_time();
+	rtl_flight_time.rtl_limit_fraction = rtl_flight_time_ratio;
+	rtl_flight_time.rtl_time_s = time_to_home_s;
+	_rtl_flight_time_pub.publish(rtl_flight_time);
 }
 
 void RTL::on_activation()
@@ -236,6 +256,8 @@ void RTL::on_activation()
 	}
 
 	const vehicle_global_position_s &global_position = *_navigator->get_global_position();
+
+	_rtl_loiter_rad = _param_rtl_loiter_rad.get();
 
 	if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
 		_rtl_alt = calculate_return_alt_from_cone_half_angle((float)_param_rtl_cone_half_angle_deg.get());
@@ -372,23 +394,6 @@ void RTL::set_rtl_item()
 			break;
 		}
 
-	case RTL_STATE_TRANSITION_TO_MC: {
-			set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC);
-			break;
-		}
-
-	case RTL_MOVE_TO_LAND_HOVER_VTOL: {
-			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
-			_mission_item.lat = _destination.lat;
-			_mission_item.lon = _destination.lon;
-			_mission_item.altitude = loiter_altitude;
-			_mission_item.altitude_is_relative = false;
-			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
-			_mission_item.origin = ORIGIN_ONBOARD;
-			break;
-		}
-
 	case RTL_STATE_DESCEND: {
 			_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
 
@@ -405,6 +410,10 @@ void RTL::set_rtl_item()
 
 			} else {
 				_mission_item.yaw = _destination.yaw;
+			}
+
+			if (_navigator->get_vstatus()->is_vtol) {
+				_mission_item.loiter_radius = _rtl_loiter_rad;
 			}
 
 			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
@@ -447,6 +456,41 @@ void RTL::set_rtl_item()
 				mavlink_log_info(_navigator->get_mavlink_log_pub(), "RTL: completed, loitering");
 			}
 
+			break;
+		}
+
+	case RTL_STATE_HEAD_TO_CENTER: {
+			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+
+			_mission_item.lat = _destination.lat;
+			_mission_item.lon = _destination.lon;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.altitude_is_relative = false;
+			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.time_inside = 0.0f;
+			_mission_item.autocontinue = true;
+			_mission_item.origin = ORIGIN_ONBOARD;
+
+			// Disable previous setpoint to prevent drift.
+			pos_sp_triplet->previous.valid = false;
+			break;
+		}
+
+	case RTL_STATE_TRANSITION_TO_MC: {
+			set_vtol_transition_item(&_mission_item, vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC);
+			break;
+		}
+
+	case RTL_MOVE_TO_LAND_HOVER_VTOL: {
+			_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
+			_mission_item.lat = _destination.lat;
+			_mission_item.lon = _destination.lon;
+			_mission_item.altitude = loiter_altitude;
+			_mission_item.altitude_is_relative = false;
+			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
+			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.origin = ORIGIN_ONBOARD;
 			break;
 		}
 
@@ -511,7 +555,6 @@ void RTL::advance_rtl()
 	const bool vtol_in_fw_mode = _navigator->get_vstatus()->is_vtol
 				     && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
 
-
 	switch (_rtl_state) {
 	case RTL_STATE_CLIMB:
 		_rtl_state = RTL_STATE_RETURN;
@@ -529,6 +572,36 @@ void RTL::advance_rtl()
 
 		break;
 
+	case RTL_STATE_DESCEND:
+
+		if (descend_and_loiter) {
+			_rtl_state = RTL_STATE_LOITER;
+
+		} else if (vtol_in_fw_mode) {
+			_rtl_state = RTL_STATE_HEAD_TO_CENTER;
+
+		} else {
+			_rtl_state = RTL_STATE_LAND;
+		}
+
+		break;
+
+	case RTL_STATE_LOITER:
+		if (vtol_in_fw_mode) {
+			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+
+		} else {
+			_rtl_state = RTL_STATE_LAND;
+		}
+
+		_rtl_state = RTL_STATE_LAND;
+		break;
+
+	case RTL_STATE_HEAD_TO_CENTER:
+
+		_rtl_state = RTL_STATE_TRANSITION_TO_MC;
+
+		break;
 
 	case RTL_STATE_TRANSITION_TO_MC:
 
@@ -538,32 +611,8 @@ void RTL::advance_rtl()
 
 	case RTL_MOVE_TO_LAND_HOVER_VTOL:
 
-		if (descend_and_loiter) {
-			_rtl_state = RTL_STATE_LOITER;
-
-		} else {
-			_rtl_state = RTL_STATE_LAND;
-		}
-
-		break;
-
-	case RTL_STATE_DESCEND:
-
-		// If the vehicle is a vtol in fixed wing mode, then first transition to hover
-		if (vtol_in_fw_mode) {
-			_rtl_state = RTL_STATE_TRANSITION_TO_MC;
-
-		} else if (descend_and_loiter) {
-			_rtl_state = RTL_STATE_LOITER;
-
-		} else {
-			_rtl_state = RTL_STATE_LAND;
-		}
-
-		break;
-
-	case RTL_STATE_LOITER:
 		_rtl_state = RTL_STATE_LAND;
+
 		break;
 
 	case RTL_STATE_LAND:
@@ -610,4 +659,79 @@ float RTL::calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg)
 	}
 
 	return max(return_altitude_amsl, gpos.alt);
+}
+
+void RTL::get_rtl_xy_z_speed(float &xy, float &z)
+{
+	uint8_t vehicle_type = _navigator->get_vstatus()->vehicle_type;
+	// Caution: here be dragons!
+	// Use C API to allow this code to be compiled with builds that don't have FW/MC/Rover
+
+	if (vehicle_type != _rtl_vehicle_type) {
+		_rtl_vehicle_type = vehicle_type;
+
+		switch (vehicle_type) {
+		case vehicle_status_s::VEHICLE_TYPE_ROTARY_WING:
+			_param_rtl_xy_speed = param_find("MPC_XY_CRUISE");
+			_param_rtl_descent_speed = param_find("MPC_Z_VEL_MAX_DN");
+			break;
+
+		case vehicle_status_s::VEHICLE_TYPE_FIXED_WING:
+			_param_rtl_xy_speed = param_find("FW_AIRSPD_TRIM");
+			_param_rtl_descent_speed = param_find("FW_T_SINK_MIN");
+			break;
+
+		case vehicle_status_s::VEHICLE_TYPE_ROVER:
+			_param_rtl_xy_speed = param_find("GND_SPEED_THR_SC");
+			_param_rtl_descent_speed = PARAM_INVALID;
+			break;
+		}
+	}
+
+	if ((_param_rtl_xy_speed == PARAM_INVALID) || param_get(_param_rtl_xy_speed, &xy) != PX4_OK) {
+		xy = 1e6f;
+	}
+
+	if ((_param_rtl_descent_speed == PARAM_INVALID) || param_get(_param_rtl_descent_speed, &z) != PX4_OK) {
+		z = 1e6f;
+	}
+
+}
+
+matrix::Vector2f RTL::get_wind()
+{
+	_wind_sub.update();
+	matrix::Vector2f wind;
+
+	if (hrt_absolute_time() - _wind_sub.get().timestamp < 1_s) {
+		wind(0) = _wind_sub.get().windspeed_north;
+		wind(1) = _wind_sub.get().windspeed_east;
+	}
+
+	return wind;
+}
+
+float time_to_home(const matrix::Vector3f &to_home_vec,
+		   const matrix::Vector2f &wind_velocity, float vehicle_speed_m_s, float vehicle_descent_speed_m_s)
+{
+	const matrix::Vector2f to_home = to_home_vec.xy();
+	const float alt_change = to_home_vec(2);
+	const matrix::Vector2f to_home_dir = to_home.unit_or_zero();
+	const float dist_to_home = to_home.norm();
+
+	const float wind_towards_home = wind_velocity.dot(to_home_dir);
+	const float wind_across_home = matrix::Vector2f(wind_velocity - to_home_dir * wind_towards_home).norm();
+
+	// Note: use fminf so that we don't _rely_ on wind towards home to make RTL more efficient
+	const float cruise_speed = sqrtf(vehicle_speed_m_s * vehicle_speed_m_s - wind_across_home * wind_across_home) + fminf(
+					   0.f, wind_towards_home);
+
+	if (!PX4_ISFINITE(cruise_speed) || cruise_speed <= 0) {
+		return INFINITY; // we never reach home if the wind is stronger than vehicle speed
+	}
+
+	// assume horizontal and vertical motions happen serially, so their time adds
+	float horiz = dist_to_home / cruise_speed;
+	float descent = fabsf(alt_change) / vehicle_descent_speed_m_s;
+	return horiz + descent;
 }

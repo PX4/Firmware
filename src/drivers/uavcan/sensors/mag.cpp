@@ -44,55 +44,34 @@
 
 const char *const UavcanMagnetometerBridge::NAME = "mag";
 
-#define UAVCAN_MAG_BASE_DEVICE_PATH "/dev/uavcan/mag"
-
 UavcanMagnetometerBridge::UavcanMagnetometerBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_mag", UAVCAN_MAG_BASE_DEVICE_PATH, UAVCAN_MAG_BASE_DEVICE_PATH, ORB_ID(sensor_mag)),
+	UavcanSensorBridgeBase("uavcan_mag", ORB_ID(sensor_mag)),
 	_sub_mag(node),
 	_sub_mag2(node)
 {
 }
 
-int
-UavcanMagnetometerBridge::init()
+int UavcanMagnetometerBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_mag.start(MagCbBinder(this, &UavcanMagnetometerBridge::mag_sub_cb));
+	int res = _sub_mag.start(MagCbBinder(this, &UavcanMagnetometerBridge::mag_sub_cb));
 
 	if (res < 0) {
 		PX4_ERR("failed to start uavcan sub: %d", res);
 		return res;
 	}
 
-	res = _sub_mag2.start(Mag2CbBinder(this, &UavcanMagnetometerBridge::mag2_sub_cb));
+	int res2 = _sub_mag2.start(Mag2CbBinder(this, &UavcanMagnetometerBridge::mag2_sub_cb));
 
-	if (res < 0) {
-		PX4_ERR("failed to start uavcan sub2: %d", res);
-		return res;
+	if (res2 < 0) {
+		PX4_ERR("failed to start uavcan sub2: %d", res2);
+		return res2;
 	}
 
 	return 0;
 }
 
-int
-UavcanMagnetometerBridge::ioctl(struct file *filp, int cmd, unsigned long arg)
-{
-	switch (cmd) {
-
-	default: {
-			return CDev::ioctl(filp, cmd, arg);
-		}
-	}
-}
-
-void
-UavcanMagnetometerBridge::mag_sub_cb(const uavcan::ReceivedDataStructure<uavcan::equipment::ahrs::MagneticFieldStrength>
-				     &msg)
+void UavcanMagnetometerBridge::mag_sub_cb(const
+		uavcan::ReceivedDataStructure<uavcan::equipment::ahrs::MagneticFieldStrength> &msg)
 {
 	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
 
@@ -121,7 +100,7 @@ UavcanMagnetometerBridge::mag2_sub_cb(const
 {
 	uavcan_bridge::Channel *channel = get_channel_for_node(msg.getSrcNodeID().get());
 
-	if (channel == nullptr || channel->class_instance < 0) {
+	if (channel == nullptr || channel->instance < 0) {
 		// Something went wrong - no channel to publish on; return
 		return;
 	}
@@ -156,10 +135,10 @@ int UavcanMagnetometerBridge::init_driver(uavcan_bridge::Channel *channel)
 
 	PX4Magnetometer *mag = (PX4Magnetometer *)channel->h_driver;
 
-	channel->class_instance = mag->get_class_instance();
+	channel->instance = mag->get_instance();
 
-	if (channel->class_instance < 0) {
-		PX4_ERR("UavcanMag: Unable to get a class instance");
+	if (channel->instance < 0) {
+		PX4_ERR("UavcanMag: Unable to get an instance");
 		delete mag;
 		channel->h_driver = nullptr;
 		return PX4_ERROR;

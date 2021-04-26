@@ -40,7 +40,7 @@ constexpr px4_spi_bus_t px4_spi_buses[SPI_BUS_MAX_BUS_ITEMS] = {
 		initSPIDevice(DRV_IMU_DEVTYPE_ICM20602, SPI::CS{GPIO::PortI, GPIO::Pin9}, SPI::DRDY{GPIO::PortF, GPIO::Pin2}),
 	}, {GPIO::PortI, GPIO::Pin11}),
 	initSPIBus(SPI::Bus::SPI2, {
-		initSPIDevice(DRV_IMU_DEVTYPE_ST_ISM330DLC, SPI::CS{GPIO::PortH, GPIO::Pin5}, SPI::DRDY{GPIO::PortH, GPIO::Pin12}),
+		initSPIDevice(DRV_IMU_DEVTYPE_ICM42688P, SPI::CS{GPIO::PortH, GPIO::Pin5}, SPI::DRDY{GPIO::PortH, GPIO::Pin12}),
 	}, {GPIO::PortD, GPIO::Pin15}),
 	initSPIBus(SPI::Bus::SPI3, {
 		initSPIDevice(DRV_GYR_DEVTYPE_BMI088, SPI::CS{GPIO::PortI, GPIO::Pin8}, SPI::DRDY{GPIO::PortI, GPIO::Pin7}),

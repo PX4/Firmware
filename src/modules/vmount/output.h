@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*   Copyright (c) 2016 PX4 Development Team. All rights reserved.
+*   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -67,8 +67,8 @@ struct OutputConfig {
 	float roll_offset;	/**< Offset for roll channel in radians */
 	float yaw_offset;	/**< Offset for yaw channel in radians */
 
-	uint32_t mavlink_sys_id;	/**< Mavlink target system id for mavlink output */
-	uint32_t mavlink_comp_id;
+	uint32_t mavlink_sys_id_v1;	/**< Mavlink target system id for mavlink output only for v1 */
+	uint32_t mavlink_comp_id_v1;
 };
 
 
@@ -112,12 +112,18 @@ protected:
 	void _handle_position_update(bool force_update = false);
 
 	const ControlData *_cur_control_data = nullptr;
-	float _angle_setpoints[3] = { 0.f, 0.f, 0.f }; ///< [rad]
-	float _angle_speeds[3] = { 0.f, 0.f, 0.f };
+
+	float _q_setpoint[4] = { NAN, NAN, NAN, NAN }; ///< can be NAN if not specifically set
+	float _angle_velocity[3] = { NAN, NAN, NAN }; //< [rad/s], can be NAN if not specifically set
+
 	bool _stabilize[3] = { false, false, false };
 
+	// Pitch and role are by default aligned with the horizon.
+	// Yaw follows the vehicle (not lock/absolute mode).
+	bool _absolute_angle[3] = {true, true, false };
+
 	/** calculate the _angle_outputs (with speed) and stabilize if needed */
-	void _calculate_output_angles(const hrt_abstime &t);
+	void _calculate_angle_output(const hrt_abstime &t);
 
 	float _angle_outputs[3] = { 0.f, 0.f, 0.f }; ///< calculated output angles (roll, pitch, yaw) [rad]
 	hrt_abstime _last_update;

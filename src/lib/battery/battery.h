@@ -196,7 +196,7 @@ protected:
 
 private:
 	void sumDischarged(const hrt_abstime &timestamp, float current_a);
-	void estimateRemaining(const float voltage_v, const float current_a, const float throttle);
+	void estimateStateOfCharge(const float voltage_v, const float current_a, const float throttle);
 	void determineWarning(bool connected);
 	void computeScale();
 
@@ -208,8 +208,8 @@ private:
 	AlphaFilter<float> _throttle_filter;
 	float _discharged_mah{0.f};
 	float _discharged_mah_loop{0.f};
-	float _remaining_voltage{-1.f};		///< normalized battery charge level remaining based on voltage
-	float _remaining{-1.f};			///< normalized battery charge level, selected based on config param
+	float _state_of_charge_volt_based{-1.f};	// [0,1]
+	float _state_of_charge{-1.f};				// [0,1]
 	float _scale{1.f};
 	uint8_t _warning{battery_status_s::BATTERY_WARNING_NONE};
 	hrt_abstime _last_timestamp{0};

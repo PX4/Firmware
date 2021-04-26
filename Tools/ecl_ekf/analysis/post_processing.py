@@ -125,7 +125,7 @@ def get_gps_check_fail_flags(estimator_status: dict) -> dict:
 
     # 0 : insufficient fix type (no 3D solution)
     # 1 : minimum required sat count fail
-    # 2 : minimum required PDOP fail
+    # 2 : maximum allowed PDOP fail
     # 3 : maximum allowed horizontal position error fail
     # 4 : maximum allowed vertical position error fail
     # 5 : maximum allowed speed error fail

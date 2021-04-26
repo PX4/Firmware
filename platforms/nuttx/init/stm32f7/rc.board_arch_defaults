@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# STM32F7 specific defaults
+#------------------------------------------------------------------------------
+
+# Multi-EKF (across IMUs only)
+param set-default EKF2_MULTI_IMU 3
+param set-default SENS_IMU_MODE 0
+param set-default EKF2_MULTI_MAG 0
+param set-default SENS_MAG_MODE 1
+
+param set-default IMU_GYRO_FFT_EN 1
+
+param set-default UAVCAN_ENABLE 2
+
+set LOGGER_BUF 64

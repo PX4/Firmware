@@ -33,6 +33,8 @@
 
 px4_add_romfs_files(
 	10016_iris
+	10017_iris_ctrlalloc
+	10018_iris_foggy_lidar
 	10020_if750a
 	10030_px4vision
 	1010_iris_opt_flow
@@ -63,6 +65,8 @@ px4_add_romfs_files(
 	1040_standard_vtol
 	1041_tailsitter
 	1042_tiltrotor
+	1043_standard_vtol_drop
+	1043_standard_vtol_drop.post
 	1060_rover
 	1061_r1_rover
 	1062_tf-r1
@@ -73,4 +77,6 @@ px4_add_romfs_files(
 	2507_cloudship
 	6011_typhoon_h480
 	6011_typhoon_h480.post
+	6012_typhoon_ctrlalloc
+	6012_typhoon_ctrlalloc.post
 )

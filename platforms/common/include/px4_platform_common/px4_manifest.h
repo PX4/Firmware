@@ -48,6 +48,7 @@ typedef struct  {
 	enum px4_bus_type {
 		I2C = 0,
 		SPI = 1,
+		ONCHIP = 2,
 	} bus_type;
 
 	uint32_t devid;

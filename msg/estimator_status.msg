@@ -12,7 +12,7 @@ uint16 gps_check_fail_flags     # Bitmask to indicate status of GPS checks - see
 # bits are true when corresponding test has failed
 uint8 GPS_CHECK_FAIL_GPS_FIX = 0		# 0 : insufficient fix type (no 3D solution)
 uint8 GPS_CHECK_FAIL_MIN_SAT_COUNT = 1		# 1 : minimum required sat count fail
-uint8 GPS_CHECK_FAIL_MIN_PDOP = 2		# 2 : minimum required PDOP fail
+uint8 GPS_CHECK_FAIL_MAX_PDOP = 2		# 2 : maximum allowed PDOP fail
 uint8 GPS_CHECK_FAIL_MAX_HORZ_ERR = 3		# 3 : maximum allowed horizontal position error fail
 uint8 GPS_CHECK_FAIL_MAX_VERT_ERR = 4		# 4 : maximum allowed vertical position error fail
 uint8 GPS_CHECK_FAIL_MAX_SPD_ERR = 5		# 5 : maximum allowed speed error fail
@@ -104,6 +104,12 @@ uint16 solution_status_flags # Bitmask indicating which filter kinematic state o
 # 9 - True if the EKF has sufficient data to enter a mode that will provide a (absolute) position estimate
 # 10 - True if the EKF has detected a GPS glitch
 # 11 - True if the EKF has detected bad accelerometer data
+
+uint8 reset_count_vel_ne # number of horizontal position reset events (allow to wrap if count exceeds 255)
+uint8 reset_count_vel_d  # number of vertical velocity reset events (allow to wrap if count exceeds 255)
+uint8 reset_count_pos_ne # number of horizontal position reset events (allow to wrap if count exceeds 255)
+uint8 reset_count_pod_d  # number of vertical position reset events (allow to wrap if count exceeds 255)
+uint8 reset_count_quat   # number of quaternion reset events (allow to wrap if count exceeds 255)
 
 float32 time_slip # cumulative amount of time in seconds that the EKF inertial calculation has slipped relative to system time
 

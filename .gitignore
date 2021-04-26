@@ -101,11 +101,6 @@ msg/tmp/
 msg/topics_sources/
 platforms/posix/apps.cpp
 platforms/posix/apps.h
-src/lib/flight_tasks/FlightTasks_generated.cpp
-src/lib/flight_tasks/FlightTasks_generated.hpp
-src/lib/parameters/px4_parameters.c
-src/lib/parameters/px4_parameters.h
-src/lib/parameters/px4_parameters_public.h
 src/lib/version/build_git_version.h
 src/modules/simulator/simulator_config.h
 src/systemcmds/topic_listener/listener_generated.cpp

@@ -56,16 +56,36 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: airmind_mindpx-v2_default
+    ark_can-flow_default:
+      short: ark_can-flow_default
+      buildType: MinSizeRel
+      settings:
+        CONFIG: ark_can-flow_default
+    ark_can-flow_canbootloader:
+      short: ark_can-flow_canbootloader
+      buildType: MinSizeRel
+      settings:
+        CONFIG: ark_can-flow_canbootloader
     av_x-v1_default:
       short: av_x-v1
       buildType: MinSizeRel
       settings:
         CONFIG: av_x-v1_default
+    bitcraze_crazyflie_default:
+      short: bitcraze_crazyflie
+      buildType: MinSizeRel
+      settings:
+        CONFIG: bitcraze_crazyflie_default
     cuav_can-gps-v1_default:
       short: cuav_can-gps-v1_default
       buildType: MinSizeRel
       settings:
         CONFIG: cuav_can-gps-v1_default
+    cuav_can-gps-v1_canbootloader:
+      short: cuav_can-gps-v1_canbootloader
+      buildType: MinSizeRel
+      settings:
+        CONFIG: cuav_can-gps-v1_canbootloader
     cuav_nora_default:
       short: cuav_nora
       buildType: MinSizeRel
@@ -76,31 +96,31 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: cuav_x7pro_default
-    cubepilot_cubeorange_default:
+    cubepilot_cubeorange_test:
       short: cubepilot_cubeorange
       buildType: MinSizeRel
       settings:
-        CONFIG: cubepilot_orange_default
-    cubepilot_cubeyellow_default:
-      short: cubepilot_cubeyellow
-      buildType: MinSizeRel
-      settings:
-        CONFIG: cubepilot_cubeyellow_default
+        CONFIG: cubepilot_orange_test
     emlid_navio2_default:
       short: emlid_navio2
       buildType: MinSizeRel
       settings:
         CONFIG: emlid_navio2_default
+    holybro_can-gps-v1_canbootloader:
+      short: holybro_can-gps-v1_canbootloader
+      buildType: MinSizeRel
+      settings:
+        CONFIG: holybro_can-gps-v1_canbootloader
+    holybro_can-gps-v1_default:
+      short: holybro_can-gps-v1_default
+      buildType: MinSizeRel
+      settings:
+        CONFIG: holybro_can-gps-v1_default
     holybro_durandal-v1_default:
       short: holybro_durandal-v1
       buildType: MinSizeRel
       settings:
         CONFIG: holybro_durandal-v1_default
-    intel_aerofc-v1_default:
-      short: intel_aerofc-v1
-      buildType: MinSizeRel
-      settings:
-        CONFIG: intel_aerofc-v1_default
     modalai_fc-v1_default:
       short: modalai_fc-v1
       buildType: MinSizeRel
@@ -111,6 +131,16 @@ CONFIG:
       buildType: MinSizeRel
       settings:
         CONFIG: mro_ctrl-zero-f7_default
+    mro_pixracerpro_bootloader:
+      short: mro_pixracerpro_bootloader
+      buildType: MinSizeRel
+      settings:
+        CONFIG: mro_pixracerpro_bootloader
+    mro_pixracerpro_default:
+      short: mro_pixracerpro_default
+      buildType: MinSizeRel
+      settings:
+        CONFIG: mro_pixracerpro_default
     mro_x21-777_default:
       short: mro_x2.1-777
       buildType: MinSizeRel

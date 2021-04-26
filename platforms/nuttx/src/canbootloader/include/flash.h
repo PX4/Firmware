@@ -46,6 +46,15 @@ typedef enum {
 
 } flash_error_t;
 
+#if defined(OPT_LATER_FLAHSED_WORDS)
+#  define LATER_FLAHSED_WORDS OPT_LATER_FLAHSED_WORDS /* The number of 32 bit words not written until
+                                 * after CRC verification
+                                */
+#else
+#  define LATER_FLAHSED_WORDS 1 /* The number of 32 bit words not written until
+                                 * after CRC verification
+                                */
+#endif
 /****************************************************************************
  * Name: bl_flash_erase
  *

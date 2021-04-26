@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 #include <gtest/gtest.h>
-#include <SlewRateYaw.hpp>
+#include "SlewRateYaw.hpp"
 
 TEST(SlewRateYawTest, SlewUpLimited)
 {

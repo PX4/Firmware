@@ -39,12 +39,10 @@
 
 #include "sensor_bridge.hpp"
 
-#include <drivers/drv_mag.h>
-
 #include <uavcan/equipment/ahrs/MagneticFieldStrength.hpp>
 #include <uavcan/equipment/ahrs/MagneticFieldStrength2.hpp>
 
-class UavcanMagnetometerBridge : public UavcanCDevSensorBridgeBase
+class UavcanMagnetometerBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;
@@ -56,8 +54,6 @@ public:
 	int init() override;
 
 private:
-
-	int ioctl(struct file *filp, int cmd, unsigned long arg) override;
 
 	int init_driver(uavcan_bridge::Channel *channel) override;
 

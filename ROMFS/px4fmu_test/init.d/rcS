@@ -8,8 +8,6 @@ set unit_test_failure 0
 
 set BOARD_RC ${R}etc/init.d/rc.board
 
-uorb start
-
 if rgbled start -X
 then
 	led_control on -c blue
@@ -40,11 +38,6 @@ fi
 #
 # Start a minimal system
 #
-
-#
-# Start the ORB (first app to start)
-#
-uorb start
 
 #
 # Load parameters
@@ -91,7 +84,7 @@ then
 else
 	echo "PX4IO CRC failure"
 	tune_control play -t 16 # tune 16 = PROG_PX4IO
-	if px4io forceupdate 14662 $io_file
+	if px4io update $io_file
 	then
 		if px4io start
 		then

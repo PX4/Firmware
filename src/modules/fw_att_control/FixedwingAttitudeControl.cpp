@@ -143,23 +143,12 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 		// Always copy the new manual setpoint, even if it wasn't updated, to fill the _actuators with valid values
 		if (_manual_control_setpoint_sub.copy(&_manual_control_setpoint)) {
 
-			// Check if we are in rattitude mode and the pilot is above the threshold on pitch
-			if (_vcontrol_mode.flag_control_rattitude_enabled) {
-				if (fabsf(_manual_control_setpoint.y) > _param_fw_ratt_th.get()
-				    || fabsf(_manual_control_setpoint.x) > _param_fw_ratt_th.get()) {
-					_vcontrol_mode.flag_control_attitude_enabled = false;
-				}
-			}
-
-			if (!_vcontrol_mode.flag_control_climb_rate_enabled &&
-			    !_vcontrol_mode.flag_control_offboard_enabled) {
+			if (!_vcontrol_mode.flag_control_climb_rate_enabled) {
 
 				if (_vcontrol_mode.flag_control_attitude_enabled) {
 					// STABILIZED mode generate the attitude setpoint from manual user inputs
 
-					_att_sp.roll_body = _manual_control_setpoint.y * radians(_param_fw_man_r_max.get()) + radians(_param_fw_rsp_off.get());
-					_att_sp.roll_body = constrain(_att_sp.roll_body,
-								      -radians(_param_fw_man_r_max.get()), radians(_param_fw_man_r_max.get()));
+					_att_sp.roll_body = _manual_control_setpoint.y * radians(_param_fw_man_r_max.get());
 
 					_att_sp.pitch_body = -_manual_control_setpoint.x * radians(_param_fw_man_p_max.get())
 							     + radians(_param_fw_psp_off.get());
@@ -167,7 +156,7 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 								       -radians(_param_fw_man_p_max.get()), radians(_param_fw_man_p_max.get()));
 
 					_att_sp.yaw_body = 0.0f;
-					_att_sp.thrust_body[0] = _manual_control_setpoint.z;
+					_att_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
 
 					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 					q.copyTo(_att_sp.q_d);
@@ -184,7 +173,7 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 					_rates_sp.roll = _manual_control_setpoint.y * radians(_param_fw_acro_x_max.get());
 					_rates_sp.pitch = -_manual_control_setpoint.x * radians(_param_fw_acro_y_max.get());
 					_rates_sp.yaw = _manual_control_setpoint.r * radians(_param_fw_acro_z_max.get());
-					_rates_sp.thrust_body[0] = _manual_control_setpoint.z;
+					_rates_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
 
 					_rate_sp_pub.publish(_rates_sp);
 
@@ -196,7 +185,7 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 						-_manual_control_setpoint.x * _param_fw_man_p_sc.get() + _param_trim_pitch.get();
 					_actuators.control[actuator_controls_s::INDEX_YAW] =
 						_manual_control_setpoint.r * _param_fw_man_y_sc.get() + _param_trim_yaw.get();
-					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
+					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
 				}
 			}
 		}
@@ -267,7 +256,8 @@ float FixedwingAttitudeControl::get_airspeed_and_update_scaling()
 	 *
 	 * Forcing the scaling to this value allows reasonable handheld tests.
 	 */
-	const float airspeed_constrained = constrain(airspeed, _param_fw_airspd_min.get(), _param_fw_airspd_max.get());
+	const float airspeed_constrained = constrain(constrain(airspeed, _param_fw_airspd_min.get(),
+					   _param_fw_airspd_max.get()), 0.1f, 1000.0f);
 
 	_airspeed_scaling = (_param_fw_arsp_scale_en.get()) ? (_param_fw_airspd_trim.get() / airspeed_constrained) : 1.0f;
 
@@ -451,10 +441,15 @@ void FixedwingAttitudeControl::Run()
 				*/
 				float groundspeed = sqrtf(_local_pos.vx * _local_pos.vx + _local_pos.vy * _local_pos.vy);
 				float gspd_scaling_trim = (_param_fw_airspd_min.get() * 0.6f);
-				float groundspeed_scaler = gspd_scaling_trim / ((groundspeed < gspd_scaling_trim) ? gspd_scaling_trim : groundspeed);
 
 				control_input.groundspeed = groundspeed;
-				control_input.groundspeed_scaler = groundspeed_scaler;
+
+				if (groundspeed > gspd_scaling_trim) {
+					control_input.groundspeed_scaler = gspd_scaling_trim / groundspeed;
+
+				} else {
+					control_input.groundspeed_scaler = 1.0f;
+				}
 			}
 
 			/* reset body angular rate limits on mode change */

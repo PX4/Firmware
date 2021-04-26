@@ -49,15 +49,15 @@ import os
 import argparse
 from px4params import srcscanner, srcparser, injectxmlparams, xmlout, markdownout, jsonout
 
-import gzip #to create .gz file
+import lzma #to create .xz file
 import re
 import json
 import codecs
 
-def SaveCompressed(filename):
-    #create gz compressed version
-    gz_filename=filename+'.gz'
-    with gzip.open(gz_filename, 'wt') as f:
+def save_compressed(filename):
+    #create lzma compressed version
+    xz_filename=filename+'.xz'
+    with lzma.open(xz_filename, 'wt', preset=9) as f:
         with open(filename, 'r') as content_file:
             f.write(content_file.read())
 
@@ -185,7 +185,7 @@ def main():
         for f in output_files:
             if args.verbose:
                 print("Compressing file " + f)
-            SaveCompressed(f)
+            save_compressed(f)
             
 
 if __name__ == "__main__":

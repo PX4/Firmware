@@ -4,15 +4,14 @@ on:
   push:
     branches:
     - 'master'
-  pull_request:
-    branches:
-    - '*'
+    - 'release/*'
+    - 'pr-metadata-test'
 
 jobs:
 
   airframe:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -23,11 +22,11 @@ jobs:
         make airframe_metadata
         cd build/px4_sitl_default/docs
         ls -ls *
-      # TODO: deploy to devguide gitbook and s3
+      # TODO: deploy to userguide gitbook and s3
 
   module:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -38,11 +37,11 @@ jobs:
         make module_documentation
         cd build/px4_sitl_default/docs
         ls -ls *
-      # TODO: deploy to devguide gitbook and s3
+      # TODO: deploy to userguide gitbook and s3
 
   parameter:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -51,13 +50,22 @@ jobs:
     - name: parameter metadata
       run: |
         make parameters_metadata
-        cd build/px4_sitl_default/docs
-        ls -ls *
-      # TODO: deploy 'parameters.md, parameters.xml to S3 px4-travis:Firmware/master/
+        ./src/lib/version/get_git_tag_or_branch_version.sh build/px4_sitl_default >> $GITHUB_ENV
+
+    - uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read
+      env:
+        AWS_S3_BUCKET: 'px4-travis'
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: 'us-west-1'
+        SOURCE_DIR: 'build/px4_sitl_default/docs/'
+        DEST_DIR: 'Firmware/${{ env.version }}/_general/'
 
   uorb_graph:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-nuttx-focal:2020-11-18
+    container: px4io/px4-dev-nuttx-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -72,7 +80,7 @@ jobs:
 
   micrortps_agent:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -86,7 +94,7 @@ jobs:
 
   ROS_msgs:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
@@ -99,7 +107,7 @@ jobs:
 
   ROS2_bridge:
     runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2020-11-18
+    container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:

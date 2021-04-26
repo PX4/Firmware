@@ -186,15 +186,7 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 	int accel_best_index = -1;
 	int gyro_best_index = -1;
 
-	if (_param_sens_imu_mode.get()) {
-		_accel.voter.get_best(hrt_absolute_time(), &accel_best_index);
-		_gyro.voter.get_best(hrt_absolute_time(), &gyro_best_index);
-
-		checkFailover(_accel, "Accel");
-		checkFailover(_gyro, "Gyro");
-
-	} else {
-
+	if (!_param_sens_imu_mode.get() && ((_selection.timestamp != 0) || (_sensor_selection_sub.updated()))) {
 		// use sensor_selection to find best
 		if (_sensor_selection_sub.update(&_selection)) {
 			// reset inconsistency checks against primary
@@ -216,6 +208,14 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 				gyro_best_index = i;
 			}
 		}
+
+	} else {
+		// use sensor voter to find best if SENS_IMU_MODE is enabled or ORB_ID(sensor_selection) has never published
+		_accel.voter.get_best(hrt_absolute_time(), &accel_best_index);
+		_gyro.voter.get_best(hrt_absolute_time(), &gyro_best_index);
+
+		checkFailover(_accel, "Accel");
+		checkFailover(_gyro, "Gyro");
 	}
 
 	// write data for the best sensor to output variables
@@ -252,6 +252,23 @@ void VotedSensorsUpdate::imuPoll(struct sensor_combined_s &raw)
 						_vehicle_imu_sub[i].registerCallback();
 					}
 				}
+			}
+		}
+	}
+
+	// publish sensor selection if changed
+	if (_param_sens_imu_mode.get() || (_selection.timestamp == 0)) {
+		if (_selection_changed) {
+			// don't publish until selected IDs are valid
+			if (_selection.accel_device_id > 0 && _selection.gyro_device_id > 0) {
+				_selection.timestamp = hrt_absolute_time();
+				_sensor_selection_pub.publish(_selection);
+				_selection_changed = false;
+			}
+
+			for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
+				_accel_diff[sensor_index].zero();
+				_gyro_diff[sensor_index].zero();
 			}
 		}
 	}
@@ -349,23 +366,6 @@ void VotedSensorsUpdate::printStatus()
 void VotedSensorsUpdate::sensorsPoll(sensor_combined_s &raw)
 {
 	imuPoll(raw);
-
-	// publish sensor selection if changed
-	if (_param_sens_imu_mode.get()) {
-		if (_selection_changed) {
-			// don't publish until selected IDs are valid
-			if (_selection.accel_device_id > 0 && _selection.gyro_device_id > 0) {
-				_selection.timestamp = hrt_absolute_time();
-				_sensor_selection_pub.publish(_selection);
-				_selection_changed = false;
-			}
-
-			for (int sensor_index = 0; sensor_index < MAX_SENSOR_COUNT; sensor_index++) {
-				_accel_diff[sensor_index].zero();
-				_gyro_diff[sensor_index].zero();
-			}
-		}
-	}
 
 	calcAccelInconsistency();
 	calcGyroInconsistency();

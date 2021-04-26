@@ -7,20 +7,18 @@
 
 set VEHICLE_TYPE mc
 
-if [ $AUTOCNF = yes ]
-then
-	param set NAV_ACC_RAD 2
+param set-default IMU_GYRO_RATEMAX 800
 
-	param set RTL_RETURN_ALT 30
-	param set RTL_DESCEND_ALT 10
-	param set RTL_LAND_DELAY 0
+param set-default NAV_ACC_RAD 2
 
-	param set PWM_MAX 1950
-	param set PWM_MIN 1075
-	param set PWM_RATE 400
+param set-default RTL_RETURN_ALT 30
+param set-default RTL_DESCEND_ALT 10
 
-	param set GPS_UBX_DYNMODEL 6
-fi
+param set-default PWM_MAIN_MAX 1950
+param set-default PWM_MAIN_MIN 1075
+param set-default PWM_MAIN_RATE 400
+
+param set-default GPS_UBX_DYNMODEL 6
 
 #
 # This is the gimbal pass mixer.

@@ -41,10 +41,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <nuttx/progmem.h>
+/* Force the interface to be defined. Even if the NuttX config is not
+ * providing the driver, but the the bootloader is.
+ */
 
-#include "chip.h"
-#include "stm32.h"
+#if !defined(CONFIG_ARCH_HAVE_PROGMEM)
+#  define CONFIG_ARCH_HAVE_PROGMEM
+#endif
+
+#include <nuttx/progmem.h>
 
 #include "flash.h"
 #include "blsched.h"

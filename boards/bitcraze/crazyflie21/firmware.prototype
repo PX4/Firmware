@@ -1,0 +1,13 @@
+{
+    "board_id": 14,
+    "magic": "Crazyflie21",
+    "description": "Firmware for the Crazyflie 2.1",
+    "image": "",
+    "build_time": 0,
+    "summary": "CRAZYFLIE 2.1",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 1032192,
+    "git_identity": "",
+    "board_revision": 0
+}

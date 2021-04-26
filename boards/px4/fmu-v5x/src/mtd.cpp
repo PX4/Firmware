@@ -89,14 +89,14 @@ static const px4_mtd_entry_t imu_eeprom = {
 	.npart = 2,
 	.partd = {
 		{
-			.type = MTD_ID,
-			.path = "/fs/mtd_id",
-			.nblocks = 8 // 256 = 32 * 8
-		},
-		{
 			.type = MTD_CALDATA,
 			.path = "/fs/mtd_caldata",
 			.nblocks = 248
+		},
+		{
+			.type = MTD_ID,
+			.path = "/fs/mtd_id",
+			.nblocks = 8 // 256 = 32 * 8
 		}
 	},
 };

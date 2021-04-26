@@ -49,6 +49,13 @@ else
 	verbose=""
 fi
 
+# Disable follow mode
+if [[ "$PX4_NO_FOLLOW_MODE" != "1" ]]; then
+    follow_mode="--gui-client-plugin libgazebo_user_camera_plugin.so"
+else
+    follow_mode=""
+fi
+
 if [ "$program" == "jmavsim" ]; then
 	jmavsim_pid=`ps aux | grep java | grep "\-jar jmavsim_run.jar" | awk '{ print $2 }'`
 	if [ -n "$jmavsim_pid" ]; then
@@ -83,6 +90,8 @@ shift 7
 for file in "$@"; do
 	cp "$file" $rootfs/
 done
+
+export PX4_SIM_MODEL=${model}
 
 SIM_PID=0
 
@@ -161,7 +170,7 @@ elif [ "$program" == "gazebo" ] && [ ! -n "$no_sim" ]; then
 			# gzserver needs to be running to avoid a race. Since the launch
 			# is putting it into the background we need to avoid it by backing off
 			sleep 3
-			nice -n 20 gzclient --verbose &
+			nice -n 20 gzclient --verbose $follow_mode &
 			GUI_PID=$!
 		fi
 	else
@@ -203,9 +212,6 @@ else
 fi
 
 echo SITL COMMAND: $sitl_command
-
-export PX4_SIM_MODEL=${model}
-
 
 if [ "$debugger" == "lldb" ]; then
 	eval lldb -- $sitl_command

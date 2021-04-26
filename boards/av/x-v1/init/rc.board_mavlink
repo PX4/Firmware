@@ -11,4 +11,4 @@ mavlink stream -d /dev/ttyS5 -s LOCAL_POSITION_NED -r 50
 
 
 # AV-X: start MAVLink UDP port 14570
-mavlink start -x -u 14570
+mavlink start -x -u 14570 -p

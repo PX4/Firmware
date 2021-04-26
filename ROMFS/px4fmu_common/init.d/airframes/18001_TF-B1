@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# @name ThunderFly balloon TF-B1
+#
+# @type Balloon
+# @class Balloon
+#
+#
+# @url https://github.com/ThunderFly-aerospace/TF-B1/
+# @maintainer ThunderFly s.r.o.
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.balloon_defaults
+
+
+param set-default COM_PREARM_MODE 2  # always in prearm state
+param set-default CBRK_IO_SAFETY 22027
+param set-default SDLOG_PROFILE 17
+param set-default SDLOG_MODE 2
+param set-default MAV_0_MODE 1
+param set-default MAV_0_CONFIG 102
+param set-default GPS_UBX_DYNMODEL 8
+param set-default SER_TEL2_BAUD 9600
+
+param set-default SENS_BOARD_ROT 0
+        param set MAV_TYPE 8  # MAV_TYPE_FREE_BALLOON
+
+
+set MIXER IO_pass
+set MIXER_AUX pass

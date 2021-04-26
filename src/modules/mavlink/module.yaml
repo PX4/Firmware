@@ -3,7 +3,19 @@ __max_num_config_instances: &max_num_config_instances 3
 module_name: MAVLink
 serial_config:
     - command: |
-        set MAV_ARGS "-b p:${BAUD_PARAM} -m p:MAV_${i}_MODE -r p:MAV_${i}_RATE"
+        if [ $SERIAL_DEV != ethernet ]; then
+            set MAV_ARGS "-d ${SERIAL_DEV} -b p:${BAUD_PARAM} -m p:MAV_${i}_MODE -r p:MAV_${i}_RATE"
+        else
+            set MAV_ARGS "-u p:MAV_${i}_UDP_PRT -o p:MAV_${i}_REMOTE_PRT -m p:MAV_${i}_MODE -r p:MAV_${i}_RATE"
+            if param compare MAV_${i}_BROADCAST 1
+            then
+                set MAV_ARGS "${MAV_ARGS} -p"
+            fi
+            if param compare MAV_${i}_BROADCAST 2
+            then
+                set MAV_ARGS "${MAV_ARGS} -c"
+            fi
+        fi
         if param compare MAV_${i}_FORWARD 1
         then
             set MAV_ARGS "${MAV_ARGS} -f"
@@ -12,7 +24,7 @@ serial_config:
         then
             set MAV_ARGS "${MAV_ARGS} -s"
         fi
-        mavlink start -d ${SERIAL_DEV} ${MAV_ARGS} -x
+        mavlink start ${MAV_ARGS} -x
       port_config_param:
         name: MAV_${i}_CONFIG
         group: MAVLink
@@ -22,6 +34,7 @@ serial_config:
         # 2: Board-specific / no fixed function or port
         default: [TEL1, "", ""]
       num_instances: *max_num_config_instances
+      supports_networking: true
 
 parameters:
     - group: MAVLink
@@ -44,6 +57,9 @@ parameters:
                 #6: Iridium # as the user does not need to configure this, hide it from the UI
                 7: Minimal
                 8: External Vision
+                #9: External Vision Minimal # hidden
+                10: Gimbal
+                11: Onboard Low Bandwidth
             reboot_required: true
             num_instances: *max_num_config_instances
             default: [0, 2, 0]
@@ -95,3 +111,45 @@ parameters:
             reboot_required: true
             num_instances: *max_num_config_instances
             default: [true, true, true]
+
+        MAV_${i}_UDP_PRT:
+            description:
+                short: MAVLink Network Port for instance ${i}
+                long: |
+                    If ethernet enabled and selected as configuration for MAVLink instance ${i}, 
+                    selected udp port will be set and used in MAVLink instance ${i}.
+
+            type: int32
+            reboot_required: true
+            num_instances: *max_num_config_instances
+            default: [14556, 0, 0]
+            requires_ethernet: true
+
+        MAV_${i}_REMOTE_PRT:
+            description:
+                short: MAVLink Remote Port for instance ${i}
+                long: |
+                    If ethernet enabled and selected as configuration for MAVLink instance ${i}, 
+                    selected remote port will be set and used in MAVLink instance ${i}.
+
+            type: int32
+            reboot_required: true
+            num_instances: *max_num_config_instances
+            default: [14550, 0, 0]
+            requires_ethernet: true
+
+        MAV_${i}_BROADCAST:
+            description:
+                short: Broadcast heartbeats on local network for MAVLink instance ${i}
+                long: |
+                    This allows a ground control station to automatically find the drone 
+                    on the local network.
+
+            type: enum
+            values:
+                0: Never broadcast
+                1: Always broadcast
+                2: Only multicast        
+            num_instances: *max_num_config_instances
+            default: [1, 0, 0]
+            requires_ethernet: true

@@ -60,7 +60,7 @@
 #define STM32_HSI_FREQUENCY     16000000ul
 #define STM32_LSI_FREQUENCY     32000
 #define STM32_HSE_FREQUENCY     STM32_BOARD_XTAL
-#define STM32_LSE_FREQUENCY     32768
+#define STM32_LSE_FREQUENCY     0
 
 /* Main PLL Configuration.
  *
@@ -250,25 +250,27 @@
 #define GPIO_CAN2_TX     GPIO_CAN2_TX_1        /* PB13 */
 
 /* SPI */
-#define GPIO_SPI1_SCK    GPIO_SPI1_SCK_3    /* PG11 */
-#define GPIO_SPI1_MISO   GPIO_SPI1_MISO_1   /* PA6 */
-#define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_3   /* PD7 */
+#define ADJ_SLEW_RATE(p) (((p) & ~GPIO_SPEED_MASK) | (GPIO_SPEED_2MHz))
 
-#define GPIO_SPI2_SCK    GPIO_SPI2_SCK_6    /* PI1 */
-#define GPIO_SPI2_MISO   GPIO_SPI2_MISO_3   /* PI2 */
-#define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_4   /* PI3 */
+#define GPIO_SPI1_SCK    ADJ_SLEW_RATE(GPIO_SPI1_SCK_3) /* PG11 */
+#define GPIO_SPI1_MISO   GPIO_SPI1_MISO_1               /* PA6  */
+#define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_3               /* PD7  */
 
-#define GPIO_SPI4_SCK    GPIO_SPI4_SCK_2    /* PE2 */
-#define GPIO_SPI4_MISO   GPIO_SPI4_MISO_1   /* PE13 */
-#define GPIO_SPI4_MOSI   GPIO_SPI4_MOSI_2   /* PE6 */
+#define GPIO_SPI2_SCK    ADJ_SLEW_RATE(GPIO_SPI2_SCK_6) /* PI1  */
+#define GPIO_SPI2_MISO   GPIO_SPI2_MISO_3               /* PI2  */
+#define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_4               /* PI3  */
 
-#define GPIO_SPI5_SCK    GPIO_SPI5_SCK_1    /* PF7 */
-#define GPIO_SPI5_MISO   GPIO_SPI5_MISO_1   /* PF8 */
-#define GPIO_SPI5_MOSI   GPIO_SPI5_MOSI_2   /* PF9 */
+#define GPIO_SPI4_SCK    ADJ_SLEW_RATE(GPIO_SPI4_SCK_2) /* PE2  */
+#define GPIO_SPI4_MISO   GPIO_SPI4_MISO_1               /* PE13 */
+#define GPIO_SPI4_MOSI   GPIO_SPI4_MOSI_2               /* PE6  */
 
-#define GPIO_SPI6_SCK    GPIO_SPI6_SCK_1    /* PG13 */
-#define GPIO_SPI6_MISO   GPIO_SPI6_MISO_1   /* PG12 */
-#define GPIO_SPI6_MOSI   GPIO_SPI6_MOSI_2   /* PA7 */
+#define GPIO_SPI5_SCK    ADJ_SLEW_RATE(GPIO_SPI5_SCK_1) /* PF7  */
+#define GPIO_SPI5_MISO   GPIO_SPI5_MISO_1               /* PF8  */
+#define GPIO_SPI5_MOSI   GPIO_SPI5_MOSI_2               /* PF9  */
+
+#define GPIO_SPI6_SCK    ADJ_SLEW_RATE(GPIO_SPI6_SCK_1) /* PG13 */
+#define GPIO_SPI6_MISO   GPIO_SPI6_MISO_1               /* PG12 */
+#define GPIO_SPI6_MOSI   GPIO_SPI6_MOSI_2               /* PA7  */
 
 /* I2C */
 #define GPIO_I2C1_SCL GPIO_I2C1_SCL_2       /* PB8  */

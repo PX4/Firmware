@@ -69,14 +69,18 @@ typedef struct dshot_handler_t {
 	uint32_t		dma_size;
 } dshot_handler_t;
 
-#define DMA_BUFFER_MASK    (PX4_ARCH_DCACHE_LINESIZE - 1)
-#define DMA_ALIGN_UP(n)    (((n) + DMA_BUFFER_MASK) & ~DMA_BUFFER_MASK)
+#if defined(CONFIG_ARMV7M_DCACHE)
+#  define DMA_BUFFER_MASK    (ARMV7M_DCACHE_LINESIZE - 1)
+#  define DMA_ALIGN_UP(n)    (((n) + DMA_BUFFER_MASK) & ~DMA_BUFFER_MASK)
+#else
+#define DMA_ALIGN_UP(n) (n)
+#endif
 #define DSHOT_BURST_BUFFER_SIZE(motors_number) (DMA_ALIGN_UP(sizeof(uint32_t)*ONE_MOTOR_BUFF_SIZE*motors_number))
 
 static dshot_handler_t dshot_handler[DSHOT_TIMERS] = {};
 static uint16_t *motor_buffer = NULL;
 static uint8_t dshot_burst_buffer_array[DSHOT_TIMERS * DSHOT_BURST_BUFFER_SIZE(MAX_NUM_CHANNELS_PER_TIMER)]
-__attribute__((aligned(PX4_ARCH_DCACHE_LINESIZE))); // DMA buffer
+px4_cache_aligned_data();
 static uint32_t *dshot_burst_buffer[DSHOT_TIMERS] = {};
 
 #ifdef BOARD_DSHOT_MOTOR_ASSIGNMENT

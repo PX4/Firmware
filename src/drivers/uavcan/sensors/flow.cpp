@@ -38,7 +38,7 @@
 const char *const UavcanFlowBridge::NAME = "flow";
 
 UavcanFlowBridge::UavcanFlowBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_flow", "/dev/uavcan/flow", "/dev/flow", ORB_ID(optical_flow)),
+	UavcanSensorBridgeBase("uavcan_flow", ORB_ID(optical_flow)),
 	_sub_flow(node)
 {
 }
@@ -46,13 +46,7 @@ UavcanFlowBridge::UavcanFlowBridge(uavcan::INode &node) :
 int
 UavcanFlowBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_flow.start(FlowCbBinder(this, &UavcanFlowBridge::flow_sub_cb));
+	int res = _sub_flow.start(FlowCbBinder(this, &UavcanFlowBridge::flow_sub_cb));
 
 	if (res < 0) {
 		DEVICE_LOG("failed to start uavcan sub: %d", res);
@@ -62,8 +56,7 @@ UavcanFlowBridge::init()
 	return 0;
 }
 
-void
-UavcanFlowBridge::flow_sub_cb(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement> &msg)
+void UavcanFlowBridge::flow_sub_cb(const uavcan::ReceivedDataStructure<com::hex::equipment::flow::Measurement> &msg)
 {
 	optical_flow_s flow{};
 

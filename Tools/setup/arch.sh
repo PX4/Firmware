@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 
 ## Bash script to setup PX4 development environment on Arch Linux.
-## Tested on Manjaro 18.0.1.
+## Tested on Manjaro 20.2.1.
 ##
 ## Installs:
 ## - Common dependencies and tools for nuttx, jMAVSim
@@ -33,7 +33,7 @@ do
 done
 
 # script directory
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DIR=$(dirname $0)
 
 # check requirements.txt exists (script not run in source tree)
 REQUIREMENTS_FILE="requirements.txt"
@@ -90,22 +90,27 @@ if [[ $INSTALL_NUTTX == "true" ]]; then
 	sudo pacman -R modemmanager --noconfirm
 
 	# arm-none-eabi-gcc
-	NUTTX_GCC_VERSION="7-2017-q4-major"
-	GCC_VER_STR=$(arm-none-eabi-gcc --version)
-	STATUSRETVAL=$(echo $GCC_VER_STR | grep -c "${NUTTX_GCC_VERSION}")
+	NUTTX_GCC_VERSION="10-2020-q4-major"
+	NUTTX_GCC_VERSION_SHORT="10-2020q4"
 
-	if [ $STATUSRETVAL -eq "1" ]; then
+	source $HOME/.profile # load changed path for the case the script is reran before relogin
+	if [ $(which arm-none-eabi-gcc) ]; then
+		GCC_VER_STR=$(arm-none-eabi-gcc --version)
+		GCC_FOUND_VER=$(echo $GCC_VER_STR | grep -c "${NUTTX_GCC_VERSION}")
+	fi
+
+	if [[ "$GCC_FOUND_VER" == "1" ]]; then
 		echo "arm-none-eabi-gcc-${NUTTX_GCC_VERSION} found, skipping installation"
+
 	else
 		echo "Installing arm-none-eabi-gcc-${NUTTX_GCC_VERSION}";
-		wget -O /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/7-2017q4/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 && \
+		wget -O /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu-rm/${NUTTX_GCC_VERSION_SHORT}/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-x86_64-linux.tar.bz2 && \
 			sudo tar -jxf /tmp/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}-linux.tar.bz2 -C /opt/;
 
 		# add arm-none-eabi-gcc to user's PATH
 		exportline="export PATH=/opt/gcc-arm-none-eabi-${NUTTX_GCC_VERSION}/bin:\$PATH"
 
-		if grep -Fxq "$exportline" $HOME/.profile;
-		then
+		if grep -Fxq "$exportline" $HOME/.profile; then
 			echo "${NUTTX_GCC_VERSION} path already set.";
 		else
 			echo $exportline >> $HOME/.profile;
@@ -132,27 +137,28 @@ if [[ $INSTALL_SIM == "true" ]]; then
 		# PX4 gazebo simulation dependencies
 		sudo pacman -S --noconfirm --needed \
 			dmidecode \
-			eigen3 \
+			eigen \
 			hdf5 \
 			opencv \
 			protobuf \
 			vtk \
+			yay \
 			;
 
-		# add community binary repository for gazebo and ROS
-		# https://wiki.archlinux.org/index.php/Unofficial_user_repositories#oscloud
-		if ! grep -q oscloud /etc/pacman.conf; then
-			echo "# ROS gazebo repository for PX4
-[oscloud]
-SigLevel = Never
-Server = http://repo.oscloud.info/" | sudo tee -a /etc/pacman.conf > /dev/null
-		fi
+		# enable multicore gazebo compilation
+		sudo sed -i '/MAKEFLAGS=/c\MAKEFLAGS="-j4"' /etc/makepkg.conf
 
-		sudo pacman -Sy --noconfirm --needed gazebo
+		# install gazebo from AUR
+		yay -S gazebo --noconfirm
 
 		if sudo dmidecode -t system | grep -q "Manufacturer: VMware, Inc." ; then
 			# fix VMWare 3D graphics acceleration for gazebo
-			echo "export SVGA_VGPU10=0" >> ~/.profile
+			exportline="export SVGA_VGPU10=0"
+
+			if grep -Fxq "$exportline" $HOME/.profile; then
+			else
+				echo $exportline >> $HOME/.profile;
+			fi
 		fi
 	fi
 fi

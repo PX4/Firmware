@@ -42,9 +42,11 @@ void BlockLocalPositionEstimator::visionInit()
 		_sensorFault &= ~SENSOR_VISION;
 
 		// get reference for global position
-		globallocalconverter_getref(&_ref_lat, &_ref_lon, &_ref_alt);
-		_global_ref_timestamp = _timeStamp;
-		_is_global_cov_init = globallocalconverter_initialized();
+		_ref_lat = math::degrees(_global_local_proj_ref.lat_rad);
+		_ref_lon = math::degrees(_global_local_proj_ref.lon_rad);
+		_ref_alt = _global_local_alt0;
+
+		_is_global_cov_init = map_projection_initialized(&_global_local_proj_ref);
 
 		if (!_map_ref.init_done && _is_global_cov_init) {
 			// initialize global origin using the visual estimator reference
@@ -58,7 +60,7 @@ void BlockLocalPositionEstimator::visionInit()
 		if (!_altOriginInitialized) {
 			_altOriginInitialized = true;
 			_altOriginGlobal = true;
-			_altOrigin = globallocalconverter_initialized() ? _ref_alt : 0.0f;
+			_altOrigin = map_projection_initialized(&_global_local_proj_ref) ? _ref_alt : 0.0f;
 		}
 	}
 }

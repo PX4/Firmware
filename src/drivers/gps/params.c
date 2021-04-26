@@ -146,3 +146,63 @@ PARAM_DEFINE_INT32(GPS_1_PROTOCOL, 1);
  * @group GPS
  */
 PARAM_DEFINE_INT32(GPS_2_PROTOCOL, 1);
+
+/**
+ * GNSS Systems for Primary GPS (integer bitmask)
+ *
+ * This integer bitmask controls the set of GNSS systems used by the receiver. Check your
+ * receiver's documentation on how many systems are supported to be used in parallel.
+ *
+ * Currently this functionality is just implemented for u-blox receivers.
+ *
+ * When no bits are set, the receiver's default configuration should be used.
+ *
+ * Set bits true to enable:
+ * 0 : Use GPS (with QZSS)
+ * 1 : Use SBAS (multiple GPS augmentation systems)
+ * 2 : Use Galileo
+ * 3 : Use BeiDou
+ * 4 : Use GLONASS
+ *
+ * @min 0
+ * @max 31
+ * @bit 0 GPS (with QZSS)
+ * @bit 1 SBAS
+ * @bit 2 Galileo
+ * @bit 3 BeiDou
+ * @bit 4 GLONASS
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_1_GNSS, 0);
+
+/**
+ * GNSS Systems for Secondary GPS (integer bitmask)
+ *
+ * This integer bitmask controls the set of GNSS systems used by the receiver. Check your
+ * receiver's documentation on how many systems are supported to be used in parallel.
+ *
+ * Currently this functionality is just implemented for u-blox receivers.
+ *
+ * When no bits are set, the receiver's default configuration should be used.
+ *
+ * Set bits true to enable:
+ * 0 : Use GPS (with QZSS)
+ * 1 : Use SBAS (multiple GPS augmentation systems)
+ * 2 : Use Galileo
+ * 3 : Use BeiDou
+ * 4 : Use GLONASS
+ *
+ * @min 0
+ * @max 31
+ * @bit 0 GPS (with QZSS)
+ * @bit 1 SBAS
+ * @bit 2 Galileo
+ * @bit 3 BeiDou
+ * @bit 4 GLONASS
+ *
+ * @reboot_required true
+ * @group GPS
+ */
+PARAM_DEFINE_INT32(GPS_2_GNSS, 0);

@@ -49,7 +49,6 @@
 #include <unistd.h>
 
 #include <drivers/device/spi.h>
-#include <drivers/drv_device.h>
 
 #include "board_config.h"
 #include "lis2mdl.h"

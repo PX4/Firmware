@@ -126,14 +126,6 @@ SECTIONS
 		_einit = ABSOLUTE(.);
 	} > FLASH_AXIM
 
-	/*
-	 * Construction data for parameters.
-	 */
-	__param ALIGN(4): {
-		__param_start = ABSOLUTE(.);
-		KEEP(*(__param*))
-		__param_end = ABSOLUTE(.);
-	} > FLASH_AXIM
 
 	.ARM.extab : {
 		*(.ARM.extab*)

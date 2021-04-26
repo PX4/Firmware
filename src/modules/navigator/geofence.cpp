@@ -58,7 +58,9 @@ Geofence::Geofence(Navigator *navigator) :
 	_sub_airdata(ORB_ID(vehicle_air_data))
 {
 	// we assume there's no concurrent fence update on startup
-	_updateFence();
+	if (_navigator != nullptr) {
+		_updateFence();
+	}
 }
 
 Geofence::~Geofence()
@@ -218,14 +220,13 @@ bool Geofence::check(const struct mission_item_s &mission_item)
 	return checkAll(mission_item.lat, mission_item.lon, mission_item.altitude);
 }
 
-bool Geofence::checkAll(double lat, double lon, float altitude)
+bool Geofence::isCloserThanMaxDistToHome(double lat, double lon, float altitude)
 {
 	bool inside_fence = true;
 
 	if (isHomeRequired() && _navigator->home_position_valid()) {
 
 		const float max_horizontal_distance = _param_gf_max_hor_dist.get();
-		const float max_vertical_distance = _param_gf_max_ver_dist.get();
 
 		const double home_lat = _navigator->get_home_position()->lat;
 		const double home_lon = _navigator->get_home_position()->lon;
@@ -236,20 +237,10 @@ bool Geofence::checkAll(double lat, double lon, float altitude)
 
 		get_distance_to_point_global_wgs84(lat, lon, altitude, home_lat, home_lon, home_alt, &dist_xy, &dist_z);
 
-		if (max_vertical_distance > FLT_EPSILON && (dist_z > max_vertical_distance)) {
-			if (hrt_elapsed_time(&_last_vertical_range_warning) > GEOFENCE_RANGE_WARNING_LIMIT) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Maximum altitude above home exceeded by %.1f m",
-						     (double)(dist_z - max_vertical_distance));
-				_last_vertical_range_warning = hrt_absolute_time();
-			}
-
-			inside_fence = false;
-		}
-
 		if (max_horizontal_distance > FLT_EPSILON && (dist_xy > max_horizontal_distance)) {
 			if (hrt_elapsed_time(&_last_horizontal_range_warning) > GEOFENCE_RANGE_WARNING_LIMIT) {
-				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Maximum distance from home exceeded by %.1f m",
-						     (double)(dist_xy - max_horizontal_distance));
+				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Maximum distance from home reached (%.5f)",
+						     (double)max_horizontal_distance);
 				_last_horizontal_range_warning = hrt_absolute_time();
 			}
 
@@ -257,9 +248,44 @@ bool Geofence::checkAll(double lat, double lon, float altitude)
 		}
 	}
 
+	return inside_fence;
+}
+
+bool Geofence::isBelowMaxAltitude(float altitude)
+{
+	bool inside_fence = true;
+
+	if (isHomeRequired() && _navigator->home_position_valid()) {
+
+		const float max_vertical_distance = _param_gf_max_ver_dist.get();
+		const float home_alt = _navigator->get_home_position()->alt;
+
+		float dist_z = altitude - home_alt;
+
+		if (max_vertical_distance > FLT_EPSILON && (dist_z > max_vertical_distance)) {
+			if (hrt_elapsed_time(&_last_vertical_range_warning) > GEOFENCE_RANGE_WARNING_LIMIT) {
+				mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Maximum altitude above home reached (%.5f)",
+						     (double)max_vertical_distance);
+				_last_vertical_range_warning = hrt_absolute_time();
+			}
+
+			inside_fence = false;
+		}
+	}
+
+	return inside_fence;
+}
+
+
+bool Geofence::checkAll(double lat, double lon, float altitude)
+{
+	bool inside_fence = isCloserThanMaxDistToHome(lat, lon, altitude);
+
+	inside_fence = inside_fence && isBelowMaxAltitude(altitude);
+
 	// to be inside the geofence both fences have to report being inside
 	// as they both report being inside when not enabled
-	inside_fence = inside_fence && checkPolygons(lat, lon, altitude);
+	inside_fence = inside_fence && isInsidePolygonOrCircle(lat, lon, altitude);
 
 	if (inside_fence) {
 		_outside_counter = 0;
@@ -277,8 +303,7 @@ bool Geofence::checkAll(double lat, double lon, float altitude)
 	}
 }
 
-
-bool Geofence::checkPolygons(double lat, double lon, float altitude)
+bool Geofence::isInsidePolygonOrCircle(double lat, double lon, float altitude)
 {
 	// the following uses dm_read, so first we try to lock all items. If that fails, it (most likely) means
 	// the data is currently being updated (via a mavlink geofence transfer), and we do not check for a violation now

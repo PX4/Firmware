@@ -45,6 +45,7 @@
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <lib/drivers/rangefinder/PX4Rangefinder.hpp>
 #include <drivers/drv_hrt.h>
+#include <drivers/device/device.h>
 #include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 
@@ -77,6 +78,7 @@ private:
 	unsigned			_linebuf_index{0};
 	enum LW_PARSE_STATE		_parse_state {LW_PARSE_STATE0_UNSYNC};
 	hrt_abstime			_last_read{0};
+	bool				_simple_serial{false};
 
 	unsigned			_consecutive_fail_count;
 

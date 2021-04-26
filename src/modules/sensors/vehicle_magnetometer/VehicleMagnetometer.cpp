@@ -190,6 +190,7 @@ void VehicleMagnetometer::MagCalibrationUpdate()
 			for (int i = 0; i < ORB_MULTI_MAX_INSTANCES; i++) {
 				if ((_calibration[mag_index].device_id() != 0) && (_mag_cal[i].device_id == _calibration[mag_index].device_id())) {
 
+					const Vector3f mag_cal_orig{_calibration[mag_index].offset()};
 					Vector3f mag_cal_offset{_calibration[mag_index].offset()};
 
 					// calculate weighting using ratio of variances and update stored bias values
@@ -208,9 +209,7 @@ void VehicleMagnetometer::MagCalibrationUpdate()
 
 						PX4_INFO("%d (%d) EST:%d offset committed: [%.2f %.2f %.2f]->[%.2f %.2f %.2f] (full [%.2f %.2f %.2f])",
 							 mag_index, _calibration[mag_index].device_id(), i,
-							 (double)_calibration[mag_index].offset()(0),
-							 (double)_calibration[mag_index].offset()(1),
-							 (double)_calibration[mag_index].offset()(2),
+							 (double)mag_cal_orig(0), (double)mag_cal_orig(1), (double)mag_cal_orig(2),
 							 (double)mag_cal_offset(0), (double)mag_cal_offset(1), (double)mag_cal_offset(2),
 							 (double)_mag_cal[i].mag_offset(0), (double)_mag_cal[i].mag_offset(1), (double)_mag_cal[i].mag_offset(2));
 
@@ -309,7 +308,7 @@ void VehicleMagnetometer::Run()
 					// advertise outputs in order if publishing all
 					if (!_param_sens_mag_mode.get()) {
 						for (int instance = 0; instance < uorb_index; instance++) {
-							_vehicle_magnetometer_multi_pub[instance].advertise();
+							_vehicle_magnetometer_pub[instance].advertise();
 						}
 					}
 
@@ -443,7 +442,7 @@ void VehicleMagnetometer::Run()
 
 void VehicleMagnetometer::Publish(uint8_t instance, bool multi)
 {
-	if ((_param_sens_mag_rate.get() > 0) && (_last_publication_timestamp[instance] ||
+	if ((_param_sens_mag_rate.get() > 0) && ((_last_publication_timestamp[instance] == 0) ||
 			(hrt_elapsed_time(&_last_publication_timestamp[instance]) >= (1e6f / _param_sens_mag_rate.get())))) {
 
 		const Vector3f magnetometer_data = _mag_sum[instance] / _mag_sum_count[instance];
@@ -464,11 +463,11 @@ void VehicleMagnetometer::Publish(uint8_t instance, bool multi)
 		out.timestamp = hrt_absolute_time();
 
 		if (multi) {
-			_vehicle_magnetometer_multi_pub[instance].publish(out);
+			_vehicle_magnetometer_pub[instance].publish(out);
 
 		} else {
 			// otherwise only ever publish the first instance
-			_vehicle_magnetometer_pub.publish(out);
+			_vehicle_magnetometer_pub[0].publish(out);
 		}
 
 		_last_publication_timestamp[instance] = out.timestamp;

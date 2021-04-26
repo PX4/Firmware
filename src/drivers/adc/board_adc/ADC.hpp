@@ -95,6 +95,10 @@ private:
 	void			update_adc_report(hrt_abstime now);
 	void			update_system_power(hrt_abstime now);
 
+	void open_gpio_devices();
+	void close_gpio_devices();
+	uint8_t read_gpio_value(int fd);
+
 	static const hrt_abstime	kINTERVAL{10_ms};	/**< 100Hz base rate */
 
 	perf_counter_t			_sample_perf;
@@ -105,4 +109,11 @@ private:
 
 	uORB::Publication<adc_report_s>		_to_adc_report{ORB_ID(adc_report)};
 	uORB::Publication<system_power_s>	_to_system_power{ORB_ID(system_power)};
+#ifdef BOARD_GPIO_VDD_5V_COMP_VALID
+	int _5v_comp_valid_fd {-1};
+#endif
+#ifdef BOARD_GPIO_VDD_5V_CAN1_GPS1_VALID
+	int _5v_can1_gps1_valid_fd {-1};
+#endif
+	bool _first_run {true};
 };

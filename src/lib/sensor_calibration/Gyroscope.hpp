@@ -73,12 +73,18 @@ public:
 	const int32_t &priority() const { return _priority; }
 	const matrix::Dcmf &rotation() const { return _rotation; }
 	const Rotation &rotation_enum() const { return _rotation_enum; }
+	const matrix::Vector3f &thermal_offset() const { return _thermal_offset; }
 
 	// apply offsets and scale
 	// rotate corrected measurements from sensor to body frame
 	inline matrix::Vector3f Correct(const matrix::Vector3f &data) const
 	{
 		return _rotation * matrix::Vector3f{data - _thermal_offset - _offset};
+	}
+
+	inline matrix::Vector3f Uncorrect(const matrix::Vector3f &corrected_data) const
+	{
+		return (_rotation.I() * corrected_data) + _thermal_offset + _offset;
 	}
 
 	bool ParametersSave();

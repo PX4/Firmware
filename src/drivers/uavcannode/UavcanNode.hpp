@@ -48,6 +48,7 @@
 
 #include "uavcan_driver.hpp"
 #include "allocator.hpp"
+#include "UavcanNodeParamManager.hpp"
 
 #include <uavcan/helpers/heap_based_pool_allocator.hpp>
 #include <uavcan/protocol/global_time_sync_slave.hpp>
@@ -57,28 +58,24 @@
 #include <uavcan/protocol/param/GetSet.hpp>
 #include <uavcan/protocol/param/ExecuteOpcode.hpp>
 #include <uavcan/protocol/RestartNode.hpp>
-#include <uavcan/equipment/ahrs/MagneticFieldStrength2.hpp>
-#include <uavcan/equipment/air_data/RawAirData.hpp>
-#include <uavcan/equipment/air_data/StaticPressure.hpp>
-#include <uavcan/equipment/air_data/StaticTemperature.hpp>
-#include <uavcan/equipment/gnss/Fix2.hpp>
-#include <uavcan/equipment/power/BatteryInfo.hpp>
-#include <uavcan/equipment/range_sensor/Measurement.hpp>
+#include <uavcan/protocol/dynamic_node_id_client.hpp>
+
+#include <containers/IntrusiveSortedList.hpp>
 
 #include <lib/parameters/param.h>
 #include <lib/perf/perf_counter.h>
 
 #include <uORB/Subscription.hpp>
-#include <uORB/SubscriptionCallback.hpp>
-#include <uORB/topics/battery_status.h>
+#include <uORB/SubscriptionInterval.hpp>
 #include <uORB/topics/parameter_update.h>
-#include <uORB/topics/differential_pressure.h>
-#include <uORB/topics/distance_sensor.h>
-#include <uORB/topics/sensor_baro.h>
-#include <uORB/topics/sensor_mag.h>
-#include <uORB/topics/vehicle_gps_position.h>
+
+#include "Publishers/UavcanPublisherBase.hpp"
+#include "Subscribers/UavcanSubscriberBase.hpp"
 
 using namespace time_literals;
+
+namespace uavcannode
+{
 
 /**
  * A UAVCAN node.
@@ -129,7 +126,7 @@ public:
 
 	uavcan::Node<>	&get_node() { return _node; }
 
-	void		print_info();
+	void		PrintInfo();
 
 	void		shrink();
 
@@ -141,11 +138,11 @@ public:
 	/* The bit rate that can be passed back to the bootloader */
 	int32_t active_bitrate{0};
 
-protected:
-	void Run() override;
 private:
-	void		fill_node_info();
-	int		init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events);
+	void Run() override;
+
+	void fill_node_info();
+	int init(uavcan::NodeID node_id, UAVCAN_DRIVER::BusEvent &bus_events);
 
 	px4::atomic_bool	_task_should_exit{false};	///< flag to indicate to tear down the CAN driver
 
@@ -155,8 +152,8 @@ private:
 
 	uavcan_node::Allocator	 _pool_allocator;
 
-	uavcan::Node<>			_node;				///< library instance
-	pthread_mutex_t			_node_mutex;
+	uavcan::Node<>		_node;				///< library instance
+	pthread_mutex_t		_node_mutex;
 
 	uavcan::GlobalTimeSyncSlave _time_sync_slave;
 
@@ -169,37 +166,19 @@ private:
 	void cb_beginfirmware_update(const uavcan::ReceivedDataStructure<UavcanNode::BeginFirmwareUpdate::Request> &req,
 				     uavcan::ServiceResponseDataStructure<UavcanNode::BeginFirmwareUpdate::Response> &rsp);
 
-
-	uavcan::Publisher<uavcan::equipment::ahrs::MagneticFieldStrength2> _ahrs_magnetic_field_strength2_publisher;
-	uavcan::Publisher<uavcan::equipment::gnss::Fix2> _gnss_fix2_publisher;
-	uavcan::Publisher<uavcan::equipment::power::BatteryInfo> _power_battery_info_publisher;
-	uavcan::Publisher<uavcan::equipment::air_data::StaticPressure> _air_data_static_pressure_publisher;
-	uavcan::Publisher<uavcan::equipment::air_data::StaticTemperature> _air_data_static_temperature_publisher;
-	uavcan::Publisher<uavcan::equipment::air_data::RawAirData> _raw_air_data_publisher;
-	uavcan::Publisher<uavcan::equipment::range_sensor::Measurement> _range_sensor_measurement;
-
-	hrt_abstime _last_static_temperature_publish{0};
+	IntrusiveSortedList<UavcanPublisherBase *> _publisher_list;
+	IntrusiveSortedList<UavcanSubscriberBase *> _subscriber_list;
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
-	uORB::SubscriptionCallbackWorkItem _battery_status_sub{this, ORB_ID(battery_status)};
-	uORB::SubscriptionCallbackWorkItem _diff_pressure_sub{this, ORB_ID(differential_pressure)};
-	static constexpr int MAX_INSTANCES = 4;
-	uORB::SubscriptionCallbackWorkItem _distance_sensor_sub[MAX_INSTANCES] {
-		{this, ORB_ID(distance_sensor), 0},
-		{this, ORB_ID(distance_sensor), 1},
-		{this, ORB_ID(distance_sensor), 2},
-		{this, ORB_ID(distance_sensor), 3},
-	};
-	uORB::SubscriptionCallbackWorkItem _sensor_baro_sub{this, ORB_ID(sensor_baro)};
-	uORB::SubscriptionCallbackWorkItem _sensor_mag_sub{this, ORB_ID(sensor_mag)};
-	uORB::SubscriptionCallbackWorkItem _vehicle_gps_position_sub{this, ORB_ID(vehicle_gps_position)};
+	UavcanNodeParamManager _param_manager;
+	uavcan::ParamServer _param_server;
 
-	perf_counter_t _cycle_perf;
-	perf_counter_t _interval_perf;
+	perf_counter_t _cycle_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": cycle time")};
+	perf_counter_t _interval_perf{perf_alloc(PC_INTERVAL, MODULE_NAME": cycle interval")};
 
 public:
-
 	/* A timer used to reboot after the response is sent */
 	uavcan::TimerEventForwarder<void (*)(const uavcan::TimerEvent &)> _reset_timer;
 };
+}; // namespace uavcannode

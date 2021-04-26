@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -343,3 +343,95 @@ PARAM_DEFINE_FLOAT(SIH_LOC_MU_Y, -0.045f);
  * @group Simulation In Hardware
  */
 PARAM_DEFINE_FLOAT(SIH_LOC_MU_Z,  0.504f);
+
+/**
+ * Number of GPS satellites used
+ *
+ * @min 0
+ * @max  50
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_INT32(SIH_GPS_USED, 10);
+
+/**
+ * Barometer offset in meters
+ *
+ * Absolute value superior to 10000 will disable barometer
+ *
+ * @unit m
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_BARO_OFFSET,  0.0f);
+
+/**
+ * magnetometer X offset in Gauss
+ *
+ * Absolute value superior to 10000 will disable magnetometer
+ *
+ * @unit gauss
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_MAG_OFFSET_X,  0.0f);
+
+/**
+ * magnetometer Y offset in Gauss
+ *
+ * Absolute value superior to 10000 will disable magnetometer
+ *
+ * @unit gauss
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_MAG_OFFSET_Y,  0.0f);
+/**
+ * magnetometer Z offset in Gauss
+ *
+ * Absolute value superior to 10000 will disable magnetometer
+ *
+ * @unit gauss
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_MAG_OFFSET_Z,  0.0f);
+
+/**
+ * distance sensor minimun range
+ *
+ * @unit m
+ * @min 0.0
+ * @max 10.0
+ * @decimal 4
+ * @increment 0.01
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_DISTSNSR_MIN, 0.0f);
+
+/**
+ * distance sensor maximun range
+ *
+ * @unit m
+ * @min 0.0
+ * @max 1000.0
+ * @decimal 4
+ * @increment 0.01
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_DISTSNSR_MAX, 100.0f);
+
+/**
+ * if >= 0 the distance sensor measures will be overrided by this value
+ *
+ * Absolute value superior to 10000 will disable distance sensor
+ *
+ * @unit m
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_DISTSNSR_OVR, -1.0f);
+
+/**
+ * thruster time constant tau
+ *
+ * the time taken for the thruster to step from 0 to 100% should be about 4 times tau
+ *
+ * @unit s
+ * @group Simulation In Hardware
+ */
+PARAM_DEFINE_FLOAT(SIH_T_TAU, 0.05f);

@@ -331,10 +331,6 @@ void MPU6000::ConfigureGyro()
 
 void MPU6000::ConfigureSampleRate(int sample_rate)
 {
-	if (sample_rate == 0) {
-		sample_rate = 1000; // default to 1000 Hz
-	}
-
 	// round down to nearest FIFO sample dt
 	const float min_interval = FIFO_SAMPLE_DT * 4; // limit to 2 kHz (500 us interval)
 	_fifo_empty_interval_us = math::max(roundf((1e6f / (float)sample_rate) / min_interval) * min_interval, min_interval);

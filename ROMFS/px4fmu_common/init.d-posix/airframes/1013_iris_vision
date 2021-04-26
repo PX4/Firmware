@@ -7,15 +7,13 @@
 
 . ${R}etc/init.d-posix/airframes/10016_iris
 
-if [ $AUTOCNF = yes ]
-then
-	# EKF2: Vision position and heading
-	param set EKF2_AID_MASK 24
-	param set EKF2_EV_DELAY 5
+# EKF2: Vision position and heading
+param set-default EKF2_AID_MASK 24
+param set-default EKF2_EV_DELAY 5
 
-	# LPE: Vision + baro
-	param set LPE_FUSION 132
+# LPE: Vision + baro
+param set-default LPE_FUSION 132
 
-	# AEQ: External heading set to use vision input
-	param set ATT_EXT_HDG_M 1
-fi
+# AEQ: External heading set to use vision input
+param set-default ATT_EXT_HDG_M 1
+

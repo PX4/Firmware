@@ -5,7 +5,7 @@
 # NOTE: Script variables are declared/initialized/unset in the rcS script.
 #
 
-if ! ver hwcmp AEROFC_V1 OMNIBUS_F4SD
+if ! ver hwcmp OMNIBUS_F4SD
 then
 	if ! ver hwcmp BITCRAZE_CRAZYFLIE
 	then
@@ -108,11 +108,18 @@ then
 	vl53l1x start -X
 fi
 
+# ADIS16448 spi external IMU
+if param compare -s SENS_EN_ADIS164X 1
+then
+	adis16448 -S start
+fi
+
 # probe for optional external I2C devices
 if param compare SENS_EXT_I2C_PRB 1
 then
+	icm20948_i2c_passthrough -X -q start
+
 	# compasses
-	ak09916 -X -R 6 -q start # external AK09916 (Here2) is rotated 270 degrees yaw
 	hmc5883 -T -X -q start
 	ist8308 -X -q start
 	ist8310 -X -q start
@@ -121,29 +128,31 @@ then
 	qmc5883l -X -q start
 	rm3100 -X -q start
 
+	# start last (wait for possible icm20948 passthrough mode)
+	ak09916 -X -q start
+
 	# differential pressure sensors
 	if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
 	then
-		if param compare CBRK_AIRSPD_CHK 0
+		# Always try to start the airspeed sensors
+		# even if their usage might be disabled
+		sdp3x_airspeed start -X -q
+		sdp3x_airspeed start -X -a 0x22 -q
+
+		# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
+		# detected as MS5525 because the chip manufacturer was so
+		# clever to assign the same I2C address and skip a WHO_AM_I
+		# register.
+		if [ $BOARD_FMUV3 = 21 ]
 		then
-			sdp3x_airspeed start -X -q
-			sdp3x_airspeed start -X -a 0x22 -q
-
-			# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
-			# detected as MS5525 because the chip manufacturer was so
-			# clever to assign the same I2C address and skip a WHO_AM_I
-			# register.
-			if [ $BOARD_FMUV3 = 21 ]
-			then
-				ms5525_airspeed start -X -b 2 -q
-			else
-				ms5525_airspeed start -X -q
-			fi
-
-			ms4525_airspeed start -X -q
-
-			ets_airspeed start -X -q
+			ms5525_airspeed start -X -b 2 -q
+		else
+			ms5525_airspeed start -X -q
 		fi
+
+		ms4525_airspeed start -X -q
+
+		ets_airspeed start -X -q
 	fi
 fi
 

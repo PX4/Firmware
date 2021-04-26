@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*   Copyright (c) 2016-2017 PX4 Development Team. All rights reserved.
+*   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -41,6 +41,7 @@
 
 #include <math.h>
 #include <errno.h>
+#include <matrix/matrix/math.hpp>
 #include <px4_platform_common/posix.h>
 #include <px4_platform_common/defines.h>
 
@@ -49,8 +50,7 @@ namespace vmount
 {
 
 
-InputRC::InputRC(bool do_stabilization, int aux_channel_roll, int aux_channel_pitch, int aux_channel_yaw)
-	: _do_stabilization(do_stabilization)
+InputRC::InputRC(int aux_channel_roll, int aux_channel_pitch, int aux_channel_yaw)
 {
 	_aux_channels[0] = aux_channel_roll;
 	_aux_channels[1] = aux_channel_pitch;
@@ -131,11 +131,14 @@ bool InputRC::_read_control_data_from_subscription(ControlData &control_data, bo
 
 		_first_time = false;
 
-		for (int i = 0; i < 3; ++i) {
-			control_data.type_data.angle.frames[i] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
-			control_data.type_data.angle.angles[i] = new_aux_values[i] * M_PI_F;
-			control_data.stabilize_axis[i] = _do_stabilization;
+		matrix::Eulerf euler(new_aux_values[0] * M_PI_F, new_aux_values[1] * M_PI_F,
+				     new_aux_values[2] * M_PI_F);
+		matrix::Quatf q(euler);
+		q.copyTo(control_data.type_data.angle.q);
 
+		for (int i = 0; i < 3; ++i) {
+			// We always use follow mode with RC input for now.
+			control_data.type_data.angle.frames[i] = ControlData::TypeData::TypeAngle::Frame::AngleBodyFrame;
 			_last_set_aux_values[i] = new_aux_values[i];
 		}
 

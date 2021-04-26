@@ -57,7 +57,6 @@
 #include <lib/systemlib/mavlink_log.h>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionBlocking.hpp>
-#include <uORB/topics/sensor_correction.h>
 #include <uORB/topics/sensor_gyro.h>
 
 static constexpr char sensor_name[] {"gyro"};
@@ -82,9 +81,6 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 	unsigned calibration_counter[MAX_GYROS] {};
 	static constexpr unsigned CALIBRATION_COUNT = 250;
 	unsigned poll_errcount = 0;
-
-	uORB::Subscription sensor_correction_sub{ORB_ID(sensor_correction)};
-	sensor_correction_s sensor_correction{};
 
 	uORB::SubscriptionBlocking<sensor_gyro_s> gyro_sub[MAX_GYROS] {
 		{ORB_ID(sensor_gyro), 0, 0},
@@ -115,39 +111,16 @@ static calibrate_return gyro_calibration_worker(gyro_worker_data_t &worker_data)
 					sensor_gyro_s gyro_report;
 
 					while (gyro_sub[gyro_index].update(&gyro_report)) {
+						// fetch optional thermal offset corrections in sensor frame
+						const Vector3f &thermal_offset{worker_data.calibrations[gyro_index].thermal_offset()};
 
-						// fetch optional thermal offset corrections in sensor/board frame
-						Vector3f offset{0, 0, 0};
-						sensor_correction_sub.update(&sensor_correction);
-
-						if (sensor_correction.timestamp > 0 && gyro_report.device_id != 0) {
-							for (uint8_t correction_index = 0; correction_index < MAX_GYROS; correction_index++) {
-								if (sensor_correction.gyro_device_ids[correction_index] == gyro_report.device_id) {
-									switch (correction_index) {
-									case 0:
-										offset = Vector3f{sensor_correction.gyro_offset_0};
-										break;
-									case 1:
-										offset = Vector3f{sensor_correction.gyro_offset_1};
-										break;
-									case 2:
-										offset = Vector3f{sensor_correction.gyro_offset_2};
-										break;
-									case 3:
-										offset = Vector3f{sensor_correction.gyro_offset_3};
-										break;
-									}
-								}
-							}
-						}
-
-						worker_data.offset[gyro_index] += Vector3f{gyro_report.x, gyro_report.y, gyro_report.z} - offset;
+						worker_data.offset[gyro_index] += Vector3f{gyro_report.x, gyro_report.y, gyro_report.z} - thermal_offset;
 						calibration_counter[gyro_index]++;
 
 						if (gyro_index == 0) {
-							worker_data.filter[0].insert(gyro_report.x - offset(0));
-							worker_data.filter[1].insert(gyro_report.y - offset(1));
-							worker_data.filter[2].insert(gyro_report.z - offset(2));
+							worker_data.filter[0].insert(gyro_report.x - thermal_offset(0));
+							worker_data.filter[1].insert(gyro_report.y - thermal_offset(1));
+							worker_data.filter[2].insert(gyro_report.z - thermal_offset(2));
 						}
 					}
 

@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+# @name Hex X with control allocation
+#
+# @type Hexarotor x
+# @class Copter
+#
+# @maintainer Silvan Fuhrer
+#
+# @board px4_fmu-v2 exclude
+#
+
+. ${R}etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.ctrlalloc
+
+
+param set-default MPC_USE_HTE 0
+
+param set-default VM_MASS 1.5
+param set-default VM_INERTIA_XX 0.03
+param set-default VM_INERTIA_YY 0.03
+param set-default VM_INERTIA_ZZ 0.05
+
+param set-default CA_AIRFRAME 0
+param set-default CA_METHOD 1
+param set-default CA_ACT0_MIN 0.0
+param set-default CA_ACT1_MIN 0.0
+param set-default CA_ACT2_MIN 0.0
+param set-default CA_ACT3_MIN 0.0
+param set-default CA_ACT4_MIN 0.0
+param set-default CA_ACT5_MIN 0.0
+
+param set-default CA_ACT0_MAX 1.0
+param set-default CA_ACT1_MAX 1.0
+param set-default CA_ACT2_MAX 1.0
+param set-default CA_ACT3_MAX 1.0
+param set-default CA_ACT4_MAX 1.0
+param set-default CA_ACT5_MAX 1.0
+
+param set-default CA_MC_R0_PX 0.0
+param set-default CA_MC_R0_PY 0.275
+param set-default CA_MC_R0_CT 6.5
+param set-default CA_MC_R0_KM -0.05
+
+param set-default CA_MC_R1_PX 0.0
+param set-default CA_MC_R1_PY -0.275
+param set-default CA_MC_R1_CT 6.5
+param set-default CA_MC_R1_KM 0.05
+
+param set-default CA_MC_R2_PX 0.238
+param set-default CA_MC_R2_PY -0.1375
+param set-default CA_MC_R2_CT 6.5
+param set-default CA_MC_R2_KM -0.05
+
+param set-default CA_MC_R3_PX -0.238
+param set-default CA_MC_R3_PY 0.1375
+param set-default CA_MC_R3_CT 6.5
+param set-default CA_MC_R3_KM 0.05
+
+param set-default CA_MC_R4_PX 0.238
+param set-default CA_MC_R4_PY 0.1375
+param set-default CA_MC_R4_CT 6.5
+param set-default CA_MC_R4_KM 0.05
+
+param set-default CA_MC_R5_PX -0.238
+param set-default CA_MC_R5_PY -0.1375
+param set-default CA_MC_R5_CT 6.5
+param set-default CA_MC_R5_KM -0.05
+
+set MIXER direct
+set PWM_OUT 123456
+
+set MIXER_AUX direct_aux
+set PWM_AUX_OUT 123456

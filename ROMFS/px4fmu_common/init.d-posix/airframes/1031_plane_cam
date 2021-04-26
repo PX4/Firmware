@@ -5,10 +5,8 @@
 
 . ${R}etc/init.d-posix/airframes/1030_plane
 
-if [ $AUTOCNF = yes ]
-then
-	# Camera trigger interface is MAVLink
-	param set TRIG_INTERFACE 3
-	# Distance trigger mode enabled
-	param set TRIG_MODE 4
-fi
+# Camera trigger interface is MAVLink
+param set-default TRIG_INTERFACE 3
+
+# Distance trigger mode enabled
+param set-default TRIG_MODE 4

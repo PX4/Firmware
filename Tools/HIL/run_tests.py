@@ -103,12 +103,6 @@ class TestHardwareMethods(unittest.TestCase):
     def test_bson(self):
         self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "bson"))
 
-    def test_commander(self):
-        self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "commander"))
-
-    def test_controllib(self):
-        self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "controllib"))
-
     # def test_dataman(self):
     #     self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "dataman"))
 
@@ -171,9 +165,6 @@ class TestHardwareMethods(unittest.TestCase):
 
     def test_time(self):
         self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "time"))
-
-    def test_uorb(self):
-        self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "uorb"))
 
     def test_versioning(self):
         self.assertTrue(do_test(self.TEST_DEVICE, self.TEST_BAUDRATE, "versioning"))

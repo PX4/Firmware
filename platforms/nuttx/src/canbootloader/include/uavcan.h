@@ -111,7 +111,7 @@
 
 #include "bitminip.h"
 #include "can.h"
-#include "px4_macros.h"
+#include <systemlib/px4_macros.h>
 
 /****************************************************************************
  * Pre-processor Definitions

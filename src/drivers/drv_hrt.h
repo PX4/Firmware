@@ -225,14 +225,14 @@ constexpr hrt_abstime operator "" _s(unsigned long long seconds)
 	return hrt_abstime(seconds * 1000000ULL);
 }
 
-constexpr hrt_abstime operator "" _ms(unsigned long long seconds)
+constexpr hrt_abstime operator "" _ms(unsigned long long milliseconds)
 {
-	return hrt_abstime(seconds * 1000ULL);
+	return hrt_abstime(milliseconds * 1000ULL);
 }
 
-constexpr hrt_abstime operator "" _us(unsigned long long seconds)
+constexpr hrt_abstime operator "" _us(unsigned long long microseconds)
 {
-	return hrt_abstime(seconds);
+	return hrt_abstime(microseconds);
 }
 
 } /* namespace time_literals */

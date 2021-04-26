@@ -64,6 +64,7 @@
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/ekf2_timestamps.h>
 #include <uORB/topics/ekf_gps_drift.h>
+#include <uORB/topics/estimator_event_flags.h>
 #include <uORB/topics/estimator_innovations.h>
 #include <uORB/topics/estimator_optical_flow_vel.h>
 #include <uORB/topics/estimator_sensor_bias.h>
@@ -77,6 +78,7 @@
 #include <uORB/topics/sensor_selection.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_imu.h>
@@ -85,7 +87,7 @@
 #include <uORB/topics/vehicle_magnetometer.h>
 #include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/wind_estimate.h>
+#include <uORB/topics/wind.h>
 #include <uORB/topics/yaw_estimator_status.h>
 
 #include "Utility/PreFlightChecker.hpp"
@@ -127,6 +129,7 @@ private:
 
 	void PublishAttitude(const hrt_abstime &timestamp);
 	void PublishEkfDriftMetrics(const hrt_abstime &timestamp);
+	void PublishEventFlags(const hrt_abstime &timestamp);
 	void PublishGlobalPosition(const hrt_abstime &timestamp);
 	void PublishInnovations(const hrt_abstime &timestamp, const imuSample &imu);
 	void PublishInnovationTestRatios(const hrt_abstime &timestamp);
@@ -173,6 +176,7 @@ private:
 
 	perf_counter_t _ecl_ekf_update_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": ECL update")};
 	perf_counter_t _ecl_ekf_update_full_perf{perf_alloc(PC_ELAPSED, MODULE_NAME": ECL full update")};
+	perf_counter_t _imu_missed_perf{perf_alloc(PC_COUNT, MODULE_NAME": IMU message missed")};
 
 	// Used to check, save and use learned magnetometer biases
 	hrt_abstime _mag_cal_last_us{0};	///< last time the EKF was operating a mode that estimates magnetomer biases (uSec)
@@ -219,6 +223,7 @@ private:
 	uORB::Subscription _optical_flow_sub{ORB_ID(optical_flow)};
 	uORB::Subscription _sensor_selection_sub{ORB_ID(sensor_selection)};
 	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::Subscription _vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
 	uORB::Subscription _vehicle_land_detected_sub{ORB_ID(vehicle_land_detected)};
 
@@ -232,6 +237,7 @@ private:
 	bool _standby{false}; // standby arming state
 
 	hrt_abstime _last_status_flag_update{0};
+	hrt_abstime _last_range_sensor_update{0};
 
 	uint32_t _filter_control_status{0};
 	uint32_t _filter_fault_status{0};
@@ -240,6 +246,8 @@ private:
 	uint32_t _filter_control_status_changes{0};
 	uint32_t _filter_fault_status_changes{0};
 	uint32_t _innov_check_fail_status_changes{0};
+	uint32_t _filter_warning_event_changes{0};
+	uint32_t _filter_information_event_changes{0};
 
 	uORB::PublicationMulti<ekf2_timestamps_s>            _ekf2_timestamps_pub{ORB_ID(ekf2_timestamps)};
 	uORB::PublicationMulti<ekf_gps_drift_s>              _ekf_gps_drift_pub{ORB_ID(ekf_gps_drift)};
@@ -251,15 +259,17 @@ private:
 	uORB::PublicationMulti<estimator_states_s>           _estimator_states_pub{ORB_ID(estimator_states)};
 	uORB::PublicationMulti<estimator_status_s>           _estimator_status_pub{ORB_ID(estimator_status)};
 	uORB::PublicationMulti<estimator_status_flags_s>     _estimator_status_flags_pub{ORB_ID(estimator_status_flags)};
+	uORB::PublicationMulti<estimator_event_flags_s>      _estimator_event_flags_pub{ORB_ID(estimator_event_flags)};
 	uORB::PublicationMulti<vehicle_odometry_s>           _estimator_visual_odometry_aligned_pub{ORB_ID(estimator_visual_odometry_aligned)};
 	uORB::PublicationMulti<yaw_estimator_status_s>       _yaw_est_pub{ORB_ID(yaw_estimator_status)};
-	uORB::PublicationMulti<wind_estimate_s>              _wind_pub{ORB_ID(wind_estimate)};
 
 	// publications with topic dependent on multi-mode
 	uORB::PublicationMulti<vehicle_attitude_s>           _attitude_pub;
 	uORB::PublicationMulti<vehicle_local_position_s>     _local_position_pub;
 	uORB::PublicationMulti<vehicle_global_position_s>    _global_position_pub;
 	uORB::PublicationMulti<vehicle_odometry_s>           _odometry_pub;
+	uORB::PublicationMulti<wind_s>              _wind_pub;
+
 
 	PreFlightChecker _preflt_checker;
 
@@ -389,6 +399,8 @@ private:
 		_param_ekf2_rng_a_hmax,	///< maximum allowed absolute altitude (AGL) for range aid (m)
 		(ParamExtFloat<px4::params::EKF2_RNG_A_IGATE>)
 		_param_ekf2_rng_a_igate,	///< gate size used for innovation consistency checks for range aid fusion (STD)
+		(ParamExtFloat<px4::params::EKF2_RNG_QLTY_T>)
+		_param_ekf2_rng_qlty_t, ///< Minimum duration during which the reported range finder signal quality needs to be non-zero in order to be declared valid (s)
 
 		// vision estimate fusion
 		(ParamInt<px4::params::EKF2_EV_NOISE_MD>)
@@ -493,6 +505,8 @@ private:
 
 		(ParamFloat<px4::params::EKF2_REQ_GPS_H>) _param_ekf2_req_gps_h, ///< Required GPS health time
 		(ParamExtInt<px4::params::EKF2_MAG_CHECK>) _param_ekf2_mag_check, ///< Mag field strength check
+		(ParamExtInt<px4::params::EKF2_SYNT_MAG_Z>)
+		_param_ekf2_synthetic_mag_z, ///< Enables the use of a synthetic value for the Z axis of the magnetometer calculated from the 3D magnetic field vector at the location of the drone.
 
 		// Used by EKF-GSF experimental yaw estimator
 		(ParamExtFloat<px4::params::EKF2_GSF_TAS>)

@@ -1,5 +1,5 @@
 {
-    "board_id": 10000,
+    "board_id": 34,
     "magic": "PX4FWv1",
     "description": "Firmware for the ucans32k146 board",
     "image": "",

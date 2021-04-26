@@ -74,7 +74,7 @@ PARAM_DEFINE_INT32(ASPD_BETA_GATE, 1);
 /**
  * Automatic airspeed scale estimation on
  *
- * Turns the automatic airspeed scale (scale from IAS to CAS/EAS) on or off. It is recommended to fly level
+ * Turns the automatic airspeed scale (scale from IAS to CAS) on or off. It is recommended to fly level
  * altitude while performing the estimation. Set to 1 to start estimation (best when already flying).
  * Set to 0 to end scale estimation. The estimated scale is then saved using the ASPD_SCALE parameter.
  *
@@ -84,7 +84,7 @@ PARAM_DEFINE_INT32(ASPD_BETA_GATE, 1);
 PARAM_DEFINE_INT32(ASPD_SCALE_EST, 0);
 
 /**
- * Airspeed scale (scale from IAS to CAS/EAS)
+ * Airspeed scale (scale from IAS to CAS)
  *
  * Scale can either be entered manually, or estimated in-flight by setting ASPD_SCALE_EST to 1.
  *
@@ -114,31 +114,30 @@ PARAM_DEFINE_INT32(ASPD_PRIMARY, 1);
  *
  * If set to true then the data comming from the airspeed sensors is checked for validity. Only applied if ASPD_PRIMARY > 0.
  *
- * @reboot_required true
  * @boolean
  * @group Airspeed Validator
  */
-PARAM_DEFINE_INT32(ASPD_DO_CHECKS, 0);
+PARAM_DEFINE_INT32(ASPD_DO_CHECKS, 1);
 
 /**
- * Enable fallback to secondary airspeed measurement.
+ * Enable fallback to sensor-less airspeed estimation
  *
- * If ASPD_DO_CHECKS is set to true, then airspeed estimation can fallback from what specified in ASPD_PRIMARY to secondary source (other airspeed sensors, groundspeed minus windspeed).
-
- * @value 0 To other airspeed sensor (if one valid), else disable airspeed
- * @value 1 To other airspeed sensor (if one valid), else to ground-windspeed
+ * If set to true and airspeed checks are enabled, it will use a sensor-less airspeed estimation based on groundspeed
+ * minus windspeed if no other airspeed sensor available to fall back to.
+ *
+ * @value 0 Disable fallback to sensor-less estimation
+ * @value 1 Enable fallback to sensor-less estimation
  * @boolean
- * @reboot_required true
  * @group Airspeed Validator
  */
-PARAM_DEFINE_INT32(ASPD_FALLBACK, 0);
+PARAM_DEFINE_INT32(ASPD_FALLBACK_GW, 0);
 
 /**
- * Airspeed failsafe consistency threshold (Experimental)
+ * Airspeed failsafe consistency threshold
  *
  * This specifies the minimum airspeed test ratio required to trigger a failsafe. Larger values make the check less sensitive,
  * smaller values make it more sensitive. Start with a value of 1.0 when tuning. When tas_test_ratio is > 1.0 it indicates the
- * inconsistency between predicted and measured airspeed is large enough to cause the navigation EKF to reject airspeed measurements.
+ * inconsistency between predicted and measured airspeed is large enough to cause the wind EKF to reject airspeed measurements.
  * The time required to detect a fault when the threshold is exceeded depends on the size of the exceedance and is controlled by the ASPD_FS_INTEG parameter.
 *
  * @min 0.5
@@ -148,7 +147,7 @@ PARAM_DEFINE_INT32(ASPD_FALLBACK, 0);
 PARAM_DEFINE_FLOAT(ASPD_FS_INNOV, 1.0f);
 
 /**
- * Airspeed failsafe consistency delay (Experimental)
+ * Airspeed failsafe consistency delay
  *
  * This sets the time integral of airspeed test ratio exceedance above ASPD_FS_INNOV required to trigger a failsafe.
  * For example if ASPD_FS_INNOV is 1 and estimator_status.tas_test_ratio is 2.0, then the exceedance is 1.0 and the integral will
@@ -159,10 +158,10 @@ PARAM_DEFINE_FLOAT(ASPD_FS_INNOV, 1.0f);
  * @max 30.0
  * @group Airspeed Validator
  */
-PARAM_DEFINE_FLOAT(ASPD_FS_INTEG, -1.0f);
+PARAM_DEFINE_FLOAT(ASPD_FS_INTEG, 5.0f);
 
 /**
- * Airspeed failsafe stop delay (Experimental)
+ * Airspeed failsafe stop delay
  *
  * Delay before stopping use of airspeed sensor if checks indicate sensor is bad.
  *
@@ -171,24 +170,27 @@ PARAM_DEFINE_FLOAT(ASPD_FS_INTEG, -1.0f);
  * @min 1
  * @max 10
  */
-PARAM_DEFINE_INT32(ASPD_FS_T1, 3);
+PARAM_DEFINE_INT32(ASPD_FS_T_STOP, 2);
 
 /**
- * Airspeed failsafe start delay (Experimental)
+ * Airspeed failsafe start delay
  *
  * Delay before switching back to using airspeed sensor if checks indicate sensor is good.
+ * Set to a negative value to disable the re-enabling in flight.
  *
  * @unit s
  * @group Airspeed Validator
- * @min 10
+ * @min -1
  * @max 1000
  */
-PARAM_DEFINE_INT32(ASPD_FS_T2, 100);
+PARAM_DEFINE_INT32(ASPD_FS_T_START, -1);
 
 /**
- * Airspeed fault detection stall airspeed. (Experimental)
+ * Airspeed fault detection stall airspeed
  *
- * This is the minimum indicated airspeed at which the wing can produce 1g of lift. It is used by the airspeed sensor fault detection and failsafe calculation to detect a significant airspeed low measurement error condition and should be set based on flight test for reliable operation.
+ * This is the minimum indicated airspeed at which the wing can produce 1g of lift.
+ * It is used by the airspeed sensor fault detection and failsafe calculation to detect a
+ * significant airspeed low measurement error condition and should be set based on flight test for reliable operation.
  *
  * @group Airspeed Validator
  * @unit m/s

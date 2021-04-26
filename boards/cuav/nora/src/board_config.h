@@ -107,7 +107,8 @@
 #define GPIO_HEATER_OUTPUT   /* PA8 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN8)
 
 /* PWM */
-#define DIRECT_PWM_OUTPUT_CHANNELS   8
+#define DIRECT_PWM_OUTPUT_CHANNELS   14
+#define BOARD_NUM_IO_TIMERS           4
 
 /* Power supply control and monitoring GPIOs */
 #define BOARD_NUMBER_BRICKS             2

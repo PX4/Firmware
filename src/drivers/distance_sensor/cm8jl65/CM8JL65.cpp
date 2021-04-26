@@ -35,6 +35,8 @@
 
 #include <fcntl.h>
 
+#include <lib/drivers/device/Device.hpp>
+
 static constexpr unsigned char crc_msb_vector[] = {
 	0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x01, 0xC0, 0x80, 0x41,
 	0x00, 0xC1, 0x81, 0x40, 0x01, 0xC0, 0x80, 0x41, 0x00, 0xC1, 0x81, 0x40,
@@ -87,7 +89,7 @@ static constexpr unsigned char crc_lsb_vector[] = {
 
 CM8JL65::CM8JL65(const char *port, uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
-	_px4_rangefinder(0 /* TODO: device ids */, rotation)
+	_px4_rangefinder(0, rotation)
 {
 	// Store the port name.
 	strncpy(_port, port, sizeof(_port) - 1);
@@ -95,10 +97,23 @@ CM8JL65::CM8JL65(const char *port, uint8_t rotation) :
 	// Enforce null termination.
 	_port[sizeof(_port) - 1] = '\0';
 
+	device::Device::DeviceId device_id;
+	device_id.devid_s.bus_type = device::Device::DeviceBusType_SERIAL;
+
+	uint8_t bus_num = atoi(&_port[strlen(_port) - 1]); // Assuming '/dev/ttySx'
+
+	if (bus_num < 10) {
+		device_id.devid_s.bus = bus_num;
+	}
+
+	_px4_rangefinder.set_device_id(device_id.devid);
+
 	// Use conservative distance bounds, to make sure we don't fuse garbage data
 	_px4_rangefinder.set_min_distance(0.2f);	// Datasheet: 0.17m
 	_px4_rangefinder.set_max_distance(7.9f);	// Datasheet: 8.0m
 	_px4_rangefinder.set_fov(0.0488692f);
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_CM8JL65);
+	_px4_rangefinder.set_rangefinder_type(distance_sensor_s::MAV_DISTANCE_SENSOR_LASER);
 }
 
 CM8JL65::~CM8JL65()

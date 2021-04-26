@@ -55,6 +55,12 @@
 #define MAVLINK_GET_CHANNEL_BUFFER mavlink_get_channel_buffer
 #define MAVLINK_GET_CHANNEL_STATUS mavlink_get_channel_status
 
+#if !defined(CONSTRAINED_MEMORY)
+# define MAVLINK_COMM_NUM_BUFFERS 6
+# define MAVLINK_COMM_4 static_cast<mavlink_channel_t>(4)
+# define MAVLINK_COMM_5 static_cast<mavlink_channel_t>(5)
+#endif
+
 #include <v2.0/mavlink_types.h>
 #include <unistd.h>
 

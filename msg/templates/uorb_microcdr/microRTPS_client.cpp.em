@@ -218,6 +218,7 @@ void micrortps_start_topics(struct timespec &begin, uint64_t &total_read, uint64
         while (0 < (read = transport_node->read(&topic_ID, data_buffer, BUFFER_SIZE)))
         {
             total_read += read;
+            uint64_t read_time = hrt_absolute_time();
             switch (topic_ID)
             {
 @[for idx, topic in enumerate(recv_topics)]@
@@ -225,6 +226,11 @@ void micrortps_start_topics(struct timespec &begin, uint64_t &total_read, uint64
                 {
                     @(receive_base_types[idx])_s @(topic)_data;
                     deserialize_@(receive_base_types[idx])(&reader, &@(topic)_data, data_buffer);
+                    if (@(topic)_data.timestamp > read_time)
+                    {
+                        // don't allow timestamps from the future
+                        @(topic)_data.timestamp = read_time;
+                    }
                     pubs->@(topic)_pub.publish(@(topic)_data);
                     ++received;
                 }

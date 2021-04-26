@@ -36,13 +36,12 @@
 #include "sensor_bridge.hpp"
 
 #include <stdint.h>
-#include <sys/ioctl.h>
 
 #include <uORB/topics/optical_flow.h>
 
 #include <com/hex/equipment/flow/Measurement.hpp>
 
-class UavcanFlowBridge : public UavcanCDevSensorBridgeBase
+class UavcanFlowBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;

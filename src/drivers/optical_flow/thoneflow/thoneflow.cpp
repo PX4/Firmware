@@ -114,7 +114,7 @@ extern "C" __EXPORT int thoneflow_main(int argc, char *argv[]);
 Thoneflow::Thoneflow(const char *port) :
 	ScheduledWorkItem(MODULE_NAME, px4::serial_port_to_wq(port)),
 	_rotation(Rotation(0)),
-	_cycle_interval(15150),
+	_cycle_interval(10526),
 	_fd(-1),
 	_linebuf_index(0),
 	_parse_state(THONEFLOW_PARSE_STATE0_UNSYNC),
@@ -230,7 +230,7 @@ Thoneflow::init()
 
 		/* Integrated flow is sent at 66fps */
 		_report.frame_count_since_last_readout = 1;
-		_report.integration_timespan = 15151;	// microseconds
+		_report.integration_timespan = 10526;	// microseconds
 
 		/* Get a publish handle on the optical flow topic */
 		_optical_flow_pub = orb_advertise(ORB_ID(optical_flow), &_report);

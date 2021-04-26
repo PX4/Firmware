@@ -81,3 +81,45 @@ if(Ozone_PATH)
 		USES_TERMINAL
 	)
 endif()
+
+if(bootloader_bin OR (EXISTS "${PX4_BOARD_DIR}/bootloader/${PX4_BOARD_VENDOR}_${PX4_BOARD_MODEL}_bootloader.bin"))
+	# jlink_flash_bootloader
+	find_program(JLinkExe_PATH JLinkExe)
+	if(JLinkExe_PATH)
+
+		if(bootloader_bin)
+			set(BOARD_BL_FIRMWARE_BIN ${bootloader_bin})
+		else()
+			set(BOARD_BL_FIRMWARE_BIN ${PX4_BOARD_DIR}/bootloader/${PX4_BOARD_VENDOR}_${PX4_BOARD_MODEL}_bootloader.bin)
+		endif()
+
+		configure_file(${CMAKE_CURRENT_SOURCE_DIR}/Debug/flash_bootloader.jlink.in ${PX4_BINARY_DIR}/flash_bootloader.jlink @ONLY)
+		add_custom_target(jlink_flash_bootloader
+			COMMAND ${JLinkExe_PATH} -CommandFile ${PX4_BINARY_DIR}/flash_bootloader.jlink
+			DEPENDS
+				px4
+				${CMAKE_CURRENT_SOURCE_DIR}/Debug/flash_bootloader.jlink.in
+			WORKING_DIRECTORY ${PX4_BINARY_DIR}
+			USES_TERMINAL
+		)
+	endif()
+endif()
+
+if(uavcan_bl_image_name)
+	# jlink_flash_bootloader
+	find_program(JLinkExe_PATH JLinkExe)
+	if(JLinkExe_PATH)
+		set(BOARD_FIRMWARE_BIN ${PX4_BINARY_DIR}/${uavcan_bl_image_name})
+		set(BOARD_FIRMWARE_APP_OFFSET "0x08010000")
+
+		configure_file(${PX4_SOURCE_DIR}/platforms/nuttx/Debug/flash_bin.jlink.in ${PX4_BINARY_DIR}/flash_bin.jlink @ONLY)
+		add_custom_target(jlink_flash_uavcan_bin
+			COMMAND ${JLinkExe_PATH} -CommandFile ${PX4_BINARY_DIR}/flash_bin.jlink
+			DEPENDS
+				${PX4_SOURCE_DIR}/platforms/nuttx/Debug/flash_bin.jlink.in
+				${PX4_BINARY_DIR}/${uavcan_bl_image_name}
+			WORKING_DIRECTORY ${PX4_BINARY_DIR}
+			USES_TERMINAL
+		)
+	endif()
+endif()

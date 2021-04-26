@@ -146,5 +146,6 @@ private:
 	 */
 	void control_attitude_geo(const vehicle_attitude_s &attitude, const vehicle_attitude_setpoint_s &attitude_setpoint,
 				  const vehicle_angular_velocity_s &angular_velocity, const vehicle_rates_setpoint_s &rates_setpoint);
-	void constrain_actuator_commands(float roll_u, float pitch_u, float yaw_u, float thrust_u);
+	void constrain_actuator_commands(float roll_u, float pitch_u, float yaw_u,
+					 float thrust_x, float thrust_y, float thrust_z);
 };

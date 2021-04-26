@@ -159,40 +159,19 @@ MulticopterRateControl::Run()
 			}
 		}
 
-		const bool manual_control_updated = _manual_control_setpoint_sub.update(&_manual_control_setpoint);
+		if (_v_control_mode.flag_control_manual_enabled && !_v_control_mode.flag_control_attitude_enabled) {
+			// generate the rate setpoint from sticks
+			manual_control_setpoint_s manual_control_setpoint;
 
-		// generate the rate setpoint from sticks?
-		bool manual_rate_sp = false;
-
-		if (_v_control_mode.flag_control_manual_enabled &&
-		    !_v_control_mode.flag_control_altitude_enabled &&
-		    !_v_control_mode.flag_control_velocity_enabled &&
-		    !_v_control_mode.flag_control_position_enabled) {
-
-			if (!_v_control_mode.flag_control_attitude_enabled) {
-				manual_rate_sp = true;
-			}
-
-			// Check if we are in rattitude mode and the pilot is within the center threshold on pitch and roll
-			//  if true then use published rate setpoint, otherwise generate from manual_control_setpoint (like acro)
-			if (_v_control_mode.flag_control_rattitude_enabled) {
-				manual_rate_sp =
-					(fabsf(_manual_control_setpoint.y) > _param_mc_ratt_th.get()) ||
-					(fabsf(_manual_control_setpoint.x) > _param_mc_ratt_th.get());
-			}
-		}
-
-		if (manual_rate_sp) {
-			if (manual_control_updated) {
-
+			if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 				// manual rates control - ACRO mode
 				const Vector3f man_rate_sp{
-					math::superexpo(_manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(-_manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(_manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
+					math::superexpo(manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(-manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
 
 				_rates_sp = man_rate_sp.emult(_acro_rate_max);
-				_thrust_sp = _manual_control_setpoint.z;
+				_thrust_sp = math::constrain(manual_control_setpoint.z, 0.0f, 1.0f);
 
 				// publish rate setpoint
 				vehicle_rates_setpoint_s v_rates_sp{};
@@ -212,9 +191,9 @@ MulticopterRateControl::Run()
 			vehicle_rates_setpoint_s v_rates_sp;
 
 			if (_v_rates_sp_sub.update(&v_rates_sp)) {
-				_rates_sp(0) = v_rates_sp.roll;
-				_rates_sp(1) = v_rates_sp.pitch;
-				_rates_sp(2) = v_rates_sp.yaw;
+				_rates_sp(0) = PX4_ISFINITE(v_rates_sp.roll)  ? v_rates_sp.roll  : rates(0);
+				_rates_sp(1) = PX4_ISFINITE(v_rates_sp.pitch) ? v_rates_sp.pitch : rates(1);
+				_rates_sp(2) = PX4_ISFINITE(v_rates_sp.yaw)   ? v_rates_sp.yaw   : rates(2);
 				_thrust_sp = -v_rates_sp.thrust_body[2];
 			}
 		}

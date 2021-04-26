@@ -80,7 +80,9 @@ static const px4_hw_mft_item_t hw_mft_list_v0600[] = {
 };
 
 static px4_hw_mft_list_entry_t mft_lists[] = {
+//  ver_rev
 	{0x0000, hw_mft_list_v0600, arraySize(hw_mft_list_v0600)},
+	{0x0001, hw_mft_list_v0600, arraySize(hw_mft_list_v0600)}, // BMP388 moved to I2C2
 };
 
 /************************************************************************************

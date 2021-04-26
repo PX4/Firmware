@@ -49,7 +49,7 @@
 #include <arch/irq.h>
 #include <arch/board/board.h>
 
-#include "px4_macros.h"
+#include <systemlib/px4_macros.h>
 #include "timer.h"
 #include "nvic.h"
 
@@ -81,7 +81,7 @@ const bl_timer_cb_t null_cb = { 0, 0 };
  * the sceduler's sched_process_timer and service it here. Thus replacing
  * the NuttX scheduler with are timer driven scheduling.
  */
-void __wrap_sched_process_timer(void);
+void __wrap_nxsched_process_timer(void);
 
 /****************************************************************************
  * Name: timer_tic
@@ -120,7 +120,7 @@ time_ms_t timer_tic(void)
  *   None
  *
  ****************************************************************************/
-__EXPORT void __wrap_sched_process_timer(void)
+__EXPORT void __wrap_nxsched_process_timer(void)
 {
 	//PROBE(1, true);
 	//PROBE(1, false);

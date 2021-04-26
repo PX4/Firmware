@@ -1255,6 +1255,7 @@ void Logger::start_log_file(LogType type)
 
 	if (type == LogType::Full) {
 		write_parameters(type);
+		write_parameter_defaults(type);
 		write_perf_data(true);
 		write_console_output();
 	}
@@ -1306,6 +1307,7 @@ void Logger::start_log_mavlink()
 	write_version(LogType::Full);
 	write_formats(LogType::Full);
 	write_parameters(LogType::Full);
+	write_parameter_defaults(LogType::Full);
 	write_perf_data(true);
 	write_console_output();
 	write_all_add_logged_msg(LogType::Full);
@@ -1739,6 +1741,8 @@ void Logger::write_header(LogType type)
 	// write the Flags message: this MUST be written right after the ulog header
 	ulog_message_flag_bits_s flag_bits{};
 
+	flag_bits.compat_flags[0] = ULOG_COMPAT_FLAG0_DEFAULT_PARAMETERS_MASK;
+
 	flag_bits.msg_size = sizeof(flag_bits) - ULOG_MSG_HEADER_LEN;
 	flag_bits.msg_type = static_cast<uint8_t>(ULogMessageType::FLAG_BITS);
 
@@ -1777,6 +1781,13 @@ void Logger::write_version(LogType type)
 	if (os_version) {
 		write_info(type, "sys_os_ver", os_version);
 	}
+
+	const char *oem_version = px4_firmware_oem_version_string();
+
+	if (oem_version && oem_version[0]) {
+		write_info(type, "ver_oem", oem_version);
+	}
+
 
 	write_info(type, "sys_os_ver_release", px4_os_version());
 	write_info(type, "sys_toolchain", px4_toolchain_name());
@@ -1823,6 +1834,100 @@ void Logger::write_version(LogType type)
 	}
 }
 
+void Logger::write_parameter_defaults(LogType type)
+{
+	_writer.lock();
+	ulog_message_parameter_default_header_s msg = {};
+	uint8_t *buffer = reinterpret_cast<uint8_t *>(&msg);
+
+	msg.msg_type = static_cast<uint8_t>(ULogMessageType::PARAMETER_DEFAULT);
+	int param_idx = 0;
+	param_t param = 0;
+
+	do {
+		// skip over all parameters which are not used
+		do {
+			param = param_for_index(param_idx);
+			++param_idx;
+		} while (param != PARAM_INVALID && !param_used(param));
+
+		// save parameters which are valid AND used AND not volatile
+		if (param != PARAM_INVALID) {
+
+			if (param_is_volatile(param)) {
+				continue;
+			}
+
+			// get parameter type and size
+			const char *type_str;
+			param_type_t ptype = param_type(param);
+			size_t value_size = 0;
+
+			uint8_t default_value[math::max(sizeof(float), sizeof(int32_t))];
+			uint8_t system_default_value[sizeof(default_value)];
+			uint8_t value[sizeof(default_value)];
+
+			switch (ptype) {
+			case PARAM_TYPE_INT32:
+				type_str = "int32_t";
+				value_size = sizeof(int32_t);
+				param_get(param, (int32_t *)&value);
+				break;
+
+			case PARAM_TYPE_FLOAT:
+				type_str = "float";
+				value_size = sizeof(float);
+				param_get(param, (float *)&value);
+				break;
+
+			default:
+				continue;
+			}
+
+			// format parameter key (type and name)
+			msg.key_len = snprintf(msg.key, sizeof(msg.key), "%s %s", type_str, param_name(param));
+			size_t msg_size = sizeof(msg) - sizeof(msg.key) + msg.key_len;
+
+			if (param_get_default_value(param, &default_value) != 0) {
+				continue;
+			}
+
+			if (param_get_system_default_value(param, &system_default_value) != 0) {
+				continue;
+			}
+
+			msg_size += value_size;
+			msg.msg_size = msg_size - ULOG_MSG_HEADER_LEN;
+
+			// write the system/airframe default if different from the current value
+			if (memcmp(&system_default_value, &default_value, value_size) == 0) {
+				// if the system and airframe defaults are equal, we can combine them
+				if (memcmp(&value, &default_value, value_size) != 0) {
+					memcpy(&buffer[msg_size - value_size], default_value, value_size);
+					msg.default_types = ulog_parameter_default_type_t::current_setup | ulog_parameter_default_type_t::system;
+					write_message(type, buffer, msg_size);
+				}
+
+			} else {
+				if (memcmp(&value, &default_value, value_size) != 0) {
+					memcpy(&buffer[msg_size - value_size], default_value, value_size);
+					msg.default_types = ulog_parameter_default_type_t::current_setup;
+					write_message(type, buffer, msg_size);
+				}
+
+				if (memcmp(&value, &system_default_value, value_size) != 0) {
+					memcpy(&buffer[msg_size - value_size], system_default_value, value_size);
+					msg.default_types = ulog_parameter_default_type_t::system;
+					write_message(type, buffer, msg_size);
+				}
+			}
+		}
+	} while ((param != PARAM_INVALID) && (param_idx < (int) param_count()));
+
+	_writer.unlock();
+	_writer.notify();
+}
+
 void Logger::write_parameters(LogType type)
 {
 	_writer.lock();
@@ -1834,7 +1939,7 @@ void Logger::write_parameters(LogType type)
 	param_t param = 0;
 
 	do {
-		// skip over all parameters which are not invalid and not used
+		// skip over all parameters which are not used
 		do {
 			param = param_for_index(param_idx);
 			++param_idx;
@@ -1903,7 +2008,7 @@ void Logger::write_changed_parameters(LogType type)
 	param_t param = 0;
 
 	do {
-		// skip over all parameters which are not invalid and not used
+		// skip over all parameters which are not used
 		do {
 			param = param_for_index(param_idx);
 			++param_idx;

@@ -49,36 +49,50 @@
  */
 
 /**
- * L1 distance
+ * Distance from front axle to rear axle
  *
- * This is the waypoint radius
- *
+ * A value of 0.31 is typical for 1/10 RC cars.
  *
  * @unit m
  * @min 0.0
- * @max 100.0
+ * @decimal 3
+ * @increment 0.01
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_WHEEL_BASE, 0.31f);
+
+/**
+ * L1 distance
+ *
+ * This is the distance at which the next waypoint is activated. This should be set
+ * to about 2-4x of GND_WHEEL_BASE and not smaller than one meter (due to GPS accuracy).
+ *
+ *
+ * @unit m
+ * @min 1.0
+ * @max 50.0
  * @decimal 1
  * @increment 0.1
  * @group Rover Position Control
  */
-PARAM_DEFINE_FLOAT(GND_L1_DIST, 5.0f);
+PARAM_DEFINE_FLOAT(GND_L1_DIST, 1.0f);
 
 /**
  * L1 period
  *
  * This is the L1 distance and defines the tracking
  * point ahead of the rover it's following.
- * Using values around 2-5 for a traxxas stampede. Shorten
+ * Use values around 2-5m for a 0.3m wheel base. Tuning instructions: Shorten
  * slowly during tuning until response is sharp without oscillation.
  *
  * @unit m
- * @min 0.0
+ * @min 0.5
  * @max 50.0
  * @decimal 1
  * @increment 0.5
  * @group Rover Position Control
  */
-PARAM_DEFINE_FLOAT(GND_L1_PERIOD, 10.0f);
+PARAM_DEFINE_FLOAT(GND_L1_PERIOD, 5.0f);
 
 /**
  * L1 damping
@@ -137,21 +151,6 @@ PARAM_DEFINE_FLOAT(GND_THR_MAX, 0.3f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_THR_MIN, 0.0f);
-
-/**
- * Idle throttle
- *
- * This is the minimum throttle while on the ground, it should be 0 for a rover
- *
- *
- * @unit norm
- * @min 0.0
- * @max 0.4
- * @decimal 2
- * @increment 0.01
- * @group Rover Position Control
- */
-PARAM_DEFINE_FLOAT(GND_THR_IDLE, 0.0f);
 
 /**
  * Control mode for speed
@@ -262,19 +261,8 @@ PARAM_DEFINE_FLOAT(GND_SPEED_TRIM, 3.0f);
 PARAM_DEFINE_FLOAT(GND_SPEED_MAX, 10.0f);
 
 /**
- * Distance from front axle to rear axle
- *
- *
- * @unit m
- * @min 0.0
- * @decimal 3
- * @increment 0.01
- * @group Rover Position Control
- */
-PARAM_DEFINE_FLOAT(GND_WHEEL_BASE, 2.0f);
-
-/**
  * Maximum turn angle for Ackerman steering.
+ *
  * At a control output of 0, the steering wheels are at 0 radians.
  * At a control output of 1, the steering wheels are at GND_MAX_ANG radians.
  *
@@ -286,3 +274,14 @@ PARAM_DEFINE_FLOAT(GND_WHEEL_BASE, 2.0f);
  * @group Rover Position Control
  */
 PARAM_DEFINE_FLOAT(GND_MAX_ANG, 0.7854f);
+
+/**
+ * Max manual yaw rate
+ *
+ * @unit deg/s
+ * @min 0.0
+ * @max 400
+ * @decimal 1
+ * @group Rover Position Control
+ */
+PARAM_DEFINE_FLOAT(GND_MAN_Y_MAX, 150.0f);

@@ -46,5 +46,9 @@ int px4_platform_init()
 
 	px4::WorkQueueManagerStart();
 
+	uorb_start();
+
+	//px4_log_initialize();
+
 	return PX4_OK;
 }

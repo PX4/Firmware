@@ -84,8 +84,6 @@ int MavlinkShell::start()
 	 * keeps (duplicates) the first 3 fd's when creating a new task, all others are not inherited.
 	 * This means we need to temporarily change the first 3 fd's of the current task (or at least
 	 * the first 2 if stdout=stderr).
-	 * And we hope :-) that during the temporary phase, no other thread from the same task writes to
-	 * stdout (as it would end up in the pipe).
 	 */
 
 	if (pipe(p1) != 0) {
@@ -104,6 +102,16 @@ int MavlinkShell::start()
 	_to_shell_fd = p2[1];
 	_shell_fds[0]  = p2[0];
 	_shell_fds[1] = p1[1];
+
+	/*
+	 * Ensure that during the temporary phase no other thread from the same task writes to
+	 * stdout (as it would end up in the pipe).
+	 */
+#ifdef __PX4_NUTTX
+	sched_lock();
+#endif /* __PX4_NUTTX */
+	fflush(stdout);
+	fflush(stderr);
 
 	int fd_backups[2]; //we don't touch stderr, we will redirect it to stdout in the startup of the shell task
 
@@ -139,6 +147,10 @@ int MavlinkShell::start()
 
 		close(fd_backups[i]);
 	}
+
+#ifdef __PX4_NUTTX
+	sched_unlock();
+#endif /* __PX4_NUTTX */
 
 	//close unused pipe fd's
 	close(_shell_fds[0]);

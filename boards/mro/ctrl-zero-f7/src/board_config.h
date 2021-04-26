@@ -87,17 +87,17 @@
 #define ADC_BATTERY_VOLTAGE_CHANNEL        /* PA2 */  ADC1_CH(2)
 #define ADC_BATTERY_CURRENT_CHANNEL        /* PA3 */  ADC1_CH(3)
 #define ADC_SCALED_V5_CHANNEL              /* PA4 */  ADC1_CH(4)
-#define ADC_RSSI_IN_CHANNEL                /* PC1 */  ADC1_CH(11)
+#define ADC_RC_RSSI_CHANNEL                /* PC1 */  ADC1_CH(11)
 
 #define ADC_CHANNELS \
 	((1 << ADC_BATTERY_VOLTAGE_CHANNEL)       | \
 	 (1 << ADC_BATTERY_CURRENT_CHANNEL)       | \
 	 (1 << ADC_SCALED_V5_CHANNEL)             | \
-	 (1 << ADC_RSSI_IN_CHANNEL))
+	 (1 << ADC_RC_RSSI_CHANNEL))
 
 /* Define Battery 1 Voltage Divider and A per V */
-#define BOARD_BATTERY_V_DIV         (18.1f)     /* measured with the provided PM board */
-#define BOARD_BATTERY_A_PER_V       (36.367515152f)
+#define BOARD_BATTERY1_V_DIV         (18.1f)     /* measured with the provided PM board */
+#define BOARD_BATTERY1_A_PER_V       (36.367515152f)
 
 /* HW has to large of R termination on ADC todo:change when HW value is chosen */
 #define BOARD_ADC_OPEN_CIRCUIT_V     (5.6f)
@@ -112,7 +112,7 @@
 /* Power supply control and monitoring GPIOs */
 #define GPIO_nPOWER_IN_A                /* PB5 */ (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTB|GPIO_PIN5)
 
-#define GPIO_nVDD_BRICK1_VALID          GPIO_nPOWER_IN_A /* Brick 1 Is Chosen */
+#define GPIO_VDD_BRICK1_VALID          GPIO_nPOWER_IN_A /* Brick 1 Is Chosen */
 #define BOARD_NUMBER_BRICKS             1
 
 #define GPIO_VDD_3V3_SPEKTRUM_POWER_EN  /* PE4  */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTE|GPIO_PIN4)
@@ -175,7 +175,7 @@
 #define BOARD_ADC_USB_CONNECTED	       (px4_arch_gpioread(GPIO_OTGFS_VBUS))
 #define BOARD_ADC_USB_VALID            BOARD_ADC_USB_CONNECTED
 #define BOARD_ADC_SERVO_VALID          (1)	/* never powers off the Servo rail */
-#define BOARD_ADC_BRICK_VALID          (!px4_arch_gpioread(GPIO_nVDD_BRICK1_VALID))
+#define BOARD_ADC_BRICK_VALID          (px4_arch_gpioread(GPIO_VDD_BRICK1_VALID))
 
 #define BOARD_HAS_PWM  DIRECT_PWM_OUTPUT_CHANNELS
 

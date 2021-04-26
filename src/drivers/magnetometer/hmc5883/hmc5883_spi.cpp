@@ -39,7 +39,6 @@
 
 #include <px4_platform_common/px4_config.h>
 #include <drivers/device/spi.h>
-#include <drivers/drv_device.h>
 
 #include "hmc5883.h"
 

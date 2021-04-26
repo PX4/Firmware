@@ -11,4 +11,6 @@ float32 temperature       # temperature in degrees Celsius
 
 uint32 error_count
 
+uint8 samples             # number of raw samples that went into this message
+
 uint8 ORB_QUEUE_LENGTH = 8

@@ -54,6 +54,9 @@ static constexpr uint8_t Bit5 = (1 << 5);
 static constexpr uint8_t Bit6 = (1 << 6);
 static constexpr uint8_t Bit7 = (1 << 7);
 
+static constexpr uint32_t I2C_SPEED = 400 * 1000; // 400 kHz I2C serial interface
+static constexpr uint8_t I2C_ADDRESS_DEFAULT = 0b1101001;
+
 static constexpr uint32_t SPI_SPEED = 7 * 1000 * 1000; // 7 MHz SPI
 static constexpr uint8_t DIR_READ = 0x80;
 
@@ -97,7 +100,10 @@ enum class BANK_0 : uint8_t {
 };
 
 enum class BANK_2 : uint8_t {
+	GYRO_SMPLRT_DIV      = 0x00,
 	GYRO_CONFIG_1        = 0x01,
+
+	ACCEL_SMPLRT_DIV_2   = 0x11,
 
 	ACCEL_CONFIG         = 0x14,
 
@@ -146,6 +152,7 @@ enum PWR_MGMT_1_BIT : uint8_t {
 // INT_PIN_CFG
 enum INT_PIN_CFG_BIT : uint8_t {
 	INT1_ACTL        = Bit7,
+	BYPASS_EN        = Bit1, // When asserted, the I2C_MASTER interface pins (ES_CL and ES_DA) will go into ‘bypass mode’ when the I 2 C master interface is disabled.
 };
 
 // INT_ENABLE_1
@@ -188,7 +195,10 @@ enum REG_BANK_SEL_BIT : uint8_t {
 //---------------- BANK2 Register bits
 // GYRO_CONFIG_1
 enum GYRO_CONFIG_1_BIT : uint8_t {
-	// GYRO_FS_SEL[1:0]
+	// 5:3 GYRO_DLPFCFG[2:0]
+	GYRO_DLPFCFG         = Bit5 | Bit4 | Bit3, // 7 -
+
+	// 2:1 GYRO_FS_SEL[1:0]
 	GYRO_FS_SEL_250_DPS  = 0,           // 0b00 = ±250 dps
 	GYRO_FS_SEL_500_DPS  = Bit1,        // 0b01 = ±500 dps
 	GYRO_FS_SEL_1000_DPS = Bit2,        // 0b10 = ±1000 dps
@@ -199,7 +209,10 @@ enum GYRO_CONFIG_1_BIT : uint8_t {
 
 // ACCEL_CONFIG
 enum ACCEL_CONFIG_BIT : uint8_t {
-	// ACCEL_FS_SEL[1:0]
+	// 5:3 ACCEL_DLPFCFG[2:0]
+	ACCEL_DLPFCFG    = Bit5 | Bit4 | Bit3, // 7 -
+
+	// 2:1 ACCEL_FS_SEL[1:0]
 	ACCEL_FS_SEL_2G  = 0,           // 0b00: ±2g
 	ACCEL_FS_SEL_4G  = Bit1,        // 0b01: ±4g
 	ACCEL_FS_SEL_8G  = Bit2,        // 0b10: ±8g

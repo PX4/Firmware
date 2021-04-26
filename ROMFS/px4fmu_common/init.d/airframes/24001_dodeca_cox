@@ -22,30 +22,25 @@
 # @maintainer Ian McNanie <ianmcnanie@gmail.com>
 # @maintainer William Peale <develop707@gmail.com>
 #
-# @board intel_aerofc-v1 exclude
 # @board bitcraze_crazyflie exclude
 #
 
 set VEHICLE_TYPE mc
 
-if [ $AUTOCNF = yes ]
-then
-	param set NAV_ACC_RAD 2
 
-	param set PWM_AUX_RATE 400
-	param set PWM_AUX_DISARMED 900
-	param set PWM_AUX_MIN 1075
-	param set PWM_AUX_MAX 1950
+param set-default NAV_ACC_RAD 2
 
-	param set PWM_MIN 1075
-	param set PWM_MAX 1950
-	param set PWM_RATE 400
+param set-default PWM_AUX_RATE 400
+param set-default PWM_AUX_DISARM 900
+param set-default PWM_AUX_MIN 1075
+param set-default PWM_AUX_MAX 1950
 
-	param set RTL_DESCEND_ALT 10
-	param set RTL_LAND_DELAY 0
-	param set RTL_RETURN_ALT 30
-fi
+param set-default PWM_MAIN_MIN 1075
+param set-default PWM_MAIN_MAX 1950
+param set-default PWM_MAIN_RATE 400
 
+param set-default RTL_DESCEND_ALT 10
+param set-default RTL_RETURN_ALT 30
 set MIXER dodeca_top_cox
 set MIXER_AUX dodeca_bottom_cox
 

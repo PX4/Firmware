@@ -97,6 +97,27 @@ uint16_t crc16_signature(uint16_t initial, size_t length,
 			 const uint8_t *bytes);
 
 /****************************************************************************
+ * Name: crc32_signature
+ *
+ * Description:
+ *   Calculates a CRC-32
+ *   function
+ *
+ * Input Parameters:
+ *    acc     - The Initial value to uses as the crc's starting point
+ *    length  - The number of bytes to add to the crc
+ *    bytes   - A pointer to any array of length bytes
+ *
+ * Returned Value:
+ *   The crc16 of the array of bytes
+ *
+ ****************************************************************************/
+
+uint32_t crc32_signature(uint32_t acc, size_t length,
+			 const uint8_t *bytes);
+
+
+/****************************************************************************
  * Name: crc64_add_word
  *
  * Description:

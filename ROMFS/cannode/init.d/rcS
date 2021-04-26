@@ -30,19 +30,14 @@ sercon
 #
 ver all
 
-#
-# Start the ORB (first app to start)
-# tone_alarm and tune_control
-# is dependent.
-#
-uorb start
-
-#
-# Set the parameter file if mtd starts successfully.
-#
-if mtd start
+if mft query -q -k MTD -s MTD_PARAMETERS -v /fs/mtd_params
 then
 	set PARAM_FILE /fs/mtd_params
+fi
+
+if mft query -q -k MTD -s MTD_PARAMETERS -v /dev/eeeprom0
+then
+	set PARAM_FILE /dev/eeeprom0
 fi
 
 #
@@ -53,6 +48,17 @@ if ! param load
 then
 	param reset_all
 fi
+
+#
+# Optional board architecture defaults: rc.board_arch_defaults
+#
+set BOARD_ARCH_RC_DEFAULTS ${R}etc/init.d/rc.board_arch_defaults
+if [ -f $BOARD_ARCH_RC_DEFAULTS ]
+then
+	echo "Board architecture defaults: ${BOARD_ARCH_RC_DEFAULTS}"
+	. $BOARD_ARCH_RC_DEFAULTS
+fi
+unset BOARD_ARCH_RC_DEFAULTS
 
 #
 # Optional board defaults: rc.board_defaults
@@ -70,15 +76,6 @@ unset BOARD_RC_DEFAULTS
 #
 rgbled start -X -q
 rgbled_ncp5623c start -X -q
-rgbled_pwm start
-
-if param greater -s LIGHT_EN_BLINKM 0
-then
-	if blinkm start -X
-	then
-		blinkm systemstate
-	fi
-fi
 
 #
 # board sensors: rc.sensors

@@ -96,6 +96,7 @@ enum class position_nav_loss_actions_t {
 };
 
 extern const char *const arming_state_names[];
+extern const char *const nav_state_names[];
 
 enum class arm_disarm_reason_t {
 	TRANSITION_TO_STANDBY = 0,
@@ -115,29 +116,30 @@ enum class arm_disarm_reason_t {
 };
 
 transition_result_t
-arming_state_transition(vehicle_status_s *status, const safety_s &safety, const arming_state_t new_arming_state,
-			actuator_armed_s *armed, const bool fRunPreArmChecks, orb_advert_t *mavlink_log_pub,
-			vehicle_status_flags_s *status_flags, const PreFlightCheck::arm_requirements_t &arm_requirements,
+arming_state_transition(vehicle_status_s &status, const safety_s &safety, const arming_state_t new_arming_state,
+			actuator_armed_s &armed, const bool fRunPreArmChecks, orb_advert_t *mavlink_log_pub,
+			vehicle_status_flags_s &status_flags, const PreFlightCheck::arm_requirements_t &arm_requirements,
 			const hrt_abstime &time_since_boot, arm_disarm_reason_t calling_reason);
 
 transition_result_t
 main_state_transition(const vehicle_status_s &status, const main_state_t new_main_state,
-		      const vehicle_status_flags_s &status_flags, commander_state_s *internal_state);
+		      const vehicle_status_flags_s &status_flags, commander_state_s &internal_state);
 
-void enable_failsafe(vehicle_status_s *status, bool old_failsafe, orb_advert_t *mavlink_log_pub, const char *reason);
+void enable_failsafe(vehicle_status_s &status, bool old_failsafe, orb_advert_t *mavlink_log_pub, const char *reason);
 
-bool set_nav_state(vehicle_status_s *status, actuator_armed_s *armed, commander_state_s *internal_state,
+bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_state_s &internal_state,
 		   orb_advert_t *mavlink_log_pub, const link_loss_actions_t data_link_loss_act, const bool mission_finished,
 		   const bool stay_in_failsafe, const vehicle_status_flags_s &status_flags, bool landed,
 		   const link_loss_actions_t rc_loss_act, const offboard_loss_actions_t offb_loss_act,
 		   const offboard_loss_rc_actions_t offb_loss_rc_act,
-		   const position_nav_loss_actions_t posctl_nav_loss_act);
+		   const position_nav_loss_actions_t posctl_nav_loss_act,
+		   const float param_com_rcl_act_t);
 
 /*
  * Checks the validty of position data against the requirements of the current navigation
  * mode and switches mode if position data required is not available.
  */
-bool check_invalid_pos_nav_state(vehicle_status_s *status, bool old_failsafe, orb_advert_t *mavlink_log_pub,
+bool check_invalid_pos_nav_state(vehicle_status_s &status, bool old_failsafe, orb_advert_t *mavlink_log_pub,
 				 const vehicle_status_flags_s &status_flags, const bool use_rc, const bool using_global_pos);
 
 
@@ -150,7 +152,7 @@ typedef enum LOW_BAT_ACTION {
 } low_battery_action_t;
 
 void battery_failsafe(orb_advert_t *mavlink_log_pub, const vehicle_status_s &status,
-		      const vehicle_status_flags_s &status_flags, commander_state_s *internal_state, const uint8_t battery_warning,
+		      const vehicle_status_flags_s &status_flags, commander_state_s &internal_state, const uint8_t battery_warning,
 		      const low_battery_action_t low_bat_action);
 
 #endif /* STATE_MACHINE_HELPER_H_ */

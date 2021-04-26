@@ -39,7 +39,6 @@
 #pragma once
 
 #include <math.h>
-#include <drivers/drv_baro.h>
 #include <drivers/drv_hrt.h>
 #include <lib/cdev/CDev.hpp>
 #include <perf/perf_counter.h>

@@ -112,6 +112,12 @@ void MulticopterLandDetector::_update_topics()
 			}
 		}
 	}
+
+	takeoff_status_s takeoff_status;
+
+	if (_takeoff_status_sub.update(&takeoff_status)) {
+		_takeoff_state = takeoff_status.takeoff_state;
+	}
 }
 
 void MulticopterLandDetector::_update_params()
@@ -155,7 +161,6 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 	const hrt_abstime time_now_us = hrt_absolute_time();
 
 	const bool lpos_available = ((time_now_us - _vehicle_local_position.timestamp) < 1_s);
-	const bool hover_thrust_estimate_valid = ((time_now_us - _hover_thrust_estimate_last_valid) < 1_s);
 
 	// land speed threshold, 90% of MPC_LAND_SPEED
 	const float land_speed_threshold = 0.9f * math::max(_params.landSpeed, 0.1f);
@@ -187,9 +192,22 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 		_horizontal_movement = false; // not known
 	}
 
+	if (lpos_available && _vehicle_local_position.dist_bottom_valid) {
+		_below_gnd_effect_hgt = _vehicle_local_position.dist_bottom < _get_gnd_effect_altitude();
+
+	} else {
+		_below_gnd_effect_hgt = false;
+	}
+
+	const bool hover_thrust_estimate_valid = ((time_now_us - _hover_thrust_estimate_last_valid) < 1_s);
+
+	if (!_in_descend || hover_thrust_estimate_valid) {
+		// continue using valid hover thrust if it became invalid during descent
+		_hover_thrust_estimate_valid = hover_thrust_estimate_valid;
+	}
 
 	// low thrust: 30% of throttle range between min and hover, relaxed to 60% if hover thrust estimate available
-	const float thr_pct_hover = hover_thrust_estimate_valid ? 0.6f : 0.3f;
+	const float thr_pct_hover = _hover_thrust_estimate_valid ? 0.6f : 0.3f;
 	const float sys_low_throttle = _params.minThrottle + (_params.hoverThrottle - _params.minThrottle) * thr_pct_hover;
 	bool ground_contact = (_actuator_controls_throttle <= sys_low_throttle);
 
@@ -319,9 +337,21 @@ float MulticopterLandDetector::_get_max_altitude()
 	}
 }
 
+float MulticopterLandDetector::_get_gnd_effect_altitude()
+{
+	if (_param_lndmc_alt_gnd_effect.get() < 0.0f) {
+		return INFINITY;
+
+	} else {
+		return _param_lndmc_alt_gnd_effect.get();
+	}
+}
+
 bool MulticopterLandDetector::_get_ground_effect_state()
 {
-	return _in_descend && !_horizontal_movement;
+	return (_in_descend && !_horizontal_movement) ||
+	       (_below_gnd_effect_hgt && _takeoff_state == takeoff_status_s::TAKEOFF_STATE_FLIGHT) ||
+	       _takeoff_state == takeoff_status_s::TAKEOFF_STATE_RAMPUP;
 }
 
 } // namespace land_detector

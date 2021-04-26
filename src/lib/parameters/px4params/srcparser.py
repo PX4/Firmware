@@ -58,8 +58,8 @@ class Parameter(object):
         self.name = name
         self.type = type
         self.default = default
-        self.volatile = "false"
         self.category = ""
+        self.volatile = False
         self.boolean = False
 
     def GetName(self):
@@ -102,7 +102,7 @@ class Parameter(object):
         """
         Set volatile flag
         """
-        self.volatile = "true"
+        self.volatile = True
 
     def SetBoolean(self):
         """
@@ -162,11 +162,11 @@ class Parameter(object):
         """
         Return value of the given bitmask code or None if not found.
         """
-        fv =  self.bitmask.get(index)
+        fv = self.bitmask.get(index)
         if not fv:
                 # required because python 3 sorted does not accept None
                 return ""
-        return fv
+        return fv.strip()
 
 class SourceParser(object):
     """
@@ -305,6 +305,10 @@ class SourceParser(object):
                     group = "Miscellaneous"
                     if state == "comment-processed":
                         if short_desc is not None:
+                            if '\n' in short_desc:
+                                raise Exception('short description must be a single line (parameter: {:})'.format(name))
+                            if len(short_desc) > 150:
+                                raise Exception('short description too long (150 max, is {:}, parameter: {:})'.format(len(short_desc), name))
                             param.SetField("short_desc", self.re_remove_dots.sub('', short_desc))
                         if long_desc is not None:
                             long_desc = self.re_remove_carriage_return.sub(' ', long_desc)
@@ -333,7 +337,7 @@ class SourceParser(object):
                     self.param_groups[group].AddParameter(param)
                 state = None
         return True
-    
+
     def IsNumber(self, numberString):
         try:
             float(numberString)
@@ -348,8 +352,8 @@ class SourceParser(object):
         seenParamNames = []
         #allowedUnits should match set defined in /Firmware/validation/module_schema.yaml
         allowedUnits = set ([
-                                '%', 'Hz', 'mAh',
-                                'rad', '%/rad', 'rad/s', 'rad/s^2', '%/rad/s',  'rad s^2/m','rad s/m',
+                                '%', 'Hz', '1/s', 'mAh',
+                                'rad', '%/rad', 'rad/s', 'rad/s^2', '%/rad/s', 'rad s^2/m', 'rad s/m',
                                 'bit/s', 'B/s',
                                 'deg', 'deg*1e7', 'deg/s',
                                 'celcius', 'gauss', 'gauss/s', 'gauss^2',
@@ -357,9 +361,9 @@ class SourceParser(object):
                                 'mm', 'm', 'm/s', 'm^2', 'm/s^2', 'm/s^3', 'm/s^2/sqrt(Hz)', 'm/s/rad',
                                 'Ohm', 'V',
                                 'us', 'ms', 's',
-                                'S', 'A/%', '(m/s^2)^2',  'm/m',  'tan(rad)^2', '(m/s)^2', 'm/rad',
-                                'm/s^3/sqrt(Hz)', 'm/s/sqrt(Hz)', 's/(1000*PWM)', '%m/s', 'min', 'us/C', 
-                                'N/(m/s)', 'Nm/(rad/s)', 'Nm', 'N',
+                                'S', 'A/%', '(m/s^2)^2', 'm/m',  'tan(rad)^2', '(m/s)^2', 'm/rad',
+                                'm/s^3/sqrt(Hz)', 'm/s/sqrt(Hz)', 's/(1000*PWM)', '%m/s', 'min', 'us/C',
+                                'N/(m/s)', 'Nm/rad', 'Nm/(rad/s)', 'Nm', 'N',
                                 'normalized_thrust/s', 'normalized_thrust', 'norm', 'SD',''])
         for group in self.GetParamGroups():
             for param in group.GetParams():
@@ -380,7 +384,7 @@ class SourceParser(object):
                 min = param.GetFieldValue("min")
                 max = param.GetFieldValue("max")
                 units = param.GetFieldValue("unit")
-                if units not in allowedUnits: 
+                if units not in allowedUnits:
                     sys.stderr.write("Invalid unit in {0}: {1}\n".format(name, units))
                     return False
                 #sys.stderr.write("{0} default:{1} min:{2} max:{3}\n".format(name, default, min, max))

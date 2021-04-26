@@ -283,6 +283,7 @@ PARAM_DEFINE_FLOAT(MC_YAWRATE_K, 1.0f);
 
 /**
  * Max acro roll rate
+ *
  * default: 2 turns per second
  *
  * @unit deg/s
@@ -296,6 +297,7 @@ PARAM_DEFINE_FLOAT(MC_ACRO_R_MAX, 720.0f);
 
 /**
  * Max acro pitch rate
+ *
  * default: 2 turns per second
  *
  * @unit deg/s
@@ -309,6 +311,7 @@ PARAM_DEFINE_FLOAT(MC_ACRO_P_MAX, 720.0f);
 
 /**
  * Max acro yaw rate
+ *
  * default 1.5 turns per second
  *
  * @unit deg/s

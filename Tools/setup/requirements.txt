@@ -6,6 +6,7 @@ empy>=3.3
 jinja2>=2.8
 matplotlib>=3.0.*
 numpy>=1.13
+nunavut
 packaging
 pandas>=0.21
 pkgconfig

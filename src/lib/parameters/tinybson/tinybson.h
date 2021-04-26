@@ -116,6 +116,9 @@ struct bson_decoder_s {
 	unsigned		nesting;
 	struct bson_node_s	node;
 	int32_t			pending;
+
+	int32_t                 total_document_size;
+	int32_t                 total_decoded_size;
 };
 
 /**
@@ -181,6 +184,8 @@ typedef struct bson_encoder_s {
 
 	bool		realloc_ok;
 	bool		dead;
+
+	int32_t        total_document_size;
 
 } *bson_encoder_t;
 

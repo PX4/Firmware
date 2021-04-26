@@ -50,12 +50,14 @@
 
 LidarLitePWM::LidarLitePWM(const uint8_t rotation) :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::hp_default),
-	_px4_rangefinder(0 /* device id not yet used */, rotation)
+	_px4_rangefinder(0 /* no device type for PWM input */, rotation)
 {
 	_px4_rangefinder.set_min_distance(LL40LS_MIN_DISTANCE);
 	_px4_rangefinder.set_max_distance(LL40LS_MAX_DISTANCE);
 	_px4_rangefinder.set_fov(0.008); // Divergence 8 mRadian
 	px4_arch_configgpio(io_timer_channel_get_gpio_output(GPIO_VDD_RANGEFINDER_EN_CHAN));
+
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_LL40LS);
 }
 
 LidarLitePWM::~LidarLitePWM()

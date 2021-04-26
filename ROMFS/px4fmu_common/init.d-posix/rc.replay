@@ -20,7 +20,6 @@ module: replay
 ignore_others: false
 EOF
 
-uorb start
 param set SDLOG_DIRS_MAX 7
 
 # apply all params before ekf starts, as some params cannot be changed after startup

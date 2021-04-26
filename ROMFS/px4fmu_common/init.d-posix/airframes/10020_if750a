@@ -8,10 +8,12 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-if [ $AUTOCNF = yes ]
-then
-	# EKF2: Multi GPS blending (as the model has 2 GPS's)
-	param set EKF2_GPS_MASK 7 # Uses speed, hpos and vpos accuracy
-fi
+# EKF2: Multi GPS blending (as the model has 2 GPS's)
+param set-default SENS_GPS_MASK 7
+param set-default TRIG_INTERFACE 3
+param set-default TRIG_MODE 4
+param set-default MNT_MODE_IN 4
+param set-default MNT_MODE_OUT 2
+param set-default MNT_DO_STAB 2
 
 set MIXER quad_x

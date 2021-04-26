@@ -64,11 +64,7 @@ public:
 	NotchFilterArray() = default;
 	~NotchFilterArray() = default;
 
-	/**
-	 * Add new raw values to the filter using the Direct form II.
-	 *
-	 * @return retrieve the filtered result
-	 */
+	// Filter array of samples in place using the Direct form II.
 	inline void apply(T samples[], uint8_t num_samples)
 	{
 		for (int n = 0; n < num_samples; n++) {
@@ -96,8 +92,8 @@ public:
 	{
 		for (int n = 0; n < num_samples; n++) {
 			// Direct Form II implementation
-			const T output = _b0 * samples[n] + _b1 * _delay_element_1 + _b2 * _delay_element_2 - _a1 * _delay_element_output_1 -
-					 _a2 * _delay_element_output_2;
+			T output = _b0 * samples[n] + _b1 * _delay_element_1 + _b2 * _delay_element_2 - _a1 * _delay_element_output_1 -
+				   _a2 * _delay_element_output_2;
 
 			// don't allow bad values to propagate via the filter
 			if (!isFinite(output)) {

@@ -50,8 +50,9 @@
 
 MEMORY
 {
-    flash (rx)   : ORIGIN = 0x08010000, LENGTH = 448K
-    sram (rwx)   : ORIGIN = 0x20000000, LENGTH = 192K
+    flash (rx)  		: ORIGIN = 0x08010000, LENGTH = 448K
+    shared_sram (rwx)   : ORIGIN = 0x20000000, LENGTH = 256
+    sram (rwx)   		: ORIGIN = 0x20000100, LENGTH =  192K - 256
 }
 
 OUTPUT_ARCH(arm)
@@ -71,13 +72,15 @@ SECTIONS
 	.text : {
 		_stext = ABSOLUTE(.);
 		*(.vectors)
-		. = ALIGN(32);
-		/*
-		This signature provides the bootloader with a way to delay booting
-		*/
-		_bootdelay_signature = ABSOLUTE(.);
-		FILL(0xffecc2925d7d05c5)
-		. += 8;
+		. = ALIGN(8);
+      /*
+       * This section positions the app_descriptor_t used
+       * by the make_can_boot_descriptor.py tool to set
+       * the application image's descriptor so that the
+       * uavcan bootloader has the ability to validate the
+       * image crc, size etc
+      */
+    KEEP(*(.app_descriptor))
 		*(.text .text.*)
 		*(.fixup)
 		*(.gnu.warning)
@@ -99,14 +102,6 @@ SECTIONS
                 _einit = ABSOLUTE(.);
         } > flash
 
-	/*
-	 * Construction data for parameters.
-	 */
-	__param ALIGN(4): {
-		__param_start = ABSOLUTE(.);
-		KEEP(*(__param*))
-		__param_end = ABSOLUTE(.);
-	} > flash
 
 	.ARM.extab : {
 		*(.ARM.extab*)
@@ -119,6 +114,10 @@ SECTIONS
 	__exidx_end = ABSOLUTE(.);
 
 	_eronly = ABSOLUTE(.);
+
+	.app_bl_shared : {
+		_sapp_bl_shared = ABSOLUTE(.);
+	} > shared_sram
 
 	.data : {
 		_sdata = ABSOLUTE(.);

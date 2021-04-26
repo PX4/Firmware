@@ -52,6 +52,8 @@ LidarLiteI2C::LidarLiteI2C(I2CSPIBusOption bus_option, const int bus, const uint
 	_px4_rangefinder.set_fov(0.008); // Divergence 8 mRadian
 	// up the retries since the device misses the first measure attempts
 	_retries = 3;
+
+	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_LL40LS); /// TODO
 }
 
 LidarLiteI2C::~LidarLiteI2C()

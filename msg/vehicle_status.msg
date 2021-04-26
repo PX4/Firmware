@@ -37,7 +37,7 @@ uint8 NAVIGATION_STATE_DESCEND = 12		# Descend mode (no position control)
 uint8 NAVIGATION_STATE_TERMINATION = 13		# Termination mode
 uint8 NAVIGATION_STATE_OFFBOARD = 14
 uint8 NAVIGATION_STATE_STAB = 15		# Stabilized mode
-uint8 NAVIGATION_STATE_RATTITUDE = 16		# Rattitude (aka "flip") mode
+uint8 NAVIGATION_STATE_UNUSED2 = 16		# Free slot
 uint8 NAVIGATION_STATE_AUTO_TAKEOFF = 17	# Takeoff
 uint8 NAVIGATION_STATE_AUTO_LAND = 18		# Land
 uint8 NAVIGATION_STATE_AUTO_FOLLOW_TARGET = 19	# Auto Follow
@@ -63,6 +63,7 @@ uint64 nav_state_timestamp              # time when current nav_state activated
 uint8 arming_state			# current arming state
 uint8 hil_state				# current hil state
 bool failsafe				# true if system is in failsafe state (e.g.:RTL, Hover, Terminate, ...)
+uint64 failsafe_timestamp               # time when failsafe was activated
 
 uint8 system_type			# system type, contains mavlink MAV_TYPE
 uint8 system_id			# system id, contains MAVLink's system ID field

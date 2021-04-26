@@ -47,11 +47,11 @@ FailureDetector::FailureDetector(ModuleParams *parent) :
 {
 }
 
-bool FailureDetector::update(const vehicle_status_s &vehicle_status)
+bool FailureDetector::update(const vehicle_status_s &vehicle_status, const vehicle_control_mode_s &vehicle_control_mode)
 {
 	uint8_t previous_status = _status;
 
-	if (isAttitudeStabilized(vehicle_status)) {
+	if (vehicle_control_mode.flag_control_attitude_enabled) {
 		updateAttitudeStatus();
 
 		if (_param_fd_ext_ats_en.get()) {
@@ -67,25 +67,6 @@ bool FailureDetector::update(const vehicle_status_s &vehicle_status)
 	}
 
 	return _status != previous_status;
-}
-
-bool FailureDetector::isAttitudeStabilized(const vehicle_status_s &vehicle_status)
-{
-	bool attitude_is_stabilized{false};
-	const uint8_t vehicle_type = vehicle_status.vehicle_type;
-	const uint8_t nav_state = vehicle_status.nav_state;
-
-	if (vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
-		attitude_is_stabilized =  nav_state != vehicle_status_s::NAVIGATION_STATE_ACRO &&
-					  nav_state != vehicle_status_s::NAVIGATION_STATE_RATTITUDE;
-
-	} else if (vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-		attitude_is_stabilized =  nav_state != vehicle_status_s::NAVIGATION_STATE_MANUAL &&
-					  nav_state != vehicle_status_s::NAVIGATION_STATE_ACRO &&
-					  nav_state != vehicle_status_s::NAVIGATION_STATE_RATTITUDE;
-	}
-
-	return attitude_is_stabilized;
 }
 
 void FailureDetector::updateAttitudeStatus()

@@ -38,13 +38,12 @@
 #pragma once
 
 #include "sensor_bridge.hpp"
-#include <drivers/drv_range_finder.h>
 #include <uORB/topics/distance_sensor.h>
 #include <drivers/rangefinder/PX4Rangefinder.hpp>
 
 #include <uavcan/equipment/range_sensor/Measurement.hpp>
 
-class UavcanRangefinderBridge : public UavcanCDevSensorBridgeBase
+class UavcanRangefinderBridge : public UavcanSensorBridgeBase
 {
 public:
 	static const char *const NAME;

@@ -17,15 +17,15 @@ jobs:
         config:
           - {vehicle: "iris",          mission: "MC_mission_box",  build_type: "RelWithDebInfo"}
           - {vehicle: "rover",         mission: "rover_mission_1", build_type: "RelWithDebInfo"}
-          - {vehicle: "plane",         mission: "FW_mission_1",    build_type: "RelWithDebInfo"}
-          - {vehicle: "plane_catapult",mission: "FW_mission_1",    build_type: "RelWithDebInfo"}
-          - {vehicle: "standard_vtol", mission: "VTOL_mission_1",  build_type: "Coverage"}
-          - {vehicle: "standard_vtol", mission: "VTOL_mission_1",  build_type: "AddressSanitizer"}
+          #- {vehicle: "plane",         mission: "FW_mission_1",    build_type: "RelWithDebInfo"}
+          #- {vehicle: "plane_catapult",mission: "FW_mission_1",    build_type: "RelWithDebInfo"}
+          #- {vehicle: "standard_vtol", mission: "VTOL_mission_1",  build_type: "Coverage"}
+          #- {vehicle: "standard_vtol", mission: "VTOL_mission_1",  build_type: "AddressSanitizer"}
           #- {vehicle: "tailsitter",    mission: "VTOL_mission_1",  build_type: "RelWithDebInfo"}
-          - {vehicle: "tiltrotor",     mission: "VTOL_mission_1",  build_type: "RelWithDebInfo"}
+          #- {vehicle: "tiltrotor",     mission: "VTOL_mission_1",  build_type: "RelWithDebInfo"}
 
     container:
-      image: px4io/px4-dev-ros-melodic:2020-11-18
+      image: px4io/px4-dev-ros-melodic:2021-02-04
       options: --privileged --ulimit core=-1 --security-opt seccomp=unconfined
     steps:
     - uses: actions/checkout@v1
@@ -49,8 +49,8 @@ jobs:
           mkdir -p ~/.ccache
           echo "base_dir = ${GITHUB_WORKSPACE}" > ~/.ccache/ccache.conf
           echo "compression = true" >> ~/.ccache/ccache.conf
-          echo "compression_level = 6" >> ~/.ccache/ccache.conf
-          echo "max_size = 400M" >> ~/.ccache/ccache.conf
+          echo "compression_level = 5" >> ~/.ccache/ccache.conf
+          echo "max_size = 100M" >> ~/.ccache/ccache.conf
           ccache -s
           ccache -z
 

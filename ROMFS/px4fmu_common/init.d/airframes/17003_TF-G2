@@ -1,0 +1,45 @@
+#!/bin/sh
+#
+# @name ThunderFly TF-G2
+#
+# @type Autogyro
+# @class Autogyro
+#
+# @output MAIN2 rotor_head_L
+# @output MAIN3 rotor_head_R
+# @output MAIN4 rudder
+# @output MAIN5 throttle
+#
+#
+# @url https://github.com/ThunderFly-aerospace/TF-G2/
+# @maintainer ThunderFly s.r.o., Roman Dvorak <dvorakroman@thunderfly.cz>
+#
+# @board px4_fmu-v2 exclude
+# @board bitcraze_crazyflie exclude
+#
+
+. ${R}etc/init.d/rc.fw_defaults
+
+
+param set-default BAT_CAPACITY 3300
+param set-default BAT_N_CELLS 3
+
+param set-default PWM_AUX_RATE 50
+param set-default PWM_MAIN_RATE 50
+
+param set-default SENS_BOARD_ROT 4
+
+param set-default FW_AIRSPD_MAX 20
+param set-default FW_AIRSPD_MIN 7
+param set-default FW_AIRSPD_TRIM 13
+param set-default FW_THR_CRUISE 0.8
+
+param set-default FW_MAN_P_MAX 25
+param set-default FW_MAN_R_MAX 25
+param set-default FW_PR_I 0.02
+param set-default FW_R_LIM 40
+param set-default FW_P_LIM_MAX 25
+param set-default FW_P_LIM_MIN -5
+param set-default FW_P_RMAX_NEG 20
+set MIXER TF-G2
+set MIXER_AUX pass

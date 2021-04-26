@@ -52,9 +52,13 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_odometry.h>
+#include <uORB/topics/wind.h>
 
-static constexpr uint8_t EKF2_MAX_INSTANCES{9};
-static_assert(EKF2_MAX_INSTANCES <= ORB_MULTI_MAX_INSTANCES, "EKF2_MAX_INSTANCES must be <= ORB_MULTI_MAX_INSTANCES");
+#if CONSTRAINED_MEMORY
+# define EKF2_MAX_INSTANCES 2
+#else
+# define EKF2_MAX_INSTANCES 9
+#endif
 
 using namespace time_literals;
 
@@ -77,6 +81,7 @@ private:
 	void PublishVehicleAttitude(bool reset = false);
 	void PublishVehicleLocalPosition(bool reset = false);
 	void PublishVehicleGlobalPosition(bool reset = false);
+	void PublishWindEstimate(bool reset = false);
 	bool SelectInstance(uint8_t instance);
 
 	// Update the error scores for all available instances
@@ -84,12 +89,14 @@ private:
 
 	// Subscriptions (per estimator instance)
 	struct EstimatorInstance {
+
 		EstimatorInstance(EKF2Selector *selector, uint8_t i) :
 			estimator_attitude_sub{selector, ORB_ID(estimator_attitude), i},
 			estimator_status_sub{selector, ORB_ID(estimator_status), i},
 			estimator_local_position_sub{ORB_ID(estimator_local_position), i},
 			estimator_global_position_sub{ORB_ID(estimator_global_position), i},
 			estimator_odometry_sub{ORB_ID(estimator_odometry), i},
+			estimator_wind_sub{ORB_ID(estimator_wind), i},
 			instance(i)
 		{}
 
@@ -99,8 +106,14 @@ private:
 		uORB::Subscription estimator_local_position_sub;
 		uORB::Subscription estimator_global_position_sub;
 		uORB::Subscription estimator_odometry_sub;
+		uORB::Subscription estimator_wind_sub;
 
-		estimator_status_s status{};
+		uint64_t timestamp_sample_last{0};
+
+		uint32_t accel_device_id{0};
+		uint32_t gyro_device_id{0};
+		uint32_t baro_device_id{0};
+		uint32_t mag_device_id{0};
 
 		hrt_abstime time_last_selected{0};
 
@@ -109,6 +122,7 @@ private:
 
 		bool healthy{false};
 		bool filter_fault{false};
+		bool timeout{false};
 
 		const uint8_t instance;
 	};
@@ -119,13 +133,17 @@ private:
 	EstimatorInstance _instance[EKF2_MAX_INSTANCES] {
 		{this, 0},
 		{this, 1},
+#if EKF2_MAX_INSTANCES > 2
 		{this, 2},
 		{this, 3},
+#if EKF2_MAX_INSTANCES > 4
 		{this, 4},
 		{this, 5},
 		{this, 6},
 		{this, 7},
 		{this, 8},
+#endif
+#endif
 	};
 
 	static constexpr uint8_t IMU_STATUS_SIZE = (sizeof(sensors_status_imu_s::gyro_inconsistency_rad_s) / sizeof(
@@ -136,7 +154,7 @@ private:
 	static_assert(IMU_STATUS_SIZE == sizeof(estimator_selector_status_s::accumulated_accel_error) / sizeof(
 			      estimator_selector_status_s::accumulated_accel_error[0]),
 		      "increase estimator_selector_status_s::accumulated_accel_error size");
-	static_assert(EKF2_MAX_INSTANCES == sizeof(estimator_selector_status_s::combined_test_ratio) / sizeof(
+	static_assert(EKF2_MAX_INSTANCES <= sizeof(estimator_selector_status_s::combined_test_ratio) / sizeof(
 			      estimator_selector_status_s::combined_test_ratio[0]),
 		      "increase estimator_selector_status_s::combined_test_ratio size");
 
@@ -181,6 +199,9 @@ private:
 	uint8_t _lat_lon_reset_counter{0};
 	uint8_t _alt_reset_counter{0};
 
+	// wind estimate
+	wind_s _wind_last{};
+
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 	uORB::Subscription _sensors_status_imu{ORB_ID(sensors_status_imu)};
 
@@ -191,6 +212,7 @@ private:
 	uORB::Publication<vehicle_global_position_s>   _vehicle_global_position_pub{ORB_ID(vehicle_global_position)};
 	uORB::Publication<vehicle_local_position_s>    _vehicle_local_position_pub{ORB_ID(vehicle_local_position)};
 	uORB::Publication<vehicle_odometry_s>          _vehicle_odometry_pub{ORB_ID(vehicle_odometry)};
+	uORB::Publication<wind_s>             _wind_pub{ORB_ID(wind)};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::EKF2_SEL_ERR_RED>) _param_ekf2_sel_err_red,

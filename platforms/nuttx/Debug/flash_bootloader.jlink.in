@@ -1,0 +1,9 @@
+Device @DEBUG_DEVICE@
+eoe 1
+si SWD
+speed auto
+r
+h
+loadbin @BOARD_BL_FIRMWARE_BIN@,0x08000000
+go
+qc

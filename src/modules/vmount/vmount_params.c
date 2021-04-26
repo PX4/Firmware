@@ -1,6 +1,6 @@
 /****************************************************************************
 *
-*   Copyright (c) 2013-2017 PX4 Development Team. All rights reserved.
+*   Copyright (c) 2013-2020 PX4 Development Team. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions
@@ -48,8 +48,9 @@
 * @value -1 DISABLED
 * @value 0 AUTO
 * @value 1 RC
-* @value 2 MAVLINK_ROI
-* @value 3 MAVLINK_DO_MOUNT
+* @value 2 MAVLINK_ROI (protocol v1)
+* @value 3 MAVLINK_DO_MOUNT (protocol v1)
+* @value 4 MAVlink gimbal protocol v2
 * @min -1
 * @max 3
 * @group Mount
@@ -65,9 +66,10 @@ PARAM_DEFINE_INT32(MNT_MODE_IN, -1);
 * to control a mount (set MNT_MAV_SYSID & MNT_MAV_COMPID)
 *
 * @value 0 AUX
-* @value 1 MAVLINK
+* @value 1 MAVLink gimbal protocol v1
+* @value 2 MAVLink gimbal protocol v2
 * @min 0
-* @max 1
+* @max 2
 * @group Mount
 */
 PARAM_DEFINE_INT32(MNT_MODE_OUT, 0);
@@ -75,7 +77,7 @@ PARAM_DEFINE_INT32(MNT_MODE_OUT, 0);
 /**
 * Mavlink System ID of the mount
 *
-* If MNT_MODE_OUT is MAVLINK, mount configure/control commands will be sent with this target ID.
+* If MNT_MODE_OUT is MAVLink gimbal protocol v1, mount configure/control commands will be sent with this target ID.
 *
 * @group Mount
 */
@@ -84,7 +86,7 @@ PARAM_DEFINE_INT32(MNT_MAV_SYSID, 1);
 /**
 * Mavlink Component ID of the mount
 *
-* If MNT_MODE_OUT is MAVLINK, mount configure/control commands will be sent with this component ID.
+* If MNT_MODE_OUT is MAVLink protocol v2, mount configure/control commands will be sent with this component ID.
 *
 * @group Mount
 */
@@ -92,6 +94,7 @@ PARAM_DEFINE_INT32(MNT_MAV_COMPID, 154);
 
 /**
 * Mixer value for selecting normal mode
+*
 * if required by the gimbal (only in AUX output mode)
 *
 * @min -1.0
@@ -103,6 +106,7 @@ PARAM_DEFINE_FLOAT(MNT_OB_NORM_MODE, -1.0f);
 
 /**
 * Mixer value for selecting a locking mode
+*
 * if required for the gimbal (only in AUX output mode)
 *
 * @min -1.0
@@ -161,10 +165,17 @@ PARAM_DEFINE_INT32(MNT_MAN_PITCH, 0);
 PARAM_DEFINE_INT32(MNT_MAN_YAW, 0);
 
 /**
-* Stabilize the mount (set to true for servo gimbal, false for passthrough).
-* Does not affect MAVLINK_ROI input.
+* Stabilize the mount
 *
-* @boolean
+* Set to true for servo gimbal, false for passthrough.
+* This is required for a gimbal which is not capable of stabilizing itself
+* and relies on the IMU's attitude estimation.
+*
+* @value 0 Disable
+* @value 1 Stabilize all axis
+* @value 2 Stabilize yaw for absolute/lock mode.
+* @min 0
+* @max 2
 * @group Mount
 */
 PARAM_DEFINE_INT32(MNT_DO_STAB, 0);
@@ -228,3 +239,25 @@ PARAM_DEFINE_FLOAT(MNT_OFF_ROLL, 0.0f);
 * @group Mount
 */
 PARAM_DEFINE_FLOAT(MNT_OFF_YAW, 0.0f);
+
+/**
+ * Angular pitch rate for manual input in degrees/second.
+ *
+ * Full stick input [-1..1] translats to [-pitch rate..pitch rate].
+ *
+ * @min 1.0
+ * @max 90.0
+ * @group Mount
+ */
+PARAM_DEFINE_FLOAT(MNT_RATE_PITCH, 30.0f);
+
+/**
+ * Angular yaw rate for manual input in degrees/second.
+ *
+ * Full stick input [-1..1] translats to [-yaw rate..yaw rate].
+ *
+ * @min 1.0
+ * @max 90.0
+ * @group Mount
+ */
+PARAM_DEFINE_FLOAT(MNT_RATE_YAW, 30.0f);

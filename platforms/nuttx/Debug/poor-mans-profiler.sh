@@ -16,6 +16,13 @@
 #               https://launchpad.net/gcc-arm-embedded and building them with correct flags.
 #               Note that Python support is not required if no per-task sampling is needed.
 #
+# Usage with PX4:
+#   0) See above regarding flamegraph.pl
+#   1) Connect your device, e.g. Pixhawk 4
+#   2) Build PX4: make px4_fmu-v5_default
+#   3) Flash PX4: make px4_fmu-v5_default upload
+#   4) Connect a JTAG/SWD debugger, e.g. a DroneCode Probe
+#   5) Profile: make px4_fmu-v5_default profile
 
 set -e
 root=$(dirname $0)
@@ -33,7 +40,11 @@ function usage()
     exit 1
 }
 
-which flamegraph.pl > /dev/null || die "Install flamegraph.pl first"
+if [ -z `which flamegraph.pl` ]; then
+    echo "Install flamegraph.pl first.  Available from:"
+    echo -e "\thttps://github.com/brendangregg/FlameGraph"
+    exit 1
+fi
 
 #
 # Parsing the arguments. Read this section for usage info.
@@ -45,6 +56,7 @@ elf=
 append=0
 fgfontsize=10
 fgwidth=1900
+gdbdev=`ls /dev/serial/by-id/*Black_Magic_Probe*-if00`
 
 for i in "$@"
 do
@@ -69,6 +81,9 @@ do
             ;;
         --fgwidth=*)
             fgwidth="${i#*=}"
+            ;;
+        --gdbdev=*)
+            gdbdev="${i#*=}"
             ;;
         *)
             usage
@@ -104,7 +119,7 @@ then
         then
             arm-none-eabi-gdb $elf --nx --quiet --batch \
                                            -ex "set print asm-demangle on" \
-                                           -ex "target extended /dev/ttyACM0" \
+                                           -ex "target extended $gdbdev" \
                                            -ex "monitor swdp_scan" \
                                            -ex "attach 1" \
                                            -ex bt \
@@ -114,7 +129,7 @@ then
         else
             arm-none-eabi-gdb $elf --nx --quiet --batch \
                                            -ex "set print asm-demangle on" \
-                                           -ex "target extended /dev/ttyACM0" \
+                                           -ex "target extended $gdbdev" \
                                            -ex "monitor swdp_scan" \
                                            -ex "attach 1" \
                                            -ex "source $root/Nuttx.py" \
@@ -137,7 +152,7 @@ fi
 #
 # Folding the stacks.
 #
-[ -f $stacksfile ] || die "Where are the stack samples?"
+[ -f $stacksfile ] || die "Where are the stack samples? Expected file not found: $stacksfile"
 
 cat << 'EOF' > /tmp/pmpn-folder.py
 #

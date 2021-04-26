@@ -57,6 +57,8 @@ apps_map_type Pxh::_apps = {};
 
 Pxh::Pxh()
 {
+	_history.try_to_add("commander takeoff"); // for convenience
+	_history.reset_to_end();
 	_instance = this;
 }
 

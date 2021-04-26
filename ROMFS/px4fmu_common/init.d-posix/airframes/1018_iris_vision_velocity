@@ -7,9 +7,6 @@
 
 . ${R}etc/init.d-posix/airframes/10016_iris
 
-if [ $AUTOCNF = yes ]
-then
-	# EKF2: Vision velocity and heading
-	param set EKF2_AID_MASK 272
-	param set EKF2_EV_DELAY 5
-fi
+# EKF2: Vision velocity and heading
+param set-default EKF2_AID_MASK 272
+param set-default EKF2_EV_DELAY 5

@@ -55,7 +55,7 @@ static constexpr unsigned max_mandatory_baro_count = 1;
 static constexpr unsigned max_optional_baro_count = 4;
 
 bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_status_s &status,
-				    vehicle_status_flags_s &status_flags, const bool checkGNSS, bool report_failures, const bool prearm,
+				    vehicle_status_flags_s &status_flags, bool report_failures, const bool prearm,
 				    const hrt_abstime &time_since_boot)
 {
 	report_failures = (report_failures && status_flags.condition_system_hotplug_timeout
@@ -64,6 +64,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	bool failed = false;
 
 	failed = failed || !airframeCheck(mavlink_log_pub, status);
+	failed = failed || !sdcardCheck(mavlink_log_pub, status_flags.sd_card_detected_once, report_failures);
 
 	/* ---- MAG ---- */
 	{
@@ -149,7 +150,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		/* check all sensors, but fail only for mandatory ones */
 		for (unsigned i = 0; i < max_optional_baro_count; i++) {
 			const bool required = (i < max_mandatory_baro_count) && (sys_has_baro == 1);
-			bool report_fail = (report_failures && !baro_fail_reported);
+			bool report_fail = (required && report_failures && !baro_fail_reported);
 
 			int32_t device_id = -1;
 
@@ -180,7 +181,17 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 		param_get(param_find("FW_ARSP_MODE"), &airspeed_mode);
 		const bool optional = (airspeed_mode == 1);
 
-		if (!airspeedCheck(mavlink_log_pub, status, optional, report_failures, prearm) && !optional) {
+		int32_t max_airspeed_check_en = 0;
+		param_get(param_find("COM_ARM_ARSP_EN"), &max_airspeed_check_en);
+
+		float airspeed_stall = 10.0f;
+		param_get(param_find("ASPD_STALL"), &airspeed_stall);
+
+		const float arming_max_airspeed_allowed = airspeed_stall / 2.0f; // set to half of stall speed
+
+		if (!airspeedCheck(mavlink_log_pub, status, optional, report_failures, prearm, (bool)max_airspeed_check_en,
+				   arming_max_airspeed_allowed)
+		    && !(bool)optional) {
 			failed = true;
 		}
 	}
@@ -225,16 +236,22 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	}
 
 	if (estimator_type == 2) {
-		// don't report ekf failures for the first 10 seconds to allow time for the filter to start
-		bool report_ekf_fail = (time_since_boot > 10_s);
 
-		if (!ekf2Check(mavlink_log_pub, status, false, report_failures && report_ekf_fail, checkGNSS)) {
-			failed = true;
+		const bool ekf_healthy = ekf2Check(mavlink_log_pub, status, false, report_failures) &&
+					 ekf2CheckSensorBias(mavlink_log_pub, report_failures);
+
+		// For the first 10 seconds the ekf2 can be unhealthy, and we just mark it
+		// as not present.
+		// After that or if report_failures is true, we'll set the flags as is.
+
+		if (!ekf_healthy && time_since_boot < 10_s && !report_failures) {
+			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_AHRS, true, false, false, status);
+
+		} else {
+			set_health_flags(subsystem_info_s::SUBSYSTEM_TYPE_AHRS, true, true, ekf_healthy, status);
 		}
 
-		if (!ekf2CheckSensorBias(mavlink_log_pub, report_failures && report_ekf_fail)) {
-			failed = true;
-		}
+		failed |= !ekf_healthy;
 	}
 
 	/* ---- Failure Detector ---- */

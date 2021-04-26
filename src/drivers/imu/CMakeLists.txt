@@ -31,19 +31,13 @@
 #
 ############################################################################
 
-add_subdirectory(adis16448)
 add_subdirectory(adis16477)
 add_subdirectory(adis16497)
-add_subdirectory(bma180)
-add_subdirectory(bmi055)
-add_subdirectory(bmi088)
-add_subdirectory(bmi160)
+add_subdirectory(analog_devices)
+add_subdirectory(bosch)
 add_subdirectory(fxas21002c)
 add_subdirectory(fxos8701cq)
-add_subdirectory(icm20948)
 add_subdirectory(invensense)
 add_subdirectory(l3gd20)
 add_subdirectory(lsm303d)
-add_subdirectory(mpu6000)
-add_subdirectory(mpu9250)
 add_subdirectory(st)

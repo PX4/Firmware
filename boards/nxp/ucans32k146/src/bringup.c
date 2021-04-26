@@ -57,6 +57,10 @@
 #  include "s32k1xx_lpi2c.h"
 #endif
 
+#ifdef CONFIG_S32K1XX_EEEPROM
+#  include "s32k1xx_eeeprom.h"
+#endif
+
 #include "board_config.h"
 
 /****************************************************************************
@@ -114,6 +118,12 @@ int s32k1xx_bringup(void)
 
 #endif
 
+#ifdef CONFIG_S32K1XX_EEEPROM
+	/* Register EEEPROM block device */
+
+	s32k1xx_eeeprom_register(0, 4096);
+#endif
+
 #ifdef CONFIG_S32K1XX_LPSPI
 	/* Configure SPI chip selects if 1) SPI is not disabled, and 2) the weak
 	 * function s32k1xx_spidev_initialize() has been brought into the link.
@@ -141,6 +151,5 @@ int s32k1xx_bringup(void)
 
 #endif
 #endif
-
 	return ret;
 }

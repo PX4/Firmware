@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# board specific extras init
+#------------------------------------------------------------------------------
+
+# Run FrSky Telemetry on Pixracer on the FrSky port if not enabled already
+if param compare TEL_FRSKY_CONFIG 0
+then
+	frsky_telemetry start -d /dev/ttyS6 -t 15
+fi

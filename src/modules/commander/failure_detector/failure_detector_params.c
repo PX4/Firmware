@@ -107,9 +107,9 @@ PARAM_DEFINE_FLOAT(FD_FAIL_R_TTRI, 0.3);
 PARAM_DEFINE_FLOAT(FD_FAIL_P_TTRI, 0.3);
 
 /**
- * Enable PWM input on AUX5 or MAIN5 (depending on board) for engaging failsafe from an external
- * automatic trigger system (ATS).
+ * Enable PWM input on for engaging failsafe from an external automatic trigger system (ATS).
  *
+ * Enabled on either AUX5 or MAIN5 depending on board.
  * External ATS is required by ASTM F3322-18.
  *
  * @boolean
@@ -132,6 +132,7 @@ PARAM_DEFINE_INT32(FD_EXT_ATS_TRIG, 1900);
 
 /**
  * Enable checks on ESCs that report their arming state.
+ *
  * If enabled, failure detector will verify that all the ESCs have successfully armed when the vehicle has transitioned to the armed state.
  * Timeout for receiving an acknowledgement from the ESCs is 0.3s, if no feedback is received the failure detector will auto disarm the vehicle.
  *

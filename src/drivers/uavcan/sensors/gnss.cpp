@@ -52,19 +52,20 @@ using namespace time_literals;
 const char *const UavcanGnssBridge::NAME = "gnss";
 
 UavcanGnssBridge::UavcanGnssBridge(uavcan::INode &node) :
-	UavcanCDevSensorBridgeBase("uavcan_gnss", "/dev/uavcan/gnss", "/dev/gnss", ORB_ID(sensor_gps)),
+	UavcanSensorBridgeBase("uavcan_gnss", ORB_ID(sensor_gps)),
 	_node(node),
 	_sub_auxiliary(node),
 	_sub_fix(node),
 	_sub_fix2(node),
 	_pub_rtcm(node),
-	_report_pub(nullptr),
 	_channel_using_fix2(new bool[_max_channels]),
 	_rtcm_perf(perf_alloc(PC_INTERVAL, "uavcan: gnss: rtcm pub"))
 {
 	for (uint8_t i = 0; i < _max_channels; i++) {
 		_channel_using_fix2[i] = false;
 	}
+
+	set_device_type(DRV_GPS_DEVTYPE_UAVCAN);
 }
 
 UavcanGnssBridge::~UavcanGnssBridge()
@@ -76,13 +77,7 @@ UavcanGnssBridge::~UavcanGnssBridge()
 int
 UavcanGnssBridge::init()
 {
-	int res = device::CDev::init();
-
-	if (res < 0) {
-		return res;
-	}
-
-	res = _sub_auxiliary.start(AuxiliaryCbBinder(this, &UavcanGnssBridge::gnss_auxiliary_sub_cb));
+	int res = _sub_auxiliary.start(AuxiliaryCbBinder(this, &UavcanGnssBridge::gnss_auxiliary_sub_cb));
 
 	if (res < 0) {
 		PX4_WARN("GNSS auxiliary sub failed %i", res);
@@ -288,18 +283,8 @@ void UavcanGnssBridge::process_fixx(const uavcan::ReceivedDataStructure<FixType>
 				    const float (&pos_cov)[9], const float (&vel_cov)[9],
 				    const bool valid_pos_cov, const bool valid_vel_cov)
 {
-	// This bridge does not support redundant GNSS receivers yet.
-	if (_receiver_node_id < 0) {
-		_receiver_node_id = msg.getSrcNodeID().get();
-		PX4_INFO("GNSS receiver node ID: %d", _receiver_node_id);
-
-	} else {
-		if (_receiver_node_id != msg.getSrcNodeID().get()) {
-			return;  // This GNSS receiver is the redundant one, ignore it.
-		}
-	}
-
 	sensor_gps_s report{};
+	report.device_id = get_device_id();
 
 	/*
 	 * FIXME HACK
@@ -494,7 +479,7 @@ bool UavcanGnssBridge::injectData(const uint8_t *const data, const size_t data_l
 		}
 
 		result = _pub_rtcm.broadcast(msg) >= 0;
-		msg.data = {};
+		msg.data.clear();
 	}
 
 	return result;
@@ -502,6 +487,6 @@ bool UavcanGnssBridge::injectData(const uint8_t *const data, const size_t data_l
 
 void UavcanGnssBridge::print_status() const
 {
-	UavcanCDevSensorBridgeBase::print_status();
+	UavcanSensorBridgeBase::print_status();
 	perf_print_counter(_rtcm_perf);
 }

@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# board sensors init
+#------------------------------------------------------------------------------
+
+gps start -d /dev/ttyS0 -g 38400 -p ubx
+
+# TODO:Check for Correct Rotations
+# Internal SPI BMI088
+bmi088 -A -R 0 -s start
+bmi088 -G -R 0 -s start
+
+# Internal Baro
+bmp388 -I -b 1 -a 0x77 start
+
+# Internal magnetometer on I2c
+bmm150 -I -b 1 start

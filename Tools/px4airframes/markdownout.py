@@ -1,6 +1,7 @@
 from xml.sax.saxutils import escape
 import codecs
 import os
+import html
 
 class MarkdownTablesOutput():
     def __init__(self, groups, board, image_path):
@@ -89,7 +90,7 @@ class MarkdownTablesOutput():
                     maintainer = param.GetMaintainer()
                     maintainer_entry = ''
                     if maintainer != '':
-                        maintainer_entry = '<p>Maintainer: %s</p>' % (maintainer)
+                        maintainer_entry = '<p>Maintainer: %s</p>' % (html.escape(maintainer))
                     url = param.GetFieldValue('url')
                     name_anchor='id="%s_%s_%s"' % (group.GetClass(),group.GetName(),name)
                     name_anchor=name_anchor.replace(' ','_').lower()

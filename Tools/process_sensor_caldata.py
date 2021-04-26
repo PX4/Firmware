@@ -1099,7 +1099,7 @@ if num_baros >= 2:
     baro_1_x_resample = fit_coef_baro_1_x(temp_rel_resample)
 
     # baro 2 vs temperature
-    plt.figure(9,figsize=(20,13))
+    plt.figure(10,figsize=(20,13))
 
     # draw plots
     plt.plot(sensor_baro_1['temperature'],100*sensor_baro_1['pressure']-100*median_pressure,'b')
@@ -1157,7 +1157,7 @@ if num_baros >= 3:
     baro_2_x_resample = fit_coef_baro_2_x(temp_rel_resample)
 
     # baro 2 vs temperature
-    plt.figure(10,figsize=(20,13))
+    plt.figure(11,figsize=(20,13))
 
     # draw plots
     plt.plot(sensor_baro_2['temperature'],100*sensor_baro_2['pressure']-100*median_pressure,'b')
@@ -1210,7 +1210,7 @@ if num_baros >= 4:
     baro_3_x_resample = fit_coef_baro_3_x(temp_rel_resample)
 
     # baro 3 vs temperature
-    plt.figure(11,figsize=(20,13))
+    plt.figure(12,figsize=(20,13))
 
     # draw plots
     plt.plot(sensor_baro_3['temperature'],100*sensor_baro_3['pressure']-100*median_pressure,'b')

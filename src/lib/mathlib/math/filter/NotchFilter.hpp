@@ -123,6 +123,18 @@ public:
 		b[2] = _b2;
 	}
 
+	float getMagnitudeResponse(float frequency) const
+	{
+		float w = 2.f * M_PI_F * frequency / _sample_freq;
+
+		float numerator = _b0 * _b0 + _b1 * _b1 + _b2 * _b2
+				  + 2.f * (_b0 * _b1 + _b1 * _b2) * cosf(w) + 2.f * _b0 * _b2 * cosf(2.f * w);
+
+		float denominator = 1.f + _a1 * _a1 + _a2 * _a2 + 2.f * (_a1 + _a1 * _a2) * cosf(w) + 2.f * _a2 * cosf(2.f * w);
+
+		return sqrtf(numerator / denominator);
+	}
+
 	/**
 	 * Bypasses the filter update to directly set different filter coefficients.
 	 * Note: the filtered frequency and quality factor saved on the filter lose their
@@ -144,6 +156,7 @@ public:
 protected:
 	float _notch_freq{};
 	float _bandwidth{};
+	float _sample_freq{};
 
 	// All the coefficients are normalized by a0, so a0 becomes 1 here
 	float _a1{};
@@ -170,6 +183,7 @@ void NotchFilter<T>::setParameters(float sample_freq, float notch_freq, float ba
 {
 	_notch_freq = notch_freq;
 	_bandwidth = bandwidth;
+	_sample_freq = sample_freq;
 
 	if (notch_freq <= 0.f) {
 		// no filtering
