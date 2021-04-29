@@ -194,7 +194,6 @@ __ramfunc__ void stm32_board_clockconfig(void)
 
 #endif
 
-#define CONFIG_STM32H7_HSI48
 #ifdef CONFIG_STM32H7_HSI48
 	/* Enable HSI48 */
 
