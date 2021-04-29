@@ -6,114 +6,210 @@ on:
     - 'master'
     - 'release/*'
     - 'pr-metadata-test'
+  pull_request:
+    branches:
+    - '*'
 
 jobs:
 
-  airframe:
-    runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2021-02-04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: airframe metadata
-      run: |
-        make airframe_metadata
-        cd build/px4_sitl_default/docs
-        ls -ls *
-      # TODO: deploy to userguide gitbook and s3
-
-  module:
-    runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2021-02-04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: module documentation
-      run: |
-        make module_documentation
-        cd build/px4_sitl_default/docs
-        ls -ls *
-      # TODO: deploy to userguide gitbook and s3
-
-  parameter:
-    runs-on: ubuntu-latest
-    container: px4io/px4-dev-base-focal:2021-02-04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: parameter metadata
-      run: |
-        make parameters_metadata
-        ./src/lib/version/get_git_tag_or_branch_version.sh build/px4_sitl_default >> $GITHUB_ENV
-
-    - uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read
-      env:
-        AWS_S3_BUCKET: 'px4-travis'
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: 'us-west-1'
-        SOURCE_DIR: 'build/px4_sitl_default/docs/'
-        DEST_DIR: 'Firmware/${{ env.version }}/_general/'
-
-  uorb_graph:
-    runs-on: ubuntu-latest
-    container: px4io/px4-dev-nuttx-focal:2021-02-04
-    steps:
-    - uses: actions/checkout@v1
-      with:
-        token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: uORB graph
-      run: |
-        make uorb_graphs
-        cd Tools/uorb_graph
-        ls -ls *
-      # TODO: deploy graph_px4_sitl.json to S3 px4-travis:Firmware/master/
+  # airframe:
+  #   runs-on: ubuntu-latest
+  #   container: px4io/px4-dev-base-focal:2021-02-04
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       token: ${{ secrets.ACCESS_TOKEN }}
+  #
+  #   - name: airframe metadata
+  #     run: |
+  #       make airframe_metadata
+  #       cd build/px4_sitl_default/docs
+  #       ls -ls *
+  #     # TODO: deploy to userguide gitbook and s3
+  #
+  # module:
+  #   runs-on: ubuntu-latest
+  #   container: px4io/px4-dev-base-focal:2021-02-04
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       token: ${{ secrets.ACCESS_TOKEN }}
+  #
+  #   - name: module documentation
+  #     run: |
+  #       make module_documentation
+  #       cd build/px4_sitl_default/docs
+  #       ls -ls *
+  #     # TODO: deploy to userguide gitbook and s3
+  #
+  # parameter:
+  #   runs-on: ubuntu-latest
+  #   container: px4io/px4-dev-base-focal:2021-02-04
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       token: ${{ secrets.ACCESS_TOKEN }}
+  #
+  #   - name: parameter metadata
+  #     run: |
+  #       make parameters_metadata
+  #       ./src/lib/version/get_git_tag_or_branch_version.sh build/px4_sitl_default >> $GITHUB_ENV
+  #
+  #   - uses: jakejarvis/s3-sync-action@master
+  #     with:
+  #       args: --acl public-read
+  #     env:
+  #       AWS_S3_BUCKET: 'px4-travis'
+  #       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #       AWS_REGION: 'us-west-1'
+  #       SOURCE_DIR: 'build/px4_sitl_default/docs/'
+  #       DEST_DIR: 'Firmware/${{ env.version }}/_general/'
+  #
+  # uorb_graph:
+  #   runs-on: ubuntu-latest
+  #   container: px4io/px4-dev-nuttx-focal:2021-02-04
+  #   steps:
+  #   - uses: actions/checkout@v1
+  #     with:
+  #       token: ${{ secrets.ACCESS_TOKEN }}
+  #
+  #   - name: uORB graph
+  #     run: |
+  #       make uorb_graphs
+  #       cd Tools/uorb_graph
+  #       ls -ls *
+  #     # TODO: deploy graph_px4_sitl.json to S3 px4-travis:Firmware/master/
 
   micrortps_agent:
+    name: Deploy micrortps_agent
     runs-on: ubuntu-latest
     container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: microRTPS agent
+    - name: microRTPS agent deploy
       run: |
         make px4_sitl_rtps
-        git clone https://github.com/PX4/micrortps_agent.git
-        cp -R build/px4_sitl_rtps/src/modules/micrortps_bridge/micrortps_agent/* micrortps_agent
+        git config --global user.name "PX4BuildBot"
+        git config --global user.email "bot@px4.io"
+        git clone https://PX4BuildBot:${{ secrets.ACCESS_TOKEN }}@github.com/PX4/micrortps_agent.git
+        cd micrortps_agent
+        git fetch
+        if git rev-parse --verify origin/${GITHUB_REF#refs/heads/}; then git checkout ${GITHUB_REF#refs/heads/}; else git checkout -b ${GITHUB_REF#refs/heads/}; fi
+        cp -R ../build/px4_sitl_rtps/src/modules/micrortps_bridge/micrortps_agent/* .
+        git status
+        git add src
+        git commit -a -m "Update microRTPS agent source code `date`" || true
+        git add idl
+        git commit -a -m "Update IDL definitions `date`" || true
+        git add CMakeLists.txt
+        git commit -a -m "Update CMakeLists.txt `date`" || true
+        git push -u origin HEAD:${GITHUB_REF#refs/heads/} || true
+        cd ..
+        rm -rf micrortps_agent
 
   ROS_msgs:
+    name: Deploy px4_msgs
     runs-on: ubuntu-latest
     container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: PX4 ROS msgs
+    - name: PX4 ROS msgs (px4_msgs) deploy
       run: |
-        git clone https://github.com/PX4/px4_msgs.git
-        python3 msg/tools/uorb_to_ros_msgs.py msg/ px4_msgs/msg/
+        git config --global user.name "PX4BuildBot"
+        git config --global user.email "bot@px4.io"
+        # 'master' (ROS 2) branch and release branches
+        git clone https://PX4BuildBot:${{ secrets.ACCESS_TOKEN }}@github.com/PX4/px4_msgs.git
+        cd px4_msgs
+        git fetch
+        if git rev-parse --verify origin/${GITHUB_REF#refs/heads/}; then \
+          git checkout ${GITHUB_REF#refs/heads/}; \
+        else \
+          git checkout -b ${GITHUB_REF#refs/heads/}; \
+        fi
+        python3 ../msg/tools/uorb_to_ros_msgs.py ../msg/ msg/
+        git status
+        git add .
+        git commit -a -m "Update message definitions `date`" || true
+        git push -u origin HEAD:${GITHUB_REF#refs/heads/} || true
+        cd ..
+        rm -rf px4_msgs
+        # 'ros1' branch and release branches
+        git clone https://PX4BuildBot:${{ secrets.ACCESS_TOKEN }}@github.com/PX4/px4_msgs.git
+        cd px4_msgs
+        if [ "${GITHUB_REF#refs/heads/}" = "master" ]; then \
+          git checkout ros1; \
+          python3 ../msg/tools/uorb_to_ros_msgs.py ../msg/ msg/; \
+          git status; \
+          git add .; \
+          git commit -a -m "Update message definitions `date`" || true; \
+          git push -u origin HEAD:ros1 || true; \
+        else \
+          if git rev-parse --verify origin/ros1/${GITHUB_REF#refs/heads/}; then \
+            git checkout ros1/${GITHUB_REF#refs/heads/}; \
+          else \
+            git checkout -b ros1/${GITHUB_REF#refs/heads/}; \
+          fi \
+          python3 ../msg/tools/uorb_to_ros_msgs.py ../msg/ msg/; \
+          git status; \
+          git add .; \
+          git commit -a -m "Update message definitions `date`" || true; \
+          git push -u origin HEAD:ros1/${GITHUB_REF#refs/heads/} || true; \
+        fi
+        cd ..
+        rm -rf px4_msgs
 
   ROS2_bridge:
+    name: Deploy px4_ros_com
     runs-on: ubuntu-latest
     container: px4io/px4-dev-base-focal:2021-02-04
     steps:
     - uses: actions/checkout@v1
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-
-    - name: PX4 ROS2 bridge
+    - name: PX4 ROS2 bridge (px4_ros_com) deploy
       run: |
-        git clone https://github.com/PX4/px4_ros_com.git
-        ./msg/tools/uorb_to_ros_rtps_ids.py -i msg/tools/uorb_rtps_message_ids.yaml -o px4_ros_com/templates/uorb_rtps_message_ids.yaml
+        git config --global user.name "PX4BuildBot"
+        git config --global user.email "bot@px4.io"
+        git clone https://PX4BuildBot:${{ secrets.ACCESS_TOKEN }}@github.com/PX4/px4_ros_com.git
+        cd px4_ros_com
+        git fetch
+        if git rev-parse --verify origin/${GITHUB_REF#refs/heads/}; then git checkout ${GITHUB_REF#refs/heads/}; else git checkout -b ${GITHUB_REF#refs/heads/}; fi
+        python3 ../msg/tools/uorb_to_ros_rtps_ids.py -i ../msg/tools/uorb_rtps_message_ids.yaml -o templates/uorb_rtps_message_ids.yaml
+        git status
+        git add .
+        git commit -a -m "Update uORB RTPS ID map `date`" || true
+        git push origin HEAD:${GITHUB_REF#refs/heads/} || true
+        cd ..
+        cp msg/tools/uorb_rtps_classifier.py px4_ros_com/scripts/uorb_rtps_classifier.py
+        cp msg/tools/generate_microRTPS_bridge.py px4_ros_com/scripts/generate_microRTPS_bridge.py
+        cp msg/tools/px_generate_uorb_topic_files.py px4_ros_com/scripts/px_generate_uorb_topic_files.py
+        cp msg/tools/px_generate_uorb_topic_helper.py px4_ros_com/scripts/px_generate_uorb_topic_helper.py
+        cd px4_ros_com
+        git status
+        git add .
+        git commit -a -m "Update uORB RTPS code generation tools `date`" || true
+        git push origin HEAD:${GITHUB_REF#refs/heads/} || true
+        cd ..
+        cp msg/templates/urtps/microRTPS_agent.cpp.em px4_ros_com/templates/microRTPS_agent.cpp.em
+        cp msg/templates/urtps/microRTPS_timesync.cpp.em px4_ros_com/templates/microRTPS_timesync.cpp.em
+        cp msg/templates/urtps/microRTPS_timesync.h.em px4_ros_com/templates/microRTPS_timesync.h.em
+        cp msg/templates/urtps/microRTPS_transport.cpp px4_ros_com/templates/microRTPS_transport.cpp
+        cp msg/templates/urtps/microRTPS_transport.h px4_ros_com/templates/microRTPS_transport.h
+        cp msg/templates/urtps/Publisher.cpp.em px4_ros_com/templates/Publisher.cpp.em
+        cp msg/templates/urtps/Publisher.h.em px4_ros_com/templates/Publisher.h.em
+        cp msg/templates/urtps/Subscriber.cpp.em px4_ros_com/templates/Subscriber.cpp.em
+        cp msg/templates/urtps/Subscriber.h.em px4_ros_com/templates/Subscriber.h.em
+        cp msg/templates/urtps/RtpsTopics.cpp.em px4_ros_com/templates/RtpsTopics.cpp.em
+        cp msg/templates/urtps/RtpsTopics.h.em px4_ros_com/templates/RtpsTopics.h.em
+        cd px4_ros_com
+        git status
+        git add .
+        git commit -a -m "Update uORB RTPS templats `date`" || true
+        git push origin HEAD:${GITHUB_REF#refs/heads/} || true
+        cd ..
+        rm -rf px4_ros_com
