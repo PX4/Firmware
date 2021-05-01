@@ -108,7 +108,8 @@ const char *const nav_state_names[vehicle_status_s::NAVIGATION_STATE_MAX] = {
 	"AUTO_LAND",
 	"AUTO_FOLLOW_TARGET",
 	"AUTO_PRECLAND",
-	"ORBIT"
+	"ORBIT",
+	"POSCTL_HEADLESS"
 };
 
 static hrt_abstime last_preflight_check = 0;	///< initialize so it gets checked immediately
@@ -310,6 +311,7 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 		break;
 
 	case commander_state_s::MAIN_STATE_POSCTL:
+	case commander_state_s::MAIN_STATE_POSCTL_HEADLESS:
 
 		/* need at minimum local position estimate */
 		if (status_flags.condition_local_position_valid ||
@@ -492,7 +494,8 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 
 		break;
 
-	case commander_state_s::MAIN_STATE_POSCTL: {
+	case commander_state_s::MAIN_STATE_POSCTL:
+	case commander_state_s::MAIN_STATE_POSCTL_HEADLESS: {
 
 			const bool rc_fallback_allowed = (posctl_nav_loss_act != position_nav_loss_actions_t::LAND_TERMINATE) || !is_armed;
 
@@ -510,7 +513,19 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 				// nothing to do - everything done in check_invalid_pos_nav_state
 
 			} else {
-				status.nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+				switch (internal_state.main_state) {
+				case commander_state_s::MAIN_STATE_POSCTL:
+					status.nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+					break;
+
+				case commander_state_s::MAIN_STATE_POSCTL_HEADLESS:
+					status.nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL_HEADLESS;
+					break;
+
+				default:
+					status.nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+					break;
+				}
 			}
 		}
 		break;

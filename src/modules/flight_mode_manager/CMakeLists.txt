@@ -56,6 +56,7 @@ list(APPEND flight_tasks_all
 	ManualAltitudeSmoothVel
 	ManualPosition
 	ManualPositionSmoothVel
+	ManualPositionHeadless
 	AutoLineSmoothVel
 	AutoFollowMe
 	Failsafe

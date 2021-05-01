@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,58 +32,36 @@
  ****************************************************************************/
 
 /**
- * @file px4_custom_mode.h
- * PX4 custom flight modes
+ * @file FlightTaskManualPositionHeadless.hpp
  *
+ * Flight task for manual controlled headless position.
+ *
+ * @author Inhwan Wee <inhwan.wee@gmail.com>
  */
 
-#ifndef PX4_CUSTOM_MODE_H_
-#define PX4_CUSTOM_MODE_H_
+#pragma once
 
-#include <stdint.h>
+#include <lib/collision_prevention/CollisionPrevention.hpp>
+#include "FlightTaskManualPosition.hpp"
 
-enum PX4_CUSTOM_MAIN_MODE {
-	PX4_CUSTOM_MAIN_MODE_MANUAL = 1,
-	PX4_CUSTOM_MAIN_MODE_ALTCTL,
-	PX4_CUSTOM_MAIN_MODE_POSCTL,
-	PX4_CUSTOM_MAIN_MODE_AUTO,
-	PX4_CUSTOM_MAIN_MODE_ACRO,
-	PX4_CUSTOM_MAIN_MODE_OFFBOARD,
-	PX4_CUSTOM_MAIN_MODE_STABILIZED,
-	PX4_CUSTOM_MAIN_MODE_RATTITUDE_LEGACY,
-	PX4_CUSTOM_MAIN_MODE_SIMPLE /* unused, but reserved for future use */
+class FlightTaskManualPositionHeadless : public FlightTaskManualPosition
+{
+public:
+	FlightTaskManualPositionHeadless();
+	virtual ~FlightTaskManualPositionHeadless() = default;
+	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
+
+protected:
+	void _scaleSticks() override;
+	/**
+	 * rotates vector into local frame
+	 */
+	void _rotateIntoHeadingFrame(matrix::Vector2f &vec);
+
+private:
+	float _computeVelXYGroundDist();
+	float _velocity_scale{0.0f}; //scales the stick input to velocity
+	float _reference_yaw{0.0f};
+
+	CollisionPrevention _collision_prevention;	/**< collision avoidance setpoint amendment */
 };
-
-enum PX4_CUSTOM_SUB_MODE_AUTO {
-	PX4_CUSTOM_SUB_MODE_AUTO_READY = 1,
-	PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF,
-	PX4_CUSTOM_SUB_MODE_AUTO_LOITER,
-	PX4_CUSTOM_SUB_MODE_AUTO_MISSION,
-	PX4_CUSTOM_SUB_MODE_AUTO_RTL,
-	PX4_CUSTOM_SUB_MODE_AUTO_LAND,
-	PX4_CUSTOM_SUB_MODE_AUTO_RESERVED_DO_NOT_USE, // was PX4_CUSTOM_SUB_MODE_AUTO_RTGS, deleted 2020-03-05
-	PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET,
-	PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND
-};
-
-enum PX4_CUSTOM_SUB_MODE_POSCTL {
-	PX4_CUSTOM_SUB_MODE_POSCTL_POSCTL = 0,
-	PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT,
-	PX4_CUSTOM_SUB_MODE_POSCTL_HEADLESS
-};
-
-union px4_custom_mode {
-	struct {
-		uint16_t reserved;
-		uint8_t main_mode;
-		uint8_t sub_mode;
-	};
-	uint32_t data;
-	float data_float;
-	struct {
-		uint16_t reserved_hl;
-		uint16_t custom_mode_hl;
-	};
-};
-
-#endif /* PX4_CUSTOM_MODE_H_ */

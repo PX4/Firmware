@@ -296,6 +296,23 @@ void FlightModeManager::start_flight_task()
 			check_failure(task_failure, vehicle_status_s::NAVIGATION_STATE_POSCTL);
 			task_failure = false;
 		}
+
+	} else if (_vehicle_status_sub.get().nav_state == vehicle_status_s::NAVIGATION_STATE_POSCTL_HEADLESS || task_failure) {
+		should_disable_task = false;
+		FlightTaskError error = switchTask(FlightTaskIndex::ManualPositionHeadless);
+
+		if (error != FlightTaskError::NoError) {
+			if (prev_failure_count == 0) {
+				PX4_WARN("Headless-Position-Ctrl activation failed with error: %s", errorToString(error));
+			}
+
+			task_failure = true;
+			_task_failure_count++;
+
+		} else {
+			check_failure(task_failure, vehicle_status_s::NAVIGATION_STATE_POSCTL_HEADLESS);
+			task_failure = false;
+		}
 	}
 
 	// manual altitude control
@@ -391,6 +408,11 @@ void FlightModeManager::send_vehicle_cmd_do(uint8_t nav_state)
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 		command.param2 = (float)PX4_CUSTOM_MAIN_MODE_AUTO;
 		command.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_POSCTL_HEADLESS:
+		command.param2 = (float)PX4_CUSTOM_MAIN_MODE_POSCTL;
+		command.param3 = (float)PX4_CUSTOM_SUB_MODE_POSCTL_HEADLESS;
 		break;
 
 	default: //vehicle_status_s::NAVIGATION_STATE_POSCTL
