@@ -391,20 +391,18 @@ PARAM_DEFINE_FLOAT(FW_LND_FL_PMIN, 2.5f);
 PARAM_DEFINE_FLOAT(FW_LND_FL_PMAX, 15.0f);
 
 /**
- * Min. airspeed scaling factor for landing
+ * Landing Airspeed
  *
- * Multiplying this factor with the minimum airspeed of the plane
- * gives the target airspeed the landing approach.
- * FW_AIRSPD_MIN * FW_LND_AIRSPD_SC
+ * This is the airspeed you would like to land at.
  *
- * @unit norm
- * @min 1.0
- * @max 1.5
- * @decimal 2
- * @increment 0.01
- * @group FW L1 Control
+ * @unit m/s
+ * @min 0.0
+ * @max 40
+ * @decimal 1
+ * @increment 0.5
+ * @group FW TECS
  */
-PARAM_DEFINE_FLOAT(FW_LND_AIRSPD_SC, 1.3f);
+PARAM_DEFINE_FLOAT(FW_LND_AIRSPEED, 10.0f);
 
 /**
  * Altitude time constant factor for landing
@@ -444,6 +442,20 @@ PARAM_DEFINE_FLOAT(FW_LND_THRTC_SC, 1.0f);
  * @group FW TECS
  */
 PARAM_DEFINE_FLOAT(FW_AIRSPD_MIN, 10.0f);
+
+/**
+ * Minimum Airspeed (CAS) Flaps
+ *
+ * Minimum airspeed when flaps are deployed.
+ *
+ * @unit m/s
+ * @min 0.0
+ * @max 40
+ * @decimal 1
+ * @increment 0.5
+ * @group FW TECS
+ */
+PARAM_DEFINE_FLOAT(FW_AIRSPD_FLAPS, 10.0f);
 
 /**
  * Maximum Airspeed (CAS)

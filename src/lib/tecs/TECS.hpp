@@ -112,8 +112,11 @@ public:
 	void set_heightrate_ff(float heightrate_ff) { _height_setpoint_gain_ff = heightrate_ff; }
 	void set_height_error_time_constant(float time_const) { _height_error_gain = 1.0f / math::max(time_const, 0.1f); }
 
-	void set_equivalent_airspeed_max(float airspeed) { _equivalent_airspeed_max = airspeed; }
+	float equivalent_airspeed_min() const { return _equivalent_airspeed_min; }
 	void set_equivalent_airspeed_min(float airspeed) { _equivalent_airspeed_min = airspeed; }
+
+	float equivalent_airspeed_max() const { return _equivalent_airspeed_max; }
+	void set_equivalent_airspeed_max(float airspeed) { _equivalent_airspeed_max = airspeed; }
 
 	void set_pitch_damping(float damping) { _pitch_damping_gain = damping; }
 	void set_vertical_accel_limit(float limit) { _vert_accel_limit = limit; }

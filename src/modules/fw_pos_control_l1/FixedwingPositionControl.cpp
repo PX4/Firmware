@@ -323,12 +323,14 @@ FixedwingPositionControl::calculate_target_airspeed(float airspeed_demand, const
 	 *  Vsacc = Vs * sqrt(n)
 	 *
 	 */
-	float adjusted_min_airspeed = _param_fw_airspd_min.get();
+	const float airspeed_min = _tecs.equivalent_airspeed_min();
+	const float airspeed_max = _tecs.equivalent_airspeed_max();
+
+	float adjusted_min_airspeed = airspeed_min;
 
 	if (_airspeed_valid && PX4_ISFINITE(_att_sp.roll_body)) {
 
-		adjusted_min_airspeed = constrain(_param_fw_airspd_min.get() / sqrtf(cosf(_att_sp.roll_body)),
-						  _param_fw_airspd_min.get(), _param_fw_airspd_max.get());
+		adjusted_min_airspeed = constrain(airspeed_min / sqrtf(cosf(_att_sp.roll_body)), airspeed_min, airspeed_max);
 	}
 
 	// groundspeed undershoot
@@ -347,7 +349,7 @@ FixedwingPositionControl::calculate_target_airspeed(float airspeed_demand, const
 
 	// add minimum ground speed undershoot (only non-zero in presence of sufficient wind)
 	// sanity check: limit to range
-	return constrain(airspeed_demand, adjusted_min_airspeed, _param_fw_airspd_max.get());
+	return constrain(airspeed_demand, adjusted_min_airspeed, airspeed_max);
 }
 
 void
@@ -882,7 +884,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 				// landing airspeed and potentially tighter altitude control) already such that we don't
 				// have to do this switch (which can cause significant altitude errors) close to the ground.
 				_tecs.set_height_error_time_constant(_param_fw_thrtc_sc.get() * _param_fw_t_h_error_tc.get());
-				mission_airspeed = _param_fw_lnd_airspd_sc.get() * _param_fw_airspd_min.get();
+				mission_airspeed = _param_fw_lnd_airspeed.get();
 				_att_sp.apply_flaps = true;
 			}
 
@@ -1361,18 +1363,20 @@ FixedwingPositionControl::control_landing(const hrt_abstime &now, const Vector2d
 		prev_wp(1) = pos_sp_curr.lon;
 	}
 
-	// apply full flaps for landings. this flag will also trigger the use of flaperons
-	// if they have been enabled using the corresponding parameter
-	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_LAND;
-
-	// Enable tighter altitude control for landings
-	_tecs.set_height_error_time_constant(_param_fw_thrtc_sc.get() * _param_fw_t_h_error_tc.get());
-
 	// save time at which we started landing and reset abort_landing
 	if (_time_started_landing == 0) {
 		reset_landing_state();
 		_time_started_landing = now;
 	}
+
+	// apply full flaps for landings. this flag will also trigger the use of flaperons
+	// if they have been enabled using the corresponding parameter
+	_att_sp.apply_flaps = vehicle_attitude_setpoint_s::FLAPS_LAND;
+	// reduce min airspeed with flaps deployed
+	_tecs.set_equivalent_airspeed_min(_param_fw_airspd_flaps.get());
+
+	// Enable tighter altitude control for landings
+	_tecs.set_height_error_time_constant(_param_fw_thrtc_sc.get() * _param_fw_t_h_error_tc.get());
 
 	const float bearing_airplane_currwp = get_bearing_to_next_waypoint((double)curr_pos(0), (double)curr_pos(1),
 					      (double)curr_wp(0), (double)curr_wp(1));
@@ -1527,11 +1531,10 @@ FixedwingPositionControl::control_landing(const hrt_abstime &now, const Vector2d
 			_land_stayonground = true;
 		}
 
-		const float airspeed_land = _param_fw_lnd_airspd_sc.get() * _param_fw_airspd_min.get();
 		const float throttle_land = _param_fw_thr_min.get() + (_param_fw_thr_max.get() - _param_fw_thr_min.get()) * 0.1f;
 
 		tecs_update_pitch_throttle(now, terrain_alt + flare_curve_alt_rel,
-					   calculate_target_airspeed(airspeed_land, ground_speed),
+					   _param_fw_lnd_airspeed.get(),
 					   radians(_param_fw_lnd_fl_pmin.get()),
 					   radians(_param_fw_lnd_fl_pmax.get()),
 					   0.0f,
@@ -1596,10 +1599,8 @@ FixedwingPositionControl::control_landing(const hrt_abstime &now, const Vector2d
 			}
 		}
 
-		const float airspeed_approach = _param_fw_lnd_airspd_sc.get() * _param_fw_airspd_min.get();
-
 		tecs_update_pitch_throttle(now, altitude_desired,
-					   calculate_target_airspeed(airspeed_approach, ground_speed),
+					   calculate_target_airspeed(_param_fw_lnd_airspeed.get(), ground_speed),
 					   radians(_param_fw_p_lim_min.get()),
 					   radians(_param_fw_p_lim_max.get()),
 					   _param_fw_thr_min.get(),
@@ -1818,6 +1819,9 @@ FixedwingPositionControl::reset_landing_state()
 	_land_stayonground = false;
 	_land_motor_lim = false;
 	_land_onslope = false;
+
+	// restore normal minimum airspeed
+	_tecs.set_equivalent_airspeed_min(_param_fw_airspd_min.get());
 
 	// reset abort land, unless loitering after an abort
 	if (_land_abort && (_pos_sp_triplet.current.type != position_setpoint_s::SETPOINT_TYPE_LOITER)) {
