@@ -58,6 +58,7 @@ struct Params {
 	float fw_qc_max_roll;		// maximum roll angle FW mode (QuadChute)
 	float front_trans_time_openloop;
 	float front_trans_time_min;
+	float front_trans_time_min_scale;
 	float front_trans_duration;
 	float back_trans_duration;
 	float transition_airspeed;
@@ -213,6 +214,7 @@ protected:
 	struct vehicle_local_position_s			*_local_pos;
 	struct vehicle_local_position_setpoint_s	*_local_pos_sp;
 	struct airspeed_validated_s 				*_airspeed_validated;					// airspeed
+	struct vehicle_air_data_s 				*_air_data;					// baro
 	struct tecs_status_s				*_tecs_status;
 	struct vehicle_land_detected_s			*_land_detected;
 

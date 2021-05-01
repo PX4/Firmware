@@ -219,6 +219,24 @@ PARAM_DEFINE_FLOAT(VT_TRANS_TIMEOUT, 15.0f);
 PARAM_DEFINE_FLOAT(VT_TRANS_MIN_TM, 2.0f);
 
 /**
+ * Front transition minimum time pressure scaling
+ *
+ * Enables scaling of minimum transition time by air pressure.
+ * Under standard atmospheric conditions:
+ * a value of 1.0 equals +- 1 extra second every 1000m above sea level
+ * a value of 4.0 equals +- 1 extra second every 250m above sea level
+ *
+ * Make sure that VT_TRANS_TIMEOUT is set large enough to accomodate.
+ * Set to -1 to disable
+ *
+ * @unit s
+ * @min -1.0
+ * @max 20.0
+ * @group VTOL Attitude Control
+ */
+PARAM_DEFINE_FLOAT(VT_TRANS_TM_SCL, -1.0f);
+
+/**
  * QuadChute Altitude
  *
  * Minimum altitude for fixed wing flight, when in fixed wing the altitude drops below this altitude

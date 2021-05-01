@@ -73,6 +73,7 @@ VtolAttitudeControl::VtolAttitudeControl() :
 	_params_handles.fw_qc_max_roll = param_find("VT_FW_QC_R");
 	_params_handles.front_trans_time_openloop = param_find("VT_F_TR_OL_TM");
 	_params_handles.front_trans_time_min = param_find("VT_TRANS_MIN_TM");
+	_params_handles.front_trans_time_min_scale = param_find("VT_TRANS_TM_SCL");
 
 	_params_handles.front_trans_duration = param_find("VT_F_TRANS_DUR");
 	_params_handles.back_trans_duration = param_find("VT_B_TRANS_DUR");
@@ -198,6 +199,24 @@ VtolAttitudeControl::is_fixed_wing_requested()
 	return to_fw;
 }
 
+/*
+ * Returns front_trans_min_time optionally scaled over presure.
+ */
+float
+VtolAttitudeControl::get_front_trans_time_min()
+{
+	float front_trans_time_min = _params.front_trans_time_min;
+
+	if (PX4_ISFINITE(_air_data.baro_pressure_pa) && PX4_ISFINITE(_params.front_trans_time_min_scale)) {
+		const float eas2tas = sqrtf(CONSTANTS_STD_PRESSURE_PA / _air_data.baro_pressure_pa);
+		const float scale = math::constrain((eas2tas - 1.0f) * _params.front_trans_time_min_scale + 1.f, 1.f, 5.f);
+		front_trans_time_min = math::constrain(front_trans_time_min * scale, front_trans_time_min,
+						       _params.front_trans_timeout - 0.5f);
+	}
+
+	return front_trans_time_min;
+}
+
 void
 VtolAttitudeControl::quadchute(const char *reason)
 {
@@ -260,6 +279,7 @@ VtolAttitudeControl::parameters_update()
 		mavlink_log_critical(&_mavlink_log_pub, "OL transition time set larger than min transition time");
 	}
 
+	param_get(_params_handles.front_trans_time_min_scale, &_params.front_trans_time_min_scale);
 	param_get(_params_handles.front_trans_duration, &_params.front_trans_duration);
 	param_get(_params_handles.back_trans_duration, &_params.back_trans_duration);
 	param_get(_params_handles.transition_airspeed, &_params.transition_airspeed);
@@ -384,6 +404,7 @@ VtolAttitudeControl::Run()
 		_local_pos_sp_sub.update(&_local_pos_sp);
 		_pos_sp_triplet_sub.update(&_pos_sp_triplet);
 		_airspeed_validated_sub.update(&_airspeed_validated);
+		_air_data_sub.update(&_air_data);
 		_tecs_status_sub.update(&_tecs_status);
 		_land_detected_sub.update(&_land_detected);
 		vehicle_cmd_poll();

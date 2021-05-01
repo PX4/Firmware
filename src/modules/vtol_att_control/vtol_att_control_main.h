@@ -66,6 +66,7 @@
 #include <uORB/SubscriptionCallback.hpp>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/airspeed_validated.h>
+#include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/position_setpoint_triplet.h>
@@ -107,6 +108,7 @@ public:
 	bool init();
 
 	bool is_fixed_wing_requested();
+	float get_front_trans_time_min();
 	void quadchute(const char *reason);
 
 	struct actuator_controls_s 			*get_actuators_fw_in() {return &_actuators_fw_in;}
@@ -114,6 +116,7 @@ public:
 	struct actuator_controls_s 			*get_actuators_out0() {return &_actuators_out_0;}
 	struct actuator_controls_s 			*get_actuators_out1() {return &_actuators_out_1;}
 	struct airspeed_validated_s 				*get_airspeed() {return &_airspeed_validated;}
+	struct vehicle_air_data_s 				*get_air_air_data() {return &_air_data;}
 	struct position_setpoint_triplet_s		*get_pos_sp_triplet() {return &_pos_sp_triplet;}
 	struct tecs_status_s 				*get_tecs_status() {return &_tecs_status;}
 	struct vehicle_attitude_s 			*get_att() {return &_v_att;}
@@ -138,6 +141,7 @@ private:
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
 	uORB::Subscription _airspeed_validated_sub{ORB_ID(airspeed_validated)};			// airspeed subscription
+	uORB::Subscription _air_data_sub{ORB_ID(vehicle_air_data)};
 	uORB::Subscription _fw_virtual_att_sp_sub{ORB_ID(fw_virtual_attitude_setpoint)};
 	uORB::Subscription _land_detected_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription _local_pos_sp_sub{ORB_ID(vehicle_local_position_setpoint)};			// setpoint subscription
@@ -168,6 +172,7 @@ private:
 	actuator_controls_s			_actuators_out_1{};	//actuator controls going to the fw mixer (used for elevons)
 
 	airspeed_validated_s 				_airspeed_validated{};			// airspeed
+	vehicle_air_data_s			_air_data{};	// air data (baro)
 	manual_control_switches_s		_manual_control_switches{}; //manual control setpoint
 	position_setpoint_triplet_s		_pos_sp_triplet{};
 	tecs_status_s				_tecs_status{};
@@ -192,6 +197,7 @@ private:
 		param_t fw_qc_max_roll;
 		param_t front_trans_time_openloop;
 		param_t front_trans_time_min;
+		param_t front_trans_time_min_scale;
 		param_t front_trans_duration;
 		param_t back_trans_duration;
 		param_t transition_airspeed;

@@ -174,7 +174,7 @@ void Standard::update_vtol_state()
 
 			const bool airspeed_triggers_transition = PX4_ISFINITE(_airspeed_validated->calibrated_airspeed_m_s)
 					&& !_params->airspeed_disabled;
-			const bool minimum_trans_time_elapsed = time_since_trans_start > _params->front_trans_time_min;
+			const bool minimum_trans_time_elapsed = time_since_trans_start > _attc->get_front_trans_time_min();
 
 			bool transition_to_fw = false;
 
@@ -248,14 +248,14 @@ void Standard::update_transition_state()
 		    PX4_ISFINITE(_airspeed_validated->calibrated_airspeed_m_s) &&
 		    _airspeed_validated->calibrated_airspeed_m_s > 0.0f &&
 		    _airspeed_validated->calibrated_airspeed_m_s >= _params->airspeed_blend &&
-		    time_since_trans_start > _params->front_trans_time_min) {
+		    time_since_trans_start > _attc->get_front_trans_time_min()) {
 
 			mc_weight = 1.0f - fabsf(_airspeed_validated->calibrated_airspeed_m_s - _params->airspeed_blend) /
 				    _airspeed_trans_blend_margin;
 			// time based blending when no airspeed sensor is set
 
 		} else if (_params->airspeed_disabled || !PX4_ISFINITE(_airspeed_validated->calibrated_airspeed_m_s)) {
-			mc_weight = 1.0f - time_since_trans_start / _params->front_trans_time_min;
+			mc_weight = 1.0f - time_since_trans_start / _attc->get_front_trans_time_min();
 			mc_weight = math::constrain(2.0f * mc_weight, 0.0f, 1.0f);
 
 		}
