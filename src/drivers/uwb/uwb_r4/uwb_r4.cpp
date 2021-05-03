@@ -560,6 +560,8 @@ int UWB_R4::distance()
 
 		if (buffer_location == 0) {
 			PX4_WARN("UWB module is not responding.");
+
+			//TODO add retry Ranging Start Message. Sometimes the UWB devices Crashes. (Check Power)
 		}
 
 	}

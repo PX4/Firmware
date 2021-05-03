@@ -343,7 +343,7 @@ __END_DECLS
 #define LED_TIM3_CH4OUT   /* PTC8  RGB_B */ PIN_FTM3_CH4_1
 
 /* This board provides a DMA pool and APIs */
-#define BOARD_DMA_ALLOC_POOL_SIZE 5120
+#define BOARD_DMA_ALLOC_POOL_SIZE 2048
 
 /* This board provides the board_on_reset interface */
 
