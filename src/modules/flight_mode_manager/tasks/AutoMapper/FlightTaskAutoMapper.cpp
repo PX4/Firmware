@@ -91,10 +91,6 @@ bool FlightTaskAutoMapper::update()
 		_prepareTakeoffSetpoints();
 		break;
 
-	case WaypointType::velocity:
-		_prepareVelocitySetpoints();
-		break;
-
 	default:
 		_preparePositionSetpoints();
 		break;
@@ -146,15 +142,6 @@ void FlightTaskAutoMapper::_prepareTakeoffSetpoints()
 	_velocity_setpoint = Vector3f(NAN, NAN, NAN);
 
 	_gear.landing_gear = landing_gear_s::GEAR_DOWN;
-}
-
-void FlightTaskAutoMapper::_prepareVelocitySetpoints()
-{
-	// XY Velocity waypoint
-	// TODO : Rewiew that. What is the expected behavior?
-	_position_setpoint = Vector3f(NAN, NAN, _position(2));
-	Vector2f vel_sp_xy = Vector2f(_velocity).unit_or_zero() * _mc_cruise_speed;
-	_velocity_setpoint = Vector3f(vel_sp_xy(0), vel_sp_xy(1), NAN);
 }
 
 void FlightTaskAutoMapper::_preparePositionSetpoints()

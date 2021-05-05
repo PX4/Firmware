@@ -262,17 +262,16 @@ bool FlightTaskAuto::_evaluateTriplets()
 
 	if (triplet_update || (_current_state != previous_state) || _current_state == State::offtrack) {
 		_updateInternalWaypoints();
-		_mission_gear = _sub_triplet_setpoint.get().current.landing_gear;
 		_yaw_lock = false;
 	}
 
 	if (_param_com_obs_avoid.get()
 	    && _sub_vehicle_status.get().vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+
 		_obstacle_avoidance.updateAvoidanceDesiredWaypoints(_triplet_target, _yaw_setpoint, _yawspeed_setpoint,
-				_triplet_next_wp,
-				_sub_triplet_setpoint.get().next.yaw,
-				_sub_triplet_setpoint.get().next.yawspeed_valid ? _sub_triplet_setpoint.get().next.yawspeed : NAN,
+				_triplet_next_wp, _sub_triplet_setpoint.get().next.yaw, NAN,
 				_ext_yaw_handler != nullptr && _ext_yaw_handler->is_active(), _sub_triplet_setpoint.get().current.type);
+
 		_obstacle_avoidance.checkAvoidanceProgress(_position, _triplet_prev_wp, _target_acceptance_radius, _closest_pt);
 	}
 
@@ -289,12 +288,6 @@ bool FlightTaskAuto::_evaluateTriplets()
 		} else {
 			_yawspeed_setpoint = _ext_yaw_handler->get_weathervane_yawrate();
 		}
-
-
-
-	} else if (_type == WaypointType::follow_target && _sub_triplet_setpoint.get().current.yawspeed_valid) {
-		_yawspeed_setpoint = _sub_triplet_setpoint.get().current.yawspeed;
-		_yaw_setpoint = NAN;
 
 	} else {
 		if ((_type != WaypointType::takeoff || _sub_triplet_setpoint.get().current.disable_weather_vane)
@@ -416,23 +409,6 @@ void FlightTaskAuto::_setDefaultConstraints()
 	// only adjust limits if the new limit is lower
 	if (_constraints.speed_xy >= _param_mpc_xy_cruise.get()) {
 		_constraints.speed_xy = _param_mpc_xy_cruise.get();
-	}
-}
-
-Vector2f FlightTaskAuto::_getTargetVelocityXY()
-{
-	// guard against any bad velocity values
-	const float vx = _sub_triplet_setpoint.get().current.vx;
-	const float vy = _sub_triplet_setpoint.get().current.vy;
-	bool velocity_valid = PX4_ISFINITE(vx) && PX4_ISFINITE(vy) &&
-			      _sub_triplet_setpoint.get().current.velocity_valid;
-
-	if (velocity_valid) {
-		return Vector2f(vx, vy);
-
-	} else {
-		// just return zero speed
-		return Vector2f{};
 	}
 }
 

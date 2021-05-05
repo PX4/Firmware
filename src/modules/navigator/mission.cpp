@@ -1814,19 +1814,11 @@ bool Mission::position_setpoint_equal(const position_setpoint_s *p1, const posit
 {
 	return ((p1->valid == p2->valid) &&
 		(p1->type == p2->type) &&
-		(fabsf(p1->vx - p2->vx) < FLT_EPSILON) &&
-		(fabsf(p1->vy - p2->vy) < FLT_EPSILON) &&
-		(fabsf(p1->vz - p2->vz) < FLT_EPSILON) &&
-		(p1->velocity_valid == p2->velocity_valid) &&
-		(p1->velocity_frame == p2->velocity_frame) &&
-		(p1->alt_valid == p2->alt_valid) &&
 		(fabs(p1->lat - p2->lat) < DBL_EPSILON) &&
 		(fabs(p1->lon - p2->lon) < DBL_EPSILON) &&
 		(fabsf(p1->alt - p2->alt) < FLT_EPSILON) &&
 		((fabsf(p1->yaw - p2->yaw) < FLT_EPSILON) || (!PX4_ISFINITE(p1->yaw) && !PX4_ISFINITE(p2->yaw))) &&
 		(p1->yaw_valid == p2->yaw_valid) &&
-		(fabsf(p1->yawspeed - p2->yawspeed) < FLT_EPSILON) &&
-		(p1->yawspeed_valid == p2->yawspeed_valid) &&
 		(fabsf(p1->loiter_radius - p2->loiter_radius) < FLT_EPSILON) &&
 		(p1->loiter_direction == p2->loiter_direction) &&
 		(fabsf(p1->acceptance_radius - p2->acceptance_radius) < FLT_EPSILON) &&

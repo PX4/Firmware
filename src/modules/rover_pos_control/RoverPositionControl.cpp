@@ -349,7 +349,7 @@ RoverPositionControl::control_velocity(const matrix::Vector3f &current_velocity)
 
 		Vector3f desired_body_velocity;
 
-		if (_velocity_frame == VelocityFrame::NED) {
+		if (_velocity_frame == VelocityFrame::BODY) {
 			desired_body_velocity = desired_velocity;
 
 		} else {

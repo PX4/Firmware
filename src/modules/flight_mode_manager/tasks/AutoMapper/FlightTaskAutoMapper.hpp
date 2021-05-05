@@ -57,7 +57,6 @@ protected:
 
 	void _prepareIdleSetpoints();
 	void _prepareLandSetpoints();
-	void _prepareVelocitySetpoints();
 	void _prepareTakeoffSetpoints();
 	void _preparePositionSetpoints();
 
