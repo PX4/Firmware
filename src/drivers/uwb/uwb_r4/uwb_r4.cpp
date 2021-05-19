@@ -124,7 +124,7 @@ void UWB_R4::run()
 	/* Grid Survey*/
 	int ok = UWB_R4::grid_survey(); //asks the Initiator to look for a grid
 
-	if (ok) { printf("GRID FOUND.\t\n"); }
+	if (ok) { printf("GRID FOUND.\t\n"); } //TODO  add logic that requests the GRID again, or Make sure the FMU never misses the Message
 
 
 	/* Ranging */

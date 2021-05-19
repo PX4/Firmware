@@ -131,7 +131,7 @@ void LandingTargetEstimator::update()
 		if (!update_x || !update_y) {
 			if (!_faulty) {
 				_faulty = true;
-				PX4_WARN("Landing target measurement rejected:%s%s", update_x ? "" : " x", update_y ? "" : " y");
+				//PX4_WARN("Landing target measurement rejected:%s%s", update_x ? "" : " x", update_y ? "" : " y");
 			}
 
 		} else {
@@ -285,12 +285,13 @@ void LandingTargetEstimator::_update_topics()
 		_uncertainty_scale = 1.0f;
 
 		// The coordinate system is NED (north-east-down)
-		// the uwb_distance msg contains the Position in NED
+		// the uwb_distance msg contains the Position in NED, Vehicle relative to LP
 		// The coordinates "rel_pos_*" are the position of the landing point relative to the vehicle.
+		// To change POV we negate every Axis:
 		_sensor_report.timestamp = _uwbDistance.timestamp;
-		_sensor_report.rel_pos_x = _uwbDistance.position[0] ;
-		_sensor_report.rel_pos_y = _uwbDistance.position[1] ;
-		_sensor_report.rel_pos_z = _uwbDistance.position[2] ;
+		_sensor_report.rel_pos_x = -_uwbDistance.position[0] ;
+		_sensor_report.rel_pos_y = -_uwbDistance.position[1] ;
+		_sensor_report.rel_pos_z = -_uwbDistance.position[2] ;
 
 		//PX4_INFO("data from uwb x: %.2f, y: %.2f", (double)_sensor_report.rel_pos_x,
 		//	 (double)_sensor_report.rel_pos_y);
