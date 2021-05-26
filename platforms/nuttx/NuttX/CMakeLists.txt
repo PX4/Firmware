@@ -62,7 +62,11 @@ execute_process(
 )
 
 # setup custom command to copy changes later
-file(GLOB_RECURSE copy_nuttx_files LIST_DIRECTORIES false ${NUTTX_SRC_DIR}/nuttx/*)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.11.0")
+	file(GLOB_RECURSE copy_nuttx_files LIST_DIRECTORIES false CONFIGURE_DEPENDS ${NUTTX_SRC_DIR}/nuttx/ Make.defs Kconfig *.c *.h *.cxx *.hxx)
+else()
+	file(GLOB_RECURSE copy_nuttx_files LIST_DIRECTORIES false ${NUTTX_SRC_DIR}/nuttx/ Make.defs Kconfig *.c *.h *.cxx *.hxx)
+endif()
 list(REMOVE_ITEM copy_nuttx_files ${NUTTX_SRC_DIR}/nuttx/.git)
 
 add_custom_command(
@@ -85,7 +89,11 @@ file(RELATIVE_PATH CP_SRC ${CMAKE_SOURCE_DIR} ${NUTTX_SRC_DIR}/apps)
 file(RELATIVE_PATH CP_DST ${CMAKE_SOURCE_DIR} ${PX4_BINARY_DIR}/NuttX)
 
 # setup custom command to copy changes later
-file(GLOB_RECURSE copy_apps_files LIST_DIRECTORIES false ${NUTTX_SRC_DIR}/apps/*)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.11.0")
+	file(GLOB_RECURSE copy_apps_files LIST_DIRECTORIES false CONFIGURE_DEPENDS ${NUTTX_SRC_DIR}/apps/ Make.defs Kconfig *.c *.h *.cxx *.hxx)
+else()
+	file(GLOB_RECURSE copy_apps_files LIST_DIRECTORIES false ${NUTTX_SRC_DIR}/apps/ Make.defs Kconfig *.c *.h *.cxx *.hxx)
+endif()
 add_custom_command(
 	OUTPUT ${PX4_BINARY_DIR}/NuttX/apps_copy.stamp
 	COMMAND ${NUTTX_COPY_CMD} ${NUTTX_COPY_CMD_OPTS} ${CP_SRC} ${CP_DST}
