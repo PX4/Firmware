@@ -4,5 +4,5 @@
 #------------------------------------------------------------------------------
 
 # Start MAVLink on the USB port
-mavlink start -d /dev/ttyACM0
+mavlink start -d /dev/ttyACM0 -z
 

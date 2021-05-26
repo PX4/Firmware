@@ -9,5 +9,5 @@ then
 mavlink start -d /dev/ttyS4 -b 3000000 -r 290000 -m onboard_low_bandwidth -x -z
 else
 # Start MAVLink on the USB port
-mavlink start -d /dev/ttyACM0
+mavlink start -d /dev/ttyACM0 -z
 fi

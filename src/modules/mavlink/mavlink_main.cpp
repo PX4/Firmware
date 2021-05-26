@@ -602,12 +602,6 @@ Mavlink::mavlink_open_uart(const int baud, const char *uart_name, const FLOW_CON
 int
 Mavlink::setup_flow_control(enum FLOW_CONTROL_MODE mode)
 {
-	// We can't do this on USB - skip
-	if (_is_usb_uart) {
-		_flow_control_mode = FLOW_CONTROL_OFF;
-		return OK;
-	}
-
 	struct termios uart_config;
 
 	int ret = tcgetattr(_uart_fd, &uart_config);
