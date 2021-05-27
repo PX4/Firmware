@@ -38,4 +38,5 @@ px4_add_module(
 		ads1115_main.cpp
 		ADS1115.cpp
 	DEPENDS
+	KERNEL
 	)

@@ -333,10 +333,13 @@ private:
 		BARO		= 0b1101000000000,
 		DIFF_PRESS	= 0b10000000000
 	};
-	PX4Accelerometer *_px4_accel{nullptr};
+
+#if !defined(__PX4_NUTTX) || defined(CONFIG_BUILD_FLAT)
+	PX4Accelerometer *_px4_accel {nullptr};
 	PX4Barometer *_px4_baro{nullptr};
 	PX4Gyroscope *_px4_gyro{nullptr};
 	PX4Magnetometer *_px4_mag{nullptr};
+#endif
 
 	static constexpr unsigned int	MOM_SWITCH_COUNT{8};
 	uint8_t				_mom_switch_pos[MOM_SWITCH_COUNT] {};

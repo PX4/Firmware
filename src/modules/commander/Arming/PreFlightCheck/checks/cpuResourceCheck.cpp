@@ -37,7 +37,7 @@
 #include <systemlib/mavlink_log.h>
 #include <lib/parameters/param.h>
 #include <uORB/Subscription.hpp>
-#include <uORB/topics/cpuload.h>
+#include <uORB/topics/vehicle_cpuload.h>
 
 using namespace time_literals;
 
@@ -45,7 +45,7 @@ bool PreFlightCheck::cpuResourceCheck(orb_advert_t *mavlink_log_pub, const bool 
 {
 	bool success = true;
 
-	uORB::SubscriptionData<cpuload_s> cpuload_sub{ORB_ID(cpuload)};
+	uORB::SubscriptionData<vehicle_cpuload_s> cpuload_sub{ORB_ID(vehicle_cpuload)};
 	cpuload_sub.update();
 
 	float cpuload_percent_max;

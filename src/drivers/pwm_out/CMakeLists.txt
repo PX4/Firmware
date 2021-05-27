@@ -42,4 +42,5 @@ px4_add_module(
 		mixer
 		mixer_module
 		output_limit
+	KERNEL
 	)

@@ -41,6 +41,10 @@
 #include "uORBManager.hpp"
 #include "uORBCommon.hpp"
 
+#ifdef __PX4_NUTTX
+#include <sys/boardctl.h>
+#endif
+
 static uORB::DeviceMaster *g_dev = nullptr;
 
 int uorb_start(void)
@@ -56,6 +60,7 @@ int uorb_start(void)
 		return -ENOMEM;
 	}
 
+#if !defined(__PX4_NUTTX) || defined(__KERNEL__)
 	/* create the driver */
 	g_dev = uORB::Manager::get_instance()->get_device_master();
 
@@ -63,11 +68,15 @@ int uorb_start(void)
 		return -errno;
 	}
 
+#endif
+
 	return OK;
 }
 
 int uorb_status(void)
 {
+#if !defined(__PX4_NUTTX) || defined(__KERNEL__)
+
 	if (g_dev != nullptr) {
 		g_dev->printStatistics();
 
@@ -75,11 +84,16 @@ int uorb_status(void)
 		PX4_INFO("uorb is not running");
 	}
 
+#else
+	boardctl(ORBIOCDEVMASTERCMD, ORB_DEVMASTER_STATUS);
+#endif
 	return OK;
 }
 
 int uorb_top(char **topic_filter, int num_filters)
 {
+#if !defined(__PX4_NUTTX) || defined(__KERNEL__)
+
 	if (g_dev != nullptr) {
 		g_dev->showTop(topic_filter, num_filters);
 
@@ -87,9 +101,11 @@ int uorb_top(char **topic_filter, int num_filters)
 		PX4_INFO("uorb is not running");
 	}
 
+#else
+	boardctl(ORBIOCDEVMASTERCMD, ORB_DEVMASTER_TOP);
+#endif
 	return OK;
 }
-
 
 orb_advert_t orb_advertise(const struct orb_metadata *meta, const void *data)
 {

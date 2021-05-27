@@ -611,14 +611,17 @@ perf_print_all(int fd)
 void
 perf_print_latency(int fd)
 {
+	latency_info_t latency;
 	dprintf(fd, "bucket [us] : events\n");
 
-	for (int i = 0; i < latency_bucket_count; i++) {
-		dprintf(fd, "       %4i : %li\n", latency_buckets[i], (long int)latency_counters[i]);
+	for (int i = 0; i < get_latency_bucket_count(); i++) {
+		latency = get_latency(i, i);
+		dprintf(fd, "       %4i : %li\n", latency.bucket, (long int)latency.counter);
 	}
 
 	// print the overflow bucket value
-	dprintf(fd, " >%4i : %i\n", latency_buckets[latency_bucket_count - 1], latency_counters[latency_bucket_count]);
+	latency = get_latency(get_latency_bucket_count() - 1, get_latency_bucket_count());
+	dprintf(fd, " >%4i : %i\n", latency.bucket, latency.counter);
 }
 
 void
@@ -634,7 +637,5 @@ perf_reset_all(void)
 
 	pthread_mutex_unlock(&perf_counters_mutex);
 
-	for (int i = 0; i <= latency_bucket_count; i++) {
-		latency_counters[i] = 0;
-	}
+	reset_latency_counters();
 }

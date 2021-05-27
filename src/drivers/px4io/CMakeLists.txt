@@ -42,8 +42,10 @@ px4_add_module(
 	DEPENDS
 		arch_px4io_serial
 		circuit_breaker
-		mixer
+	KERNEL
 	)
+
+add_dependencies(drivers__px4io mixer)
 
 # include the px4io binary in ROMFS
 message(STATUS "Building and including ${config_io_board}")

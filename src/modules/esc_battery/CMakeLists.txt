@@ -39,5 +39,6 @@ px4_add_module(
 		EscBattery.cpp
 		EscBattery.hpp
 	DEPENDS
+		battery
 		px4_work_queue
 	)

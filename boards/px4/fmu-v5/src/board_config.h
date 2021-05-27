@@ -233,7 +233,13 @@
 #define GPIO_nARMED_INIT     /* PI0 */  (GPIO_INPUT|GPIO_PULLUP|GPIO_PORTI|GPIO_PIN0)
 #define GPIO_nARMED          /* PI0 */  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTI|GPIO_PIN0)
 
+#ifdef CONFIG_BUILD_FLAT
 #define BOARD_INDICATE_EXTERNAL_LOCKOUT_STATE(enabled)  px4_arch_configgpio((enabled) ? GPIO_nARMED : GPIO_nARMED_INIT)
+#else
+/* TODO: indicate armed state in protected & kernel build;
+ * this will need some kernel side driver and user-space interface
+ */
+#endif
 
 /* PWM
  */

@@ -184,7 +184,7 @@ $ reboot
 	PRINT_MODULE_USAGE_ARG("<param>", "param name", false);
 }
 
-int
+extern "C" int
 param_main(int argc, char *argv[])
 {
 	if (argc >= 2) {
@@ -418,6 +418,14 @@ do_save(const char *param_file_name)
 
 	return 0;
 }
+
+#if defined(__PX4_NUTTX) && !defined(CONFIG_BUILD_FLAT)
+extern "C" int
+kparam_main(int argc, char *argv[])
+{
+  return param_main(argc, argv);
+}
+#endif
 
 static int
 do_load(const char *param_file_name)

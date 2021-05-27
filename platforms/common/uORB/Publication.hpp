@@ -42,7 +42,7 @@
 #include <systemlib/err.h>
 
 #include <uORB/uORB.h>
-#include "uORBDeviceNode.hpp"
+#include "uORBManager.hpp"
 #include <uORB/topics/uORBTopics.hpp>
 
 namespace uORB
@@ -72,7 +72,7 @@ public:
 
 	bool advertised() const { return _handle != nullptr; }
 
-	bool unadvertise() { return (DeviceNode::unadvertise(_handle) == PX4_OK); }
+	bool unadvertise() { return (Manager::orb_unadvertise(_handle) == PX4_OK); }
 
 	orb_id_t get_topic() const { return get_orb_meta(_orb_id); }
 
@@ -84,7 +84,7 @@ protected:
 	{
 		if (_handle != nullptr) {
 			// don't automatically unadvertise queued publications (eg vehicle_command)
-			if (static_cast<DeviceNode *>(_handle)->get_queue_size() == 1) {
+			if (Manager::orb_get_queue_size(_handle) == 1) {
 				unadvertise();
 			}
 		}
@@ -129,7 +129,7 @@ public:
 			advertise();
 		}
 
-		return (DeviceNode::publish(get_topic(), _handle, &data) == PX4_OK);
+		return (Manager::orb_publish(get_topic(), _handle, &data) == PX4_OK);
 	}
 };
 

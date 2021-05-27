@@ -40,4 +40,5 @@ px4_add_module(
 		led
 		arch_io_pins
 		arch_led_pwm
+	KERNEL
 	)

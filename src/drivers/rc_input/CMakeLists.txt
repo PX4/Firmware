@@ -42,4 +42,5 @@ px4_add_module(
 		module.yaml
 	DEPENDS
 		rc
+	KERNEL
 	)

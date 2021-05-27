@@ -40,6 +40,7 @@ if("${PX4_BOARD_LABEL}" STREQUAL  "bootloader")
 			nuttx_arch # sdio
 			nuttx_drivers # sdio
 			bootloader
+			px4_layer # px4_platform_console_init
 	)
 	target_include_directories(drivers_board PRIVATE ${PX4_SOURCE_DIR}/platforms/nuttx/src/bootloader/common)
 

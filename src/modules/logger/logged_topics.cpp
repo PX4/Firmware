@@ -59,7 +59,7 @@ void LoggedTopics::add_default_topics()
 	add_topic("camera_trigger_secondary");
 	add_topic("cellular_status", 200);
 	add_topic("commander_state");
-	add_topic("cpuload");
+	add_topic("vehicle_cpuload");
 	add_topic("esc_status", 250);
 	add_topic("follow_target", 500);
 	add_topic("generator_status");

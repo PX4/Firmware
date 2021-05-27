@@ -74,10 +74,12 @@
 MavlinkReceiver::~MavlinkReceiver()
 {
 	delete _tune_publisher;
+#if !defined(__PX4_NUTTX) || defined(CONFIG_BUILD_FLAT)
 	delete _px4_accel;
 	delete _px4_baro;
 	delete _px4_gyro;
 	delete _px4_mag;
+#endif
 }
 
 MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
@@ -2125,6 +2127,7 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 
 	const uint64_t timestamp = hrt_absolute_time();
 
+#if !defined(__PX4_NUTTX) || defined(CONFIG_BUILD_FLAT)
 	// temperature only updated with baro
 	float temperature = NAN;
 
@@ -2192,6 +2195,8 @@ MavlinkReceiver::handle_message_hil_sensor(mavlink_message_t *msg)
 			_px4_baro->update(timestamp, hil_sensor.abs_pressure);
 		}
 	}
+
+#endif
 
 	// differential pressure
 	if ((hil_sensor.fields_updated & SensorSource::DIFF_PRESS) == SensorSource::DIFF_PRESS) {
@@ -2601,7 +2606,7 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 
 		_local_pos_pub.publish(hil_local_pos);
 	}
-
+#if !defined(__PX4_NUTTX) || defined(CONFIG_BUILD_FLAT)
 	/* accelerometer */
 	{
 		if (_px4_accel == nullptr) {
@@ -2635,7 +2640,7 @@ MavlinkReceiver::handle_message_hil_state_quaternion(mavlink_message_t *msg)
 			_px4_gyro->update(timestamp, hil_state.rollspeed, hil_state.pitchspeed, hil_state.yawspeed);
 		}
 	}
-
+#endif
 	/* battery status */
 	{
 		battery_status_s hil_battery_status{};

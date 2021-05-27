@@ -1565,13 +1565,11 @@ void EKF2::UpdateMagSample(ekf2_timestamps_s &ekf2_timestamps)
 void EKF2::UpdateRangeSample(ekf2_timestamps_s &ekf2_timestamps)
 {
 	if (!_distance_sensor_selected) {
-		// get subscription index of first downward-facing range sensor
-		uORB::SubscriptionMultiArray<distance_sensor_s> distance_sensor_subs{ORB_ID::distance_sensor};
 
-		for (unsigned i = 0; i < distance_sensor_subs.size(); i++) {
+		for (unsigned i = 0; i < _distance_sensor_subs.size(); i++) {
 			distance_sensor_s distance_sensor;
 
-			if (distance_sensor_subs[i].copy(&distance_sensor)) {
+			if (_distance_sensor_subs[i].copy(&distance_sensor)) {
 				// only use the first instace which has the correct orientation
 				if ((hrt_elapsed_time(&distance_sensor.timestamp) < 100_ms)
 				    && (distance_sensor.orientation == distance_sensor_s::ROTATION_DOWNWARD_FACING)) {

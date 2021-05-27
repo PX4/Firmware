@@ -38,5 +38,6 @@ px4_add_module(
 	SRCS
 		pwm.cpp
 	DEPENDS
+	KERNEL
 	)
 

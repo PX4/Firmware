@@ -36,5 +36,6 @@ px4_add_module(
 	SRCS
 		protocol_splitter.cpp
 	DEPENDS
+	KERNEL
 	)
 

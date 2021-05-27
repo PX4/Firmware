@@ -137,7 +137,7 @@ void LoadMon::cpuload()
 	// compute system load
 	const float interval = total_time_stamp - _last_total_time_stamp;
 	const float interval_spent_time = spent_time_stamp - _last_spent_time_stamp;
-#elif defined(__PX4_NUTTX)
+#elif defined(__PX4_NUTTX) && defined(CONFIG_BUILD_FLAT)
 
 	if (_last_idle_time == 0) {
 		// Just get the time in the first iteration */
@@ -154,9 +154,15 @@ void LoadMon::cpuload()
 	// compute system load
 	const float interval = now - _last_idle_time_sample;
 	const float interval_idletime = total_runtime - _last_idle_time;
+#elif defined(__PX4_NUTTX)
+	// TODO: NuttX protected & kernel builds
+	const hrt_abstime now = hrt_absolute_time();
+	const hrt_abstime total_runtime = 0.0f;
+	const float interval = 1.0f;
+	const float interval_idletime = 1.0f;
 #endif
 
-	cpuload_s cpuload{};
+	vehicle_cpuload_s cpuload{};
 #if defined(__PX4_LINUX)
 	/* following calculation is based on free(1)
 	 * https://gitlab.com/procps-ng/procps/-/blob/master/proc/sysinfo.c */
@@ -238,7 +244,7 @@ void LoadMon::cpuload()
 #endif
 }
 
-#if defined(__PX4_NUTTX)
+#if defined(__PX4_NUTTX) && defined(CONFIG_BUILD_FLAT)
 void LoadMon::stack_usage()
 {
 	unsigned stack_free = 0;

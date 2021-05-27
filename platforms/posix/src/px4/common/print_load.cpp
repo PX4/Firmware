@@ -81,20 +81,11 @@ void init_print_load(struct print_load_s *s)
 
 void print_load(int fd, struct print_load_s *print_state)
 {
-	char clear_line[] = CL;
-
-	/* print system information */
-	if (fd == 1) {
-		dprintf(fd, "\033[H"); /* move cursor home and clear screen */
-
-	} else {
-		memset(clear_line, 0, sizeof(clear_line));
-	}
-
 #if defined(__PX4_LINUX) || defined(__PX4_CYGWIN) || defined(__PX4_QURT)
+	char clear_line[] = CL;
 	dprintf(fd, "%sTOP NOT IMPLEMENTED ON LINUX, QURT, WINDOWS (ONLY ON NUTTX, APPLE)\n", clear_line);
-
 #elif defined(__PX4_DARWIN)
+	char clear_line[] = CL;
 	pid_t pid = getpid();   //-- this is the process id you need info for
 	task_t task_handle;
 	task_for_pid(mach_task_self(), pid, &task_handle);
@@ -117,6 +108,14 @@ void print_load(int fd, struct print_load_s *print_state)
 
 	thread_basic_info_t basic_info_th;
 	uint32_t stat_thread = 0;
+
+	/* print system information */
+	if (fd == 1) {
+		dprintf(fd, "\033[H"); /* move cursor home and clear screen */
+
+	} else {
+		memset(clear_line, 0, sizeof(clear_line));
+	}
 
 	// get all threads of the PX4 main task
 	kr = task_threads(task_handle, &thread_list, &th_cnt);

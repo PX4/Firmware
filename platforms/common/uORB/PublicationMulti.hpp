@@ -96,7 +96,7 @@ public:
 	{
 		// advertise if not already advertised
 		if (advertise()) {
-			return static_cast<uORB::DeviceNode *>(_handle)->get_instance();
+			return Manager::orb_get_instance(_handle);
 		}
 
 		return -1;

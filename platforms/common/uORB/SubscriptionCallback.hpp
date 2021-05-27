@@ -69,7 +69,7 @@ public:
 	bool registerCallback()
 	{
 		if (!_registered) {
-			if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
+			if (_subscription.get_node() && Manager::register_callback(_subscription.get_node(), this)) {
 				// registered
 				_registered = true;
 
@@ -79,7 +79,7 @@ public:
 
 				// try to register callback again
 				if (_subscription.subscribe()) {
-					if (_subscription.get_node() && _subscription.get_node()->register_callback(this)) {
+					if (_subscription.get_node() && Manager::register_callback(_subscription.get_node(), this)) {
 						_registered = true;
 					}
 				}
@@ -94,7 +94,7 @@ public:
 	void unregisterCallback()
 	{
 		if (_subscription.get_node()) {
-			_subscription.get_node()->unregister_callback(this);
+			Manager::unregister_callback(_subscription.get_node(), this);
 		}
 
 		_registered = false;
@@ -164,7 +164,7 @@ public:
 	{
 		// schedule immediately if updated (queue depth or subscription interval)
 		if ((_required_updates == 0)
-		    || (_subscription.get_node()->updates_available(_subscription.get_last_generation()) >= _required_updates)) {
+		    || (Manager::updates_available(_subscription.get_node(), _subscription.get_last_generation()) >= _required_updates)) {
 			if (updated()) {
 				_work_item->ScheduleNow();
 			}

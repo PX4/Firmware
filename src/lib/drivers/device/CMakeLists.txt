@@ -58,8 +58,13 @@ px4_add_library(drivers__device
 	${SRCS_PLATFORM}
 	)
 
+# px4_spibus_initialize (stm32_spibus_initialize)
 if (${PX4_PLATFORM} STREQUAL "nuttx")
-	target_link_libraries(drivers__device PRIVATE nuttx_arch)
+	if (NOT DEFINED CONFIG_BUILD_FLAT)
+	  target_link_libraries(drivers__device PRIVATE nuttx_karch)
+	else()
+	  target_link_libraries(drivers__device PRIVATE nuttx_arch)
+	endif()
 endif()
 
-target_link_libraries(drivers__device PRIVATE cdev)
+target_link_libraries(drivers__device PRIVATE px4_work_queue)

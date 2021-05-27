@@ -65,10 +65,6 @@ px4_add_module(
 	DEPENDS
 		airspeed
 		component_information_header
-		drivers_accelerometer
-		drivers_barometer
-		drivers_gyroscope
-		drivers_magnetometer
 		git_mavlink_v2
 		conversion
 		git_ecl
@@ -79,4 +75,19 @@ px4_add_module(
 
 if(PX4_TESTING)
 	add_subdirectory(mavlink_tests)
+endif()
+
+if (NOT ${PX4_PLATFORM} STREQUAL "nuttx" OR CONFIG_BUILD_FLAT)
+	target_link_libraries(modules__mavlink
+		PRIVATE
+	      		drivers_accelerometer
+			drivers_barometer
+			drivers_gyroscope
+			drivers_magnetometer
+	)
+endif()
+
+if(${PX4_PLATFORM} STREQUAL "nuttx" AND CONFIG_NET)
+	# netlib_get_ipv4addr
+	target_link_libraries(modules__mavlink PRIVATE nuttx_apps)
 endif()

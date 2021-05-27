@@ -66,6 +66,7 @@
 #		EXTERNAL		: flag to indicate that this module is out-of-tree
 #		DYNAMIC			: don't compile into the px4 binary, but build a separate dynamically loadable module (posix)
 #		UNITY_BUILD		: merge all source files and build this module as a single compilation unit
+#		KERNEL			: this module is compiled into kernel in nuttx protected / kernel build
 #
 #	Output:
 #		Static library with name matching MODULE.
@@ -86,7 +87,7 @@ function(px4_add_module)
 		NAME px4_add_module
 		ONE_VALUE MODULE MAIN STACK_MAIN STACK_MAX PRIORITY
 		MULTI_VALUE COMPILE_FLAGS LINK_FLAGS SRCS INCLUDES DEPENDS MODULE_CONFIG
-		OPTIONS EXTERNAL DYNAMIC UNITY_BUILD
+		OPTIONS EXTERNAL DYNAMIC UNITY_BUILD KERNEL
 		REQUIRED MODULE MAIN
 		ARGN ${ARGN})
 
@@ -153,8 +154,14 @@ function(px4_add_module)
 	add_dependencies(${MODULE} uorb_headers)
 
 	if(NOT DYNAMIC)
-		target_link_libraries(${MODULE} PRIVATE prebuild_targets parameters_interface px4_layer px4_platform systemlib)
-		set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES ${MODULE})
+		target_link_libraries(${MODULE} PRIVATE prebuild_targets parameters_interface px4_platform systemlib perf)
+		if (${PX4_PLATFORM} STREQUAL "nuttx" AND NOT CONFIG_BUILD_FLAT AND KERNEL)
+			target_link_libraries(${MODULE} PRIVATE px4_kernel_layer uORB_kernel)
+			set_property(GLOBAL APPEND PROPERTY PX4_KERNEL_MODULE_LIBRARIES ${MODULE})
+		else()
+			target_link_libraries(${MODULE} PRIVATE px4_layer uORB)
+			set_property(GLOBAL APPEND PROPERTY PX4_MODULE_LIBRARIES ${MODULE})
+		endif()
 		set_property(GLOBAL APPEND PROPERTY PX4_MODULE_PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 	endif()
 
@@ -192,6 +199,10 @@ function(px4_add_module)
 
 	if(COMPILE_FLAGS)
 		target_compile_options(${MODULE} PRIVATE ${COMPILE_FLAGS})
+	endif()
+
+	if (KERNEL)
+		target_compile_options(${MODULE} PRIVATE -D__KERNEL__)
 	endif()
 
 	if(INCLUDES)

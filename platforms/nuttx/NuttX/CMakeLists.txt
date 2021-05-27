@@ -269,6 +269,72 @@ endif()
 
 add_custom_target(nuttx_builtin_list_target DEPENDS ${nuttx_builtin_list})
 
+if (NOT CONFIG_BUILD_FLAT)
+
+set(nuttx_kernel_builtin_list)
+
+set(KERNEL_BUILTIN_DIR ${PX4_BINARY_DIR}/NuttX/kernel_builtin)
+
+# force builtins regeneration and apps rebuild if nuttx or px4 configuration have changed
+add_custom_command(OUTPUT ${KERNEL_BUILTIN_DIR}/kernel_builtins_clean.stamp
+	WORKING_DIRECTORY ${KERNEL_BUILTIN_DIR}
+	COMMAND find . -name px4_\*.bdat -delete
+	COMMAND find . -name px4_\*.pdat -delete
+	COMMAND rm -f kernel_builtin_list.h
+	COMMAND ${CMAKE_COMMAND} -E touch kernel_builtins_clean.stamp
+	DEPENDS
+		nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h
+		px4_config_file_target ${PX4_CONFIG_FILE}
+	)
+
+add_custom_target(kernel_builtins_clean_target DEPENDS ${KERNEL_BUILTIN_DIR}/kernel_builtins_clean.stamp)
+
+foreach(module ${kernel_module_libraries})
+	get_target_property(MAIN ${module} MAIN)
+	get_target_property(STACK_MAIN ${module} STACK_MAIN)
+	get_target_property(PRIORITY ${module} PRIORITY)
+
+	if(MAIN)
+		add_custom_command(OUTPUT ${KERNEL_BUILTIN_DIR}/registry/px4_${MAIN}_kernel_main.bdat
+			WORKING_DIRECTORY  ${KERNEL_BUILTIN_DIR}
+			COMMAND echo "{ \"${MAIN}\", ${PRIORITY}, ${STACK_MAIN}, ${MAIN}_main }," > registry/px4_${MAIN}_kernel_main.bdat
+			COMMAND echo "{ \"${MAIN}\", ${PRIORITY}, ${STACK_MAIN}, launch_kmod_main }," > ${APPS_DIR}/builtin/registry/px4_${MAIN}_main.bdat
+			COMMAND ${CMAKE_COMMAND} -E touch registry/.kernel_updated
+			COMMAND ${CMAKE_COMMAND} -E touch ${APPS_DIR}/builtin/registry/.updated
+			DEPENDS
+				kernel_builtins_clean_target ${KERNEL_BUILTIN_DIR}/kernel_builtins_clean.stamp
+				builtins_clean_target ${PX4_BINARY_DIR}/NuttX/builtins_clean.stamp
+				nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h
+			VERBATIM
+			)
+		list(APPEND nuttx_kernel_builtin_list ${KERNEL_BUILTIN_DIR}/registry/px4_${MAIN}_kernel_main.bdat)
+
+		add_custom_command(OUTPUT ${KERNEL_BUILTIN_DIR}/registry/px4_${MAIN}_kernel_main.pdat
+			WORKING_DIRECTORY  ${KERNEL_BUILTIN_DIR}
+			COMMAND echo "int ${MAIN}_main(int argc, char *argv[]);" > registry/px4_${MAIN}_kernel_main.pdat
+			COMMAND ${CMAKE_COMMAND} -E touch registry/.kernel_updated
+			DEPENDS
+				kernel_builtins_clean_target
+			nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h
+			VERBATIM
+			)
+		list(APPEND nuttx_kernel_builtin_list ${KERNEL_BUILTIN_DIR}/registry/px4_${MAIN}_kernel_main.pdat)
+
+	endif()
+endforeach()
+
+add_custom_command(OUTPUT ${KERNEL_BUILTIN_DIR}/kernel_builtins.h ${KERNEL_BUILTIN_DIR}/kernel_builtin_prototypes.h
+	WORKING_DIRECTORY  ${KERNEL_BUILTIN_DIR}
+	COMMAND cat registry/*.bdat > kernel_builtins.h
+	COMMAND cat registry/*.pdat > kernel_builtin_prototypes.h
+	DEPENDS ${nuttx_kernel_builtin_list}
+)
+
+add_custom_target(nuttx_kernel_builtin_list_target DEPENDS ${KERNEL_BUILTIN_DIR}/kernel_builtins.h)
+
+add_dependencies(nuttx_builtin_list_target kernel_builtins_clean_target)
+endif() # NOT CONFIG_BUILD_FLAT
+
 # APPS
 
 # libapps.a
@@ -288,14 +354,21 @@ add_dependencies(nuttx_build nuttx_apps_build)
 target_link_libraries(nuttx_build INTERFACE nuttx_apps)
 
 # helper for all targets
-function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra)
+function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra target)
+	if (${target} STREQUAL all)
+		set(nuttx_lib_target all)
+	else()
+		set(nuttx_lib_target lib${target}.a)
+	endif()
+
 	file(GLOB_RECURSE nuttx_lib_files
 		LIST_DIRECTORIES false
 		${CMAKE_CURRENT_SOURCE_DIR}/nuttx/${nuttx_lib_dir}/*)
 
 	add_custom_command(OUTPUT ${NUTTX_DIR}/${nuttx_lib_dir}/lib${nuttx_lib}.a
 		COMMAND find ${nuttx_lib_dir} -type f -name *.o -delete
-		COMMAND make -C ${nuttx_lib_dir} ${nuttx_build_options} --no-print-directory all TOPDIR=${NUTTX_DIR} KERNEL=${kernel} EXTRAFLAGS=${extra}
+		COMMAND make -C ${nuttx_lib_dir} ${nuttx_build_options} --no-print-directory ${nuttx_lib_target} TOPDIR=${NUTTX_DIR} KERNEL=${kernel} EXTRAFLAGS=${extra}
+
 		DEPENDS
 			${nuttx_lib_files}
 			nuttx_context ${NUTTX_DIR}/include/nuttx/config.h ${NUTTX_DIR}/include/nuttx/version.h
@@ -309,19 +382,36 @@ function(add_nuttx_dir nuttx_lib nuttx_lib_dir kernel extra)
 	target_link_libraries(nuttx_build INTERFACE nuttx_${nuttx_lib})
 endfunction()
 
+
 # add_nuttx_dir(NAME DIRECTORY KERNEL EXTRA)
-add_nuttx_dir(arch arch/arm/src y -D__KERNEL__)
-add_nuttx_dir(binfmt binfmt y -D__KERNEL__)
-add_nuttx_dir(boards boards y -D__KERNEL__)
-add_nuttx_dir(drivers drivers y -D__KERNEL__)
-add_nuttx_dir(fs fs y -D__KERNEL__)
-add_nuttx_dir(sched sched y -D__KERNEL__)
-add_nuttx_dir(c libs/libc n "")
-add_nuttx_dir(xx libs/libxx n "")
-add_nuttx_dir(mm mm n "")
+add_nuttx_dir(binfmt binfmt y -D__KERNEL__ all)
+add_nuttx_dir(boards boards y -D__KERNEL__ all)
+add_nuttx_dir(drivers drivers y -D__KERNEL__ all)
+add_nuttx_dir(fs fs y -D__KERNEL__ all)
+add_nuttx_dir(sched sched y -D__KERNEL__ all)
+add_nuttx_dir(xx libs/libxx n "" all)
+
+if (NOT CONFIG_BUILD_FLAT)
+	add_nuttx_dir(arch arch/arm/src n "" arch)
+	add_dependencies(nuttx_arch_build nuttx_karch_build) # can't build these in parallel
+	add_nuttx_dir(karch arch/arm/src y -D__KERNEL__ karch)
+	add_nuttx_dir(c libs/libc n "" c)
+	add_dependencies(nuttx_c_build nuttx_kc_build) # can't build these in parallel
+	add_nuttx_dir(kc libs/libc y -D__KERNEL__ kc)
+	add_nuttx_dir(mm mm n "" mm)
+	add_dependencies(nuttx_mm_build nuttx_kmm_build) # can't build these in parallel
+	add_nuttx_dir(kmm mm y -D__KERNEL__ kmm)
+	add_nuttx_dir(proxies syscall n "" proxies)
+	add_dependencies(nuttx_proxies_build nuttx_stubs_build) # can't build these in parallel
+	add_nuttx_dir(stubs syscall y -D__KERNEL__ stubs)
+else()
+	add_nuttx_dir(arch arch/arm/src y -D__KERNEL__ all)
+	add_nuttx_dir(c libs/libc n "" all)
+	add_nuttx_dir(mm mm n "" mm)
+endif()
 
 if(CONFIG_NET)
-	add_nuttx_dir(net net y -D__KERNEL__)
+	add_nuttx_dir(net net y -D__KERNEL__ all)
 endif()
 
 ###############################################################################

@@ -39,4 +39,5 @@ px4_add_module(
 	DEPENDS
 		circuit_breaker
 		px4_work_queue
+	KERNEL
 	)

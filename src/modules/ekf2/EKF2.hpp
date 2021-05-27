@@ -231,6 +231,8 @@ private:
 	uORB::SubscriptionCallbackWorkItem _sensor_combined_sub{this, ORB_ID(sensor_combined)};
 	uORB::SubscriptionCallbackWorkItem _vehicle_imu_sub{this, ORB_ID(vehicle_imu)};
 
+	uORB::SubscriptionMultiArray<distance_sensor_s> _distance_sensor_subs{ORB_ID::distance_sensor};
+
 	bool _callback_registered{false};
 
 	bool _distance_sensor_selected{false}; // because we can have several distance sensor instances with different orientations

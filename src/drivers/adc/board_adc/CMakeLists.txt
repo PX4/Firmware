@@ -40,4 +40,5 @@ px4_add_module(
 	DEPENDS
 		arch_adc
 		px4_work_queue
+	KERNEL
 	)

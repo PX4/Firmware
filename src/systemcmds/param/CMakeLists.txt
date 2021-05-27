@@ -39,3 +39,16 @@ px4_add_module(
 		param.cpp
 	DEPENDS
 	)
+
+if(${PX4_PLATFORM} STREQUAL "nuttx" AND NOT CONFIG_BUILD_FLAT)
+px4_add_module(
+	MODULE systemcmds__kparam
+	MAIN kparam
+	COMPILE_FLAGS
+		-Wno-array-bounds
+	SRCS
+		param.cpp
+	DEPENDS
+	KERNEL
+	)
+endif()

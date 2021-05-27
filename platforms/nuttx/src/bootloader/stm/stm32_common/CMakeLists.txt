@@ -39,4 +39,5 @@ px4_add_library(arch_bootloader
 target_link_libraries(arch_bootloader
 	PRIVATE
 		bootloader_lib
+		nuttx_arch
 )

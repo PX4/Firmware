@@ -44,4 +44,4 @@ if(PX4_TESTING)
 endif()
 
 target_compile_options(px4_work_queue PRIVATE ${MAX_CUSTOM_OPT_LEVEL})
-target_link_libraries(px4_work_queue PRIVATE px4_platform)
+add_dependencies(px4_work_queue px4_platform)

@@ -35,7 +35,7 @@
 #define SYS_STATUS_HPP
 
 #include <uORB/topics/battery_status.h>
-#include <uORB/topics/cpuload.h>
+#include <uORB/topics/vehicle_cpuload.h>
 #include <uORB/topics/vehicle_status.h>
 
 class MavlinkStreamSysStatus : public MavlinkStream
@@ -58,7 +58,7 @@ private:
 	explicit MavlinkStreamSysStatus(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
 	uORB::Subscription _status_sub{ORB_ID(vehicle_status)};
-	uORB::Subscription _cpuload_sub{ORB_ID(cpuload)};
+	uORB::Subscription _cpuload_sub{ORB_ID(vehicle_cpuload)};
 	uORB::SubscriptionMultiArray<battery_status_s, battery_status_s::MAX_INSTANCES> _battery_status_subs{ORB_ID::battery_status};
 
 	bool send() override
@@ -67,7 +67,7 @@ private:
 			vehicle_status_s status{};
 			_status_sub.copy(&status);
 
-			cpuload_s cpuload{};
+			vehicle_cpuload_s cpuload{};
 			_cpuload_sub.copy(&cpuload);
 
 			battery_status_s battery_status[battery_status_s::MAX_INSTANCES] {};

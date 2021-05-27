@@ -45,7 +45,7 @@
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/battery_status.h>
-#include <uORB/topics/cpuload.h>
+#include <uORB/topics/vehicle_cpuload.h>
 #include <uORB/topics/led_control.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_status.h>
@@ -82,7 +82,7 @@ protected:
 
 	// TODO: review if there is a better variant that allocates this in the memory
 	uORB::SubscriptionData<battery_status_s> _battery_status_sub{ORB_ID(battery_status)};
-	uORB::SubscriptionData<cpuload_s> _cpu_load_sub{ORB_ID(cpuload)};
+	uORB::SubscriptionData<vehicle_cpuload_s> _cpu_load_sub{ORB_ID(vehicle_cpuload)};
 	uORB::SubscriptionData<vehicle_status_s> _vehicle_status_sub{ORB_ID(vehicle_status)};
 	uORB::SubscriptionData<vehicle_status_flags_s> _vehicle_status_flags_sub{ORB_ID(vehicle_status_flags)};
 	uORB::SubscriptionData<vehicle_attitude_s> _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};

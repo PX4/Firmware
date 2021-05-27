@@ -51,7 +51,6 @@ px4_add_module(
 		airspeed
 		conversion
 		data_validator
-		drivers__device
 		git_ecl
 		mathlib
 		sensor_calibration
@@ -61,4 +60,5 @@ px4_add_module(
 		vehicle_gps_position
 		vehicle_imu
 		vehicle_magnetometer
+        KERNEL
 	)

@@ -50,7 +50,7 @@ set(msg_files
 	collision_report.msg
 	commander_state.msg
 	control_allocator_status.msg
-	cpuload.msg
+	vehicle_cpuload.msg
 	differential_pressure.msg
 	distance_sensor.msg
 	ekf2_timestamps.msg

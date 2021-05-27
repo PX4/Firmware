@@ -67,6 +67,11 @@ sercon
 ver all
 
 #
+# Initialize userspace px4 services
+# in protected/kernel builds
+userspace_init
+
+#
 # Try to mount the microSD card.
 #
 # REBOOTWORK this needs to start after the flight control loop.
@@ -148,6 +153,12 @@ else
 	if mft query -q -k MTD -s MTD_CALDATA -v /fs/mtd_caldata
 	then
 		param load /fs/mtd_caldata
+	fi
+
+	kparam select $PARAM_FILE
+	if ! kparam import
+	then
+		echo "ERROR: kernel paramers load failed"
 	fi
 
 	param select $PARAM_FILE

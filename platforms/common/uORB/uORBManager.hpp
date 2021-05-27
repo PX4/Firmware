@@ -34,9 +34,11 @@
 #ifndef _uORBManager_hpp_
 #define _uORBManager_hpp_
 
+#include "uORBDeviceNode.hpp"
 #include "uORBCommon.hpp"
 #include "uORBDeviceMaster.hpp"
-
+#include <uORB/topics/uORBTopics.hpp> // For ORB_ID enum
+#include <lib/cdev/CDev.hpp>
 #include <stdint.h>
 
 #ifdef __PX4_NUTTX
@@ -54,7 +56,102 @@
 namespace uORB
 {
 class Manager;
+class SubscriptionCallback;
 }
+
+
+/*
+ * IOCTLs for manager to access device nodes using
+ * a handle
+ *
+ * This is WIP; handle is just a pointer to kernel side object, so this is a
+ * security hole.
+ *
+ * The handle in the user side should just be a file descriptor, and IOCTL go
+ * directly to the device nodes.
+ * But for now, publisher doesn't even keep the descriptors open.
+ * This needs to be addressed later!
+ */
+
+#define ORBIOCDEVEXISTS	_ORBIOC(30)
+typedef struct orbiocdevexists {
+	const ORB_ID orb_id;
+	const uint8_t instance;
+	const bool check_advertised;
+	int ret;
+} orbiocdevexists_t;
+
+#define ORBIOCDEVADVERTISE	_ORBIOC(31)
+typedef struct orbiocadvertise {
+	const struct orb_metadata *meta;
+	bool is_advertiser;
+	int *instance;
+	int ret;
+} orbiocdevadvertise_t;
+
+#define ORBIOCDEVUNADVERTISE	_ORBIOC(32)
+typedef struct orbiocunadvertise {
+	void *handle;
+	int ret;
+} orbiocdevunadvertise_t;
+
+#define ORBIOCDEVPUBLISH	_ORBIOC(33)
+typedef struct orbiocpublish {
+	const struct orb_metadata *meta;
+	orb_advert_t handle;
+	const void *data;
+	int ret;
+} orbiocdevpublish_t;
+
+#define ORBIOCDEVADDSUBSCRIBER	_ORBIOC(34)
+typedef struct {
+	const ORB_ID orb_id;
+	const uint8_t instance;
+	unsigned *initial_generation;
+	void *handle;
+} orbiocdevaddsubscriber_t;
+
+#define ORBIOCDEVREMSUBSCRIBER	_ORBIOC(35)
+
+#define ORBIOCDEVQUEUESIZE	_ORBIOC(36)
+typedef struct {
+	const void *handle;
+	uint8_t size;
+} orbiocdevqueuesize_t;
+
+#define ORBIOCDEVDATACOPY	_ORBIOC(37)
+typedef struct {
+	void *handle;
+	void *dst;
+	unsigned generation;
+	bool ret;
+} orbiocdevdatacopy_t;
+
+#define ORBIOCDEVREGCALLBACK	_ORBIOC(38)
+typedef struct {
+	void *handle;
+	class uORB::SubscriptionCallback *callback_sub;
+	bool registered;
+} orbiocdevregcallback_t;
+
+#define ORBIOCDEVUNREGCALLBACK	_ORBIOC(39)
+typedef struct {
+	void *handle;
+	class uORB::SubscriptionCallback *callback_sub;
+} orbiocdevunregcallback_t;
+
+#define ORBIOCDEVGETINSTANCE	_ORBIOC(40)
+typedef struct {
+	const void *handle;
+	uint8_t instance;
+} orbiocdevgetinstance_t;
+
+typedef enum {
+	ORB_DEVMASTER_STATUS = 0,
+	ORB_DEVMASTER_TOP = 1
+} orbiocdevmastercmd_t;
+#define ORBIOCDEVMASTERCMD	_ORBIOC(45)
+
 
 /**
  * This is implemented as a singleton.  This class manages creating the
@@ -95,6 +192,10 @@ public:
 	 * @return nullptr if initialization failed (and errno will be set)
 	 */
 	uORB::DeviceMaster *get_device_master();
+
+#if defined (__PX4_NUTTX) && !defined (CONFIG_BUILD_FLAT) && defined(__KERNEL__)
+	static int orb_ioctl(unsigned int cmd, unsigned long arg);
+#endif
 
 	// ==== uORB interface methods ====
 	/**
@@ -165,7 +266,7 @@ public:
 	 * @param handle  handle returned by orb_advertise or orb_advertise_multi.
 	 * @return 0 on success
 	 */
-	int orb_unadvertise(orb_advert_t handle);
+	static int orb_unadvertise(orb_advert_t handle);
 
 	/**
 	 * Publish new data to a topic.
@@ -180,7 +281,7 @@ public:
 	 * @param data    A pointer to the data to be published.
 	 * @return    OK on success, PX4_ERROR otherwise with errno set accordingly.
 	 */
-	int  orb_publish(const struct orb_metadata *meta, orb_advert_t handle, const void *data);
+	static int  orb_publish(const struct orb_metadata *meta, orb_advert_t handle, const void *data);
 
 	/**
 	 * Subscribe to a topic.
@@ -301,7 +402,7 @@ public:
 	 * @param instance  ORB instance
 	 * @return    OK if the topic exists, PX4_ERROR otherwise.
 	 */
-	int  orb_exists(const struct orb_metadata *meta, int instance);
+	static int  orb_exists(const struct orb_metadata *meta, int instance);
 
 	/**
 	 * Set the minimum interval between which updates are seen for a subscription.
@@ -334,6 +435,28 @@ public:
 	 * @return    OK on success, PX4_ERROR otherwise with ERRNO set accordingly.
 	 */
 	int	orb_get_interval(int handle, unsigned *interval);
+
+	static bool orb_device_node_exists(ORB_ID orb_id, uint8_t instance);
+
+	static void *orb_add_internal_subscriber(ORB_ID orb_id, uint8_t instance, unsigned *initial_generation);
+
+	static void orb_remove_internal_subscriber(void *node_handle);
+
+	static uint8_t orb_get_queue_size(const void *node_handle);
+
+	static bool orb_data_copy(void *node_handle, void *dst, unsigned &generation);
+
+	static bool register_callback(void *node_handle, SubscriptionCallback *callback_sub);
+
+	static void unregister_callback(void *node_handle, SubscriptionCallback *callback_sub);
+
+	static uint8_t orb_get_instance(const void *node_handle);
+
+	static void device_master_cmd(orbiocdevmastercmd_t cmd);
+
+	static unsigned updates_available(const void *node_handle, unsigned last_generation) { return static_cast<const DeviceNode *>(node_handle)->updates_available(last_generation); }
+
+	static bool is_advertised(const void *node_handle) { return static_cast<const DeviceNode *>(node_handle)->is_advertised(); }
 
 #ifdef ORB_COMMUNICATOR
 	/**

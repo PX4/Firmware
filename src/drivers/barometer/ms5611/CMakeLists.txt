@@ -47,4 +47,5 @@ px4_add_module(
 		drivers__device
 		drivers_barometer
 		px4_work_queue
+	KERNEL
 	)

@@ -43,4 +43,5 @@ px4_add_module(
 		circuit_breaker
 		arch_tone_alarm
 		tunes
+	KERNEL
 	)

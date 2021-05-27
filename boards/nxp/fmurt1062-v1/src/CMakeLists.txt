@@ -46,7 +46,7 @@ px4_add_library(drivers_board
 	imxrt_flexspi_nor_boot.c
 	imxrt_flexspi_nor_flash.c
 )
-add_dependencies(drivers_board arch_board_hw_info)
+#add_dependencies(drivers_board arch_board_hw_info)
 
 target_link_libraries(drivers_board
 	PRIVATE

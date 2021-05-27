@@ -34,3 +34,5 @@
 px4_add_library(arch_led_pwm
 	led_pwm.cpp
 )
+
+target_link_libraries(arch_led_pwm PRIVATE arch_io_pins) # io_timer_init_timer

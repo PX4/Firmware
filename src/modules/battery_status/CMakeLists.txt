@@ -44,4 +44,5 @@ px4_add_module(
 		conversion
 		drivers__device
 		mathlib
+	KERNEL
 	)

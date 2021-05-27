@@ -34,7 +34,7 @@
 # skip for px4_layer support on an IO board
 if(NOT PX4_BOARD MATCHES "io-v2")
 
-	add_library(px4_layer
+	set(SRCS
 		board_crashdump.c
 		board_dma_alloc.c
 		board_fat_dma_alloc.c
@@ -49,19 +49,91 @@ if(NOT PX4_BOARD MATCHES "io-v2")
 		px4_mtd.cpp
 		px4_24xxxx_mtd.c
 	)
+
+	set(LIBS
+		arch_board_reset
+		arch_board_critmon
+		arch_hrt
+		arch_version
+		nuttx_xx
+		nuttx_sched
+	)
+
+if (NOT DEFINED CONFIG_BUILD_FLAT AND "${PX4_PLATFORM}" MATCHES "nuttx")
+
+	list(APPEND LIBS
+		nuttx_kc
+		nuttx_karch
+		nuttx_kmm
+	)
+
+	set(SRCS_USER
+		tasks.cpp
+		console_buffer_usr.cpp
+		px4_nuttx_impl.cpp
+		usr_mcu_version.cpp
+		usr_hrt.cpp
+		${PX4_SOURCE_DIR}/platforms/posix/src/px4/common/print_load.cpp
+		${PX4_SOURCE_DIR}/platforms/posix/src/px4/common/cpuload.cpp
+		usr_reset.cpp
+	)
+
+	set(LIBS_USER
+		m
+		nuttx_c
+		nuttx_xx
+		nuttx_mm
+	)
+
+	add_library(px4_layer
+		${SRCS_USER}
+	)
+
 	target_link_libraries(px4_layer
 		PRIVATE
-			arch_board_reset
-			arch_board_critmon
-			arch_version
-			nuttx_apps
-			nuttx_sched
-			px4_work_queue
-			uORB
-		)
+			${LIBS_USER}
+	)
+
+	add_library(px4_kernel_layer
+		${SRCS}
+	)
+
+	target_link_libraries(px4_kernel_layer
+		PRIVATE
+			${LIBS}
+	)
+
+	target_compile_options(px4_kernel_layer PRIVATE -D__KERNEL__)
+
+	add_library(px4_board_ctrl
+		board_ctrl.c
+		kernel_modules.c
+	)
+
+	add_dependencies(px4_board_ctrl nuttx_context nuttx_kernel_builtin_list_target)
+	add_dependencies(px4_kernel_layer prebuild_targets)
 else()
+	list(APPEND LIBS
+		nuttx_c
+		nuttx_arch
+		nuttx_mm
+	)
+
+	add_library(px4_layer
+		${SRCS}
+	)
+
+	target_link_libraries(px4_layer
+		PRIVATE
+			${LIBS}
+	)
+endif()
+
+else()
+
 	add_library(px4_layer ${PX4_SOURCE_DIR}/platforms/common/empty.c)
 endif()
+
 add_dependencies(px4_layer prebuild_targets)
 
 add_subdirectory(gpio)

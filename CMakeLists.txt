@@ -125,6 +125,11 @@ define_property(GLOBAL PROPERTY PX4_MODULE_LIBRARIES
                  FULL_DOCS "List of all PX4 module libraries"
                  )
 
+define_property(GLOBAL PROPERTY PX4_KERNEL_MODULE_LIBRARIES
+                 BRIEF_DOCS "PX4 kernel side module libs"
+                 FULL_DOCS "List of all PX4 kernel module libraries"
+                 )
+
 define_property(GLOBAL PROPERTY PX4_MODULE_PATHS
                  BRIEF_DOCS "PX4 module paths"
                  FULL_DOCS "List of paths to all PX4 modules"

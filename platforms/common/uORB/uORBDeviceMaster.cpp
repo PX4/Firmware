@@ -49,6 +49,10 @@
 #include <poll.h>
 #endif // PX4_QURT
 
+#if defined(__PX4_NUTTX)
+#include <nuttx/mm/mm.h>
+#endif
+
 uORB::DeviceMaster::DeviceMaster()
 {
 	px4_sem_init(&_lock, 0, 1);
@@ -111,7 +115,11 @@ int uORB::DeviceMaster::advertise(const struct orb_metadata *meta, bool is_adver
 
 		/* if we didn't get a device, that's bad, free the path too */
 		if (node == nullptr) {
+#if defined(__PX4_NUTTX) && !defined(CONFIG_BUILD_FLAT)
+			kmm_free((void *)devpath);
+#else
 			free((void *)devpath);
+#endif
 			return -ENOMEM;
 		}
 

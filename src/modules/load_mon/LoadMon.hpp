@@ -45,7 +45,7 @@
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
 #include <px4_platform/cpuload.h>
 #include <uORB/Publication.hpp>
-#include <uORB/topics/cpuload.h>
+#include <uORB/topics/vehicle_cpuload.h>
 #include <uORB/topics/task_stack_info.h>
 
 #if defined(__PX4_LINUX)
@@ -90,7 +90,7 @@ private:
 
 	uORB::Publication<task_stack_info_s> _task_stack_info_pub{ORB_ID(task_stack_info)};
 #endif
-	uORB::Publication<cpuload_s> _cpuload_pub {ORB_ID(cpuload)};
+	uORB::Publication<vehicle_cpuload_s> _cpuload_pub {ORB_ID(vehicle_cpuload)};
 
 #if defined(__PX4_LINUX)
 	FILE *_proc_fd = nullptr;

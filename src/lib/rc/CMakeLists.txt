@@ -45,6 +45,11 @@ target_compile_options(rc
 		#-DDEBUG_BUILD
 		-Wno-unused-result
 )
+
+if (${PX4_PLATFORM} MATCHES "nuttx")
+	target_link_libraries(rc PRIVATE nuttx_fs)
+endif()
+
 target_link_libraries(rc PRIVATE prebuild_targets)
 
 if(PX4_TESTING AND (${PX4_PLATFORM} MATCHES "posix"))

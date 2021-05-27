@@ -39,4 +39,5 @@ px4_add_module(
 	DEPENDS
 		drivers__device
 		led
+	KERNEL
 	)

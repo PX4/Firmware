@@ -43,6 +43,10 @@
 
 #include <px4_platform_common/posix.h>
 
+#if defined(__PX4_NUTTX)
+#include <nuttx/mm/mm.h>
+#endif
+
 namespace cdev
 {
 
@@ -386,7 +390,11 @@ int CDev::unregister_driver_and_memory()
 	}
 
 	if (_devname != nullptr) {
+#if defined(__PX4_NUTTX) && !defined(CONFIG_BUILD_FLAT)
+		kmm_free((void *)_devname);
+#else
 		free((void *)_devname);
+#endif
 		_devname = nullptr;
 
 	} else {

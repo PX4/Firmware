@@ -42,6 +42,7 @@
 #include <px4_platform_common/tasks.h>
 
 #include <nuttx/board.h>
+#include <nuttx/kthread.h>
 
 #include <sys/wait.h>
 #include <stdbool.h>
@@ -67,8 +68,12 @@ int px4_task_spawn_cmd(const char *name, int scheduler, int priority, int stack_
 	clearenv();
 #endif
 
+#if !defined(__KERNEL__)
 	/* create the task */
 	int pid = task_create(name, priority, stack_size, entry, argv);
+#else
+	int pid = kthread_create(name, priority, stack_size, entry, argv);
+#endif
 
 	if (pid > 0) {
 		/* configure the scheduler */
@@ -88,7 +93,7 @@ int px4_task_delete(int pid)
 
 const char *px4_get_taskname(void)
 {
-#if CONFIG_TASK_NAME_SIZE > 0
+#if CONFIG_TASK_NAME_SIZE > 0 && (defined(__KERNEL__) || defined(CONFIG_BUILD_FLAT))
 	FAR struct tcb_s	*thisproc = nxsched_self();
 
 	return thisproc->name;

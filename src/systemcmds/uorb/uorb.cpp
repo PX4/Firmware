@@ -38,11 +38,10 @@
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/module.h>
 
-extern "C" { __EXPORT int uorb_main(int argc, char *argv[]); }
-
 static void usage();
 
-int uorb_main(int argc, char *argv[])
+extern "C" int
+uorb_main(int argc, char *argv[])
 {
 	if (argc < 2) {
 		usage();
@@ -62,6 +61,14 @@ int uorb_main(int argc, char *argv[])
 	usage();
 	return 0;
 }
+
+#if defined(__PX4_NUTTX) && !defined(CONFIG_BUILD_FLAT)
+extern "C" int
+kuorb_main(int argc, char *argv[])
+{
+	return uorb_main(argc, argv);
+}
+#endif
 
 void usage()
 {

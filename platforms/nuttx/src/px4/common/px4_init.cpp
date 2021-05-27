@@ -84,9 +84,47 @@ int px4_platform_console_init(void)
 	return OK;
 }
 
+
+#if !defined(CONFIG_BUILD_FLAT)
+typedef CODE void (*initializer_t)(void);
+extern initializer_t _sinit;
+extern initializer_t _einit;
+extern uintptr_t _stext;
+extern uintptr_t _etext;
+
+static void cxx_initialize(void)
+{
+	initializer_t *initp;
+
+	/* Visit each entry in the initialization table */
+
+	for (initp = &_sinit; initp != &_einit; initp++) {
+		initializer_t initializer = *initp;
+
+		/* Make sure that the address is non-NULL and lies in the text
+		* region defined by the linker script.  Some toolchains may put
+		* NULL values or counts in the initialization table.
+		*/
+
+		if ((FAR void *)initializer >= (FAR void *)&_stext &&
+		    (FAR void *)initializer < (FAR void *)&_etext) {
+			initializer();
+		}
+	}
+}
+#endif
+
+
 int px4_platform_init(void)
 {
-
+	/* In protected/kernel build this is called from user space thread via
+	 *  BOARDCTL.
+	 *  In PX4 there are static C++ objects created also in kernel side;
+	 *  initialize them here
+	 */
+#if !defined(CONFIG_BUILD_FLAT)
+	cxx_initialize();
+#endif
 	int ret = px4_platform_console_init();
 
 	if (ret < 0) {

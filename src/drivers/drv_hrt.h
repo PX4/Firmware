@@ -76,6 +76,10 @@ typedef struct hrt_call {
 	hrt_abstime		period;
 	hrt_callout		callout;
 	void			*arg;
+#if defined(__PX4_NUTTX) && !defined(CONFIG_BUILD_FLAT)
+	hrt_callout		usr_callout;
+	void			*usr_arg;
+#endif
 } *hrt_call_t;
 
 
@@ -83,6 +87,38 @@ typedef struct hrt_call {
 extern const uint16_t latency_bucket_count;
 extern const uint16_t latency_buckets[LATENCY_BUCKET_COUNT];
 extern uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
+
+
+typedef struct hrt_boardctl {
+	hrt_call_t		entry;
+	hrt_abstime		time; /* delay or calltime */
+	hrt_abstime		interval;
+	hrt_callout		callout;
+	void			*arg;
+} hrt_boardctl_t;
+
+typedef struct latency_info {
+	uint16_t		bucket;
+	uint32_t		counter;
+} latency_info_t;
+
+typedef struct latency_boardctl {
+	uint16_t		bucket_idx;
+	uint16_t		counter_idx;
+	latency_info_t	latency;
+} latency_boardctl_t;
+
+#define _HRTIOCBASE		(0x1000)
+#define _HRTIOC(_n)		(_PX4_IOC(_HRTIOCBASE, _n))
+
+#define HRT_WAITEVENT		_HRTIOC(1)
+#define HRT_ABSOLUTE_TIME	_HRTIOC(2)
+#define HRT_CALL_AFTER		_HRTIOC(3)
+#define HRT_CALL_AT		_HRTIOC(4)
+#define HRT_CALL_EVERY		_HRTIOC(5)
+#define HRT_CANCEL		_HRTIOC(6)
+#define HRT_GET_LATENCY		_HRTIOC(7)
+#define HRT_RESET_LATENCY	_HRTIOC(8)
 
 /**
  * Get absolute time in [us] (does not wrap).
@@ -208,8 +244,36 @@ static inline void px4_lockstep_progress(int component) { }
 static inline void px4_lockstep_wait_for_components(void) { }
 #endif /* defined(ENABLE_LOCKSTEP_SCHEDULER) */
 
-__END_DECLS
 
+/* Latency counter functions */
+
+static inline uint16_t get_latency_bucket_count(void) { return LATENCY_BUCKET_COUNT; }
+
+#if defined(CONFIG_BUILD_FLAT) || !defined(__PX4_NUTTX)
+
+static inline latency_info_t get_latency(uint16_t bucket_idx, uint16_t counter_idx)
+{
+	latency_info_t ret = {latency_buckets[bucket_idx], latency_counters[counter_idx]};
+	return ret;
+}
+
+static inline void reset_latency_counters(void)
+{
+	for (int i = 0; i <= get_latency_bucket_count(); i++) {
+		latency_counters[i] = 0;
+	}
+}
+
+#else
+
+/* NuttX protected/kernel build interface functions */
+
+latency_info_t get_latency(uint16_t bucket_idx, uint16_t counter_idx);
+void reset_latency_counters(void);
+
+#endif
+
+__END_DECLS
 
 
 #ifdef	__cplusplus

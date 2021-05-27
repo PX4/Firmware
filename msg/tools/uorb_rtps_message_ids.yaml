@@ -19,7 +19,7 @@ rtps:
     id: 9
   - msg: commander_state
     id: 10
-  - msg: cpuload
+  - msg: vehicle_cpuload
     id: 11
   - msg: debug_array
     id: 12
