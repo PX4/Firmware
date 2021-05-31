@@ -67,7 +67,7 @@ enum class PrecLandMode {
 class PrecLand : public MissionBlock, public ModuleParams
 {
 public:
-	PrecLand(Navigator *navigator);
+	PrecLand(Navigator *navigator, NavigatorCore &navigator_core);
 	~PrecLand() override = default;
 
 	void on_activation() override;

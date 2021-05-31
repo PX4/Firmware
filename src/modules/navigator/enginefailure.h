@@ -47,7 +47,7 @@ class Navigator;
 class EngineFailure : public MissionBlock
 {
 public:
-	EngineFailure(Navigator *navigator);
+	EngineFailure(Navigator *navigator, NavigatorCore &navigator_core);
 	~EngineFailure() = default;
 
 	void on_inactive() override;

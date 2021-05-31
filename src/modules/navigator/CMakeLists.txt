@@ -51,6 +51,7 @@ px4_add_module(
 		enginefailure.cpp
 		gpsfailure.cpp
 		follow_target.cpp
+		NavigatorCore.cpp
 	DEPENDS
 		git_ecl
 		ecl_geo
@@ -60,3 +61,4 @@ px4_add_module(
 	)
 
 px4_add_functional_gtest(SRC RangeRTLTest.cpp LINKLIBS modules__navigator modules__dataman)
+px4_add_functional_gtest(SRC NavigatorModeTakeoffTest.cpp LINKLIBS modules__navigator modules__dataman)

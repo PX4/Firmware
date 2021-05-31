@@ -11,7 +11,8 @@
 TEST(Navigator_and_RTL, interact_correctly)
 {
 	Navigator n;
-	RTL rtl(&n);
+	NavigatorCore navigator_core;
+	RTL rtl(&n, navigator_core);
 
 
 	home_position_s home_pos{};

@@ -46,7 +46,7 @@
 class Takeoff : public MissionBlock
 {
 public:
-	Takeoff(Navigator *navigator);
+	Takeoff(Navigator *navigator, NavigatorCore &navigator_core);
 	~Takeoff() = default;
 
 	void on_activation() override;

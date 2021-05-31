@@ -51,7 +51,7 @@ class Navigator;
 class GpsFailure : public MissionBlock, public ModuleParams
 {
 public:
-	GpsFailure(Navigator *navigator);
+	GpsFailure(Navigator *navigator, NavigatorCore &navigator_core);
 	~GpsFailure() = default;
 
 	void on_inactive() override;

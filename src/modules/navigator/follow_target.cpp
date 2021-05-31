@@ -60,8 +60,8 @@ using namespace matrix;
 
 constexpr float FollowTarget::_follow_position_matricies[4][9];
 
-FollowTarget::FollowTarget(Navigator *navigator) :
-	MissionBlock(navigator),
+FollowTarget::FollowTarget(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core),
 	ModuleParams(navigator)
 {
 	_current_vel.zero();
@@ -134,7 +134,7 @@ void FollowTarget::on_active()
 
 		// get distance to target
 
-		map_projection_init(&target_ref, _navigator->get_global_position()->lat, _navigator->get_global_position()->lon);
+		map_projection_init(&target_ref, _navigator_core.getLatRad(), _navigator_core.getLonRad());
 		map_projection_project(&target_ref, _current_target_motion.lat, _current_target_motion.lon, &_target_distance(0),
 				       &_target_distance(1));
 
@@ -200,12 +200,12 @@ void FollowTarget::on_active()
 				// this really needs to control the yaw rate directly in the attitude pid controller
 				// but seems to work ok for now since the yaw rate cannot be controlled directly in auto mode
 
-				_yaw_angle = get_bearing_to_next_waypoint(_navigator->get_global_position()->lat,
-						_navigator->get_global_position()->lon,
+				_yaw_angle = get_bearing_to_next_waypoint(_navigator_core.getLatRad(),
+						_navigator_core.getLonRad(),
 						_current_target_motion.lat,
 						_current_target_motion.lon);
 
-				_yaw_rate = wrap_pi((_yaw_angle - _navigator->get_local_position()->heading) / (dt_ms / 1000.0f));
+				_yaw_rate = wrap_pi((_yaw_angle - _navigator_core.getTrueHeadingRad()) / (dt_ms / 1000.0f));
 
 			} else {
 				_yaw_angle = _yaw_rate = NAN;
@@ -238,7 +238,7 @@ void FollowTarget::on_active()
 	// 3 degrees of facing target
 
 	if (PX4_ISFINITE(_yaw_rate)) {
-		if (fabsf(fabsf(_yaw_angle) - fabsf(_navigator->get_local_position()->heading)) < math::radians(3.0F)) {
+		if (fabsf(fabsf(_yaw_angle) - fabsf(_navigator_core.getTrueHeadingRad())) < math::radians(3.0F)) {
 			_yaw_rate = NAN;
 		}
 	}
@@ -298,8 +298,8 @@ void FollowTarget::on_active()
 
 			// for now set the target at the minimum height above the uav
 
-			target.lat = _navigator->get_global_position()->lat;
-			target.lon = _navigator->get_global_position()->lon;
+			target.lat = _navigator_core.getLatRad();
+			target.lon = _navigator_core.getLonRad();
 			target.alt = 0.0F;
 
 			set_follow_target_item(&_mission_item, _param_nav_min_ft_ht.get(), target, _yaw_angle);
@@ -376,7 +376,7 @@ void
 FollowTarget::set_follow_target_item(struct mission_item_s *item, float min_clearance, follow_target_s &target,
 				     float yaw)
 {
-	if (_navigator->get_land_detected()->landed) {
+	if (_navigator_core.getLanded()) {
 		/* landed, don't takeoff, but switch to IDLE mode */
 		item->nav_cmd = NAV_CMD_IDLE;
 
@@ -387,7 +387,8 @@ FollowTarget::set_follow_target_item(struct mission_item_s *item, float min_clea
 		/* use current target position */
 		item->lat = target.lat;
 		item->lon = target.lon;
-		item->altitude = _navigator->get_home_position()->alt;
+		item->altitude = _navigator_core.getHomeAltAMSLMeter();
+
 
 		if (min_clearance > 8.0f) {
 			item->altitude += min_clearance;
@@ -399,8 +400,8 @@ FollowTarget::set_follow_target_item(struct mission_item_s *item, float min_clea
 
 	item->altitude_is_relative = false;
 	item->yaw = yaw;
-	item->loiter_radius = _navigator->get_loiter_radius();
-	item->acceptance_radius = _navigator->get_acceptance_radius();
+	item->loiter_radius = _navigator_core.getLoiterRadiusMeter();
+	item->acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 	item->time_inside = 0.0f;
 	item->autocontinue = false;
 	item->origin = ORIGIN_ONBOARD;

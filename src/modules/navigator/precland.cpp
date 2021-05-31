@@ -59,8 +59,8 @@
 
 #define STATE_TIMEOUT 10000000 // [us] Maximum time to spend in any state
 
-PrecLand::PrecLand(Navigator *navigator) :
-	MissionBlock(navigator),
+PrecLand::PrecLand(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, _navigator_core),
 	ModuleParams(navigator)
 {
 	_handle_param_acceleration_hor = param_find("MPC_ACC_HOR");
@@ -90,9 +90,9 @@ PrecLand::on_activation()
 	// Check that the current position setpoint is valid, otherwise land at current position
 	if (!pos_sp_triplet->current.valid) {
 		PX4_WARN("Resetting landing position to current position");
-		pos_sp_triplet->current.lat = _navigator->get_global_position()->lat;
-		pos_sp_triplet->current.lon = _navigator->get_global_position()->lon;
-		pos_sp_triplet->current.alt = _navigator->get_global_position()->alt;
+		pos_sp_triplet->current.lat = _navigator_core.getLatRad();
+		pos_sp_triplet->current.lon = _navigator_core.getLonRad();
+		pos_sp_triplet->current.alt = _navigator_core.getAltitudeAMSLMeters();
 		pos_sp_triplet->current.valid = true;
 		pos_sp_triplet->current.timestamp = hrt_absolute_time();
 	}
@@ -121,7 +121,7 @@ PrecLand::on_active()
 	}
 
 	// stop if we are landed
-	if (_navigator->get_land_detected()->landed) {
+	if (_navigator_core.getLanded()) {
 		switch_to_state_done();
 	}
 
@@ -198,10 +198,10 @@ PrecLand::run_state_start()
 
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 	float dist = get_distance_to_next_waypoint(pos_sp_triplet->current.lat, pos_sp_triplet->current.lon,
-			_navigator->get_global_position()->lat, _navigator->get_global_position()->lon);
+			_navigator_core.getLatRad(), _navigator_core.getLonRad());
 
 	// check if we've reached the start point
-	if (dist < _navigator->get_acceptance_radius()) {
+	if (dist < _navigator_core.getAcceptanceRadiusMeter()) {
 		if (!_point_reached_time) {
 			_point_reached_time = hrt_absolute_time();
 		}
@@ -235,9 +235,9 @@ PrecLand::run_state_horizontal_approach()
 		PX4_WARN("Lost landing target while landing (horizontal approach).");
 
 		// Stay at current position for searching for the landing target
-		pos_sp_triplet->current.lat = _navigator->get_global_position()->lat;
-		pos_sp_triplet->current.lon = _navigator->get_global_position()->lon;
-		pos_sp_triplet->current.alt = _navigator->get_global_position()->alt;
+		pos_sp_triplet->current.lat = _navigator_core.getLatRad();
+		pos_sp_triplet->current.lon = _navigator_core.getLonRad();
+		pos_sp_triplet->current.alt = _navigator_core.getAltitudeAMSLMeters();
 
 		if (!switch_to_state_start()) {
 			if (!switch_to_state_fallback()) {
@@ -300,9 +300,9 @@ PrecLand::run_state_descend_above_target()
 			PX4_WARN("Lost landing target while landing (descending).");
 
 			// Stay at current position for searching for the target
-			pos_sp_triplet->current.lat = _navigator->get_global_position()->lat;
-			pos_sp_triplet->current.lon = _navigator->get_global_position()->lon;
-			pos_sp_triplet->current.alt = _navigator->get_global_position()->alt;
+			pos_sp_triplet->current.lat = _navigator_core.getLatRad();
+			pos_sp_triplet->current.lon = _navigator_core.getLonRad();
+			pos_sp_triplet->current.alt = _navigator_core.getAltitudeAMSLMeters();
 
 			if (!switch_to_state_start()) {
 				if (!switch_to_state_fallback()) {
@@ -341,7 +341,7 @@ PrecLand::run_state_search()
 			// target just became visible. Stop climbing, but give it some margin so we don't stop too apruptly
 			_target_acquired_time = hrt_absolute_time();
 			position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
-			float new_alt = _navigator->get_global_position()->alt + 1.0f;
+			float new_alt = _navigator_core.getAltitudeAMSLMeters() + 1.0f;
 			pos_sp_triplet->current.alt = new_alt < pos_sp_triplet->current.alt ? new_alt : pos_sp_triplet->current.alt;
 			_navigator->set_position_setpoint_triplet_updated();
 		}
@@ -395,7 +395,7 @@ bool
 PrecLand::switch_to_state_horizontal_approach()
 {
 	if (check_state_conditions(PrecLandState::HorizontalApproach)) {
-		_approach_alt = _navigator->get_global_position()->alt;
+		_approach_alt = _navigator_core.getAltitudeAMSLMeters();
 
 		_point_reached_time = 0;
 
@@ -454,9 +454,9 @@ PrecLand::switch_to_state_fallback()
 {
 	PX4_WARN("Falling back to normal land.");
 	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
-	pos_sp_triplet->current.lat = _navigator->get_global_position()->lat;
-	pos_sp_triplet->current.lon = _navigator->get_global_position()->lon;
-	pos_sp_triplet->current.alt = _navigator->get_global_position()->alt;
+	pos_sp_triplet->current.lat = _navigator_core.getLatRad();
+	pos_sp_triplet->current.lon = _navigator_core.getLonRad();
+	pos_sp_triplet->current.alt = _navigator_core.getAltitudeAMSLMeters();
 	pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_LAND;
 	_navigator->set_position_setpoint_triplet_updated();
 
@@ -557,8 +557,8 @@ void PrecLand::slewrate(float &sp_x, float &sp_y)
 		// set a best guess for previous setpoints for smooth transition
 		map_projection_project(&_map_ref, _navigator->get_position_setpoint_triplet()->current.lat,
 				       _navigator->get_position_setpoint_triplet()->current.lon, &_sp_pev(0), &_sp_pev(1));
-		_sp_pev_prev(0) = _sp_pev(0) - _navigator->get_local_position()->vx * dt;
-		_sp_pev_prev(1) = _sp_pev(1) - _navigator->get_local_position()->vy * dt;
+		_sp_pev_prev(0) = _sp_pev(0) - _navigator_core.getVelNorthMPS() * dt;
+		_sp_pev_prev(1) = _sp_pev(1) - _navigator_core.getVelEastMPS() * dt;
 	}
 
 	_last_slewrate_time = now;

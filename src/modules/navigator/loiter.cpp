@@ -42,8 +42,8 @@
 #include "loiter.h"
 #include "navigator.h"
 
-Loiter::Loiter(Navigator *navigator) :
-	MissionBlock(navigator),
+Loiter::Loiter(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core),
 	ModuleParams(navigator)
 {
 }
@@ -73,7 +73,7 @@ Loiter::on_active()
 	}
 
 	// reset the loiter position if we get disarmed
-	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+	if (_navigator_core.isNotArmed()) {
 		_loiter_pos_set = false;
 	}
 }
@@ -81,8 +81,8 @@ Loiter::on_active()
 void
 Loiter::set_loiter_position()
 {
-	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED &&
-	    _navigator->get_land_detected()->landed) {
+	if (_navigator_core.isNotArmed() &&
+	    _navigator_core.getLanded()) {
 
 		// Not setting loiter position if disarmed and landed, instead mark the current
 		// setpoint as invalid and idle (both, just to be sure).
@@ -101,7 +101,8 @@ Loiter::set_loiter_position()
 	_loiter_pos_set = true;
 
 	// set current mission item to loiter
-	set_loiter_item(&_mission_item, _navigator->get_loiter_min_alt());
+	set_loiter_item(&_mission_item, _navigator_core.getRelativeLoiterMinAltitudeMeter());
+
 
 	// convert mission item to current setpoint
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
@@ -119,7 +120,7 @@ void
 Loiter::reposition()
 {
 	// we can't reposition if we are not armed yet
-	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
+	if (_navigator_core.isNotArmed()) {
 		return;
 	}
 
@@ -131,10 +132,10 @@ Loiter::reposition()
 		// convert mission item to current setpoint
 		struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 		pos_sp_triplet->current.velocity_valid = false;
-		pos_sp_triplet->previous.yaw = _navigator->get_local_position()->heading;
-		pos_sp_triplet->previous.lat = _navigator->get_global_position()->lat;
-		pos_sp_triplet->previous.lon = _navigator->get_global_position()->lon;
-		pos_sp_triplet->previous.alt = _navigator->get_global_position()->alt;
+		pos_sp_triplet->previous.yaw = _navigator_core.getTrueHeadingRad();
+		pos_sp_triplet->previous.lat = _navigator_core.getLatRad();
+		pos_sp_triplet->previous.lon = _navigator_core.getLonRad();
+		pos_sp_triplet->previous.alt = _navigator_core.getAltitudeAMSLMeters();
 		memcpy(&pos_sp_triplet->current, &rep->current, sizeof(rep->current));
 		pos_sp_triplet->next.valid = false;
 

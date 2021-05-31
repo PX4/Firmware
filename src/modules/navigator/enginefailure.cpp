@@ -52,8 +52,8 @@
 #include "navigator.h"
 #include "enginefailure.h"
 
-EngineFailure::EngineFailure(Navigator *navigator) :
-	MissionBlock(navigator),
+EngineFailure::EngineFailure(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core),
 	_ef_state(EF_STATE_NONE)
 {
 }
@@ -93,15 +93,15 @@ EngineFailure::set_ef_item()
 	case EF_STATE_LOITERDOWN: {
 			//XXX create mission item at ground (below?) here
 
-			_mission_item.lat = _navigator->get_global_position()->lat;
-			_mission_item.lon = _navigator->get_global_position()->lon;
+			_mission_item.lat = _navigator_core.getLatRad();
+			_mission_item.lon = _navigator_core.getLonRad();
 			_mission_item.altitude_is_relative = false;
 			//XXX setting altitude to a very low value, evaluate other options
-			_mission_item.altitude = _navigator->get_home_position()->alt - 1000.0f;
+			_mission_item.altitude = _navigator_core.getHomeAltAMSLMeter() - 1000.0f;
 			_mission_item.yaw = NAN;
-			_mission_item.loiter_radius = _navigator->get_loiter_radius();
+			_mission_item.loiter_radius = _navigator_core.getLoiterRadiusMeter();
 			_mission_item.nav_cmd = NAV_CMD_LOITER_UNLIMITED;
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
 

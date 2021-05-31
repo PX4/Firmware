@@ -34,7 +34,7 @@
 #include <gtest/gtest.h>
 #include "geofence_breach_avoidance.h"
 #include "fake_geofence.hpp"
-#include "dataman_mocks.hpp"
+#include <dataman/dataman_mocks.hpp>
 #include <parameters/param.h>
 
 using namespace matrix;

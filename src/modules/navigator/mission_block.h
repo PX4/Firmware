@@ -42,6 +42,7 @@
 
 #include "navigator_mode.h"
 #include "navigation.h"
+#include "NavigatorCore.h"
 
 #include <drivers/drv_hrt.h>
 #include <systemlib/mavlink_log.h>
@@ -61,7 +62,7 @@ public:
 	/**
 	 * Constructor
 	 */
-	MissionBlock(Navigator *navigator);
+	MissionBlock(Navigator *navigator, NavigatorCore &navigator_core);
 	virtual ~MissionBlock() = default;
 
 	MissionBlock(const MissionBlock &) = delete;
@@ -150,6 +151,8 @@ protected:
 	bool _waypoint_yaw_reached{false};
 
 	hrt_abstime _time_wp_reached{0};
+
+	NavigatorCore &_navigator_core;
 
 	uORB::Publication<actuator_controls_s>	_actuator_pub{ORB_ID(actuator_controls_2)};
 };

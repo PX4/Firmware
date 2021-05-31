@@ -41,8 +41,10 @@
 #include "takeoff.h"
 #include "navigator.h"
 
-Takeoff::Takeoff(Navigator *navigator) :
-	MissionBlock(navigator)
+using matrix::wrap_pi;
+
+Takeoff::Takeoff(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core)
 {
 }
 
@@ -64,7 +66,6 @@ Takeoff::on_active()
 	} else if (is_mission_item_reached() && !_navigator->get_mission_result()->finished) {
 		_navigator->get_mission_result()->finished = true;
 		_navigator->set_mission_result_updated();
-
 		// set loiter item so position controllers stop doing takeoff logic
 		set_loiter_item(&_mission_item);
 		struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
@@ -83,22 +84,22 @@ Takeoff::set_takeoff_position()
 
 	float min_abs_altitude;
 
-	if (_navigator->home_position_valid()) { //only use home position if it is valid
-		min_abs_altitude = _navigator->get_global_position()->alt + _navigator->get_takeoff_min_alt();
+	if (_navigator_core.isHomeValid()) { //only use home position if it is valid
+		min_abs_altitude = _navigator_core.getAltitudeAMSLMeters() + _navigator_core.getRelativeTakeoffMinAltitudeMeter();
 
 	} else { //e.g. flow
-		min_abs_altitude = _navigator->get_takeoff_min_alt();
+		min_abs_altitude = _navigator_core.getRelativeTakeoffMinAltitudeMeter();
 	}
 
 	// Use altitude if it has been set. If home position is invalid use min_abs_altitude
-	if (rep->current.valid && PX4_ISFINITE(rep->current.alt) && _navigator->home_position_valid()) {
+	if (rep->current.valid && PX4_ISFINITE(rep->current.alt) && _navigator_core.isHomeValid()) {
 		abs_altitude = rep->current.alt;
 
 		// If the altitude suggestion is lower than home + minimum clearance, raise it and complain.
 		if (abs_altitude < min_abs_altitude) {
 			if (abs_altitude < min_abs_altitude - 0.1f) { // don't complain if difference is smaller than 10cm
 				mavlink_log_critical(_navigator->get_mavlink_log_pub(),
-						     "Using minimum takeoff altitude: %.2f m", (double)_navigator->get_takeoff_min_alt());
+						     "Using minimum takeoff altitude: %.2f m", (double)_navigator_core.getRelativeTakeoffMinAltitudeMeter());
 			}
 
 			abs_altitude = min_abs_altitude;
@@ -108,13 +109,13 @@ Takeoff::set_takeoff_position()
 		// Use home + minimum clearance but only notify.
 		abs_altitude = min_abs_altitude;
 		mavlink_log_info(_navigator->get_mavlink_log_pub(),
-				 "Using minimum takeoff altitude: %.2f m", (double)_navigator->get_takeoff_min_alt());
+				 "Using minimum takeoff altitude: %.2f m", (double)_navigator_core.getRelativeTakeoffMinAltitudeMeter());
 	}
 
 
-	if (abs_altitude < _navigator->get_global_position()->alt) {
+	if (abs_altitude < _navigator_core.getAltitudeAMSLMeters()) {
 		// If the suggestion is lower than our current alt, let's not go down.
-		abs_altitude = _navigator->get_global_position()->alt;
+		abs_altitude = _navigator_core.getAltitudeAMSLMeters();
 		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Already higher than takeoff altitude");
 	}
 

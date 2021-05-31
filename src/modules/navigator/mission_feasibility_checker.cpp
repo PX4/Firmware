@@ -69,8 +69,8 @@ MissionFeasibilityChecker::checkMissionFeasible(const mission_s &mission,
 	bool failed = false;
 
 	// first check if we have a valid position
-	const bool home_valid = _navigator->home_position_valid();
-	const bool home_alt_valid = _navigator->home_alt_valid();
+	const bool home_valid = _navigator->getCore().isHomeValid();
+	const bool home_alt_valid = _navigator->getCore().isHomeAltValid();
 
 	if (!home_alt_valid) {
 		failed = true;
@@ -80,7 +80,7 @@ MissionFeasibilityChecker::checkMissionFeasible(const mission_s &mission,
 		failed = failed || !checkDistanceToFirstWaypoint(mission, max_distance_to_1st_waypoint);
 	}
 
-	const float home_alt = _navigator->get_home_position()->alt;
+	const float home_alt = _navigator->getCore().getHomeAltAMSLMeter();
 
 	// check if all mission item commands are supported
 	failed = failed || !checkMissionItemValidity(mission);
@@ -88,10 +88,10 @@ MissionFeasibilityChecker::checkMissionFeasible(const mission_s &mission,
 	failed = failed || !checkGeofence(mission, home_alt, home_valid);
 	failed = failed || !checkHomePositionAltitude(mission, home_alt, home_alt_valid);
 
-	if (_navigator->get_vstatus()->is_vtol) {
+	if (_navigator->getCore().isVTOL()) {
 		failed = failed || !checkVTOL(mission, home_alt, false);
 
-	} else if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+	} else if (_navigator->getCore().isRotaryWing()) {
 		failed = failed || !checkRotarywing(mission, home_alt);
 
 	} else {
@@ -288,7 +288,7 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		}
 
 		// check if the mission starts with a land command while the vehicle is landed
-		if ((i == 0) && missionitem.nav_cmd == NAV_CMD_LAND && _navigator->get_land_detected()->landed) {
+		if ((i == 0) && missionitem.nav_cmd == NAV_CMD_LAND && _navigator->getCore().getLanded()) {
 
 			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: starts with landing");
 			return false;
@@ -324,7 +324,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 					    : missionitem.altitude - home_alt;
 
 			// check if we should use default acceptance radius
-			float acceptance_radius = _navigator->get_default_acceptance_radius();
+			float acceptance_radius = _navigator->getCore().getDefaultHorAcceptanceRadiusMeter();
 
 			if (missionitem.acceptance_radius > NAV_EPSILON_POSITION) {
 				acceptance_radius = missionitem.acceptance_radius;
@@ -396,7 +396,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 		}
 	}
 
-	if (_navigator->get_takeoff_required() && _navigator->get_land_detected()->landed) {
+	if (_navigator->getCore().isTakeoffRequired() && _navigator->getCore().getLanded()) {
 		// check for a takeoff waypoint, after the above conditions have been met
 		// MIS_TAKEOFF_REQ param has to be set and the vehicle has to be landed - one can load a mission
 		// while the vehicle is flying and it does not require a takeoff waypoint
@@ -641,7 +641,7 @@ MissionFeasibilityChecker::checkDistanceToFirstWaypoint(const mission_s &mission
 		/* check distance from current position to item */
 		float dist_to_1wp = get_distance_to_next_waypoint(
 					    mission_item.lat, mission_item.lon,
-					    _navigator->get_home_position()->lat, _navigator->get_home_position()->lon);
+					    _navigator->getCore().getHomeLatRad(), _navigator->getCore().getHomeLonRad());
 
 		if (dist_to_1wp < max_distance) {
 

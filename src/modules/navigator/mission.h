@@ -69,7 +69,7 @@ class Navigator;
 class Mission : public MissionBlock, public ModuleParams
 {
 public:
-	Mission(Navigator *navigator);
+	Mission(Navigator *navigator, NavigatorCore &navigator_core);
 	~Mission() override = default;
 
 	void on_inactive() override;

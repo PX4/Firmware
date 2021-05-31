@@ -52,8 +52,8 @@
 using matrix::Eulerf;
 using matrix::Quatf;
 
-GpsFailure::GpsFailure(Navigator *navigator) :
-	MissionBlock(navigator),
+GpsFailure::GpsFailure(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core),
 	ModuleParams(navigator)
 {
 }
@@ -92,7 +92,7 @@ GpsFailure::on_active()
 			Quatf q(Eulerf(att_sp.roll_body, att_sp.pitch_body, 0.0f));
 			q.copyTo(att_sp.q_d);
 
-			if (_navigator->get_vstatus()->is_vtol) {
+			if (_navigator_core.isVTOL()) {
 				_fw_virtual_att_sp_pub.publish(att_sp);
 
 			} else {

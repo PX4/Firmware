@@ -54,7 +54,7 @@ class FollowTarget : public MissionBlock, public ModuleParams
 {
 
 public:
-	FollowTarget(Navigator *navigator);
+	FollowTarget(Navigator *navigator, NavigatorCore &navigator_core);
 	~FollowTarget() = default;
 
 	void on_inactive() override;

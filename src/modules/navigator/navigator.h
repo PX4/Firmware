@@ -122,6 +122,8 @@ public:
 
 	void		publish_vehicle_cmd(vehicle_command_s *vcmd);
 
+	void		params_update();
+
 	/**
 	 * Generate an artificial traffic indication
 	 *
@@ -165,39 +167,39 @@ public:
 	const vehicle_roi_s &get_vroi() { return _vroi; }
 	void reset_vroi() { _vroi = {}; }
 
-	bool home_alt_valid() { return (_home_pos.timestamp > 0 && _home_pos.valid_alt); }
-	bool home_position_valid() { return (_home_pos.timestamp > 0 && _home_pos.valid_alt && _home_pos.valid_hpos && _home_pos.valid_lpos); }
+	//bool home_alt_valid() { return (_home_pos.timestamp > 0 && _home_pos.valid_alt); }
+	//bool _navigator_core.isHomeValid() { return (_home_pos.timestamp > 0 && _home_pos.valid_alt && _home_pos.valid_hpos && _home_pos.valid_lpos); }
 
 	Geofence	&get_geofence() { return _geofence; }
 
 	bool		get_can_loiter_at_sp() { return _can_loiter_at_sp; }
-	float		get_loiter_radius() { return _param_nav_loiter_rad.get(); }
+	//float		_navigator_core.getLoiterRadiusMeter() { return _param_nav_loiter_rad.get(); }
 
 	/**
 	 * Returns the default acceptance radius defined by the parameter
 	 */
-	float		get_default_acceptance_radius();
+	//float		get_default_acceptance_radius();
 
 	/**
 	 * Get the acceptance radius
 	 *
 	 * @return the distance at which the next waypoint should be used
 	 */
-	float		get_acceptance_radius();
+	//float		get_acceptance_radius();
 
 	/**
 	 * Get the default altitude acceptance radius (i.e. from parameters)
 	 *
 	 * @return the distance from the target altitude before considering the waypoint reached
 	 */
-	float		get_default_altitude_acceptance_radius();
+	//float		get_default_altitude_acceptance_radius();
 
 	/**
 	 * Get the altitude acceptance radius
 	 *
 	 * @return the distance from the target altitude before considering the waypoint reached
 	 */
-	float		get_altitude_acceptance_radius();
+	//float		get_altitude_acceptance_radius();
 
 	/**
 	 * Get the cruising speed
@@ -290,43 +292,21 @@ public:
 
 	void geofence_breach_check(bool &have_geofence_position_data);
 
-	// Param access
-	float		get_loiter_min_alt() const { return _param_mis_ltrmin_alt.get(); }
-	float		get_takeoff_min_alt() const { return _param_mis_takeoff_alt.get(); }
-	bool		get_takeoff_required() const { return _param_mis_takeoff_req.get(); }
-	float		get_yaw_timeout() const { return _param_mis_yaw_tmt.get(); }
-	float		get_yaw_threshold() const { return math::radians(_param_mis_yaw_err.get()); }
-
 	float		get_vtol_back_trans_deceleration() const { return _param_back_trans_dec_mss; }
 	float		get_vtol_reverse_delay() const { return _param_reverse_delay; }
 
-	bool		force_vtol();
+	//bool		force_vtol();
 
 	void		acquire_gimbal_control();
 	void		release_gimbal_control();
 
+	NavigatorCore &getCore() { return _navigator_core; }
+
 private:
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad,	/**< loiter radius for fixedwing */
-		(ParamFloat<px4::params::NAV_ACC_RAD>) _param_nav_acc_rad,	/**< acceptance for takeoff */
-		(ParamFloat<px4::params::NAV_FW_ALT_RAD>)
-		_param_nav_fw_alt_rad,	/**< acceptance radius for fixedwing altitude */
-		(ParamFloat<px4::params::NAV_FW_ALTL_RAD>)
-		_param_nav_fw_altl_rad,	/**< acceptance radius for fixedwing altitude before landing*/
-		(ParamFloat<px4::params::NAV_MC_ALT_RAD>)
-		_param_nav_mc_alt_rad,	/**< acceptance radius for multicopter altitude */
-		(ParamInt<px4::params::NAV_FORCE_VT>) _param_nav_force_vt,	/**< acceptance radius for multicopter altitude */
 		(ParamInt<px4::params::NAV_TRAFF_AVOID>) _param_nav_traff_avoid,	/**< avoiding other aircraft is enabled */
 		(ParamFloat<px4::params::NAV_TRAFF_A_RADU>) _param_nav_traff_a_radu,	/**< avoidance Distance Unmanned*/
-		(ParamFloat<px4::params::NAV_TRAFF_A_RADM>) _param_nav_traff_a_radm,	/**< avoidance Distance Manned*/
-
-		// non-navigator parameters
-		// Mission (MIS_*)
-		(ParamFloat<px4::params::MIS_LTRMIN_ALT>) _param_mis_ltrmin_alt,
-		(ParamFloat<px4::params::MIS_TAKEOFF_ALT>) _param_mis_takeoff_alt,
-		(ParamBool<px4::params::MIS_TAKEOFF_REQ>) _param_mis_takeoff_req,
-		(ParamFloat<px4::params::MIS_YAW_TMT>) _param_mis_yaw_tmt,
-		(ParamFloat<px4::params::MIS_YAW_ERR>) _param_mis_yaw_err
+		(ParamFloat<px4::params::NAV_TRAFF_A_RADM>) _param_nav_traff_a_radm	/**< avoidance Distance Manned*/
 	)
 
 	int		_local_pos_sub{-1};
@@ -385,6 +365,8 @@ private:
 	bool 		_pos_sp_triplet_published_invalid_once{false};	/**< flags if position SP triplet has been published once to UORB */
 	bool		_mission_result_updated{false};		/**< flags if mission result has seen an update */
 
+	NavigatorCore _navigator_core;
+
 	NavigatorMode	*_navigation_mode{nullptr};		/**< abstract pointer to current navigation mode class */
 	Mission		_mission;			/**< class that handles the missions */
 	Loiter		_loiter;			/**< class that handles loiter */
@@ -411,7 +393,7 @@ private:
 	// if mission mode is inactive, this flag will be cleared after 2 seconds
 
 	// update subscriptions
-	void		params_update();
+
 
 	/**
 	 * Publish a new position setpoint triplet for position controllers

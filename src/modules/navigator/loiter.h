@@ -48,7 +48,7 @@
 class Loiter : public MissionBlock, public ModuleParams
 {
 public:
-	Loiter(Navigator *navigator);
+	Loiter(Navigator *navigator, NavigatorCore &navigator_core);
 	~Loiter() = default;
 
 	void on_inactive() override;

@@ -52,8 +52,8 @@ static constexpr float DELAY_SIGMA = 0.01f;
 using namespace time_literals;
 using namespace math;
 
-RTL::RTL(Navigator *navigator) :
-	MissionBlock(navigator),
+RTL::RTL(Navigator *navigator, NavigatorCore &navigator_core) :
+	MissionBlock(navigator, navigator_core),
 	ModuleParams(navigator)
 {
 }
@@ -80,14 +80,14 @@ void RTL::find_RTL_destination()
 		return;
 	}
 
-	if (!_navigator->home_position_valid()) {
+	if (!_navigator_core.isHomeValid()) {
 		return;
 	}
 
 	_destination_check_time = hrt_absolute_time();
 
 	// get home position:
-	home_position_s &home_landing_position = *_navigator->get_home_position();
+	home_position_s &home_landing_position = _navigator_core.getHomePosition();
 
 	// get global position
 	const vehicle_global_position_s &global_position = *_navigator->get_global_position();
@@ -110,8 +110,8 @@ void RTL::find_RTL_destination()
 
 	_destination.type = RTL_DESTINATION_HOME;
 
-	const bool vtol_in_rw_mode = _navigator->get_vstatus()->is_vtol
-				     && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
+	const bool vtol_in_rw_mode = _navigator_core.isVTOL()
+				     && _navigator_core.isRotaryWing();
 
 
 	// consider the mission landing if not RTL_HOME type set
@@ -237,8 +237,8 @@ void RTL::find_RTL_destination()
 void RTL::on_activation()
 {
 
-	_deny_mission_landing = _navigator->get_vstatus()->is_vtol
-				&& _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING;
+	_deny_mission_landing = _navigator_core.isVTOL()
+				&& _navigator_core.isRotaryWing();
 
 	// output the correct message, depending on where the RTL destination is
 	switch (_destination.type) {
@@ -259,16 +259,15 @@ void RTL::on_activation()
 
 	_rtl_loiter_rad = _param_rtl_loiter_rad.get();
 
-	if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+	if (_navigator_core.isRotaryWing()) {
 		_rtl_alt = calculate_return_alt_from_cone_half_angle((float)_param_rtl_cone_half_angle_deg.get());
 
 	} else {
 		_rtl_alt = max(global_position.alt, max(_destination.alt,
-							_navigator->get_home_position()->alt + _param_rtl_return_alt.get()));
+							_navigator_core.getHomeAltAMSLMeter() + _param_rtl_return_alt.get()));
 	}
 
-
-	if (_navigator->get_land_detected()->landed) {
+	if (_navigator_core.getLanded()) {
 		// For safety reasons don't go into RTL if landed.
 		_rtl_state = RTL_STATE_LANDED;
 
@@ -343,7 +342,7 @@ void RTL::set_rtl_item()
 
 			// do not use LOITER_TO_ALT for rotary wing mode as it would then always climb to at least MIS_LTRMIN_ALT,
 			// even if current climb altitude is below (e.g. RTL immediately after take off)
-			if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
+			if (_navigator_core.isRotaryWing()) {
 				_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 
 			} else {
@@ -354,8 +353,8 @@ void RTL::set_rtl_item()
 			_mission_item.lon = gpos.lon;
 			_mission_item.altitude = _rtl_alt;
 			_mission_item.altitude_is_relative = false;
-			_mission_item.yaw = _navigator->get_local_position()->heading;
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.yaw = _navigator_core.getTrueHeadingRad();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -383,7 +382,7 @@ void RTL::set_rtl_item()
 				_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _destination.lat, _destination.lon);
 			}
 
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -405,18 +404,18 @@ void RTL::set_rtl_item()
 			// Except for vtol which might be still off here and should point towards this location.
 			const float d_current = get_distance_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
 
-			if (_navigator->get_vstatus()->is_vtol && (d_current > _navigator->get_acceptance_radius())) {
+			if (_navigator_core.isVTOL() && (d_current > _navigator_core.getAcceptanceRadiusMeter())) {
 				_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
 
 			} else {
 				_mission_item.yaw = _destination.yaw;
 			}
 
-			if (_navigator->get_vstatus()->is_vtol) {
+			if (_navigator->getCore().isVTOL()) {
 				_mission_item.loiter_radius = _rtl_loiter_rad;
 			}
 
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -438,8 +437,8 @@ void RTL::set_rtl_item()
 			_mission_item.altitude = loiter_altitude;
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = _destination.yaw;
-			_mission_item.loiter_radius = _navigator->get_loiter_radius();
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.loiter_radius = _navigator_core.getLoiterRadiusMeter();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = max(_param_rtl_land_delay.get(), 0.0f);
 			_mission_item.autocontinue = autoland;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -467,7 +466,7 @@ void RTL::set_rtl_item()
 			_mission_item.altitude = loiter_altitude;
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -489,7 +488,7 @@ void RTL::set_rtl_item()
 			_mission_item.altitude = loiter_altitude;
 			_mission_item.altitude_is_relative = false;
 			_mission_item.yaw = get_bearing_to_next_waypoint(gpos.lat, gpos.lon, _mission_item.lat, _mission_item.lon);
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.origin = ORIGIN_ONBOARD;
 			break;
 		}
@@ -502,7 +501,7 @@ void RTL::set_rtl_item()
 			_mission_item.yaw = _destination.yaw;
 			_mission_item.altitude = _destination.alt;
 			_mission_item.altitude_is_relative = false;
-			_mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+			_mission_item.acceptance_radius = _navigator_core.getAcceptanceRadiusMeter();
 			_mission_item.time_inside = 0.0f;
 			_mission_item.autocontinue = true;
 			_mission_item.origin = ORIGIN_ONBOARD;
@@ -552,8 +551,8 @@ void RTL::advance_rtl()
 	const bool descend_and_loiter = _param_rtl_land_delay.get() < -DELAY_SIGMA || _param_rtl_land_delay.get() > DELAY_SIGMA;
 
 	// vehicle is a vtol and currently in fixed wing mode
-	const bool vtol_in_fw_mode = _navigator->get_vstatus()->is_vtol
-				     && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING;
+	const bool vtol_in_fw_mode = _navigator_core.isVTOL()
+				     && _navigator_core.isFixedWing();
 
 	switch (_rtl_state) {
 	case RTL_STATE_CLIMB:
@@ -635,11 +634,11 @@ float RTL::calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg)
 	// We choose the minimum height to be two times the distance from the land position in order to
 	// avoid the vehicle touching the ground while still moving horizontally.
 	const float return_altitude_min_outside_acceptance_rad_amsl = _destination.alt + 2.0f *
-			_navigator->get_acceptance_radius();
+			_navigator_core.getAcceptanceRadiusMeter();
 
 	float return_altitude_amsl = _destination.alt + _param_rtl_return_alt.get();
 
-	if (destination_dist <= _navigator->get_acceptance_radius()) {
+	if (destination_dist <= _navigator_core.getAcceptanceRadiusMeter()) {
 		return_altitude_amsl = _destination.alt + 2.0f * destination_dist;
 
 	} else {
@@ -663,7 +662,7 @@ float RTL::calculate_return_alt_from_cone_half_angle(float cone_half_angle_deg)
 
 void RTL::get_rtl_xy_z_speed(float &xy, float &z)
 {
-	uint8_t vehicle_type = _navigator->get_vstatus()->vehicle_type;
+	uint8_t vehicle_type = _navigator_core.getVehicleType();
 	// Caution: here be dragons!
 	// Use C API to allow this code to be compiled with builds that don't have FW/MC/Rover
 

@@ -76,15 +76,16 @@ Navigator::Navigator() :
 	_loop_perf(perf_alloc(PC_ELAPSED, "navigator")),
 	_geofence(this),
 	_gf_breach_avoidance(this),
-	_mission(this),
-	_loiter(this),
-	_takeoff(this),
-	_land(this),
-	_precland(this),
-	_rtl(this),
-	_engineFailure(this),
-	_gpsFailure(this),
-	_follow_target(this)
+	_navigator_core(),
+	_mission(this, _navigator_core),
+	_loiter(this, _navigator_core),
+	_takeoff(this, _navigator_core),
+	_land(this, _navigator_core),
+	_precland(this, _navigator_core),
+	_rtl(this, _navigator_core),
+	_engineFailure(this, _navigator_core),
+	_gpsFailure(this, _navigator_core),
+	_follow_target(this, _navigator_core)
 {
 	/* Create a list of our possible navigation types */
 	_navigation_mode_array[0] = &_mission;
@@ -177,7 +178,9 @@ Navigator::run()
 		perf_begin(_loop_perf);
 
 		orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
+		_navigator_core.updateLocalPosition(_local_pos);
 		orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vstatus);
+		_navigator_core.updateVehicleStatus(_vstatus);
 
 		if (fds[2].revents & POLLIN) {
 			// copy mission to clear any update
@@ -197,6 +200,7 @@ Navigator::run()
 		/* global position updated */
 		if (_global_pos_sub.updated()) {
 			_global_pos_sub.copy(&_global_pos);
+			_navigator_core.updateGlobalPosition(_global_pos);
 
 			if (_geofence.getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
 				have_geofence_position_data = true;
@@ -214,8 +218,10 @@ Navigator::run()
 		}
 
 		_land_detected_sub.update(&_land_detected);
+		_navigator_core.updateLandedState(_land_detected);
 		_position_controller_status_sub.update();
 		_home_pos_sub.update(&_home_pos);
+		_navigator_core.updateHomePosition(_home_pos);
 
 		while (_vehicle_command_sub.updated()) {
 			const unsigned last_generation = _vehicle_command_sub.get_last_generation();
@@ -254,7 +260,7 @@ Navigator::run()
 						}
 
 						reposition_valid = _geofence.check(test_reposition_validity, _gps_pos, _home_pos,
-										   home_position_valid());
+										   _navigator_core.isHomeValid());
 					}
 				}
 
@@ -268,7 +274,7 @@ Navigator::run()
 					rep->previous.lon = get_global_position()->lon;
 					rep->previous.alt = get_global_position()->alt;
 
-					rep->current.loiter_radius = get_loiter_radius();
+					rep->current.loiter_radius = _navigator_core.getLoiterRadiusMeter();
 					rep->current.loiter_direction = 1;
 					rep->current.type = position_setpoint_s::SETPOINT_TYPE_LOITER;
 
@@ -281,7 +287,7 @@ Navigator::run()
 					}
 
 					rep->current.cruising_throttle = get_cruising_throttle();
-					rep->current.acceptance_radius = get_acceptance_radius();
+					rep->current.acceptance_radius = _navigator_core.getHorAcceptanceRadiusMeter();
 
 					// Go on and check which changes had been requested
 					if (PX4_ISFINITE(cmd.param4)) {
@@ -351,11 +357,11 @@ Navigator::run()
 				rep->previous.lon = get_global_position()->lon;
 				rep->previous.alt = get_global_position()->alt;
 
-				rep->current.loiter_radius = get_loiter_radius();
+				rep->current.loiter_radius = _navigator_core.getLoiterRadiusMeter();
 				rep->current.loiter_direction = 1;
 				rep->current.type = position_setpoint_s::SETPOINT_TYPE_TAKEOFF;
 
-				if (home_position_valid()) {
+				if (_navigator_core.isHomeValid()) {
 					rep->current.yaw = cmd.param4;
 
 					rep->previous.valid = true;
@@ -721,7 +727,7 @@ void Navigator::geofence_breach_check(bool &have_geofence_position_data)
 			vertical_test_point_distance = _gf_breach_avoidance.computeVerticalBrakingDistanceMultirotor();
 
 		} else {
-			test_point_distance = 2.0f * get_loiter_radius();
+			test_point_distance = 2.0f * _navigator_core.getLoiterRadiusMeter();
 			vertical_test_point_distance = 5.0f;
 
 			if (hrt_absolute_time() - pos_ctrl_status.timestamp < 100000 && PX4_ISFINITE(pos_ctrl_status.nav_bearing)) {
@@ -739,7 +745,7 @@ void Navigator::geofence_breach_check(bool &have_geofence_position_data)
 		_gf_breach_avoidance.setMaxHorDistHome(_geofence.getMaxHorDistanceHome());
 		_gf_breach_avoidance.setMaxVerDistHome(_geofence.getMaxVerDistanceHome());
 
-		if (home_position_valid()) {
+		if (_navigator_core.isHomeValid()) {
 			_gf_breach_avoidance.setHomePosition(_home_pos.lat, _home_pos.lon, _home_pos.alt);
 		}
 
@@ -802,12 +808,12 @@ void Navigator::geofence_breach_check(bool &have_geofence_position_data)
 					rep->current.lon = lointer_center_lat_lon(1);
 					rep->current.alt = loiter_altitude_amsl;
 					rep->current.valid = true;
-					rep->current.loiter_radius = get_loiter_radius();
+					rep->current.loiter_radius = _navigator_core.getLoiterRadiusMeter();
 					rep->current.alt_valid = true;
 					rep->current.type = position_setpoint_s::SETPOINT_TYPE_LOITER;
 					rep->current.loiter_direction = 1;
 					rep->current.cruising_throttle = get_cruising_throttle();
-					rep->current.acceptance_radius = get_acceptance_radius();
+					rep->current.acceptance_radius = _navigator_core.getHorAcceptanceRadiusMeter();
 					rep->current.cruising_speed = get_cruising_speed();
 
 				}
@@ -872,36 +878,13 @@ Navigator::publish_position_setpoint_triplet()
 	_pos_sp_triplet_updated = false;
 }
 
-float
-Navigator::get_default_acceptance_radius()
-{
-	return _param_nav_acc_rad.get();
-}
+// float
+// Navigator::get_default_acceptance_radius()
+// {
+// 	return _navigator_core.getDefaultHorAcceptanceRadiusMeter();
+// }
 
-float
-Navigator::get_default_altitude_acceptance_radius()
-{
-	if (get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
-		return _param_nav_fw_alt_rad.get();
-
-	} else if (get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROVER) {
-		return INFINITY;
-
-	} else {
-		float alt_acceptance_radius = _param_nav_mc_alt_rad.get();
-
-		const position_controller_status_s &pos_ctrl_status = _position_controller_status_sub.get();
-
-		if ((pos_ctrl_status.timestamp > _pos_sp_triplet.timestamp)
-		    && pos_ctrl_status.altitude_acceptance > alt_acceptance_radius) {
-			alt_acceptance_radius = pos_ctrl_status.altitude_acceptance;
-		}
-
-		return alt_acceptance_radius;
-	}
-}
-
-float
+/* float
 Navigator::get_altitude_acceptance_radius()
 {
 	if (get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
@@ -914,7 +897,7 @@ Navigator::get_altitude_acceptance_radius()
 	}
 
 	return get_default_altitude_acceptance_radius();
-}
+} */
 
 float
 Navigator::get_cruising_speed()
@@ -973,8 +956,8 @@ Navigator::reset_position_setpoint(position_setpoint_s &sp)
 	sp.timestamp = hrt_absolute_time();
 	sp.lat = static_cast<double>(NAN);
 	sp.lon = static_cast<double>(NAN);;
-	sp.loiter_radius = get_loiter_radius();
-	sp.acceptance_radius = get_default_acceptance_radius();
+	sp.loiter_radius = _navigator_core.getLoiterRadiusMeter();
+	sp.acceptance_radius = _navigator_core.getDefaultHorAcceptanceRadiusMeter();
 	sp.cruising_speed = get_cruising_speed();
 	sp.cruising_throttle = get_cruising_throttle();
 	sp.valid = false;
@@ -994,7 +977,7 @@ Navigator::get_cruising_throttle()
 	}
 }
 
-float
+/* float
 Navigator::get_acceptance_radius()
 {
 	float acceptance_radius = get_default_acceptance_radius(); // the value specified in the parameter NAV_ACC_RAD
@@ -1008,7 +991,7 @@ Navigator::get_acceptance_radius()
 	}
 
 	return acceptance_radius;
-}
+} */
 
 float
 Navigator::get_yaw_acceptance(float mission_item_yaw)
@@ -1270,13 +1253,13 @@ Navigator::abort_landing()
 	return should_abort;
 }
 
-bool
+/* bool
 Navigator::force_vtol()
 {
 	return _vstatus.is_vtol &&
 	       (_vstatus.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING || _vstatus.in_transition_to_fw)
 	       && _param_nav_force_vt.get();
-}
+} */
 
 int Navigator::custom_command(int argc, char *argv[])
 {

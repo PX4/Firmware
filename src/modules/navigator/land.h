@@ -46,7 +46,7 @@
 class Land : public MissionBlock
 {
 public:
-	Land(Navigator *navigator);
+	Land(Navigator *navigator, NavigatorCore &navigator_core);
 	~Land() = default;
 
 	void on_activation() override;

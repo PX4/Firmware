@@ -224,13 +224,13 @@ bool Geofence::isCloserThanMaxDistToHome(double lat, double lon, float altitude)
 {
 	bool inside_fence = true;
 
-	if (isHomeRequired() && _navigator->home_position_valid()) {
+	if (isHomeRequired() && _navigator->getCore().isHomeValid()) {
 
 		const float max_horizontal_distance = _param_gf_max_hor_dist.get();
 
-		const double home_lat = _navigator->get_home_position()->lat;
-		const double home_lon = _navigator->get_home_position()->lon;
-		const float home_alt = _navigator->get_home_position()->alt;
+		const double home_lat = _navigator->getCore().getHomeLatRad();
+		const double home_lon = _navigator->getCore().getHomeLonRad();
+		const float home_alt = _navigator->getCore().getHomeAltAMSLMeter();
 
 		float dist_xy = -1.0f;
 		float dist_z = -1.0f;
@@ -255,10 +255,10 @@ bool Geofence::isBelowMaxAltitude(float altitude)
 {
 	bool inside_fence = true;
 
-	if (isHomeRequired() && _navigator->home_position_valid()) {
+	if (isHomeRequired() && _navigator->getCore().isHomeValid()) {
 
 		const float max_vertical_distance = _param_gf_max_ver_dist.get();
-		const float home_alt = _navigator->get_home_position()->alt;
+		const float home_alt = _navigator->getCore().getHomeAltAMSLMeter();
 
 		float dist_z = altitude - home_alt;
 

@@ -72,7 +72,7 @@ public:
 		RTL_DESTINATION_SAFE_POINT,
 	};
 
-	RTL(Navigator *navigator);
+	RTL(Navigator *navigator, NavigatorCore &navigator_core);
 
 	~RTL() = default;
 
