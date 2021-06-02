@@ -34,6 +34,8 @@
 px4_add_git_submodule(TARGET git_ecl PATH "ecl")
 px4_add_git_submodule(TARGET git_matrix PATH "matrix")
 px4_add_git_submodule(TARGET git_monocypher PATH "crypto/monocypher")
+px4_add_git_submodule(TARGET git_libtomcrypt PATH "crypto/libtomcrypt")
+px4_add_git_submodule(TARGET git_libtommath PATH "crypto/libtommath")
 
 add_subdirectory(airspeed)
 add_subdirectory(airspeed_validator)

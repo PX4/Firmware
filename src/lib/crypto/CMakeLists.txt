@@ -43,3 +43,52 @@ target_include_directories(monocypher
 
 # There is a one shadow warning in monocypher 3.1.2, ignore it
 target_compile_options(monocypher PRIVATE -Wno-shadow)
+
+
+
+file(GLOB TOMMATH_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "libtommath/*.c")
+px4_add_library(libtommath
+  ${TOMMATH_SRC}
+)
+
+
+file(GLOB_RECURSE PK_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "libtomcrypt/src/pk/*.c")
+file(GLOB_RECURSE MATH_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "libtomcrypt/src/math/*.c")
+
+px4_add_library(libtomcrypt
+libtomcrypt_wrappers.c
+	${PK_SRC}
+	${MATH_SRC}
+	libtomcrypt/src/hashes/sha2/sha256.c
+	libtomcrypt/src/hashes/helper/hash_memory.c
+	libtomcrypt/src/prngs/sprng.c
+	libtomcrypt/src/misc/crypt/crypt_ltc_mp_descriptor.c
+	libtomcrypt/src/misc/crypt/crypt_hash_is_valid.c
+	libtomcrypt/src/misc/crypt/crypt_prng_is_valid.c
+	libtomcrypt/src/misc/zeromem.c
+)
+
+target_include_directories(libtomcrypt
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/libtommath
+        )
+
+target_include_directories(libtomcrypt
+	PUBLIC
+		${CMAKE_CURRENT_SOURCE_DIR}/libtomcrypt/src/headers
+)
+
+# libtomcrypt defines:
+# ARGTYPE=3: No argument checking
+add_definitions(-DARGTYPE=3 -DLTC_EASY -DLTC_NO_TEST -DLTM_DESC)
+
+# link to libtommath and os provided random library
+target_link_libraries(libtomcrypt
+	PRIVATE
+		libtommath
+		px4_random
+)
+
+# Fix for erroneous warning on some compilers:
+# "der_encode_asn1_identifier.c:39:18: error: comparison is always false due to limited range of data type"
+target_compile_options(libtomcrypt PRIVATE -Wno-type-limits)
