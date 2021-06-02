@@ -404,7 +404,6 @@ FixedwingPositionControl::tecs_status_publish()
 	t.total_energy_error = _tecs.STE_error();
 	t.total_energy_rate_error = _tecs.STE_rate_error();
 
-	t.energy_distribution_error = _tecs.SEB_error();
 	t.energy_distribution_rate_error = _tecs.SEB_rate_error();
 
 	t.total_energy = _tecs.STE();

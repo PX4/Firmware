@@ -157,7 +157,6 @@ public:
 	float STE_error() { return _STE_error; }
 	float STE_rate_error() { return _STE_rate_error; }
 
-	float SEB_error() { return _SEB_error; }
 	float SEB_rate_error() { return _SEB_rate_error; }
 
 	float throttle_integ_state() { return _throttle_integ_state; }
@@ -287,7 +286,6 @@ private:
 	// specific energy error quantities
 	float _STE_error{0.0f};						///< specific total energy error (m**2/sec**2)
 	float _STE_rate_error{0.0f};					///< specific total energy rate error (m**2/sec**3)
-	float _SEB_error{0.0f};						///< specific energy balance error (m**2/sec**2)
 	float _SEB_rate_error{0.0f};					///< specific energy balance rate error (m**2/sec**3)
 
 	// speed height weighting
