@@ -38,6 +38,7 @@
 #include <pthread.h>
 #include <drivers/drv_hrt.h>
 #include <perf/perf_counter.h>
+#include <px4_platform_common/crypto.h>
 
 namespace px4
 {
@@ -182,7 +183,6 @@ private:
 		size_t count() const { return _count; }
 
 		bool _should_run = false;
-
 	private:
 		const size_t _buffer_size;
 		int	_fd = -1;
@@ -201,6 +201,11 @@ private:
 	pthread_mutex_t		_mtx;
 	pthread_cond_t		_cv;
 	pthread_t _thread = 0;
+#if defined(PX4_CRYPTO)
+	bool init_logfile_encryption(const char *filename);
+	PX4Crypto *_crypto;
+#endif
+
 };
 
 }

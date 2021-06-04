@@ -48,3 +48,7 @@ px4_add_module(
 	DEPENDS
 		version
 	)
+
+if (DEFINED PX4_CRYPTO)
+	add_definitions(-DPX4_CRYPTO)
+endif()

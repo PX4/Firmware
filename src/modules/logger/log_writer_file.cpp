@@ -40,9 +40,14 @@
 
 #include <mathlib/mathlib.h>
 #include <px4_platform_common/posix.h>
+#include <px4_platform_common/crypto.h>
 #ifdef __PX4_NUTTX
 #include <systemlib/hardfault_log.h>
 #endif /* __PX4_NUTTX */
+
+// TODO: how to define the key slots/product?
+// this depends on the keystore as well
+#define LOGGER_CRYPTO_KEY_IDX 2
 
 using namespace time_literals;
 
@@ -81,6 +86,101 @@ LogWriterFile::~LogWriterFile()
 	pthread_cond_destroy(&_cv);
 }
 
+#if defined(PX4_CRYPTO)
+bool LogWriterFile::init_logfile_encryption(const char *filename)
+{
+	// Generate a crypto key and store it to the keystore.
+
+	// TODO: use parameter for alogrithm? Or product specific macro?
+	// TODO: how to define key index to the keystore? Product macro? parameter?
+	if (!_crypto->generate_key(LOGGER_CRYPTO_KEY_IDX, false)) {
+		PX4_ERR("Can't generate crypto key");
+		return false;
+	}
+
+	// Get the generated key, encrypted with RSA_OAEP. Open another temporary session for this.
+	PX4Crypto *rsa_crypto = PX4Crypto::px4_crypto_open(CRYPTO_RSA_OAEP);
+
+	if (rsa_crypto == nullptr) {
+		return false;
+	}
+
+	// TODO: define the public key used for key exchange. Now hardcoded to 1
+
+	/* Get the size of an encrypted key and nonce */
+
+	size_t key_size;
+	size_t nonce_size;
+
+	if (!rsa_crypto->get_encrypted_key(LOGGER_CRYPTO_KEY_IDX,
+					   NULL,
+					   &key_size,
+					   1) ||
+	    !_crypto->get_nonce(NULL, &nonce_size) ||
+	    key_size == 0) {
+		PX4Crypto::px4_crypto_close(rsa_crypto);
+		return false;
+	}
+
+	/* Allocate space and get key + nonce */
+	uint8_t *key = (uint8_t *)malloc(key_size + nonce_size);
+
+	if (!key ||
+	    !rsa_crypto->get_encrypted_key(
+		    LOGGER_CRYPTO_KEY_IDX,
+		    key,
+		    &key_size,
+		    1) ||
+	    !_crypto->get_nonce(
+		    key + key_size, &nonce_size)) {
+		PX4_ERR("Can't get & encrypt the key");
+		free(key);
+		PX4Crypto::px4_crypto_close(rsa_crypto);
+		return false;
+	}
+
+	PX4Crypto::px4_crypto_close(rsa_crypto);
+
+	// Write the encrypted key to the disk
+
+	size_t fnlen = strlen(filename);
+	char *tmp_buf = (char *)malloc(fnlen + 1);
+
+	if (!tmp_buf) {
+		PX4_ERR("out of memory");
+		return false;
+	}
+
+	memcpy(tmp_buf, filename, fnlen + 1);
+	tmp_buf[fnlen - 1] = 'k';
+
+	int key_fd = ::open((const char *)tmp_buf, O_CREAT | O_WRONLY, PX4_O_MODE_666);
+
+	if (key_fd < 0) {
+		PX4_ERR("Can't open key file %s, errno: %d", tmp_buf, errno);
+		free(tmp_buf);
+		return false;
+	}
+
+	free(tmp_buf);
+
+	size_t written = ::write(key_fd, key, key_size + nonce_size);
+
+	// Free temporary memory allocations
+	free(key);
+	::close(key_fd);
+
+	// Check that writing to the disk succeeded
+	if (written != key_size + nonce_size) {
+		PX4_ERR("Writing the encryption key to disk fail");
+		return false;
+	}
+
+	return true;
+}
+#endif // PX4_CRYPTO
+
+
 void LogWriterFile::start_log(LogType type, const char *filename)
 {
 	// At this point we don't expect the file to be open, but it can happen for very fast consecutive stop & start
@@ -106,6 +206,26 @@ void LogWriterFile::start_log(LogType type, const char *filename)
 			PX4_ERR("Failed to register ULog file to the hardfault handler (%i)", ret);
 		}
 	}
+
+#if PX4_CRYPTO
+
+	// open a crypto session // TODO: use a parameter for algorithm
+	_crypto = PX4Crypto::px4_crypto_open(CRYPTO_XCHACHA20);
+
+	if (_crypto == nullptr) {
+		return;
+	}
+
+	// TODO: use parameter to check if logfile crypto is enabled
+	bool enc_init = init_logfile_encryption(filename);
+
+	if (!enc_init) {
+		PX4_ERR("Failed to start encrypted logging");
+		PX4Crypto::px4_crypto_close(_crypto);
+		return;
+	}
+
+#endif
 
 	if (_buffers[(int)type].start_log(filename)) {
 		PX4_INFO("Opened %s log file: %s", log_type_str(type), filename);
@@ -183,7 +303,6 @@ void LogWriterFile::thread_stop()
 	if (ret) {
 		PX4_WARN("join failed: %d", ret);
 	}
-
 }
 
 void *LogWriterFile::run_helper(void *context)
@@ -247,10 +366,34 @@ void LogWriterFile::run()
 				LogFileBuffer &buffer = _buffers[i];
 				size_t available = buffer.get_read_ptr(&read_ptr, &is_part);
 
+#if defined(PX4_CRYPTO)
+				// Split into 64-byte chunks, so it is good for encrypting in pieces
+				available = (available / 64) * 64;
+#endif
+
 				/* if sufficient data available or partial read or terminating, write data */
 				if (available >= min_available[i] || is_part || (!buffer._should_run && available > 0)) {
 					pthread_mutex_unlock(&_mtx);
 
+#if defined(PX4_CRYPTO)
+					/* This makes the following assumtions:
+					 * - the chipher size is always the
+					     same as the input size
+					 * - the encryption can be done in
+					     place. This is always taken care
+					     by the px4 crypto interfaces
+					 */
+
+					// TODO: use parameter to check if logfile crypto is enabled
+					size_t out = available;
+					_crypto->encrypt_data(
+						LOGGER_CRYPTO_KEY_IDX, // key
+						(uint8_t *)read_ptr,
+						available,
+						(uint8_t *)read_ptr,
+						&out);
+#endif
+					// TODO: check that available == out? it would be a fatal error, logfile can't be written.
 					written = buffer.write_to_file(read_ptr, available, call_fsync);
 
 					/* buffer.mark_read() requires _mtx to be locked */
@@ -289,6 +432,12 @@ void LogWriterFile::run()
 
 			if (_buffers[0].fd() < 0 && _buffers[1].fd() < 0) {
 				// stop when both files are closed
+#if defined(PX4_CRYPTO)
+				/* close the crypto session */
+
+				PX4Crypto::px4_crypto_close(_crypto);
+#endif
+
 				break;
 			}
 
@@ -424,6 +573,7 @@ void LogWriterFile::LogFileBuffer::write_no_check(void *ptr, size_t size)
 
 	// now: n = bytes already written
 	size_t p = size - n;	// number of bytes to write
+
 	memcpy(&(_buffer[_head]), &(buffer_c[n]), p);
 	_head = (_head + p) % _buffer_size;
 	_count += size;

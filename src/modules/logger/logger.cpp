@@ -1166,6 +1166,12 @@ int Logger::get_log_file_name(LogType type, char *file_name, size_t file_name_si
 		replay_suffix = "_replayed";
 	}
 
+	const char *crypto_suffix = "";
+#if defined(PX4_CRYPTO)
+	// TODO: use parameter to check if logfile crypto is enabled
+	crypto_suffix = "c";
+#endif
+
 	char *log_file_name = _file_name[(int)type].log_file_name;
 
 	if (time_ok) {
@@ -1177,7 +1183,8 @@ int Logger::get_log_file_name(LogType type, char *file_name, size_t file_name_si
 
 		char log_file_name_time[16] = "";
 		strftime(log_file_name_time, sizeof(log_file_name_time), "%H_%M_%S", &tt);
-		snprintf(log_file_name, sizeof(LogFileName::log_file_name), "%s%s.ulg", log_file_name_time, replay_suffix);
+		snprintf(log_file_name, sizeof(LogFileName::log_file_name), "%s%s.ulg%s", log_file_name_time, replay_suffix,
+			 crypto_suffix);
 		snprintf(file_name + n, file_name_size - n, "/%s", log_file_name);
 
 	} else {
