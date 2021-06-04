@@ -44,6 +44,10 @@
 
 #include <fcntl.h>
 
+#if defined(PX4_CRYPTO)
+#include <px4_platform_common/crypto.h>
+#endif
+
 int px4_platform_console_init(void)
 {
 #if !defined(CONFIG_DEV_CONSOLE) && defined(CONFIG_DEV_NULL)
@@ -107,6 +111,10 @@ int px4_platform_init(void)
 		// keep stderr(2) untouched: the buffered console will use it to output to the original console
 		close(fd_buf);
 	}
+
+#if defined(PX4_CRYPTO)
+	PX4Crypto::px4_crypto_init();
+#endif
 
 	hrt_init();
 
