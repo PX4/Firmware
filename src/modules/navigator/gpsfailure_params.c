@@ -54,9 +54,9 @@
 PARAM_DEFINE_FLOAT(NAV_GPSF_LT, 0.0f);
 
 /**
- * Fixed bank angle
+ * GPS failure fixed roll angle
  *
- * Roll in degrees during the loiter
+ * Roll in degrees during the loiter after the vehicle has lost GPS in an auto mode (e.g. mission or loiter)
  *
  * @unit deg
  * @min 0.0

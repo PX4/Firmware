@@ -261,6 +261,8 @@ private:
 		FW_POSCTRL_MODE_AUTO,
 		FW_POSCTRL_MODE_POSITION,
 		FW_POSCTRL_MODE_ALTITUDE,
+		FW_POSCTRL_MODE_CLIMBRATE,
+		FW_POSCTRL_MODE_AUTO_ALTITUDE,
 		FW_POSCTRL_MODE_OTHER
 	} _control_mode_current{FW_POSCTRL_MODE_OTHER};		///< used to check the mode in the last control loop iteration. Use to check if the last iteration was in the same mode.
 
@@ -346,7 +348,7 @@ private:
 					float pitch_min_rad, float pitch_max_rad,
 					float throttle_min, float throttle_max, float throttle_cruise,
 					bool climbout_mode, float climbout_pitch_min_rad,
-					uint8_t mode = tecs_status_s::TECS_MODE_NORMAL);
+					uint8_t mode = tecs_status_s::TECS_MODE_NORMAL, float hgt_rate_sp = NAN);
 
 	DEFINE_PARAMETERS(
 
@@ -416,7 +418,9 @@ private:
 
 		(ParamFloat<px4::params::NAV_LOITER_RAD>) _param_nav_loiter_rad,
 
-		(ParamFloat<px4::params::FW_TKO_PITCH_MIN>) _takeoff_pitch_min
+		(ParamFloat<px4::params::FW_TKO_PITCH_MIN>) _takeoff_pitch_min,
+
+		(ParamFloat<px4::params::NAV_GPSF_R>) _param_nav_gpsf_r
 
 	)
 

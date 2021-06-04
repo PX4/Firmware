@@ -642,6 +642,8 @@ Navigator::run()
 		case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
 		case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 		case vehicle_status_s::NAVIGATION_STATE_STAB:
+		case vehicle_status_s::NAVIGATION_STATE_FIXED_BANK_LOITER:
+
 		default:
 			navigation_mode_new = nullptr;
 			_can_loiter_at_sp = false;
@@ -651,6 +653,27 @@ Navigator::run()
 		// Do not execute any state machine while we are disarmed
 		if (_vstatus.arming_state != vehicle_status_s::ARMING_STATE_ARMED) {
 			navigation_mode_new = nullptr;
+		}
+
+		if (_vstatus.nav_state != _previous_nav_state) {
+			if (_vstatus.nav_state == vehicle_status_s::NAVIGATION_STATE_FIXED_BANK_LOITER) {
+				PX4_WARN("GPS invalid, fixed-bank loitering for %.0f s, then descend if not recovered",
+					 (double)_param_nav_gpsf_lt.get());
+
+			} else if (_vstatus.nav_state == vehicle_status_s::NAVIGATION_STATE_DESCEND) {
+				// if vehicle is a VTOL in fixed-wing mode, switch to hover for the DESCEND mode
+				if (_vstatus.is_vtol && _vstatus.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING &&
+				    force_vtol()) {
+					PX4_WARN("GPS not recovered, transition to hover mode and descend.");
+					vehicle_command_s vcmd = {};
+					vcmd.command = NAV_CMD_DO_VTOL_TRANSITION;
+					vcmd.param1 = vtol_vehicle_status_s::VEHICLE_VTOL_STATE_MC;
+					publish_vehicle_cmd(&vcmd);
+
+				} else if (_vstatus.vehicle_type == vehicle_status_s::VEHICLE_TYPE_FIXED_WING) {
+					PX4_WARN("GPS not recovered, start descending.");
+				}
+			}
 		}
 
 		// update the vehicle status

@@ -84,7 +84,7 @@ public:
 	void update_pitch_throttle(float pitch, float baro_altitude, float hgt_setpoint,
 				   float EAS_setpoint, float equivalent_airspeed, float eas_to_tas, bool climb_out_setpoint, float pitch_min_climbout,
 				   float throttle_min, float throttle_setpoint_max, float throttle_cruise,
-				   float pitch_limit_min, float pitch_limit_max);
+				   float pitch_limit_min, float pitch_limit_max, float hgt_rate_sp = NAN);
 
 	float get_throttle_setpoint() { return _last_throttle_setpoint; }
 	float get_pitch_setpoint() { return _last_pitch_setpoint; }
@@ -321,6 +321,11 @@ private:
 	 * Update the desired height
 	 */
 	void _update_height_setpoint(float desired, float state);
+
+	/**
+	 * Update the desired height rate setpoint
+	 */
+	void _update_height_rate_setpoint(float hgt_rate_sp);
 
 	/**
 	 * Detect if the system is not capable of maintaining airspeed

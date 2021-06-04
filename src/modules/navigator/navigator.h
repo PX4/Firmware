@@ -326,7 +326,8 @@ private:
 		(ParamFloat<px4::params::MIS_TAKEOFF_ALT>) _param_mis_takeoff_alt,
 		(ParamBool<px4::params::MIS_TAKEOFF_REQ>) _param_mis_takeoff_req,
 		(ParamFloat<px4::params::MIS_YAW_TMT>) _param_mis_yaw_tmt,
-		(ParamFloat<px4::params::MIS_YAW_ERR>) _param_mis_yaw_err
+		(ParamFloat<px4::params::MIS_YAW_ERR>) _param_mis_yaw_err,
+		(ParamFloat<px4::params::NAV_GPSF_LT>) _param_nav_gpsf_lt
 	)
 
 	int		_local_pos_sub{-1};
