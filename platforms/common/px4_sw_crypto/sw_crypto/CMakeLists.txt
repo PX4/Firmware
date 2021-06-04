@@ -41,8 +41,9 @@ target_link_libraries(crypto_backend
 
 target_link_libraries(crypto_backend
 	PRIVATE
+		px4_random
 		monocypher
+		libtomcrypt
 )
 
 target_include_directories(crypto_backend PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
