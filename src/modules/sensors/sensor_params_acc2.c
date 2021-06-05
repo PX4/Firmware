@@ -166,3 +166,14 @@ PARAM_DEFINE_FLOAT(CAL_ACC2_YSCALE, 1.0f);
  * @volatile
  */
 PARAM_DEFINE_FLOAT(CAL_ACC2_ZSCALE, 1.0f);
+
+/**
+ * Accelerometer calibration temperature
+ *
+ * Temperature during last calibration.
+ *
+ * @category system
+ * @group Sensor Calibration
+ * @volatile
+ */
+PARAM_DEFINE_FLOAT(CAL_ACC2_TEMP, NAN);

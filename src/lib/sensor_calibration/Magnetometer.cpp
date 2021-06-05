@@ -156,7 +156,7 @@ void Magnetometer::ParametersUpdate()
 	if (_calibration_index >= 0) {
 
 		// CAL_MAGx_ROT
-		int32_t rotation_value = GetCalibrationParam(SensorString(), "ROT", _calibration_index);
+		int32_t rotation_value = GetCalibrationParamInt32(SensorString(), "ROT", _calibration_index);
 
 		if (_external) {
 			if ((rotation_value >= ROTATION_MAX) || (rotation_value < 0)) {
@@ -181,7 +181,7 @@ void Magnetometer::ParametersUpdate()
 		}
 
 		// CAL_MAGx_PRIO
-		_priority = GetCalibrationParam(SensorString(), "PRIO", _calibration_index);
+		_priority = GetCalibrationParamInt32(SensorString(), "PRIO", _calibration_index);
 
 		if ((_priority < 0) || (_priority > 100)) {
 			// reset to default, -1 is the uninitialized parameter value
@@ -195,6 +195,9 @@ void Magnetometer::ParametersUpdate()
 			SetCalibrationParam(SensorString(), "PRIO", _calibration_index, new_priority);
 			_priority = new_priority;
 		}
+
+		// CAL_MAGx_TEMP
+		set_temperature(GetCalibrationParamFloat(SensorString(), "TEMP", _calibration_index));
 
 		// CAL_MAGx_OFF{X,Y,Z}
 		set_offset(GetCalibrationParamsVector3f(SensorString(), "OFF", _calibration_index));
@@ -260,6 +263,8 @@ bool Magnetometer::ParametersSave()
 			success &= SetCalibrationParam(SensorString(), "ROT", _calibration_index, -1);
 		}
 
+		success &= SetCalibrationParam(SensorString(), "TEMP", _calibration_index, _temperature);
+
 		return success;
 	}
 
@@ -269,17 +274,19 @@ bool Magnetometer::ParametersSave()
 void Magnetometer::PrintStatus()
 {
 	if (external()) {
-		PX4_INFO("%s %d EN: %d, offset: [% 05.3f % 05.3f % 05.3f], scale: [% 05.3f % 05.3f % 05.3f], External ROT: %d",
+		PX4_INFO("%s %d EN: %d, offset: [% 05.3f % 05.3f % 05.3f], scale: [% 05.3f % 05.3f % 05.3f], %.1f degC, External ROT: %d",
 			 SensorString(), device_id(), enabled(),
 			 (double)_offset(0), (double)_offset(1), (double)_offset(2),
 			 (double)_scale(0, 0), (double)_scale(1, 1), (double)_scale(2, 2),
+			 (double)_temperature,
 			 rotation_enum());
 
 	} else {
-		PX4_INFO("%s %d EN: %d, offset: [% 05.3f % 05.3f % 05.3f], scale: [% 05.3f % 05.3f % 05.3f], Internal",
+		PX4_INFO("%s %d EN: %d, offset: [% 05.3f % 05.3f % 05.3f], scale: [% 05.3f % 05.3f % 05.3f], %.1f degC, Internal",
 			 SensorString(), device_id(), enabled(),
 			 (double)_offset(0), (double)_offset(1), (double)_offset(2),
-			 (double)_scale(0, 0), (double)_scale(1, 1), (double)_scale(2, 2));
+			 (double)_scale(0, 0), (double)_scale(1, 1), (double)_scale(2, 2),
+			 (double)_temperature);
 	}
 
 #if defined(DEBUG_BUILD)

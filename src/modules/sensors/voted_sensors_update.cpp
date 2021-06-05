@@ -96,7 +96,7 @@ void VotedSensorsUpdate::parametersUpdate()
 				// found matching CAL_ACCx_PRIO
 				int32_t accel_priority_old = _accel.priority_configured[uorb_index];
 
-				_accel.priority_configured[uorb_index] = calibration::GetCalibrationParam("ACC", "PRIO", accel_cal_index);
+				_accel.priority_configured[uorb_index] = calibration::GetCalibrationParamInt32("ACC", "PRIO", accel_cal_index);
 
 				if (accel_priority_old != _accel.priority_configured[uorb_index]) {
 					if (_accel.priority_configured[uorb_index] == 0) {
@@ -118,7 +118,7 @@ void VotedSensorsUpdate::parametersUpdate()
 				// found matching CAL_GYROx_PRIO
 				int32_t gyro_priority_old = _gyro.priority_configured[uorb_index];
 
-				_gyro.priority_configured[uorb_index] = calibration::GetCalibrationParam("GYRO", "PRIO", gyro_cal_index);
+				_gyro.priority_configured[uorb_index] = calibration::GetCalibrationParamInt32("GYRO", "PRIO", gyro_cal_index);
 
 				if (gyro_priority_old != _gyro.priority_configured[uorb_index]) {
 					if (_gyro.priority_configured[uorb_index] == 0) {

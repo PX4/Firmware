@@ -64,6 +64,7 @@ public:
 	void set_external(bool external = true);
 	bool set_offset(const matrix::Vector3f &offset);
 	void set_rotation(Rotation rotation);
+	void set_temperature(float temperature) { _temperature = temperature; };
 
 	uint8_t calibration_count() const { return _calibration_count; }
 	uint32_t device_id() const { return _device_id; }
@@ -102,6 +103,7 @@ private:
 	matrix::Dcmf _rotation;
 	matrix::Vector3f _offset;
 	matrix::Vector3f _thermal_offset;
+	float _temperature{NAN};
 
 	int8_t _calibration_index{-1};
 	uint32_t _device_id{0};

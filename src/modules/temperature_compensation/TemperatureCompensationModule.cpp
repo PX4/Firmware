@@ -47,6 +47,11 @@ TemperatureCompensationModule::TemperatureCompensationModule() :
 	ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default),
 	_loop_perf(perf_alloc(PC_ELAPSED, "temperature_compensation"))
 {
+	for (int i = 0; i < SENSOR_COUNT_MAX; i++) {
+		_corrections.accel_temperature[i] = NAN;
+		_corrections.gyro_temperature[i] = NAN;
+		_corrections.baro_temperature[i] = NAN;
+	}
 }
 
 TemperatureCompensationModule::~TemperatureCompensationModule()
@@ -125,6 +130,7 @@ void TemperatureCompensationModule::accelPoll()
 				if (_temperature_compensation.update_offsets_accel(uorb_index, report.temperature, offsets[uorb_index]) == 2) {
 
 					_corrections.accel_device_ids[uorb_index] = report.device_id;
+					_corrections.accel_temperature[uorb_index] = report.temperature;
 					_corrections_changed = true;
 				}
 			}
@@ -147,6 +153,7 @@ void TemperatureCompensationModule::gyroPoll()
 				if (_temperature_compensation.update_offsets_gyro(uorb_index, report.temperature, offsets[uorb_index]) == 2) {
 
 					_corrections.gyro_device_ids[uorb_index] = report.device_id;
+					_corrections.gyro_temperature[uorb_index] = report.temperature;
 					_corrections_changed = true;
 				}
 			}
@@ -169,6 +176,7 @@ void TemperatureCompensationModule::baroPoll()
 				if (_temperature_compensation.update_offsets_baro(uorb_index, report.temperature, offsets[uorb_index]) == 2) {
 
 					_corrections.baro_device_ids[uorb_index] = report.device_id;
+					_corrections.baro_temperature[uorb_index] = report.temperature;
 					_corrections_changed = true;
 				}
 			}

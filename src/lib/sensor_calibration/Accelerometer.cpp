@@ -171,7 +171,7 @@ void Accelerometer::ParametersUpdate()
 	if (_calibration_index >= 0) {
 
 		// CAL_ACCx_ROT
-		int32_t rotation_value = GetCalibrationParam(SensorString(), "ROT", _calibration_index);
+		int32_t rotation_value = GetCalibrationParamInt32(SensorString(), "ROT", _calibration_index);
 
 		if (_external) {
 			if ((rotation_value >= ROTATION_MAX) || (rotation_value < 0)) {
@@ -196,7 +196,7 @@ void Accelerometer::ParametersUpdate()
 		}
 
 		// CAL_ACCx_PRIO
-		_priority = GetCalibrationParam(SensorString(), "PRIO", _calibration_index);
+		_priority = GetCalibrationParamInt32(SensorString(), "PRIO", _calibration_index);
 
 		if ((_priority < 0) || (_priority > 100)) {
 			// reset to default, -1 is the uninitialized parameter value
@@ -210,6 +210,9 @@ void Accelerometer::ParametersUpdate()
 			SetCalibrationParam(SensorString(), "PRIO", _calibration_index, new_priority);
 			_priority = new_priority;
 		}
+
+		// CAL_ACCx_TEMP
+		set_temperature(GetCalibrationParamFloat(SensorString(), "TEMP", _calibration_index));
 
 		// CAL_ACCx_OFF{X,Y,Z}
 		set_offset(GetCalibrationParamsVector3f(SensorString(), "OFF", _calibration_index));
@@ -235,6 +238,7 @@ void Accelerometer::Reset()
 	_offset.zero();
 	_scale = Vector3f{1.f, 1.f, 1.f};
 	_thermal_offset.zero();
+	_temperature = NAN;
 
 	_priority = _external ? DEFAULT_EXTERNAL_PRIORITY : DEFAULT_PRIORITY;
 
@@ -260,6 +264,8 @@ bool Accelerometer::ParametersSave()
 			success &= SetCalibrationParam(SensorString(), "ROT", _calibration_index, -1);
 		}
 
+		success &= SetCalibrationParam(SensorString(), "TEMP", _calibration_index, _temperature);
+
 		return success;
 	}
 
@@ -268,8 +274,11 @@ bool Accelerometer::ParametersSave()
 
 void Accelerometer::PrintStatus()
 {
-	PX4_INFO("%s %d EN: %d, offset: [%.4f %.4f %.4f] scale: [%.4f %.4f %.4f]", SensorString(), device_id(), enabled(),
-		 (double)_offset(0), (double)_offset(1), (double)_offset(2), (double)_scale(0), (double)_scale(1), (double)_scale(2));
+	PX4_INFO("%s %d EN: %d, offset: [%.4f %.4f %.4f], scale: [%.4f %.4f %.4f], %.1f degC", SensorString(), device_id(),
+		 enabled(),
+		 (double)_offset(0), (double)_offset(1), (double)_offset(2),
+		 (double)_scale(0), (double)_scale(1), (double)_scale(2),
+		 (double)_temperature);
 
 	if (_thermal_offset.norm() > 0.f) {
 		PX4_INFO("%s %d temperature offset: [%.4f %.4f %.4f]", SensorString(), _device_id,

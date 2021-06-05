@@ -222,6 +222,8 @@ void GyroCalibration::Run()
 				const Vector3f old_offset{_gyro_calibration[gyro].offset()};
 
 				if (_gyro_calibration[gyro].set_offset(_gyro_mean[gyro].mean())) {
+					_gyro_calibration[gyro].set_temperature(_temperature[gyro]);
+
 					calibration_updated = true;
 
 					PX4_INFO("gyro %d (%d) updating calibration, [%.4f, %.4f, %.4f] -> [%.4f, %.4f, %.4f] %.1f°C",
@@ -284,7 +286,7 @@ int GyroCalibration::print_status()
 {
 	for (int gyro = 0; gyro < _sensor_gyro_subs.size(); gyro++) {
 		if (_gyro_calibration[gyro].device_id() != 0) {
-			PX4_INFO_RAW("gyro %d (%d), [%.5f, %.5f, %.5f] var: [%.9f, %.9f, %.9f] %.1f°C (count %d)\n",
+			PX4_INFO_RAW("gyro %d (%d), [%.5f, %.5f, %.5f] var: [%.9f, %.9f, %.9f] %.1f degC (count %d)\n",
 				     gyro, _gyro_calibration[gyro].device_id(),
 				     (double)_gyro_mean[gyro].mean()(0), (double)_gyro_mean[gyro].mean()(1), (double)_gyro_mean[gyro].mean()(2),
 				     (double)_gyro_mean[gyro].variance()(0), (double)_gyro_mean[gyro].variance()(1), (double)_gyro_mean[gyro].variance()(2),
