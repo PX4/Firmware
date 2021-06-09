@@ -73,6 +73,7 @@ size_t keystore_get_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *
 
 /*
  * Store a key persistently into the keystore
+ * handle: a handle to an open keystore
  * idx: key index in keystore
  * key: pointer to the key
  * key_size: size of the key
@@ -104,6 +105,17 @@ crypto_session_handle_t crypto_open(px4_crypto_algorithm_t algorithm);
  */
 
 void crypto_close(crypto_session_handle_t *handle);
+
+/*
+ * Generate a key
+ * handle: Open handle for the crypto session. The key will be generated for
+ *         the crypto algorithm used by this session
+ * idx: The key index, by which the key can be used
+ * persistent: if set to "true", the key will be stored into the keystore
+ */
+bool crypto_generate_key(crypto_session_handle_t handle,
+			 uint8_t idx,
+			 bool persistent);
 
 /*
  * Get a key from keystore, possibly encrypted

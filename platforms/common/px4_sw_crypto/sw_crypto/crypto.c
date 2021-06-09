@@ -42,6 +42,7 @@
 #include <stdbool.h>
 
 #include <px4_platform_common/crypto_backend.h>
+#include <px4_random.h>
 #include <lib/crypto/monocypher/src/optional/monocypher-ed25519.h>
 #include <tomcrypt.h>
 
@@ -277,6 +278,48 @@ bool crypto_encrypt_data(crypto_session_handle_t handle,
 
 	default:
 		break;
+	}
+
+	return ret;
+}
+
+bool crypto_generate_key(crypto_session_handle_t handle,
+			 uint8_t idx, bool persistent)
+{
+	bool ret = false;
+
+	if (idx >= KEY_CACHE_LEN) {
+		return false;
+	}
+
+	switch (handle.algorithm) {
+	case CRYPTO_XCHACHA20:
+		if (key_cache[idx].key_size < 32) {
+			if (key_cache[idx].key_size > 0) {
+				SECMEM_FREE(key_cache[idx].key);
+				key_cache[idx].key_size = 0;
+			}
+
+			key_cache[idx].key = SECMEM_ALLOC(32);
+		}
+
+		if (key_cache[idx].key) {
+			key_cache[idx].key_size = 32;
+			px4_get_secure_random(key_cache[idx].key, 32);
+			ret = true;
+
+		} else {
+			key_cache[idx].key_size = 0;
+		}
+
+		break;
+
+	default:
+		break;
+	}
+
+	if (ret && persistent) {
+		keystore_put_key(handle.keystore_handle, idx, key_cache[idx].key, key_cache[idx].key_size);
 	}
 
 	return ret;
