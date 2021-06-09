@@ -72,6 +72,15 @@ void keystore_close(keystore_session_handle_t *handle);
 size_t keystore_get_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key_buf, size_t key_buf_size);
 
 /*
+ * Store a key persistently into the keystore
+ * idx: key index in keystore
+ * key: pointer to the key
+ * key_size: size of the key
+ */
+bool keystore_put_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key, size_t key_size);
+
+
+/*
  * Architecture specific PX4 Crypto API functions
  */
 
