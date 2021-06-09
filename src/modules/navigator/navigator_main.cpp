@@ -215,7 +215,11 @@ Navigator::run()
 
 		_land_detected_sub.update(&_land_detected);
 		_position_controller_status_sub.update();
-		_home_pos_sub.update(&_home_pos);
+
+		if (_home_pos_sub.updated()) {
+			_home_pos_sub.copy(&_home_pos);
+			_mission.homePositionUpdated();
+		}
 
 		while (_vehicle_command_sub.updated()) {
 			const unsigned last_generation = _vehicle_command_sub.get_last_generation();

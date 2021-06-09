@@ -672,8 +672,6 @@ Commander::Commander() :
 	// default for vtol is rotary wing
 	_vtol_status.vtol_in_rw_mode = true;
 
-	/* init mission state, do it here to allow navigator to use stored mission even if mavlink failed to start */
-	mission_init();
 }
 
 bool
@@ -3432,30 +3430,6 @@ Commander *Commander::instantiate(int argc, char *argv[])
 void Commander::enable_hil()
 {
 	_status.hil_state = vehicle_status_s::HIL_STATE_ON;
-}
-
-void Commander::mission_init()
-{
-	/* init mission state, do it here to allow navigator to use stored mission even if mavlink failed to start */
-	mission_s mission;
-
-	if (dm_read(DM_KEY_MISSION_STATE, 0, &mission, sizeof(mission_s)) == sizeof(mission_s)) {
-		if (mission.dataman_id == DM_KEY_WAYPOINTS_OFFBOARD_0 || mission.dataman_id == DM_KEY_WAYPOINTS_OFFBOARD_1) {
-			if (mission.count > 0) {
-				PX4_INFO("Mission #%d loaded, %u WPs, curr: %d", mission.dataman_id, mission.count, mission.current_seq);
-			}
-
-		} else {
-			PX4_ERR("reading mission state failed");
-
-			/* initialize mission state in dataman */
-			mission.timestamp = hrt_absolute_time();
-			mission.dataman_id = DM_KEY_WAYPOINTS_OFFBOARD_0;
-			dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission, sizeof(mission_s));
-		}
-
-		_mission_pub.publish(mission);
-	}
 }
 
 void Commander::data_link_check()

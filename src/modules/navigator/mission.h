@@ -97,6 +97,8 @@ public:
 
 	void set_closest_item_as_current();
 
+	void homePositionUpdated();
+
 	/**
 	 * Set a new mission mode and handle the switching between the different modes
 	 *
@@ -108,8 +110,7 @@ private:
 	/**
 	 * Update mission topic
 	 */
-	void update_mission();
-
+	void updateMission(mission_s new_mission);
 	/**
 	 * Move on to next mission item or switch to loiter
 	 */
@@ -208,6 +209,9 @@ private:
 	 */
 	void check_mission_valid(bool force);
 
+	bool
+	isMissionValid(mission_s &mission);
+
 	/**
 	 * Reset mission
 	 */
@@ -236,6 +240,12 @@ private:
 	bool position_setpoint_equal(const position_setpoint_s *p1, const position_setpoint_s *p2) const;
 
 	void publish_navigator_mission_item();
+
+	bool getMissionFromStorage(mission_s &mission);
+
+	bool writeMissionToStorage(mission_s mission);
+
+	void updateCurrentMissionIndex(mission_s new_mission);
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MIS_DIST_1WP>) _param_mis_dist_1wp,
@@ -270,7 +280,7 @@ private:
 		MISSION_TYPE_MISSION
 	} _mission_type{MISSION_TYPE_NONE};
 
-	bool _inited{false};
+	bool _tried_reading_mission_from_storage_once{false};
 	bool _home_inited{false};
 	bool _need_mission_reset{false};
 	bool _mission_waypoints_changed{false};

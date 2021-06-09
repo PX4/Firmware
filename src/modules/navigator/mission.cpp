@@ -87,9 +87,12 @@ Mission::on_inactive()
 		return;
 	}
 
-	if (_inited) {
+	if (_tried_reading_mission_from_storage_once) {
 		if (_mission_sub.updated()) {
-			update_mission();
+			mission_s new_mission = {};
+			_mission_sub.copy(&new_mission);
+
+			updateMission(new_mission);
 
 			if (_mission_type == MISSION_TYPE_NONE && _mission.count > 0) {
 				_mission_type = MISSION_TYPE_MISSION;
@@ -98,36 +101,21 @@ Mission::on_inactive()
 
 		/* reset the current mission if needed */
 		if (need_to_reset_mission()) {
-			reset_mission(_mission);
-			update_mission();
+			mission_s new_mission = _mission;
+			reset_mission(new_mission);
+			updateMission(new_mission);
 			_navigator->reset_cruising_speed();
 		}
 
 	} else {
 
-		/* load missions from storage */
-		mission_s mission_state = {};
+		mission_s mission_from_storage = {};
 
-		dm_lock(DM_KEY_MISSION_STATE);
-
-		/* read current state */
-		int read_res = dm_read(DM_KEY_MISSION_STATE, 0, &mission_state, sizeof(mission_s));
-
-		dm_unlock(DM_KEY_MISSION_STATE);
-
-		if (read_res == sizeof(mission_s)) {
-			_mission.dataman_id = mission_state.dataman_id;
-			_mission.count = mission_state.count;
-			_current_mission_index = mission_state.current_seq;
-
-			// find and store landing start marker (if available)
-			find_mission_land_start();
+		if (getMissionFromStorage(mission_from_storage)) {
+			updateMission(mission_from_storage);
 		}
 
-		/* On init let's check the mission, maybe there is already one available. */
-		check_mission_valid(false);
-
-		_inited = true;
+		_tried_reading_mission_from_storage_once = true;
 	}
 
 	/* require takeoff after non-loiter or landing */
@@ -194,14 +182,14 @@ Mission::on_activation()
 void
 Mission::on_active()
 {
-	check_mission_valid(false);
-
 	/* check if anything has changed */
 	bool mission_sub_updated = _mission_sub.updated();
 
 	if (mission_sub_updated) {
 		_navigator->reset_triplets();
-		update_mission();
+		mission_s new_mission = {};
+		_mission_sub.copy(&new_mission);
+		updateMission(new_mission);
 	}
 
 	/* mission is running (and we are armed), need reset after disarm */
@@ -477,82 +465,74 @@ Mission::landing()
 	return mission_valid && on_landing_stage;
 }
 
-void
-Mission::update_mission()
+void Mission::updateCurrentMissionIndex(mission_s new_mission)
 {
+	if (new_mission.current_seq >= 0 && new_mission.current_seq < (int)new_mission.count) {
+		_current_mission_index = new_mission.current_seq;
 
-	bool failed = true;
+	} else {
+		/* if less items available, reset to first item */
+		if (_current_mission_index >= (int)new_mission.count) {
+			_current_mission_index = 0;
 
+		} else if (_current_mission_index < 0) {
+			/* if not initialized, set it to 0 */
+			_current_mission_index = 0;
+		}
+
+		/* otherwise, just leave it */
+	}
+}
+
+void Mission::updateMission(mission_s new_mission)
+{
 	/* Reset vehicle_roi
 	 * Missions that do not explicitly configure ROI would not override
 	 * an existing ROI setting from previous missions */
 	_navigator->reset_vroi();
 
-	const mission_s old_mission = _mission;
-
-	if (_mission_sub.copy(&_mission)) {
-		/* determine current index */
-		if (_mission.current_seq >= 0 && _mission.current_seq < (int)_mission.count) {
-			_current_mission_index = _mission.current_seq;
-
-		} else {
-			/* if less items available, reset to first item */
-			if (_current_mission_index >= (int)_mission.count) {
-				_current_mission_index = 0;
-
-			} else if (_current_mission_index < 0) {
-				/* if not initialized, set it to 0 */
-				_current_mission_index = 0;
-			}
-
-			/* otherwise, just leave it */
-		}
-
-		check_mission_valid(true);
-
-		failed = !_navigator->get_mission_result()->valid;
-
-		if (!failed) {
-			/* reset mission failure if we have an updated valid mission */
-			_navigator->get_mission_result()->failure = false;
-
-			/* reset sequence info as well */
-			_navigator->get_mission_result()->seq_reached = -1;
-			_navigator->get_mission_result()->seq_total = _mission.count;
-
-			/* reset work item if new mission has been accepted */
-			_work_item_type = WORK_ITEM_TYPE_DEFAULT;
-			_mission_changed = true;
-		}
-
-		/* check if the mission waypoints changed while the vehicle is in air
+	/* check if the mission waypoints changed while the vehicle is in air
 		 * TODO add a flag to mission_s which actually tracks if the position of the waypoint changed */
-		if (((_mission.count != old_mission.count) ||
-		     (_mission.dataman_id != old_mission.dataman_id)) &&
-		    !_navigator->get_land_detected()->landed) {
-			_mission_waypoints_changed = true;
-		}
-
-	} else {
-		PX4_ERR("mission update failed");
+	if (((new_mission.count != _mission.count) ||
+	     (new_mission.dataman_id != _mission.dataman_id)) &&
+	    !_navigator->get_land_detected()->landed) {
+		_mission_waypoints_changed = true;
 	}
 
-	if (failed) {
-		// only warn if the check failed on merit
-		if ((int)_mission.count > 0) {
-			PX4_WARN("mission check failed");
-		}
 
+	const bool mission_valid = isMissionValid(new_mission);
+
+	if (mission_valid) {
+		updateCurrentMissionIndex(new_mission);
+
+		/* reset work item if new mission has been accepted */
+		_work_item_type = WORK_ITEM_TYPE_DEFAULT;
+		_mission_changed = true;
+
+		_mission = new_mission;
+
+	} else {
 		// reset the mission
 		_mission.count = 0;
 		_mission.current_seq = 0;
 		_current_mission_index = 0;
 	}
 
+	if (mission_valid) {
+		_navigator->get_mission_result()->failure = false;
+	}
+
+	_navigator->get_mission_result()->seq_total = _mission.count;
+	_navigator->increment_mission_instance_count();
+	_navigator->get_mission_result()->valid = mission_valid;
+	_navigator->get_mission_result()->finished = false;
+	_navigator->get_mission_result()->seq_current = _current_mission_index;
+	_navigator->set_mission_result_updated();
+
 	// find and store landing start marker (if available)
 	find_mission_land_start();
 
-	set_current_mission_item();
+	save_mission_state();
 }
 
 
@@ -1571,17 +1551,7 @@ Mission::save_mission_state()
 {
 	mission_s mission_state = {};
 
-	/* lock MISSION_STATE item */
-	int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
-
-	if (dm_lock_ret != 0) {
-		PX4_ERR("DM_KEY_MISSION_STATE lock failed");
-	}
-
-	/* read current state */
-	int read_res = dm_read(DM_KEY_MISSION_STATE, 0, &mission_state, sizeof(mission_s));
-
-	if (read_res == sizeof(mission_s)) {
+	if (getMissionFromStorage(mission_state)) {
 		/* data read successfully, check dataman ID and items count */
 		if (mission_state.dataman_id == _mission.dataman_id && mission_state.count == _mission.count) {
 			/* navigator may modify only sequence, write modified state only if it changed */
@@ -1589,11 +1559,7 @@ Mission::save_mission_state()
 				mission_state.current_seq = _current_mission_index;
 				mission_state.timestamp = hrt_absolute_time();
 
-				if (dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission_state,
-					     sizeof(mission_s)) != sizeof(mission_s)) {
-
-					PX4_ERR("Can't save mission state");
-				}
+				writeMissionToStorage(mission_state);
 			}
 		}
 
@@ -1606,17 +1572,7 @@ Mission::save_mission_state()
 
 		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Invalid mission state.");
 
-		/* write modified state only if changed */
-		if (dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission_state,
-			     sizeof(mission_s)) != sizeof(mission_s)) {
-
-			PX4_ERR("Can't save mission state");
-		}
-	}
-
-	/* unlock MISSION_STATE item */
-	if (dm_lock_ret == 0) {
-		dm_unlock(DM_KEY_MISSION_STATE);
+		writeMissionToStorage(mission_state);
 	}
 }
 
@@ -1648,35 +1604,18 @@ Mission::set_mission_item_reached()
 void
 Mission::set_current_mission_item()
 {
-	_navigator->get_mission_result()->finished = false;
-	_navigator->get_mission_result()->seq_current = _current_mission_index;
 
-	_navigator->set_mission_result_updated();
-
-	save_mission_state();
 }
 
-void
-Mission::check_mission_valid(bool force)
+bool
+Mission::isMissionValid(mission_s &mission)
 {
-	if ((!_home_inited && _navigator->home_position_valid()) || force) {
+	MissionFeasibilityChecker _missionFeasibilityChecker(_navigator);
 
-		MissionFeasibilityChecker _missionFeasibilityChecker(_navigator);
-
-		_navigator->get_mission_result()->valid =
-			_missionFeasibilityChecker.checkMissionFeasible(_mission,
-					_param_mis_dist_1wp.get(),
-					_param_mis_dist_wps.get(),
-					_navigator->mission_landing_required());
-
-		_navigator->get_mission_result()->seq_total = _mission.count;
-		_navigator->increment_mission_instance_count();
-		_navigator->set_mission_result_updated();
-		_home_inited = _navigator->home_position_valid();
-
-		// find and store landing start marker (if available)
-		find_mission_land_start();
-	}
+	return _missionFeasibilityChecker.checkMissionFeasible(mission,
+			_param_mis_dist_1wp.get(),
+			_param_mis_dist_wps.get(),
+			_navigator->mission_landing_required());
 }
 
 void
@@ -1864,4 +1803,50 @@ void Mission::publish_navigator_mission_item()
 	navigator_mission_item.timestamp = hrt_absolute_time();
 
 	_navigator_mission_item_pub.publish(navigator_mission_item);
+}
+
+void Mission::homePositionUpdated()
+{
+	if (!_home_inited) {
+		_navigator->get_mission_result()->valid = isMissionValid(_mission);
+		_home_inited = true;
+	}
+}
+
+bool Mission::getMissionFromStorage(mission_s &mission)
+{
+	bool ret = false;
+	mission_s mission_state = {};
+
+	int dm_lock_ret = dm_lock(DM_KEY_MISSION_STATE);
+
+	if (dm_lock_ret != 0) {
+		PX4_ERR("DM_KEY_MISSION_STATE lock failed");
+	}
+
+	int read_res = dm_read(DM_KEY_MISSION_STATE, 0, &mission_state, sizeof(mission_s));
+
+	if (dm_lock_ret == 0) {
+		dm_unlock(DM_KEY_MISSION_STATE);
+	}
+
+	if (read_res == sizeof(mission_s)) {
+		mission = mission_state;
+		ret = true;
+	}
+
+	return ret;
+}
+
+bool Mission::writeMissionToStorage(mission_s mission)
+{
+	bool ret = true;
+
+	if (dm_write(DM_KEY_MISSION_STATE, 0, DM_PERSIST_POWER_ON_RESET, &mission,
+		     sizeof(mission_s)) != sizeof(mission_s)) {
+		PX4_ERR("Can't save mission state");
+		ret = false;
+	}
+
+	return ret;
 }
