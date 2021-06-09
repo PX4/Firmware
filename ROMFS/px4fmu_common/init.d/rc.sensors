@@ -21,9 +21,14 @@ fi
 #                           Begin Optional drivers                            #
 ###############################################################################
 
-if param compare -s SENS_EN_BATT 1
+if param compare -s SENS_EN_SBS_GEN 1
 then
-	batt_smbus start -X
+	sbs_generic start -X
+fi
+
+if param compare -s SENS_EN_BQ40Z80 1
+then
+	bq40z80 start -X
 fi
 
 # Sensors on the PWM interface bank

@@ -43,7 +43,7 @@ px4_add_board(
 	ROMFSROOT px4fmu_common
 	DRIVERS
 		#barometer # all available barometer drivers
-		batt_smbus
+		smart_battery # all available smart battery drivers
 		camera_trigger
 		differential_pressure # all available differential pressure drivers
 		distance_sensor # all available distance sensor drivers

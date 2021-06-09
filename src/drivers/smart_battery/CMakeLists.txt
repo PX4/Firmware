@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2021 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,13 +30,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__batt_smbus
-	MAIN batt_smbus
-	COMPILE_FLAGS
-	SRCS
-		batt_smbus.cpp
 
-	DEPENDS
-		drivers__smbus
-	)
+add_subdirectory(bq40z80)
+add_subdirectory(sbs_generic)

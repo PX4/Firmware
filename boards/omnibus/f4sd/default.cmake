@@ -16,7 +16,7 @@ px4_add_board(
 		adc/board_adc
 		#barometer # all available barometer drivers
 		barometer/bmp280
-		#batt_smbus
+		#smart_battery # all available smart battery drivers
 		#camera_trigger
 		#differential_pressure # all available differential pressure drivers
 		#distance_sensor # all available distance sensor drivers

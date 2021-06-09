@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2018 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,33 +32,18 @@
  ****************************************************************************/
 
 /**
- * SMBUS Smart battery driver BQ40Z50 and BQ40Z80
+ * Cell count for SMBUS battery
  *
  * @reboot_required true
- *
- * @boolean
- * @group Sensors
+ * @group SMBus Battery
  */
-PARAM_DEFINE_INT32(SENS_EN_BATT, 0);
+PARAM_DEFINE_INT32(SBS_BAT_N_CELLS, 6);
 
 /**
- * Capacity/current multiplier for high-current capable SMBUS battery
+ * Current/capacity multiplier for SMBUS battery
  *
  * @reboot_required true
  * @decimal 1
- * @group Sensors
+ * @group SMBus Battery
  */
-PARAM_DEFINE_FLOAT(BAT_C_MULT, 1.0f);
-
-/**
- * Battery device model
- *
- * @reboot_required true
- * @min 0
- * @max 2
- * @group Sensors
- * @value 0 AutoDetect
- * @value 1 BQ40Z50 based
- * @value 2 BQ40Z80 based
- */
-PARAM_DEFINE_INT32(BAT_SMBUS_MODEL, 0);
+PARAM_DEFINE_FLOAT(SBS_BAT_C_MULT, 1.0f);

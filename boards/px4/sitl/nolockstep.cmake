@@ -8,7 +8,7 @@ px4_add_board(
 	TESTING
 	DRIVERS
 		#barometer # all available barometer drivers
-		#batt_smbus
+		#smart_battery # all available smart battery drivers
 		camera_capture
 		camera_trigger
 		#differential_pressure # all available differential pressure drivers
