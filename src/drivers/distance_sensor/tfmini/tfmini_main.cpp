@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2017-2020 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +46,7 @@ TFMINI	*g_dev{nullptr};
 int start(const char *port, uint8_t rotation);
 int status();
 int stop();
+int command(uint8_t *command, uint8_t framelen);
 int usage();
 
 int
@@ -88,6 +89,46 @@ status()
 	return 0;
 }
 
+/**
+ * Perform some commands the driver;
+ * This can help to configure device.
+ * Refer to your TFMINI documentation for the available commands.
+ */
+int
+command(uint8_t *command, uint8_t framelen)
+{
+	if (g_dev == nullptr) {
+		PX4_ERR("driver not running");
+		return 1;
+	}
+
+	g_dev->write_command(command, framelen);
+
+	int counter = 0;
+
+	do {
+		if (g_dev->get_command_result()) {
+			uint8_t responselen;
+			uint8_t *cresponse = g_dev->get_command_response(&responselen);
+			char response[10];
+			uint8_t idx;
+
+			for (idx = 0; idx < responselen; idx++) {
+				sprintf(response + idx * 2, "%02X", cresponse[idx]);
+			}
+
+			PX4_INFO("command confirmed [%ims] [%s]", 20 * counter, response);
+			return PX4_OK;
+		}
+
+		px4_usleep(20000);
+		counter++;
+	} while (counter < 10); // wait 200ms for a command response - should be enough
+
+	PX4_ERR("command not confirmed");
+	return PX4_ERROR;
+}
+
 int stop()
 {
 	if (g_dev != nullptr) {
@@ -123,6 +164,14 @@ Attempt to start driver on a specified serial device.
 $ tfmini start -d /dev/ttyS1
 Stop driver
 $ tfmini stop
+Retreive the version on a TFMINI-Plus: (0x5A 0x04 0x01 0x5F)
+$ tfmini command -c 5A04015F
+Configure TFMINI-Plus in Standard 9 bytes (cm) mode: (0x5A 0x05 0x05 0x01 0x65)
+$ tfmini command -c 5A05050165
+Configure TFMINI-Plus Frame Rate: (0x5A 0x06 0x03 0xLL 0xHH 0xSU) - Example for 100Hz
+$ tfmini command -c 5A06036400C7
+Apply and Save Settings for TFMINI-Plus: (0x5A 0x04 0x11 0x6F)
+$ tfmini command -c 5A04116F
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("tfmini", "driver");
@@ -132,7 +181,8 @@ $ tfmini stop
 	PRINT_MODULE_USAGE_PARAM_INT('R', 25, 0, 25, "Sensor rotation - downward facing by default", true);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status","Driver status");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop","Stop driver");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("test","Test driver (basic functional tests)");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("command","Configure driver (require -c hexacommand as in -c 5A04015F)");
+	PRINT_MODULE_USAGE_PARAM_STRING('c', nullptr, nullptr, "hexacommand", false);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status","Print driver status");
 	return PX4_OK;
 }
@@ -146,8 +196,9 @@ extern "C" __EXPORT int tfmini_main(int argc, char *argv[])
 	const char *device_path = TFMINI_DEFAULT_PORT;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
+	const char *hexacommand = nullptr;
 
-	while ((ch = px4_getopt(argc, argv, "R:d:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "R:d:c:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 		case 'R':
 			rotation = (uint8_t)atoi(myoptarg);
@@ -155,6 +206,10 @@ extern "C" __EXPORT int tfmini_main(int argc, char *argv[])
 
 		case 'd':
 			device_path = myoptarg;
+			break;
+
+		case 'c':
+			hexacommand = myoptarg;
 			break;
 
 		default:
@@ -179,6 +234,31 @@ extern "C" __EXPORT int tfmini_main(int argc, char *argv[])
 
 	} else if (!strcmp(argv[myoptind], "stop")) {
 		return tfmini::stop();
+
+	} else if (!strcmp(argv[myoptind], "command")) {
+		uint8_t mycommandlen=0;
+		uint8_t mycommand[8];
+
+		if (hexacommand == nullptr)
+			return tfmini::usage();
+
+		uint8_t len = strlen(hexacommand);
+
+		if (len>16) {
+			PX4_ERR("invalid command - too long");
+			return PX4_ERROR;
+		}
+
+		//convert hexacommand to a table of of uint8_t
+		while (mycommandlen<len/2) {
+			char val[3];
+			val[0]=hexacommand[2*mycommandlen];
+			val[1]=hexacommand[2*mycommandlen+1];
+			val[2]='\0';
+			mycommand[mycommandlen]=(uint8_t)strtol(val, NULL, 16);
+			mycommandlen++;
+		}
+		return tfmini::command(mycommand, mycommandlen);
 
 	} else if (!strcmp(argv[myoptind], "status")) {
 		return tfmini::status();

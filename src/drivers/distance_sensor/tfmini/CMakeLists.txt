@@ -35,7 +35,6 @@ px4_add_module(
 	MAIN tfmini
 	SRCS
 		TFMINI.cpp
-		TFMINI.hpp
 		tfmini_main.cpp
 		tfmini_parser.cpp
 	MODULE_CONFIG
