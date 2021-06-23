@@ -129,3 +129,15 @@ PARAM_DEFINE_FLOAT(GF_MAX_HOR_DIST, 0);
  * @group Geofence
  */
 PARAM_DEFINE_FLOAT(GF_MAX_VER_DIST, 0);
+
+/**
+ * Use Pre-emptive geofence triggering
+ *
+ * Predict the motion of the vehicle and trigger the breach if it is determined that the current trajectory
+ * would result in a breach happening before the vehicle can make evasive maneuvers.
+ * The vehicle is then re-routed to a safe hold position (stop for multirotor, loiter for fixed wing).
+ *
+ * @boolean
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_PREDICT, 1);
