@@ -54,6 +54,9 @@
 #include <uORB/topics/irlock_report.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/landing_target_innovations.h>
+#include <uORB/topics/uwb_distance.h>
+#include <uORB/topics/uwb_grid.h>
+#include <uORB/topics/estimator_sensor_bias.h>
 #include <uORB/topics/parameter_update.h>
 #include <matrix/math.hpp>
 #include <mathlib/mathlib.h>
@@ -118,7 +121,11 @@ private:
 		param_t mode;
 		param_t scale_x;
 		param_t scale_y;
-	} _paramHandle;
+		param_t offset_x;
+		param_t offset_y;
+		param_t sensor_offset_x;
+		param_t sensor_offset_y;
+		} _paramHandle;
 
 	struct {
 		float acc_unc;
@@ -128,23 +135,41 @@ private:
 		TargetMode mode;
 		float scale_x;
 		float scale_y;
+		float offset_x;
+		float offset_y;
+		float sensor_offset_x;
+		float sensor_offset_y;
 	} _params;
+
+	struct {
+		hrt_abstime timestamp;
+		float rel_pos_x;
+		float rel_pos_y;
+		float rel_pos_z;
+	} _sensor_report;
 
 	uORB::Subscription _vehicleLocalPositionSub{ORB_ID(vehicle_local_position)};
 	uORB::Subscription _attitudeSub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 	uORB::Subscription _irlockReportSub{ORB_ID(irlock_report)};
+	uORB::Subscription _estimatorSensorBiasSub{ORB_ID(estimator_sensor_bias)};
+	uORB::Subscription _uwbGridSub{ORB_ID(uwb_grid)};
+	uORB::Subscription _uwbDistanceSub{ORB_ID(uwb_distance)};
 
 	vehicle_local_position_s	_vehicleLocalPosition{};
 	vehicle_attitude_s		_vehicleAttitude{};
 	vehicle_acceleration_s		_vehicle_acceleration{};
 	irlock_report_s			_irlockReport{};
+	uwb_grid_s		_uwbGrid{};
+	uwb_distance_s		_uwbDistance{};
+	estimator_sensor_bias_s       _estimatorsensorBias{};
 
 	// keep track of which topics we have received
 	bool _vehicleLocalPosition_valid{false};
 	bool _vehicleAttitude_valid{false};
 	bool _vehicle_acceleration_valid{false};
 	bool _new_irlockReport{false};
+	bool _new_sensorReport{false};
 	bool _estimator_initialized{false};
 	// keep track of whether last measurement was rejected
 	bool _faulty{false};
@@ -155,6 +180,7 @@ private:
 	KalmanFilter _kalman_filter_y;
 	hrt_abstime _last_predict{0}; // timestamp of last filter prediction
 	hrt_abstime _last_update{0}; // timestamp of last filter update (used to check timeout)
+	float _uncertainty_scale{1.0f};
 
 	void _check_params(const bool force);
 

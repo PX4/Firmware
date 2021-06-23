@@ -52,6 +52,8 @@ px4_add_board(
 		telemetry # all available telemetry drivers
 		tone_alarm
 		uavcan
+		uwb
+
 	MODULES
 		attitude_estimator_q
 		battery_status

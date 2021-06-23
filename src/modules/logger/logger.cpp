@@ -465,6 +465,7 @@ const char *Logger::configured_backend_mode() const
 	}
 }
 
+
 bool Logger::initialize_topics()
 {
 	// get the logging profile

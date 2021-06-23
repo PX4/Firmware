@@ -186,6 +186,7 @@ PrecLand::run_state_start()
 {
 	// check if target visible and go to horizontal approach
 	if (switch_to_state_horizontal_approach()) {
+		PX4_INFO("Precland: switching to horizontal approach!");
 		return;
 	}
 
@@ -256,6 +257,7 @@ PrecLand::run_state_horizontal_approach()
 		if (hrt_absolute_time() - _point_reached_time > 2000000) {
 			// if close enough for descent above target go to descend above target
 			if (switch_to_state_descend_above_target()) {
+				PX4_INFO("Precland: switching to descend!");
 				return;
 			}
 		}
@@ -335,6 +337,7 @@ PrecLand::run_state_final_approach()
 void
 PrecLand::run_state_search()
 {
+	PX4_INFO("Precland: searching for target");
 	// check if we can see the target
 	if (check_state_conditions(PrecLandState::HorizontalApproach)) {
 		if (!_target_acquired_time) {

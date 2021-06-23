@@ -341,6 +341,14 @@ rtps:
     id: 158
   - msg: estimator_event_flags
     id: 159
+  - msg: uwb_distance
+    id: 160
+    send: true
+    receive: true
+  - msg: uwb_grid
+    id: 161
+    send: true
+    receive: true
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 170
