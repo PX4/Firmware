@@ -237,6 +237,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_obstacle_distance(msg);
 		break;
 
+	case MAVLINK_MSG_ID_TUNNEL:
+		handle_message_tunnel(msg);
+		break;
+
 	case MAVLINK_MSG_ID_TRAJECTORY_REPRESENTATION_BEZIER:
 		handle_message_trajectory_representation_bezier(msg);
 		break;
@@ -1747,6 +1751,26 @@ MavlinkReceiver::handle_message_obstacle_distance(mavlink_message_t *msg)
 	obstacle_distance.frame = mavlink_obstacle_distance.frame;
 
 	_obstacle_distance_pub.publish(obstacle_distance);
+}
+
+void
+MavlinkReceiver::handle_message_tunnel(mavlink_message_t *msg)
+{
+	mavlink_tunnel_t mavlink_tunnel;
+	mavlink_msg_tunnel_decode(msg, &mavlink_tunnel);
+
+	mavlink_tunnel_s tunnel{};
+
+	tunnel.timestamp = hrt_absolute_time();
+	tunnel.payload_type = mavlink_tunnel.payload_type;
+	tunnel.target_system = mavlink_tunnel.target_system;
+	tunnel.target_component = mavlink_tunnel.target_component;
+	tunnel.payload_length = mavlink_tunnel.payload_length;
+	memcpy(tunnel.payload, mavlink_tunnel.payload, sizeof(tunnel.payload));
+	static_assert(sizeof(tunnel.payload) == sizeof(mavlink_tunnel.payload), "mavlink_tunnel.payload size mismatch");
+
+	_mavlink_tunnel_pub.publish(tunnel);
+
 }
 
 void

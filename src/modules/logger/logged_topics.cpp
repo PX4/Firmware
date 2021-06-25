@@ -280,6 +280,11 @@ void LoggedTopics::add_system_identification_topics()
 	add_topic("vehicle_torque_setpoint");
 }
 
+void LoggedTopics::add_mavlink_tunnel()
+{
+	add_topic("mavlink_tunnel");
+}
+
 int LoggedTopics::add_topics_from_file(const char *fname)
 {
 	int ntopics = 0;
@@ -478,5 +483,9 @@ void LoggedTopics::initialize_configured_topics(SDLogProfileMask profile)
 
 	if (profile & SDLogProfileMask::RAW_IMU_ACCEL_FIFO) {
 		add_raw_imu_accel_fifo();
+	}
+
+	if (profile & SDLogProfileMask::MAVLINK_TUNNEL) {
+		add_mavlink_tunnel();
 	}
 }

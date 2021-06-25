@@ -93,6 +93,7 @@ set(msg_files
 	manual_control_setpoint.msg
 	manual_control_switches.msg
 	mavlink_log.msg
+	mavlink_tunnel.msg
 	mission.msg
 	mission_result.msg
 	mount_orientation.msg
