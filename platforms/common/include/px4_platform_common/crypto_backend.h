@@ -72,6 +72,16 @@ void keystore_close(keystore_session_handle_t *handle);
 size_t keystore_get_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key_buf, size_t key_buf_size);
 
 /*
+ * Store a key persistently into the keystore
+ * handle: a handle to an open keystore
+ * idx: key index in keystore
+ * key: pointer to the key
+ * key_size: size of the key
+ */
+bool keystore_put_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key, size_t key_size);
+
+
+/*
  * Architecture specific PX4 Crypto API functions
  */
 
@@ -97,6 +107,48 @@ crypto_session_handle_t crypto_open(px4_crypto_algorithm_t algorithm);
 void crypto_close(crypto_session_handle_t *handle);
 
 /*
+ * Generate a key
+ * handle: Open handle for the crypto session. The key will be generated for
+ *         the crypto algorithm used by this session
+ * idx: The key index, by which the key can be used
+ * persistent: if set to "true", the key will be stored into the keystore
+ */
+bool crypto_generate_key(crypto_session_handle_t handle,
+			 uint8_t idx,
+			 bool persistent);
+
+/*
+ * Get a key from keystore, possibly encrypted
+ *
+ * handle: an open crypto context; the returned key will be encrypted
+ *   according to this context
+ * key_idx: Index of the requested key in the keystore
+ * key: The provided buffer to the key
+ * max_len: the length of the provided key buffer. Returns the actual key size
+ * encryption_key_idx: The key index in keystore to be used for encrypting
+ * returns true on success, false on failure
+ */
+bool crypto_get_encrypted_key(crypto_session_handle_t handle,
+			      uint8_t key_idx,
+			      uint8_t *key,
+			      size_t *max_len,
+			      uint8_t encryption_key_idx);
+
+/*
+ * Get the generated nonce value
+ *
+ * handle: an open crypto context; the returned nonce is the one associsated
+ *  witht this context/algorithm
+ * nonce: The provided buffer to the key. If NULL, only length is returned
+ * nonce_len: the length of the nonce value
+ * encryption_key_idx: The key index in keystore to be used for encrypting
+ * returns true on success, false on failure
+ */
+bool crypto_get_nonce(crypto_session_handle_t handle,
+		      uint8_t *nonce,
+		      size_t *nonce_len);
+
+/*
  * Perform signature check using an open session to crypto
  * handle: session handle, returned by open
  * key_index: index to the key used for signature check
@@ -109,6 +161,13 @@ bool crypto_signature_check(crypto_session_handle_t handle,
 			    const uint8_t  *signature,
 			    const uint8_t *message,
 			    size_t message_size);
+
+bool crypto_encrypt_data(crypto_session_handle_t handle,
+			 uint8_t  key_index,
+			 const uint8_t *message,
+			 size_t message_size,
+			 uint8_t *cipher,
+			 size_t *cipher_size);
 
 #if defined(__cplusplus)
 } // extern "C"

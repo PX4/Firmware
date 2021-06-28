@@ -23,4 +23,6 @@ exec find boards msg src platforms test \
     -path src/modules/micrortps_bridge/microRTPS_client -prune -o \
     -path test/mavsdk_tests/catch2 -prune -o \
     -path src/lib/crypto/monocypher -prune -o \
+    -path src/lib/crypto/libtomcrypt -prune -o \
+    -path src/lib/crypto/libtommath -prune -o \
     -type f \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) | grep $PATTERN

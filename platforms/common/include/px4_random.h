@@ -31,54 +31,17 @@
  *
  ****************************************************************************/
 
-#include <px4_platform_common/crypto_algorithms.h>
-#include <string.h>
-#include <stdbool.h>
-#include "public_key.h"
-#include "keystore_backend_definitions.h"
+#pragma once
+
+#include <stdint.h>
+
 /*
- * For now, this is just a dummy up/down counter for tracking open/close calls
+ * Random number generator provided by the operating system. This can be used
+ * by the crypto_arch if needed, or it can implement an own HW-specific rng
  */
-static int keystore_open_count = 0;
 
-void keystore_init(void)
-{
-}
-
-keystore_session_handle_t keystore_open(void)
-{
-	keystore_session_handle_t ret;
-	ret.handle = ++keystore_open_count;
-	return ret;
-}
-
-void keystore_close(keystore_session_handle_t *handle)
-{
-	keystore_open_count--;
-	handle->handle = 0;
-}
-
-size_t keystore_get_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key_buf, size_t key_buf_size)
-{
-	size_t ret = 0;
-
-	if (idx < NPERSISTENT_KEYS) {
-		ret = public_keys[idx].key_size;
-
-		if (key_buf) {
-			if (key_buf_size >= ret) {
-				memcpy(key_buf, public_keys[idx].key, ret);
-
-			} else {
-				ret = 0;
-			}
-		}
-	}
-
-	return ret;
-}
-
-bool keystore_put_key(keystore_session_handle_t handle, uint8_t idx, uint8_t *key, size_t key_size)
-{
-	return false;
-}
+#if defined(__cplusplus)
+extern "C"
+#endif
+size_t px4_get_secure_random(uint8_t *out,
+			     size_t outlen);

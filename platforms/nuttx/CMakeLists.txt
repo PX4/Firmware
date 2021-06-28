@@ -94,6 +94,7 @@ list(APPEND nuttx_libs
 	nuttx_fs
 	nuttx_mm
 	nuttx_sched
+        nuttx_crypto
 )
 
 if (CONFIG_NET)

@@ -319,6 +319,7 @@ add_nuttx_dir(sched sched y -D__KERNEL__)
 add_nuttx_dir(c libs/libc n "")
 add_nuttx_dir(xx libs/libxx n "")
 add_nuttx_dir(mm mm n "")
+add_nuttx_dir(crypto crypto y -D__KERNEL__)
 
 if(CONFIG_NET)
 	add_nuttx_dir(net net y -D__KERNEL__)

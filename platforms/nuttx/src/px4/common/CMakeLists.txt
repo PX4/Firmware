@@ -48,6 +48,7 @@ if(NOT PX4_BOARD MATCHES "io-v2")
 		px4_manifest.cpp
 		px4_mtd.cpp
 		px4_24xxxx_mtd.c
+		px4_crypto.cpp
 	)
 	target_link_libraries(px4_layer
 		PRIVATE
@@ -58,7 +59,7 @@ if(NOT PX4_BOARD MATCHES "io-v2")
 			nuttx_sched
 			px4_work_queue
 			uORB
-		)
+	)
 else()
 	add_library(px4_layer ${PX4_SOURCE_DIR}/platforms/common/empty.c)
 endif()
@@ -66,3 +67,15 @@ add_dependencies(px4_layer prebuild_targets)
 
 add_subdirectory(gpio)
 add_subdirectory(srgbled)
+
+if (DEFINED PX4_CRYPTO)
+	add_library(px4_random nuttx_random.c)
+	add_dependencies(px4_random nuttx_context)
+	target_link_libraries(px4_random PRIVATE nuttx_crypto)
+
+	target_link_libraries(px4_layer
+		PUBLIC
+			crypto_backend
+	)
+	add_definitions(-DPX4_CRYPTO)
+endif()

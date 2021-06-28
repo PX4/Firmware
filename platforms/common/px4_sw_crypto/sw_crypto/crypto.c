@@ -42,7 +42,11 @@
 #include <stdbool.h>
 
 #include <px4_platform_common/crypto_backend.h>
+#include <px4_random.h>
 #include <lib/crypto/monocypher/src/optional/monocypher-ed25519.h>
+#include <tomcrypt.h>
+
+extern void libtomcrypt_init(void);
 
 /* room for 16 keys */
 #define KEY_CACHE_LEN 16
@@ -66,6 +70,11 @@ typedef struct {
 } volatile_key_t;
 
 static volatile_key_t key_cache[KEY_CACHE_LEN];
+
+typedef struct {
+	uint8_t nonce[24];
+	uint64_t ctr;
+} chacha20_context_t;
 
 /* Clear key cache */
 static void clear_key_cache(void)
@@ -126,19 +135,43 @@ void crypto_init()
 {
 	keystore_init();
 	clear_key_cache();
+	libtomcrypt_init();
 }
 
 crypto_session_handle_t crypto_open(px4_crypto_algorithm_t algorithm)
 {
 	crypto_session_handle_t ret;
-	ret.algorithm = algorithm;
 	ret.keystore_handle = keystore_open();
 
 	if (keystore_session_handle_valid(ret.keystore_handle)) {
+		ret.algorithm = algorithm;
 		ret.handle = ++crypto_open_count;
 
 	} else {
 		ret.handle = 0;
+		ret.context = NULL;
+		ret.algorithm = CRYPTO_NONE;
+		return ret;
+	}
+
+	switch (algorithm) {
+	case CRYPTO_XCHACHA20: {
+			chacha20_context_t *context = malloc(sizeof(chacha20_context_t));
+
+			if (!context) {
+				ret.handle = 0;
+				crypto_open_count--;
+
+			} else {
+				ret.context = context;
+				px4_get_secure_random(context->nonce, sizeof(context->nonce));
+				context->ctr = 0;
+			}
+		}
+		break;
+
+	default:
+		ret.context = NULL;
 	}
 
 	return ret;
@@ -149,6 +182,8 @@ void crypto_close(crypto_session_handle_t *handle)
 	crypto_open_count--;
 	handle->handle = 0;
 	keystore_close(&handle->keystore_handle);
+	free(handle->context);
+	handle->context = NULL;
 }
 
 bool crypto_signature_check(crypto_session_handle_t handle,
@@ -179,4 +214,187 @@ bool crypto_signature_check(crypto_session_handle_t handle,
 	}
 
 	return ret;
+}
+
+bool crypto_encrypt_data(crypto_session_handle_t handle,
+			 uint8_t  key_idx,
+			 const uint8_t *message,
+			 size_t message_size,
+			 uint8_t *cipher,
+			 size_t *cipher_size)
+{
+
+	bool ret = false;
+
+	switch (handle.algorithm) {
+	case CRYPTO_NONE:
+		if (*cipher_size >= message_size) {
+			memcpy(cipher, message, message_size);
+			*cipher_size = message_size;
+			ret = true;
+		}
+
+		break;
+
+	case CRYPTO_XCHACHA20: {
+			size_t key_sz;
+			uint8_t *key = (uint8_t *)crypto_get_key_ptr(handle.keystore_handle, key_idx, &key_sz);
+			chacha20_context_t *context = handle.context;
+
+			if (key_sz == 32) {
+				context->ctr = crypto_xchacha20_ctr(cipher, message, *cipher_size, key, context->nonce, context->ctr);
+				ret = true;
+			}
+		}
+		break;
+
+	case CRYPTO_RSA_OAEP: {
+			rsa_key key;
+			size_t key_sz;
+			unsigned long outlen = *cipher_size;
+			uint8_t *public_key = (uint8_t *)crypto_get_key_ptr(handle.keystore_handle, key_idx, &key_sz);
+
+			if (public_key &&
+			    rsa_import(public_key, key_sz, &key) == CRYPT_OK &&
+			    outlen >= ltc_mp.unsigned_size(key.N)) {
+
+				unsigned long modulus_bitlen = ltc_mp.count_bits(key.N);
+
+				if (pkcs_1_oaep_encode(message, message_size,
+						       NULL, 0,
+						       modulus_bitlen, NULL,
+						       0, 0,
+						       cipher, &outlen) == CRYPT_OK &&
+				    rsa_exptmod(cipher, outlen, cipher, &outlen, PK_PUBLIC, &key) == CRYPT_OK) {
+					*cipher_size = outlen;
+					ret = true;
+
+				} else {
+					*cipher_size = 0;
+				}
+			}
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+bool crypto_generate_key(crypto_session_handle_t handle,
+			 uint8_t idx, bool persistent)
+{
+	bool ret = false;
+
+	if (idx >= KEY_CACHE_LEN) {
+		return false;
+	}
+
+	switch (handle.algorithm) {
+	case CRYPTO_XCHACHA20:
+		if (key_cache[idx].key_size < 32) {
+			if (key_cache[idx].key_size > 0) {
+				SECMEM_FREE(key_cache[idx].key);
+				key_cache[idx].key_size = 0;
+			}
+
+			key_cache[idx].key = SECMEM_ALLOC(32);
+		}
+
+		if (key_cache[idx].key) {
+			key_cache[idx].key_size = 32;
+			px4_get_secure_random(key_cache[idx].key, 32);
+			ret = true;
+
+		} else {
+			key_cache[idx].key_size = 0;
+		}
+
+		break;
+
+	default:
+		break;
+	}
+
+	if (ret && persistent) {
+		keystore_put_key(handle.keystore_handle, idx, key_cache[idx].key, key_cache[idx].key_size);
+	}
+
+	return ret;
+}
+
+bool crypto_get_encrypted_key(crypto_session_handle_t handle,
+			      uint8_t key_idx,
+			      uint8_t *key,
+			      size_t *max_len,
+			      uint8_t encryption_key_idx)
+{
+	// Retrieve the plaintext key
+	bool ret = true;
+	size_t key_sz;
+	const uint8_t *plain_key = crypto_get_key_ptr(handle.keystore_handle, key_idx, &key_sz);
+
+	if (key_sz == 0) {
+		return false;
+	}
+
+	// Caclulate the key size, when encrypted
+	switch (handle.algorithm) {
+	case CRYPTO_RSA_OAEP: {
+			rsa_key enc_key;
+			unsigned pub_key_sz;
+			uint8_t *pub_key = (uint8_t *)crypto_get_key_ptr(handle.keystore_handle, encryption_key_idx, &pub_key_sz);
+
+			if (pub_key &&
+			    rsa_import(pub_key, pub_key_sz, &enc_key) == CRYPT_OK) {
+				*max_len = ltc_mp.unsigned_size(enc_key.N);
+
+			} else {
+				*max_len = 0;
+			}
+		}
+
+		break;
+
+	default:
+		*max_len = key_sz;
+	}
+
+	// Encrypt it
+	if (key != NULL) {
+		ret = crypto_encrypt_data(handle,
+					  encryption_key_idx,
+					  plain_key,
+					  key_sz,
+					  key,
+					  max_len);
+	}
+
+	return ret;
+}
+
+
+bool crypto_get_nonce(crypto_session_handle_t handle,
+		      uint8_t *nonce,
+		      size_t *nonce_len)
+{
+	switch (handle.algorithm) {
+	case CRYPTO_XCHACHA20: {
+			chacha20_context_t *context = handle.context;
+
+			if (nonce != NULL && context != NULL) {
+				memcpy(nonce, context->nonce, sizeof(context->nonce));
+			}
+
+			*nonce_len = sizeof(context->nonce);
+		}
+		break;
+
+	default:
+		*nonce_len = 0;
+	}
+
+	return true;
 }

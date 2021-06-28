@@ -70,3 +70,9 @@
 [submodule "src/lib/crypto/monocypher"]
 	path = src/lib/crypto/monocypher
 	url = https://github.com/PX4/Monocypher.git
+[submodule "src/lib/crypto/libtomcrypt"]
+	path = src/lib/crypto/libtomcrypt
+	url = https://github.com/libtom/libtomcrypt.git
+[submodule "src/lib/crypto/libtommath"]
+	path = src/lib/crypto/libtommath
+	url = https://github.com/libtom/libtommath.git
