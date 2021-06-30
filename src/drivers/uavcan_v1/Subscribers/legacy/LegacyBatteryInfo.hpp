@@ -107,7 +107,7 @@ public:
 		 * connected (partly)
 		 * priority
 		 * cycle_count
-		 * run_time_to_empty
+		 * time_remaining_s
 		 * average_time_to_empty
 		 * manufacture_date
 		 * max_error

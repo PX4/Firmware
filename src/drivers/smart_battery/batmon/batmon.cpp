@@ -173,7 +173,7 @@ void Batmon::RunImpl()
 
 	// Read run time to empty (minutes).
 	ret |= _interface->read_word(BATT_SMBUS_RUN_TIME_TO_EMPTY, result);
-	new_report.run_time_to_empty = result;
+	new_report.time_remaining_s = result * 60;
 
 	// Read average time to empty (minutes).
 	ret |= _interface->read_word(BATT_SMBUS_AVERAGE_TIME_TO_EMPTY, result);

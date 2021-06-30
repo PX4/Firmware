@@ -79,7 +79,7 @@ UavcanCBATBridge::battery_sub_cb(const uavcan::ReceivedDataStructure<cuav::equip
 	// battery.priority = msg.;
 	battery.capacity = msg.full_charge_capacity * 1000;
 	battery.cycle_count = msg.cycle_count;
-	battery.run_time_to_empty = msg.average_time_to_empty;
+	battery.time_remaining_s = msg.average_time_to_empty * 60;
 	battery.average_time_to_empty = msg.average_time_to_empty;
 	battery.serial_number = msg.serial_number;
 	battery.manufacture_date = msg.manufacture_date;

@@ -76,7 +76,9 @@ private:
 				bat_msg.energy_consumed = -1;
 				bat_msg.current_battery = (battery_status.connected) ? battery_status.current_filtered_a * 100 : -1;
 				bat_msg.battery_remaining = (battery_status.connected) ? ceilf(battery_status.remaining * 100.f) : -1;
-				bat_msg.time_remaining = (battery_status.connected) ? battery_status.run_time_to_empty * 60 : 0;
+				// MAVLink extension: 0 is unsupported, in uORB it's -1
+				bat_msg.time_remaining = (battery_status.connected && (battery_status.time_remaining_s >= 0.f)) ?
+							 math::max((int)battery_status.time_remaining_s, 1) : 0;
 
 				switch (battery_status.warning) {
 				case (battery_status_s::BATTERY_WARNING_NONE):

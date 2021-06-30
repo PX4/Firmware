@@ -54,6 +54,7 @@ Battery::Battery(int index, ModuleParams *parent, const int sample_interval_us) 
 	const float expected_filter_dt = static_cast<float>(sample_interval_us) / 1_s;
 	_voltage_filter_v.setParameters(expected_filter_dt, 1.f);
 	_current_filter_a.setParameters(expected_filter_dt, .5f);
+	_current_average_filter_a.setParameters(expected_filter_dt, 25.f);
 	_throttle_filter.setParameters(expected_filter_dt, 1.f);
 
 	if (index > 9 || index < 1) {
@@ -135,10 +136,11 @@ void Battery::updateBatteryStatus(const hrt_abstime &timestamp, float voltage_v,
 	battery_status.voltage_filtered_v = _voltage_filter_v.getState();
 	battery_status.current_a = current_a;
 	battery_status.current_filtered_a = _current_filter_a.getState();
-	battery_status.current_average_a = -1.f; // support will follow
+	battery_status.current_average_a = _current_average_filter_a.getState();
 	battery_status.discharged_mah = _discharged_mah;
 	battery_status.remaining = _state_of_charge;
 	battery_status.scale = _scale;
+	battery_status.time_remaining_s = computeRemainingTime(current_a);;
 	battery_status.temperature = NAN;
 	// Publish at least one cell such that the total voltage gets into MAVLink BATTERY_STATUS
 	battery_status.cell_count = math::max(_params.n_cells, static_cast<int32_t>(1));
@@ -251,6 +253,32 @@ void Battery::computeScale()
 	} else if (!PX4_ISFINITE(_scale) || _scale < 1.f) { // Shouldn't ever be more than the power at full battery
 		_scale = 1.f;
 	}
+}
+
+float Battery::computeRemainingTime(float current_a)
+{
+	float time_remaining_s = -1.f;
+
+	// Only estimate remaining time with useful in flight current measurements
+	if (_current_filter_a.getState() > 1.f) {
+		// Initialize strongly filtered current to an estimated average consumption
+		if (_current_average_filter_a.getState() < 0.f) {
+			// TODO: better initial value based on "average current" from last flight
+			_current_average_filter_a.reset(15.f);
+		}
+
+		// Filter current very strong, we basically want the average consumption
+		_current_average_filter_a.update(current_a);
+
+		// Remaining time estimation only possible with capacity
+		if (_params.capacity > 0.f) {
+			const float remaining_capacity_mah = _state_of_charge * _params.capacity;
+			const float current_ma = _current_average_filter_a.getState() * 1e3f;
+			time_remaining_s = remaining_capacity_mah / current_ma * 3600.f;
+		}
+	}
+
+	return time_remaining_s;
 }
 
 void Battery::updateParams()

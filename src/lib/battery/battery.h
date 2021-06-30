@@ -187,17 +187,19 @@ private:
 	void estimateStateOfCharge(const float voltage_v, const float current_a, const float throttle);
 	uint8_t determineWarning(float state_of_charge);
 	void computeScale();
+	float computeRemainingTime(float current_a);
 
 	uORB::PublicationMulti<battery_status_s> _battery_status_pub{ORB_ID(battery_status)};
 
 	bool _battery_initialized{false};
 	AlphaFilter<float> _voltage_filter_v;
 	AlphaFilter<float> _current_filter_a;
+	AlphaFilter<float> _current_average_filter_a;
 	AlphaFilter<float> _throttle_filter;
 	float _discharged_mah{0.f};
 	float _discharged_mah_loop{0.f};
-	float _state_of_charge_volt_based{-1.f};	// [0,1]
-	float _state_of_charge{-1.f};				// [0,1]
+	float _state_of_charge_volt_based{-1.f}; // [0,1]
+	float _state_of_charge{-1.f}; // [0,1]
 	float _scale{1.f};
 	uint8_t _warning{battery_status_s::BATTERY_WARNING_NONE};
 	hrt_abstime _last_timestamp{0};
