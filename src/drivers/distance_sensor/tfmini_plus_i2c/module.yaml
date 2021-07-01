@@ -1,0 +1,15 @@
+module_name: Benewake TFMini Rangefinder I2C Driver Module
+parameters:
+    - group: Sensors
+      definitions:
+        SENS_EN_TFP_I2C:
+            description:
+                short: Enable TFMini Plus I2C Driver
+                long: |
+                    Enables TFMini laser rangefinder I2C driver module
+            type: enum
+            values:
+                0: DISABLED
+                1: ENABLED
+            reboot_required: true
+            default: 0

@@ -77,6 +77,12 @@ then
 	lightware_laser_i2c start -X
 fi
 
+# Benewake TFmini Plus laser rangefinder sensor for i2c protocol
+if param greater -s SENS_EN_TFP_I2C 0
+then
+	tfmini_plus_i2c start -X
+fi
+
 # Sensor HY-SRF05 or HC-SR05 ultrasonic sensor
 if param compare -s SENS_EN_SR05 1
 then
