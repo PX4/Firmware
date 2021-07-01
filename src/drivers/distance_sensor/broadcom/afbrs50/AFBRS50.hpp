@@ -68,6 +68,10 @@ public:
 	 */
 	void stop();
 
+	int test();
+
+	bool _testing = false;
+
 private:
 	void Run() override;
 

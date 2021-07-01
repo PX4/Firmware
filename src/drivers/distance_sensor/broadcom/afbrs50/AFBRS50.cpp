@@ -175,7 +175,13 @@ int AFBRS50::init()
 			break;
 		}
 
-		_state = STATE::CONFIGURE;
+		if (_testing) {
+			_state = STATE::TEST;
+
+		} else {
+			_state = STATE::CONFIGURE;
+		}
+
 		ScheduleDelayed(AFBRS50_MEASURE_INTERVAL);
 		return PX4_OK;
 	}
@@ -192,8 +198,7 @@ void AFBRS50::Run()
 	case STATE::TEST: {
 			Argus_VerifyHALImplementation(Argus_GetSPISlave(_hnd));
 
-			_state = STATE::CONFIGURE;
-			ScheduleDelayed(100_ms);
+			AFBRS50::stop();
 		}
 		break;
 
@@ -235,6 +240,18 @@ void AFBRS50::stop()
 {
 	_state = STATE::STOP;
 	ScheduleNow();
+}
+
+int AFBRS50::test()
+{
+	_state = STATE::TEST;
+	_testing = true;
+
+	init();
+
+	ScheduleNow();
+
+	return PX4_OK;
 }
 
 void AFBRS50::print_info()
@@ -294,6 +311,25 @@ static int stop()
 	return PX4_OK;
 }
 
+static int test(const uint8_t rotation)
+{
+	g_dev = new AFBRS50(rotation);
+
+	if (g_dev == nullptr) {
+		PX4_ERR("object instantiate failed");
+		return PX4_ERROR;
+	}
+
+	if (g_dev->test() != PX4_OK) {
+		PX4_ERR("driver test failed");
+		delete g_dev;
+		g_dev = nullptr;
+		return PX4_ERROR;
+	}
+
+	return PX4_OK;
+}
+
 static int usage()
 {
 	PRINT_MODULE_DESCRIPTION(
@@ -315,6 +351,7 @@ $ afbrs50 stop
 	PRINT_MODULE_USAGE_COMMAND_DESCR("start", "Start driver");
 	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, nullptr, "Serial device", false);
 	PRINT_MODULE_USAGE_PARAM_INT('r', 25, 0, 25, "Sensor rotation - downward facing by default", true);
+	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test driver");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop driver");
 	return PX4_OK;
 }
@@ -354,6 +391,8 @@ extern "C" __EXPORT int afbrs50_main(int argc, char *argv[])
 
 	} else if (!strcmp(argv[myoptind], "stop")) {
 		return afbrs50::stop();
+	} else if (!strcmp(argv[myoptind], "test")) {
+		return afbrs50::test(rotation);
 	}
 
 	return afbrs50::usage();

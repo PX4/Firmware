@@ -37,6 +37,10 @@
 #ifndef ARGUS_HAL_TEST_H
 #define ARGUS_HAL_TEST_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 __BEGIN_DECLS
 
 /*!***************************************************************************
@@ -161,6 +165,10 @@ __BEGIN_DECLS
 status_t Argus_VerifyHALImplementation(s2pi_slave_t spi_slave);
 
 __END_DECLS
+
+#ifdef __cplusplus
+}
+#endif
 
 /*! @} */
 #endif /* ARGUS_CAL_API_H */
