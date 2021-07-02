@@ -129,6 +129,11 @@ param set-default MAV_1_RATE 5000
 param set-default MAV_1_FORWARD 1
 param set-default SER_TEL2_BAUD 57600
 
+param set-default PWM_MAIN_MIN1 1025
+param set-default PWM_MAIN_MIN2 1025
+param set-default PWM_MAIN_MIN3 1025
+param set-default PWM_MAIN_MIN4 1025
+
 param set-default VT_TYPE 2
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 1234
@@ -142,7 +147,7 @@ param set-default VT_WV_LND_EN 1
 param set-default VT_WV_LTR_EN 1
 param set-default VT_FWD_THRUST_SC 4
 param set-default VT_F_TRANS_DUR 1
-param set-default VT_IDLE_PWM_MC 1025
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_B_REV_OUT 0.5
 param set-default VT_B_TRANS_THR 0.7
 param set-default VT_FW_PERM_STAB 1

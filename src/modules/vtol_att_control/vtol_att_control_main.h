@@ -184,7 +184,7 @@ private:
 	Params _params{};	// struct holding the parameters
 
 	struct {
-		param_t idle_pwm_mc;
+		param_t idle_pwm_fw;
 		param_t vtol_motor_id;
 		param_t vtol_fw_permanent_stab;
 		param_t vtol_type;

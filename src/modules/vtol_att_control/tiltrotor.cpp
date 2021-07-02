@@ -367,9 +367,9 @@ void Tiltrotor::update_transition_state()
 		set_all_motor_state(motor_state::ENABLED);
 
 
-		// set idle speed for rotary wing mode
+		// set PWM limits for rotary wing mode
 		if (!_flag_idle_mc) {
-			_flag_idle_mc = set_idle_mc();
+			_flag_idle_mc = set_limits_mc();
 		}
 
 		// tilt rotors back

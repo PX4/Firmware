@@ -63,6 +63,10 @@ param set-default PWM_MAIN_RATE 400
 
 param set-default SENS_BOARD_ROT 8
 
+param set-default PWM_MAIN_MIN1 1200
+param set-default PWM_MAIN_MIN2 1200
+param set-default PWM_MAIN_MIN3 1200
+
 param set-default VT_B_TRANS_DUR  1
 param set-default VT_F_TRANS_DUR  1.2
 param set-default VT_F_TR_OL_TM   4
@@ -70,7 +74,7 @@ param set-default VT_FW_DIFTHR_EN 1
 param set-default VT_FW_DIFTHR_SC 0.17
 param set-default VT_FW_MOT_OFFID 3
 param set-default VT_FW_PERM_STAB 0
-param set-default VT_IDLE_PWM_MC 1200
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_MOT_ID 123
 param set-default VT_TILT_FW  1
 param set-default VT_TILT_MC  0

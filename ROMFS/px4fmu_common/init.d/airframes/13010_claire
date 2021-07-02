@@ -22,9 +22,15 @@ param set-default PWM_AUX_RATE 50
 param set-default PWM_MAIN_MAX 2000
 param set-default PWM_MAIN_RATE 400
 
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+
+
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 13
-param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_TILT_FW 0.9
 param set-default VT_TILT_MC 0.08
 param set-default VT_TILT_TRANS 0.5

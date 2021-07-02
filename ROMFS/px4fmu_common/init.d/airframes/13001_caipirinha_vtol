@@ -39,7 +39,10 @@ param set-default MC_YAWRATE_I 0.02
 param set-default MC_YAWRATE_D 0
 param set-default MC_YAWRATE_FF 0
 
-param set-default VT_IDLE_PWM_MC  1080
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+
+param set-default VT_IDLE_PWM_FW  1000
 param set-default VT_ELEV_MC_LOCK 0
 param set-default VT_MOT_ID 12
 param set-default VT_TYPE 0

@@ -91,6 +91,11 @@ param set-default PWM_MAIN_MIN 950
 
 param set-default SENS_BOARD_ROT 4
 
+param set-default PWM_MAIN_MIN5 1000
+param set-default PWM_MAIN_MIN6 1000
+param set-default PWM_MAIN_MIN7 1000
+param set-default PWM_MAIN_MIN8 1000
+
 param set-default VT_ARSP_BLEND 10
 param set-default VT_ARSP_TRANS 21
 param set-default VT_B_DEC_MSS 1.5
@@ -99,7 +104,7 @@ param set-default VT_ELEV_MC_LOCK 0
 param set-default VT_FWD_THRUST_SC 1.2
 param set-default VT_FW_MOT_OFFID 5678
 param set-default VT_F_TR_OL_TM 8
-param set-default VT_IDLE_PWM_MC 1000
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_MOT_ID 5678
 param set-default VT_PSHER_RMP_DT 2
 param set-default VT_TRANS_MIN_TM 4

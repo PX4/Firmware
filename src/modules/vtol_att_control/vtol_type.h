@@ -48,7 +48,7 @@
 #include <drivers/drv_pwm_output.h>
 
 struct Params {
-	int32_t idle_pwm_mc;			// pwm value for idle in mc mode
+	int32_t idle_pwm_fw;			// pwm value for idle in fw mode
 	int32_t vtol_motor_id;
 	int32_t vtol_type;
 	bool elevons_mc_lock;		// lock elevons in multicopter mode
@@ -111,9 +111,9 @@ enum VtolForwardActuationMode {
 // we can select the target motors via VT_FW_MOT_OFFID
 enum class motor_state {
 	ENABLED = 0,		// motor max pwm will be set to the standard max pwm value
-	DISABLED,			// motor max pwm will be set to a value that shuts the motor off
-	IDLE,				// motor max pwm will be set to VT_IDLE_PWM_MC
-	VALUE 				// motor max pwm will be set to a specific value provided, see set_motor_state()
+	DISABLED,		// motor max pwm will be set to a value that shuts the motor off
+	IDLE,			// motor max pwm will be set to VT_IDLE_PWM_FW
+	VALUE 			// motor max pwm will be set to a specific value provided, see set_motor_state()
 };
 
 /**
@@ -251,20 +251,20 @@ protected:
 
 
 	/**
-	 * @brief      Sets mc motor minimum pwm to VT_IDLE_PWM_MC which ensures
-	 *             that they are spinning in mc mode.
+	 * @brief      Sets MC motor min/max PWM values the correct values for
+	 *             rotoray-wing flight.
 	 *
 	 * @return     true on success
 	 */
-	bool set_idle_mc();
+	bool set_limits_mc();
 
 	/**
-	 * @brief      Sets mc motor minimum pwm to PWM_MIN which ensures that the
-	 *             motors stop spinning on zero throttle in fw mode.
+	 * @brief      Sets MC motor min/max pwm to VT_IDLE_PWM_FW which ensures
+	 *             that the motors stop spinning but remain initialized.
 	 *
 	 * @return     true on success
 	 */
-	bool set_idle_fw();
+	bool set_limits_fw();
 
 	void set_all_motor_state(motor_state target_state, int value = 0);
 
@@ -285,6 +285,7 @@ private:
 	struct pwm_output_values _disarmed_pwm_values {};
 
 	struct pwm_output_values _current_max_pwm_values {};
+	struct pwm_output_values _current_min_pwm_values {};
 
 	int32_t _main_motor_channel_bitmap = 0;
 	int32_t _alternate_motor_channel_bitmap = 0;

@@ -26,7 +26,13 @@
 param set-default PWM_MAIN_MAX 2000
 param set-default PWM_MAIN_RATE 400
 
-param set-default VT_IDLE_PWM_MC  1080
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+
+param set-default VT_IDLE_PWM_FW  1000
+param set-default VT_MOT_ID 1234
 param set-default VT_TYPE 0
 param set-default VT_ELEV_MC_LOCK 1
 set MAV_TYPE 20

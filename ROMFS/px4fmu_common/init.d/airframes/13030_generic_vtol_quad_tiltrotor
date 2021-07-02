@@ -29,7 +29,12 @@
 
 param set-default PWM_MAIN_RATE 400
 
-param set-default VT_IDLE_PWM_MC 1100
+param set-default PWM_MAIN_MIN1 1100
+param set-default PWM_MAIN_MIN2 1100
+param set-default PWM_MAIN_MIN3 1100
+param set-default PWM_MAIN_MIN4 1100
+
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_TYPE 1
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 24

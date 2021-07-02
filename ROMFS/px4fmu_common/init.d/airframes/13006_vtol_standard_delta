@@ -47,10 +47,15 @@ param set-default MPC_YAWRAUTO_MAX 20
 param set-default PWM_AUX_DIS3 950
 param set-default PWM_MAIN_RATE 400
 
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 1234
 param set-default VT_F_TRANS_THR 0.75
-param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_TYPE 2
 set MAV_TYPE 22
 

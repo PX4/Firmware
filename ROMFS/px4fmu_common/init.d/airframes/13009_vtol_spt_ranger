@@ -70,10 +70,15 @@ param set-default PWM_AUX_DIS5 950
 
 param set-default PWM_MAIN_RATE 400
 
+param set-default PWM_MAIN_MIN1 1180
+param set-default PWM_MAIN_MIN2 1180
+param set-default PWM_MAIN_MIN3 1180
+param set-default PWM_MAIN_MIN4 1180
+
 param set-default VT_ARSP_TRANS   15
 param set-default VT_B_TRANS_DUR  4
 param set-default VT_F_TRANS_THR    0.6
-param set-default VT_IDLE_PWM_MC 1180
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 1234
 param set-default VT_TRANS_MIN_TM 5

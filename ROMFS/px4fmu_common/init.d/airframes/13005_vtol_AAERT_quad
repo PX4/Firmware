@@ -57,12 +57,17 @@ param set-default FW_RR_IMAX 0.2
 param set-default FW_RR_P 0.05
 param set-default FW_THR_CRUISE 0.75
 
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+
 param set-default VT_ARSP_BLEND 6
 param set-default VT_ARSP_TRANS 12
 param set-default VT_F_TRANS_THR 0.75
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 1234
-param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_TYPE 2
 set MAV_TYPE 22
 

@@ -50,11 +50,16 @@ param set-default PWM_AUX_REV1 1
 param set-default PWM_AUX_REV2 1
 param set-default PWM_MAIN_RATE 400
 
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+
 param set-default VT_ARSP_TRANS 15
 param set-default VT_ARSP_BLEND 8
 param set-default VT_B_TRANS_DUR 4
 param set-default VT_F_TRANS_THR 0.75
-param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_MOT_ID 1234
 param set-default VT_FW_MOT_OFFID 1234
 param set-default VT_TYPE 2

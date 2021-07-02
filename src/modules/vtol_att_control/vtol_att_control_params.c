@@ -40,7 +40,7 @@
  */
 
 /**
- * Idle speed of VTOL when in multicopter mode
+ * Minimum PWM of VTOL motors when in fixed-wing mode
  *
  * @unit us
  * @min 900
@@ -49,7 +49,7 @@
  * @decimal 0
  * @group VTOL Attitude Control
  */
-PARAM_DEFINE_INT32(VT_IDLE_PWM_MC, 900);
+PARAM_DEFINE_INT32(VT_IDLE_PWM_FW, 1000);
 
 /**
  * Permanent stabilization in fw mode

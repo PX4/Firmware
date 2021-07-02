@@ -42,8 +42,15 @@ param set-default MC_YAWRATE_FF 0
 
 param set-default PWM_MAIN_RATE 400
 
+param set-default PWM_MAIN_MIN1 1080
+param set-default PWM_MAIN_MIN2 1080
+param set-default PWM_MAIN_MIN3 1080
+param set-default PWM_MAIN_MIN4 1080
+param set-default PWM_MAIN_MIN5 1080
+param set-default PWM_MAIN_MIN6 1080
+
 param set-default VT_FW_MOT_OFFID 34
-param set-default VT_IDLE_PWM_MC 1080
+param set-default VT_IDLE_PWM_FW 1000
 param set-default VT_MOT_ID 123456
 param set-default VT_FW_MOT_OFFID 56
 param set-default VT_TILT_MC 0.08

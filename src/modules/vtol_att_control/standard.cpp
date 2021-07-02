@@ -315,9 +315,9 @@ void Standard::update_transition_state()
 
 		set_all_motor_state(motor_state::ENABLED);
 
-		// set idle speed for MC actuators
+		// reset min/max PWM values for MC actuators for MC flight
 		if (!_flag_idle_mc) {
-			_flag_idle_mc = set_idle_mc();
+			_flag_idle_mc = set_limits_mc();
 		}
 	}
 

@@ -245,7 +245,7 @@ void Tailsitter::update_transition_state()
 		const float trans_pitch_rate = M_PI_2_F / _params->back_trans_duration;
 
 		if (!_flag_idle_mc) {
-			_flag_idle_mc = set_idle_mc();
+			_flag_idle_mc = set_limits_mc();
 		}
 
 		if (tilt > 0.01f) {

@@ -74,11 +74,14 @@ VtolType::VtolType(VtolAttitudeControl *att_controller) :
 		pwm_max = PWM_DEFAULT_MAX;
 	}
 
+	for (auto &pwm_min : _min_mc_pwm_values.values) {
+		pwm_min = PWM_DEFAULT_MIN;
+	}
+
 	for (auto &pwm_disarmed : _disarmed_pwm_values.values) {
 		pwm_disarmed = PWM_MOTOR_OFF;
 	}
 
-	_current_max_pwm_values = _max_mc_pwm_values;
 }
 
 bool VtolType::init()
@@ -130,19 +133,20 @@ bool VtolType::init()
 		}
 	}
 
-	return true;
+	_current_max_pwm_values = _max_mc_pwm_values;
+	_current_min_pwm_values = _min_mc_pwm_values;
 
+	return true;
 }
 
 void VtolType::update_mc_state()
 {
+	// Set the min/max PWM values for MC mode
 	if (!_flag_idle_mc) {
-		_flag_idle_mc = set_idle_mc();
+		_flag_idle_mc = set_limits_mc();
 	}
 
 	resetAccelToPitchPitchIntegrator();
-
-	VtolType::set_all_motor_state(motor_state::ENABLED);
 
 	// copy virtual attitude setpoint to real attitude setpoint
 	memcpy(_v_att_sp, _mc_virtual_att_sp, sizeof(vehicle_attitude_setpoint_s));
@@ -155,13 +159,12 @@ void VtolType::update_mc_state()
 
 void VtolType::update_fw_state()
 {
+	// Set the min/max PWM values for FW mode
 	if (_flag_idle_mc) {
-		_flag_idle_mc = !set_idle_fw();
+		_flag_idle_mc = !set_limits_fw();
 	}
 
 	resetAccelToPitchPitchIntegrator();
-
-	VtolType::set_alternate_motor_state(motor_state::DISABLED);
 
 	// copy virtual attitude setpoint to real attitude setpoint
 	memcpy(_v_att_sp, _fw_virtual_att_sp, sizeof(vehicle_attitude_setpoint_s));
@@ -195,8 +198,6 @@ void VtolType::update_transition_state()
 	_transition_dt = (float)(t_now - _last_loop_ts) / 1e6f;
 	_transition_dt = math::constrain(_transition_dt, 0.0001f, 0.02f);
 	_last_loop_ts = t_now;
-
-
 
 	check_quadchute_condition();
 }
@@ -307,41 +308,21 @@ void VtolType::check_quadchute_condition()
 	}
 }
 
-bool VtolType::set_idle_mc()
+bool VtolType::set_limits_mc()
 {
-	unsigned pwm_value = _params->idle_pwm_mc;
-	struct pwm_output_values pwm_values {};
+	// Enabale all VTOL motors for rotary wing flight
+	set_all_motor_state(motor_state::ENABLED);
 
-	for (int i = 0; i < num_outputs_max; i++) {
-		if (is_channel_set(i, generate_bitmap_from_channel_numbers(_params->vtol_motor_id))) {
-			pwm_values.values[i] = pwm_value;
-
-		} else {
-			pwm_values.values[i] = _min_mc_pwm_values.values[i];
-		}
-
-		pwm_values.channel_count++;
-	}
-
-	return apply_pwm_limits(pwm_values, pwm_limit_type::TYPE_MINIMUM);
+	return true;
 }
 
-bool VtolType::set_idle_fw()
+bool VtolType::set_limits_fw()
 {
-	struct pwm_output_values pwm_values {};
+	// Enable all "main" motors, and set all "alt" motors to FW idle
+	set_main_motor_state(motor_state::ENABLED);
+	set_alternate_motor_state(motor_state::IDLE);
 
-	for (int i = 0; i < num_outputs_max; i++) {
-		if (is_channel_set(i, generate_bitmap_from_channel_numbers(_params->vtol_motor_id))) {
-			pwm_values.values[i] = PWM_DEFAULT_MIN;
-
-		} else {
-			pwm_values.values[i] = _min_mc_pwm_values.values[i];
-		}
-
-		pwm_values.channel_count++;
-	}
-
-	return apply_pwm_limits(pwm_values, pwm_limit_type::TYPE_MINIMUM);
+	return true;
 }
 
 bool VtolType::apply_pwm_limits(struct pwm_output_values &pwm_values, pwm_limit_type type)
@@ -405,18 +386,24 @@ bool VtolType::set_motor_state(const motor_state target_state, const int32_t cha
 {
 	switch (target_state) {
 	case motor_state::ENABLED:
+
+		// Motors are fully enabled: Use the PWM_{MAIN,AUX}_{MIN,MAX}{i} param values
 		for (int i = 0; i < num_outputs_max; i++) {
 			if (is_channel_set(i, channel_bitmap)) {
 				_current_max_pwm_values.values[i] = _max_mc_pwm_values.values[i];
+				_current_min_pwm_values.values[i] = _min_mc_pwm_values.values[i];
 			}
 		}
 
 		break;
 
 	case motor_state::DISABLED:
+
+		// Motors are fully disabled: Use the PWM_{MAIN,AUX}_DIS{i} param values
 		for (int i = 0; i < num_outputs_max; i++) {
 			if (is_channel_set(i, channel_bitmap)) {
 				_current_max_pwm_values.values[i] = _disarmed_pwm_values.values[i];
+				_current_min_pwm_values.values[i] = _disarmed_pwm_values.values[i];
 			}
 		}
 
@@ -424,18 +411,23 @@ bool VtolType::set_motor_state(const motor_state target_state, const int32_t cha
 
 	case motor_state::IDLE:
 
+		// Motors are off, but not disarmed: Use the VT_IDLE_PWM_FW param value
 		for (int i = 0; i < num_outputs_max; i++) {
 			if (is_channel_set(i, channel_bitmap)) {
-				_current_max_pwm_values.values[i] = _params->idle_pwm_mc;
+				_current_max_pwm_values.values[i] = _params->idle_pwm_fw;
+				_current_min_pwm_values.values[i] = _params->idle_pwm_fw;
 			}
 		}
 
 		break;
 
 	case motor_state::VALUE:
+
+		// Motors are enabled, but set the max PWM to <value>
 		for (int i = 0; i < num_outputs_max; i++) {
 			if (is_channel_set(i, channel_bitmap)) {
 				_current_max_pwm_values.values[i] = value;
+				_current_min_pwm_values.values[i] = _min_mc_pwm_values.values[i];
 			}
 		}
 
@@ -443,8 +435,12 @@ bool VtolType::set_motor_state(const motor_state target_state, const int32_t cha
 	}
 
 	_current_max_pwm_values.channel_count = num_outputs_max;
+	_current_min_pwm_values.channel_count = num_outputs_max;
 
-	return apply_pwm_limits(_current_max_pwm_values, pwm_limit_type::TYPE_MAXIMUM);
+	const int res_max = apply_pwm_limits(_current_max_pwm_values, pwm_limit_type::TYPE_MAXIMUM);
+	const int res_min = apply_pwm_limits(_current_min_pwm_values, pwm_limit_type::TYPE_MINIMUM);
+
+	return res_max && res_min;
 }
 
 int VtolType::generate_bitmap_from_channel_numbers(const int channels)
