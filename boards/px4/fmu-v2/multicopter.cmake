@@ -22,7 +22,7 @@ px4_add_board(
 		#batt_smbus
 		camera_capture
 		camera_trigger
-		distance_sensor # all available distance sensor drivers
+		#distance_sensor # all available distance sensor drivers
 		gps
 		imu/l3gd20
 		imu/lsm303d
