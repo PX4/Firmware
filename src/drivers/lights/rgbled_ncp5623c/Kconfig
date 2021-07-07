@@ -1,0 +1,5 @@
+menuconfig DRIVERS_LIGHTS_RGBLED_NCP5623C
+	bool "rgbled_ncp5623c"
+	default n
+	---help---
+		Enable support for rgbled_ncp5623c

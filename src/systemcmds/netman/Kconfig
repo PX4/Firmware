@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_NETMAN
+	bool "netman"
+	default n
+	---help---
+		Enable support for netman

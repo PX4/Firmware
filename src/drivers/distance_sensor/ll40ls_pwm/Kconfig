@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_LL40LS_PWM
+	bool "ll40ls_pwm"
+	default n
+	---help---
+		Enable support for ll40ls_pwm

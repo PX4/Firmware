@@ -1,0 +1,5 @@
+menuconfig MODULES_LOAD_MON
+	bool "load_mon"
+	default n
+	---help---
+		Enable support for load_mon

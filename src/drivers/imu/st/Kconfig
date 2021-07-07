@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_ST
+	bool "st"
+	default n
+	---help---
+		Enable support for st

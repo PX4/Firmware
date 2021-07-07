@@ -1,0 +1,5 @@
+menuconfig DRIVERS_GPS
+	bool "gps"
+	default n
+	---help---
+		Enable support for gps

@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_SERIAL_TEST
+	bool "serial_test"
+	default n
+	---help---
+		Enable support for serial_test

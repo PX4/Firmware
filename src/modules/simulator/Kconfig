@@ -1,0 +1,5 @@
+menuconfig MODULES_SIMULATOR
+	bool "simulator"
+	default n
+	---help---
+		Enable support for simulator

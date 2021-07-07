@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_MOTOR_TEST
+	bool "motor_test"
+	default n
+	---help---
+		Enable support for motor_test

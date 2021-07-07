@@ -1,0 +1,5 @@
+menuconfig MODULES_ATTITUDE_ESTIMATOR_Q
+	bool "attitude_estimator_q"
+	default n
+	---help---
+		Enable support for attitude_estimator_q

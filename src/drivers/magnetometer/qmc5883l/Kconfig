@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_QMC5883L
+	bool "qmc5883l"
+	default n
+	---help---
+		Enable support for qmc5883l

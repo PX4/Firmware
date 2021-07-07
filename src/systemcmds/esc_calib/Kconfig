@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_ESC_CALIB
+	bool "esc_calib"
+	default n
+	---help---
+		Enable support for esc_calib

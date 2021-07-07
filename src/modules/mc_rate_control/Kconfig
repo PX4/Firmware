@@ -1,0 +1,5 @@
+menuconfig MODULES_MC_RATE_CONTROL
+	bool "mc_rate_control"
+	default n
+	---help---
+		Enable support for mc_rate_control

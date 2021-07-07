@@ -1,0 +1,5 @@
+menuconfig MODULES_FW_ATT_CONTROL
+	bool "fw_att_control"
+	default n
+	---help---
+		Enable support for fw_att_control

@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_LIS3MDL
+	bool "lis3mdl"
+	default n
+	---help---
+		Enable support for lis3mdl

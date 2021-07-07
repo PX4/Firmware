@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_USB_CONNECTED
+	bool "usb_connected"
+	default n
+	---help---
+		Enable support for usb_connected

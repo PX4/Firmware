@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_PERF
+	bool "perf"
+	default n
+	---help---
+		Enable support for perf

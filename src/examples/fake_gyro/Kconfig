@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_FAKE_GYRO
+	bool "fake_gyro"
+	default n
+	---help---
+		Enable support for fake_gyro

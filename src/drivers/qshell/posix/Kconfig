@@ -1,0 +1,5 @@
+menuconfig DRIVERS_QSHELL_POSIX
+	bool "posix"
+	default n
+	---help---
+		Enable support for posix

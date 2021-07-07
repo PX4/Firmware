@@ -1,0 +1,5 @@
+menuconfig DRIVERS_LIGHTS_RGBLED_PWM
+	bool "rgbled_pwm"
+	default n
+	---help---
+		Enable support for rgbled_pwm

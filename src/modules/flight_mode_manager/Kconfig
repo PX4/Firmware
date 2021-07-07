@@ -1,0 +1,5 @@
+menuconfig MODULES_FLIGHT_MODE_MANAGER
+	bool "flight_mode_manager"
+	default n
+	---help---
+		Enable support for flight_mode_manager

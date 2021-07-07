@@ -1,0 +1,9 @@
+menuconfig DRIVERS_DISTANCE_SENSOR
+	bool "distance_sensor"
+	default n
+	---help---
+		Enable support for distance_sensor
+		
+if DRIVERS_DISTANCE_SENSOR
+rsource "*/Kconfig"
+endif #DRIVERS_DISTANCE_SENSOR

@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_DMESG
+	bool "dmesg"
+	default n
+	---help---
+		Enable support for dmesg

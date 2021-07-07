@@ -1,0 +1,5 @@
+menuconfig MODULES_TEMPERATURE_COMPENSATION
+	bool "temperature_compensation"
+	default n
+	---help---
+		Enable support for temperature_compensation

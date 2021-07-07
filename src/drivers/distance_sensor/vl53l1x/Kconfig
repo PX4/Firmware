@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_VL53L1X
+	bool "vl53l1x"
+	default n
+	---help---
+		Enable support for vl53l1x

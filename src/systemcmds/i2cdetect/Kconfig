@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_I2CDETECT
+	bool "i2cdetect"
+	default n
+	---help---
+		Enable support for i2cdetect

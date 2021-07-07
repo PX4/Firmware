@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_UUV_EXAMPLE_APP
+	bool "uuv_example_app"
+	default n
+	---help---
+		Enable support for uuv_example_app

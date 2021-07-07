@@ -1,0 +1,28 @@
+# PX4 Firmware Configuration
+
+
+mainmenu "PX4 Firmware Configuration"
+
+comment "Platform: $(PLATFORM)"
+comment "Vendor: $(VENDOR)"
+comment "Model: $(MODEL)"
+comment "Label: $(LABEL)"
+comment "Toolchain: $(TOOLCHAIN)"
+comment "Architecture: $(ARCHITECTURE)"
+comment "Romfsroot: $(ROMFSROOT)"
+
+menu "drivers"
+source "src/drivers/Kconfig"
+endmenu
+
+menu "modules"
+source "src/modules/Kconfig"
+endmenu
+
+menu "systemcmds"
+source "src/systemcmds/Kconfig"
+endmenu
+
+menu "examples"
+source "src/examples/Kconfig"
+endmenu

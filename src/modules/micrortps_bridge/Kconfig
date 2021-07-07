@@ -1,0 +1,5 @@
+menuconfig MODULES_MICRORTPS_BRIDGE
+	bool "micrortps_bridge"
+	default n
+	---help---
+		Enable support for micrortps_bridge

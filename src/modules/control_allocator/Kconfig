@@ -1,0 +1,5 @@
+menuconfig MODULES_CONTROL_ALLOCATOR
+	bool "control_allocator"
+	default n
+	---help---
+		Enable support for control_allocator

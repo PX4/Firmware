@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_FXAS21002C
+	bool "fxas21002c"
+	default n
+	---help---
+		Enable support for fxas21002c

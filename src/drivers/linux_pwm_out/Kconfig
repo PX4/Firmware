@@ -1,0 +1,5 @@
+menuconfig DRIVERS_LINUX_PWM_OUT
+	bool "linux_pwm_out"
+	default n
+	---help---
+		Enable support for linux_pwm_out

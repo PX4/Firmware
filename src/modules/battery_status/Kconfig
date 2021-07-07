@@ -1,0 +1,5 @@
+menuconfig MODULES_BATTERY_STATUS
+	bool "battery_status"
+	default n
+	---help---
+		Enable support for battery_status

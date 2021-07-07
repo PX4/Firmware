@@ -1,0 +1,5 @@
+menuconfig DRIVERS_CAMERA_TRIGGER
+	bool "camera_trigger"
+	default n
+	---help---
+		Enable support for camera_trigger

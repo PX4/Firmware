@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_LIGHTWARE_LASER_SERIAL
+	bool "lightware_laser_serial"
+	default n
+	---help---
+		Enable support for lightware_laser_serial

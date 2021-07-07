@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_PX4_MAVLINK_DEBUG
+	bool "px4_mavlink_debug"
+	default n
+	---help---
+		Enable support for px4_mavlink_debug

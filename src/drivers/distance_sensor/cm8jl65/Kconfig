@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_CM8JL65
+	bool "cm8jl65"
+	default n
+	---help---
+		Enable support for cm8jl65

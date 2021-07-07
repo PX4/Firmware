@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_INVENSENSE_ICM20608G
+	bool "icm20608g"
+	default n
+	---help---
+		Enable support for icm20608g

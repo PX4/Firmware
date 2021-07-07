@@ -1,0 +1,5 @@
+menuconfig MODULES_EVENTS
+	bool "events"
+	default n
+	---help---
+		Enable support for events

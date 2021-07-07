@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_VER
+	bool "ver"
+	default n
+	---help---
+		Enable support for ver

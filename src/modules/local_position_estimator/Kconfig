@@ -1,0 +1,5 @@
+menuconfig MODULES_LOCAL_POSITION_ESTIMATOR
+	bool "local_position_estimator"
+	default n
+	---help---
+		Enable support for local_position_estimator

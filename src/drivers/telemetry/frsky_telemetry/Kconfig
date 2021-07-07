@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TELEMETRY_FRSKY_TELEMETRY
+	bool "frsky_telemetry"
+	default n
+	---help---
+		Enable support for frsky_telemetry

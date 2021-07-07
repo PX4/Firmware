@@ -1,0 +1,5 @@
+menuconfig DRIVERS_SAFETY_BUTTON
+	bool "safety_button"
+	default n
+	---help---
+		Enable support for safety_button

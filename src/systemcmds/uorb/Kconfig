@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_UORB
+	bool "uorb"
+	default n
+	---help---
+		Enable support for uorb

@@ -1,0 +1,5 @@
+menuconfig MODULES_COMMANDER
+	bool "commander"
+	default n
+	---help---
+		Enable support for commander

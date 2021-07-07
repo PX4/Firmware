@@ -1,0 +1,5 @@
+menuconfig DRIVERS_SPEKTRUM_RC
+	bool "spektrum_rc"
+	default n
+	---help---
+		Enable support for spektrum_rc

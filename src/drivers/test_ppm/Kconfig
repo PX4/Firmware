@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TEST_PPM
+	bool "test_ppm"
+	default n
+	---help---
+		Enable support for test_ppm

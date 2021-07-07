@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_SHUTDOWN
+	bool "shutdown"
+	default n
+	---help---
+		Enable support for shutdown

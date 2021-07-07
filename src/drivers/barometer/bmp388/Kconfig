@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_BMP388
+	bool "bmp388"
+	default n
+	---help---
+		Enable support for bmp388

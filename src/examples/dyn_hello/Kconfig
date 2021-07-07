@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_DYN_HELLO
+	bool "dyn_hello"
+	default n
+	---help---
+		Enable support for dyn_hello

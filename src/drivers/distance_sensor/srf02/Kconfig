@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_SRF02
+	bool "srf02"
+	default n
+	---help---
+		Enable support for srf02

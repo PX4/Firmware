@@ -1,0 +1,5 @@
+menuconfig MODULES_EKF2
+	bool "ekf2"
+	default n
+	---help---
+		Enable support for ekf2

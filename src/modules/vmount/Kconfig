@@ -1,0 +1,5 @@
+menuconfig MODULES_VMOUNT
+	bool "vmount"
+	default n
+	---help---
+		Enable support for vmount

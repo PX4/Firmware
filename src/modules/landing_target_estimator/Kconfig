@@ -1,0 +1,5 @@
+menuconfig MODULES_LANDING_TARGET_ESTIMATOR
+	bool "landing_target_estimator"
+	default n
+	---help---
+		Enable support for landing_target_estimator

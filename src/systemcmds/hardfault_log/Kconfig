@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_HARDFAULT_LOG
+	bool "hardfault_log"
+	default n
+	---help---
+		Enable support for hardfault_log

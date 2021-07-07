@@ -1,0 +1,5 @@
+menuconfig DRIVERS_RC_INPUT
+	bool "rc_input"
+	default n
+	---help---
+		Enable support for rc_input

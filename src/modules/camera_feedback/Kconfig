@@ -1,0 +1,5 @@
+menuconfig MODULES_CAMERA_FEEDBACK
+	bool "camera_feedback"
+	default n
+	---help---
+		Enable support for camera_feedback

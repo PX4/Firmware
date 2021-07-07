@@ -1,0 +1,5 @@
+menuconfig DRIVERS_OPTICAL_FLOW_PMW3901
+	bool "pmw3901"
+	default n
+	---help---
+		Enable support for pmw3901

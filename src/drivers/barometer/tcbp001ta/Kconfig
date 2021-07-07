@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_TCBP001TA
+	bool "tcbp001ta"
+	default n
+	---help---
+		Enable support for tcbp001ta

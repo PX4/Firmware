@@ -1,0 +1,5 @@
+menuconfig MODULES_SENSORS
+	bool "sensors"
+	default n
+	---help---
+		Enable support for sensors

@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_LSM303AGR
+	bool "lsm303agr"
+	default n
+	---help---
+		Enable support for lsm303agr

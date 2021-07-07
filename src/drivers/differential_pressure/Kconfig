@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DIFFERENTIAL_PRESSURE
+	bool "differential_pressure"
+	default n
+	---help---
+		Enable support for differential_pressure

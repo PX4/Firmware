@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_TUNE_CONTROL
+	bool "tune_control"
+	default n
+	---help---
+		Enable support for tune_control

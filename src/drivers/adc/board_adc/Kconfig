@@ -1,0 +1,5 @@
+menuconfig DRIVERS_ADC_BOARD_ADC
+	bool "board_adc"
+	default n
+	---help---
+		Enable support for board_adc

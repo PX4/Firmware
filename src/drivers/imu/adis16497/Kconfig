@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_ADIS16497
+	bool "adis16497"
+	default n
+	---help---
+		Enable support for adis16497

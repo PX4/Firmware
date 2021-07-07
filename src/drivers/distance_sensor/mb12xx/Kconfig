@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_MB12XX
+	bool "mb12xx"
+	default n
+	---help---
+		Enable support for mb12xx

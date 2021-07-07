@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_SD_BENCH
+	bool "sd_bench"
+	default n
+	---help---
+		Enable support for sd_bench

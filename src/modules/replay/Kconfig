@@ -1,0 +1,5 @@
+menuconfig MODULES_REPLAY
+	bool "replay"
+	default n
+	---help---
+		Enable support for replay

@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TELEMETRY_HOTT
+	bool "hott"
+	default n
+	---help---
+		Enable support for hott

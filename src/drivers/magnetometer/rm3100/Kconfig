@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_RM3100
+	bool "rm3100"
+	default n
+	---help---
+		Enable support for rm3100

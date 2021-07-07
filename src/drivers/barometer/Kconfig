@@ -1,0 +1,9 @@
+menuconfig DRIVERS_BAROMETER
+	bool "barometer"
+	default n
+	---help---
+		Enable support for barometer
+
+if DRIVERS_BAROMETER
+rsource "*/Kconfig"
+endif #DRIVERS_BAROMETER

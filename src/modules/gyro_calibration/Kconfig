@@ -1,0 +1,5 @@
+menuconfig MODULES_GYRO_CALIBRATION
+	bool "gyro_calibration"
+	default n
+	---help---
+		Enable support for gyro_calibration

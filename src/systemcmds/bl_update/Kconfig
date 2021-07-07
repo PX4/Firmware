@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_BL_UPDATE
+	bool "bl_update"
+	default n
+	---help---
+		Enable support for bl_update

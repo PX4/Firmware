@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_MPL3115A2
+	bool "mpl3115a2"
+	default n
+	---help---
+		Enable support for mpl3115a2

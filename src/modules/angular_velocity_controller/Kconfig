@@ -1,0 +1,5 @@
+menuconfig MODULES_ANGULAR_VELOCITY_CONTROLLER
+	bool "angular_velocity_controller"
+	default n
+	---help---
+		Enable support for angular_velocity_controller

@@ -1,0 +1,5 @@
+menuconfig MODULES_NAVIGATOR
+	bool "navigator"
+	default n
+	---help---
+		Enable support for navigator

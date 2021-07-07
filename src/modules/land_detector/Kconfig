@@ -1,0 +1,5 @@
+menuconfig MODULES_LAND_DETECTOR
+	bool "land_detector"
+	default n
+	---help---
+		Enable support for land_detector

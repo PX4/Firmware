@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_INVENSENSE_ICM20649
+	bool "icm20649"
+	default n
+	---help---
+		Enable support for icm20649

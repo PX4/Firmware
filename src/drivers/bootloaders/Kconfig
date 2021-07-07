@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BOOTLOADERS
+	bool "bootloaders"
+	default n
+	---help---
+		Enable support for bootloaders

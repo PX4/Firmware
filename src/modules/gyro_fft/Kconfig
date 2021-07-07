@@ -1,0 +1,5 @@
+menuconfig MODULES_GYRO_FFT
+	bool "gyro_fft"
+	default n
+	---help---
+		Enable support for gyro_fft

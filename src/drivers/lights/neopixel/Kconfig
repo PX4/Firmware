@@ -1,0 +1,5 @@
+menuconfig DRIVERS_LIGHTS_NEOPIXEL
+	bool "neopixel"
+	default n
+	---help---
+		Enable support for neopixel

@@ -1,0 +1,5 @@
+menuconfig EXAMPLES_MATLAB_CSV_SERIAL
+	bool "matlab_csv_serial"
+	default n
+	---help---
+		Enable support for matlab_csv_serial

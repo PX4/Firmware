@@ -1,0 +1,5 @@
+menuconfig MODULES_DATAMAN
+	bool "dataman"
+	default n
+	---help---
+		Enable support for dataman

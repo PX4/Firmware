@@ -1,0 +1,5 @@
+menuconfig DRIVERS_CAMERA_CAPTURE
+	bool "camera_capture"
+	default n
+	---help---
+		Enable support for camera_capture

@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_INVENSENSE_ICM20602
+	bool "icm20602"
+	default n
+	---help---
+		Enable support for icm20602

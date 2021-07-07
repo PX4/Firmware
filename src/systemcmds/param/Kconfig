@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_PARAM
+	bool "param"
+	default n
+	---help---
+		Enable support for param

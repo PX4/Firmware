@@ -1,0 +1,5 @@
+menuconfig MODULES_ROVER_POS_CONTROL
+	bool "rover_pos_control"
+	default n
+	---help---
+		Enable support for rover_pos_control

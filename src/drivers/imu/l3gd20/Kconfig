@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_L3GD20
+	bool "l3gd20"
+	default n
+	---help---
+		Enable support for l3gd20

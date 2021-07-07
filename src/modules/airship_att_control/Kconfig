@@ -1,0 +1,5 @@
+menuconfig MODULES_AIRSHIP_ATT_CONTROL
+	bool "airship_att_control"
+	default n
+	---help---
+		Enable support for airship_att_control

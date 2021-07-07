@@ -1,0 +1,9 @@
+menuconfig DRIVERS_MAGNETOMETER
+	bool "Magnetometer"
+	default n
+	---help---
+		Enable support for all available magnetometer drivers
+		
+if DRIVERS_MAGNETOMETER
+rsource "*/Kconfig"
+endif #DRIVERS_MAGNETOMETER

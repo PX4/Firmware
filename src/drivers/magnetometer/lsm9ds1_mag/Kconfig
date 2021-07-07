@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_LSM9DS1_MAG
+	bool "lsm9ds1_mag"
+	default n
+	---help---
+		Enable support for lsm9ds1_mag

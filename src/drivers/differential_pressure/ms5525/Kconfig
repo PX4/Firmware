@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DIFFERENTIAL_PRESSURE_MS5525
+	bool "ms5525"
+	default n
+	---help---
+		Enable support for ms5525

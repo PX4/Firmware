@@ -1,0 +1,5 @@
+menuconfig DRIVERS_PX4IO
+	bool "px4io"
+	default n
+	---help---
+		Enable support for px4io

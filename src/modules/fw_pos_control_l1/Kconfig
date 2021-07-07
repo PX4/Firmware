@@ -1,0 +1,5 @@
+menuconfig MODULES_FW_POS_CONTROL_L1
+	bool "fw_pos_control_l1"
+	default n
+	---help---
+		Enable support for fw_pos_control_l1

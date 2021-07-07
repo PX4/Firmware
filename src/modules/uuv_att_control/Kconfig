@@ -1,0 +1,5 @@
+menuconfig MODULES_UUV_ATT_CONTROL
+	bool "uuv_att_control"
+	default n
+	---help---
+		Enable support for uuv_att_control

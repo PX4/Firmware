@@ -1,0 +1,5 @@
+menuconfig MODULES_AIRSPEED_SELECTOR
+	bool "airspeed_selector"
+	default n
+	---help---
+		Enable support for airspeed_selector

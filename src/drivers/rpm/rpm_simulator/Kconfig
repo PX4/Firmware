@@ -1,0 +1,5 @@
+menuconfig DRIVERS_RPM_RPM_SIMULATOR
+	bool "rpm_simulator"
+	default n
+	---help---
+		Enable support for rpm_simulator

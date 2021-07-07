@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_AKM
+	bool "akm"
+	default n
+	---help---
+		Enable support for akm

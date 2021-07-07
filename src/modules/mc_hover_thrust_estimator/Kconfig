@@ -1,0 +1,5 @@
+menuconfig MODULES_MC_HOVER_THRUST_ESTIMATOR
+	bool "mc_hover_thrust_estimator"
+	default n
+	---help---
+		Enable support for mc_hover_thrust_estimator

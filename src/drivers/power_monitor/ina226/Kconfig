@@ -1,0 +1,5 @@
+menuconfig DRIVERS_POWER_MONITOR_INA226
+	bool "ina226"
+	default n
+	---help---
+		Enable support for ina226

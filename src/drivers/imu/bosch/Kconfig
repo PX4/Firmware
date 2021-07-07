@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_BOSCH
+	bool "bosch"
+	default n
+	---help---
+		Enable support for bosch

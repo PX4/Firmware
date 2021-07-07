@@ -1,0 +1,5 @@
+menuconfig DRIVERS_POWER_MONITOR_VOXLPM
+	bool "voxlpm"
+	default n
+	---help---
+		Enable support for voxlpm

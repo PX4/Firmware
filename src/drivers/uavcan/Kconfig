@@ -1,0 +1,13 @@
+menuconfig DRIVERS_UAVCAN
+	bool "uavcan"
+	default n
+	---help---
+		Enable support for uavcan
+
+if DRIVERS_UAVCAN
+    menuconfig UAVCAN_INTERFACES
+        int "UAVCANv0 interface count"
+        default 0
+        ---help---
+            Interface count for UAVCANv0
+endif #DRIVERS_UAVCAN

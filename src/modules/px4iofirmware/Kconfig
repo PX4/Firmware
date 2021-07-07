@@ -1,0 +1,5 @@
+menuconfig MODULES_PX4IOFIRMWARE
+	bool "px4iofirmware"
+	default n
+	---help---
+		Enable support for px4iofirmware

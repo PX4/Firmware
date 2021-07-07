@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_DPS310
+	bool "dps310"
+	default n
+	---help---
+		Enable support for dps310

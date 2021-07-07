@@ -1,0 +1,5 @@
+menuconfig MODULES_MAVLINK
+	bool "mavlink"
+	default n
+	---help---
+		Enable support for mavlink

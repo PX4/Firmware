@@ -1,0 +1,5 @@
+menuconfig DRIVERS_TELEMETRY_IRIDIUMSBD
+	bool "iridiumsbd"
+	default n
+	---help---
+		Enable support for iridiumsbd

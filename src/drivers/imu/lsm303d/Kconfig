@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_LSM303D
+	bool "lsm303d"
+	default n
+	---help---
+		Enable support for lsm303d

@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_DUMPFILE
+	bool "dumpfile"
+	default n
+	---help---
+		Enable support for dumpfile

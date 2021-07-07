@@ -1,0 +1,5 @@
+menuconfig MODULES_LOGGER
+	bool "logger"
+	default n
+	---help---
+		Enable support for logger

@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_TOP
+	bool "top"
+	default n
+	---help---
+		Enable support for top

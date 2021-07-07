@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_ISENTEK
+	bool "isentek"
+	default n
+	---help---
+		Enable support for isentek

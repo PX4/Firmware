@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_GPIO
+	bool "gpio"
+	default n
+	---help---
+		Enable support for gpio

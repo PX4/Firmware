@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_ANALOG_DEVICES
+	bool "analog_devices"
+	default n
+	---help---
+		Enable support for analog_devices

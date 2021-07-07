@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DISTANCE_SENSOR_LEDDAR_ONE
+	bool "leddar_one"
+	default n
+	---help---
+		Enable support for leddar_one

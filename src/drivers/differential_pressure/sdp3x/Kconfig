@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DIFFERENTIAL_PRESSURE_SDP3X
+	bool "sdp3x"
+	default n
+	---help---
+		Enable support for sdp3x

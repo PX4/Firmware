@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_HMC5883
+	bool "hmc5883"
+	default n
+	---help---
+		Enable support for hmc5883

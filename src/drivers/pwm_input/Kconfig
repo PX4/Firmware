@@ -1,0 +1,5 @@
+menuconfig DRIVERS_PWM_INPUT
+	bool "pwm_input"
+	default n
+	---help---
+		Enable support for pwm_input

@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_DYN
+	bool "dyn"
+	default n
+	---help---
+		Enable support for dyn

@@ -1,0 +1,5 @@
+menuconfig MODULES_ESC_BATTERY
+	bool "esc_battery"
+	default n
+	---help---
+		Enable support for esc_battery

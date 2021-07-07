@@ -1,0 +1,5 @@
+menuconfig DRIVERS_MAGNETOMETER_LIS2MDL
+	bool "lis2mdl"
+	default n
+	---help---
+		Enable support for lis2mdl

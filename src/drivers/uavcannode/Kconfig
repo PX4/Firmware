@@ -1,0 +1,5 @@
+menuconfig DRIVERS_UAVCANNODE
+	bool "uavcannode"
+	default n
+	---help---
+		Enable support for uavcannode

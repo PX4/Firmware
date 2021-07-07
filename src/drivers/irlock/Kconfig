@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IRLOCK
+	bool "irlock"
+	default n
+	---help---
+		Enable support for irlock

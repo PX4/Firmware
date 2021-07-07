@@ -145,6 +145,8 @@ include(${PX4_CONFIG_FILE})
 message(STATUS "PX4 config: ${PX4_CONFIG}")
 message(STATUS "PX4 platform: ${PX4_PLATFORM}")
 
+include(kconfig)
+
 if(${PX4_PLATFORM} STREQUAL "posix")
 	if(ENABLE_LOCKSTEP_SCHEDULER)
 		add_definitions(-DENABLE_LOCKSTEP_SCHEDULER)

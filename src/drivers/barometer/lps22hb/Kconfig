@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_LPS22HB
+	bool "lps22hb"
+	default n
+	---help---
+		Enable support for lps22hb

@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_INVENSENSE_MPU6500
+	bool "mpu6500"
+	default n
+	---help---
+		Enable support for mpu6500

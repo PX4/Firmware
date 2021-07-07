@@ -1,0 +1,5 @@
+menuconfig MODULES_MC_ATT_CONTROL
+	bool "mc_att_control"
+	default n
+	---help---
+		Enable support for mc_att_control

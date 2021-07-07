@@ -1,0 +1,5 @@
+menuconfig MODULES_RC_UPDATE
+	bool "rc_update"
+	default n
+	---help---
+		Enable support for rc_update

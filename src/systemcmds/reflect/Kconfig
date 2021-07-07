@@ -1,0 +1,5 @@
+menuconfig SYSTEMCMDS_REFLECT
+	bool "reflect"
+	default n
+	---help---
+		Enable support for reflect

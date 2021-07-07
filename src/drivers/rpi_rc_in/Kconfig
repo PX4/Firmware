@@ -1,0 +1,5 @@
+menuconfig DRIVERS_RPI_RC_IN
+	bool "rpi_rc_in"
+	default n
+	---help---
+		Enable support for rpi_rc_in

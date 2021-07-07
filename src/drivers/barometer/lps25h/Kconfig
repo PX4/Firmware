@@ -1,0 +1,5 @@
+menuconfig DRIVERS_BAROMETER_LPS25H
+	bool "lps25h"
+	default n
+	---help---
+		Enable support for lps25h

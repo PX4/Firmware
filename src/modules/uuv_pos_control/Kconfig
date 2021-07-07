@@ -1,0 +1,5 @@
+menuconfig MODULES_UUV_POS_CONTROL
+	bool "uuv_pos_control"
+	default n
+	---help---
+		Enable support for uuv_pos_control

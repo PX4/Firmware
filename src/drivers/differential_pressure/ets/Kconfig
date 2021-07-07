@@ -1,0 +1,5 @@
+menuconfig DRIVERS_DIFFERENTIAL_PRESSURE_ETS
+	bool "ets"
+	default n
+	---help---
+		Enable support for ets

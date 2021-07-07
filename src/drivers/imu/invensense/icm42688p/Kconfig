@@ -1,0 +1,5 @@
+menuconfig DRIVERS_IMU_INVENSENSE_ICM42688P
+	bool "icm42688p"
+	default n
+	---help---
+		Enable support for icm42688p
