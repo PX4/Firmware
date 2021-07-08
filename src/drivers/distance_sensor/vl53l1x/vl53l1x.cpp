@@ -149,54 +149,21 @@ static const uint8_t status_rtn[24] = { 255, 255, 255, 5, 2, 4, 1, 7, 3, 0,
 
 /* end ST */
 
-<<<<<<< HEAD
 VL53L1X::VL53L1X(const I2CSPIDriverConfig &config) :
 	I2C(config),
 	I2CSPIDriver(config),
 	_px4_rangefinder(get_device_id(), config.rotation)
 {
-=======
-VL53L1X::VL53L1X(I2CSPIBusOption bus_option, const int bus, const uint8_t rotation, int bus_frequency, int address) :
-	I2C(DRV_DIST_DEVTYPE_VL53L1X, MODULE_NAME, bus, address, bus_frequency),
-	I2CSPIDriver(MODULE_NAME, px4::device_bus_to_wq(get_device_id()), bus_option, bus),
-	_px4_rangefinder(get_device_id(), rotation)
-<<<<<<< HEAD
-{
-<<<<<<< HEAD
->>>>>>> cleaned up merge conflicts w/ upstream remote master, added region of interest center setting and size
-	//Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
-	distance_mode = 1;
-=======
-=======
-{
-<<<<<<< HEAD
->>>>>>> format checks passed, ran 'make format'
 	// Set distance mode (1 for ~2m ranging, 2 for ~4m ranging
 	distance_mode = VL53L1X_SHORT_RANGE;
->>>>>>> removed unecessary whitespace in default.cmake, vl53l1x.*, replaced magic #'s with global constants
-
-=======
->>>>>>> Apply suggestions from code review
 	// VL53L1X typical range 0-4 meters with 27 degree field of view
 	_px4_rangefinder.set_min_distance(0.f);
 
 	if (distance_mode == VL53L1X_SHORT_RANGE) {
-<<<<<<< HEAD
-	    _px4_rangefinder.set_max_distance(2.f);
-<<<<<<< HEAD
-	}
-        else {
-=======
-
-	} else {
->>>>>>> removed unecessary whitespace in default.cmake, vl53l1x.*, replaced magic #'s with global constants
-	    _px4_rangefinder.set_max_distance(4.f);
-=======
 		_px4_rangefinder.set_max_distance(2.f);
 
 	} else {
 		_px4_rangefinder.set_max_distance(4.f);
->>>>>>> format checks passed, ran 'make format'
 	}
 
 	_px4_rangefinder.set_fov(math::radians(27.f));
@@ -285,13 +252,14 @@ void VL53L1X::RunImpl()
 	ScheduleDelayed(VL53L1X_SAMPLE_RATE);
 
 	//zone modulus & change center
-	zone = zone% 5;
+	zone = zone % 5;
 	VL53L1X_SetROICenter(roiCenter[zone]);
 
-        //reset inf. counter check
-	if(zone >= sizeof(roiCenter)){
-	        zone = 0;
+	//reset inf. counter check
+	if (zone >= sizeof(roiCenter)) {
+		zone = 0;
 	}
+
 	VL53L1X_SetROICenter(roiCenter[zone]);
 
 	// increment
