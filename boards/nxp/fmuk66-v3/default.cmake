@@ -47,7 +47,7 @@ px4_add_board(
 		smart_battery/batmon
 		telemetry # all available telemetry drivers
 		tone_alarm
-		uavcan_v1
+		uavcan
 	MODULES
 		airspeed_selector
 		attitude_estimator_q
