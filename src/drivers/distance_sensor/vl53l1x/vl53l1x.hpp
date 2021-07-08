@@ -118,7 +118,7 @@ public:
 	void RunImpl();
 
 	// Distance mode member variable
-	uint16_t distance_mode{VL53L1X_SHORT_RANGE};
+	uint16_t distance_mode;
 
 private:
 	int probe() override;
