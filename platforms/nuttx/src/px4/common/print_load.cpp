@@ -81,7 +81,7 @@ void init_print_load(struct print_load_s *s)
 	s->last_times[0] = system_load.tasks[0].total_runtime;
 	sched_unlock();
 
-	for (int i = 1; i < CONFIG_MAX_TASKS; i++) {
+	for (int i = 1; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 		s->last_times[i] = 0;
 	}
 
@@ -142,12 +142,12 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 	float idle_load = 0.f;
 
 	// create a copy of the runtimes because this could be updated during the print output
-	uint64_t total_runtime[CONFIG_MAX_TASKS] {};
+	uint64_t total_runtime[CONFIG_FS_PROCFS_MAX_TASKS] {};
 	sched_lock();
 
 	print_state->new_time = hrt_absolute_time();
 
-	for (int i = 0; i < CONFIG_MAX_TASKS; i++) {
+	for (int i = 0; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 		if (system_load.tasks[i].valid) {
 			total_runtime[i] = system_load.tasks[i].total_runtime;
 		}
@@ -182,7 +182,7 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 	print_state->total_user_time = 0;
 
 
-	for (int i = 0; i < CONFIG_MAX_TASKS; i++) {
+	for (int i = 0; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 
 		sched_lock(); // need to lock the tcb access (but make it as short as possible)
 

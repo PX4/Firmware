@@ -45,8 +45,8 @@
 
 #include <stdint.h>
 
-#ifndef CONFIG_MAX_TASKS
-#define CONFIG_MAX_TASKS 64
+#ifndef CONFIG_FS_PROCFS_MAX_TASKS
+#define CONFIG_FS_PROCFS_MAX_TASKS 64
 #endif
 
 struct print_load_s {
@@ -57,7 +57,7 @@ struct print_load_s {
 
 	uint64_t new_time{0};
 	uint64_t interval_start_time{0};
-	uint64_t last_times[CONFIG_MAX_TASKS] {};
+	uint64_t last_times[CONFIG_FS_PROCFS_MAX_TASKS] {};
 	float interval_time_us{0.f};
 };
 

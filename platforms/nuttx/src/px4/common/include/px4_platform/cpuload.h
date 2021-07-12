@@ -48,7 +48,7 @@ struct system_load_taskinfo_s {
 
 struct system_load_s {
 	uint64_t start_time{0};
-	system_load_taskinfo_s tasks[CONFIG_MAX_TASKS] {};
+	system_load_taskinfo_s tasks[CONFIG_FS_PROCFS_MAX_TASKS] {};
 	int total_count{0};
 	int running_count{0};
 	bool initialized{false};
