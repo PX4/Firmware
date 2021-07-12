@@ -162,6 +162,8 @@ public:
 
 	static bool		serial_instance_exists(const char *device_name, Mavlink *self);
 
+	static bool		component_was_seen(int system_id, int component_id, Mavlink *self = nullptr);
+
 	static void		forward_message(const mavlink_message_t *msg, Mavlink *self);
 
 	int			get_uart_fd() const { return _uart_fd; }

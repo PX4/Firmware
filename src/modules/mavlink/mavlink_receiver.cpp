@@ -462,8 +462,9 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 	uint8_t result = vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED;
 
 	if (!target_ok) {
-		if (!_mavlink->get_forwarding_on()) {
-			// Reject alien commands only if there is no forwarding enabled
+		// Reject alien commands only if there is no forwarding or we've never seen target component before
+		if (!_mavlink->get_forwarding_on()
+		    || !_mavlink->component_was_seen(cmd_mavlink.target_system, cmd_mavlink.target_component, _mavlink)) {
 			acknowledge(msg->sysid, msg->compid, cmd_mavlink.command, vehicle_command_ack_s::VEHICLE_RESULT_FAILED);
 		}
 
@@ -3146,6 +3147,27 @@ MavlinkReceiver::run()
 	}
 }
 
+bool MavlinkReceiver::component_was_seen(int system_id, int component_id)
+{
+	// For system broadcast messages return true if at least one component was seen before
+	if (system_id == 0) {
+		if (_component_states_count > 0) {
+			return true;
+		}
+
+		return false;
+	}
+
+	for (unsigned i = 0; i < _component_states_count; ++i) {
+		if (_component_states[i].system_id == system_id
+		    && (component_id == 0 || _component_states[i].component_id == component_id)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void MavlinkReceiver::update_rx_stats(const mavlink_message_t &message)
 {
 	const bool component_states_has_still_space = [this, &message]() {
@@ -3183,6 +3205,8 @@ void MavlinkReceiver::update_rx_stats(const mavlink_message_t &message)
 				_component_states[i].last_time_received_ms = hrt_absolute_time() / 1000;
 				_component_states[i].last_sequence = message.seq;
 
+				++_component_states_count;
+
 				// Also update overall stats
 				++_total_received_counter;
 
@@ -3204,7 +3228,7 @@ void MavlinkReceiver::print_detailed_rx_stats() const
 	const uint32_t now_ms = hrt_absolute_time() / 1000;
 
 	// TODO: add mutex around shared data.
-	for (unsigned i = 0; i < MAX_REMOTE_COMPONENTS; ++i) {
+	for (unsigned i = 0; i < _component_states_count; ++i) {
 		if (_component_states[i].received_messages > 0) {
 			printf("\t  received from sysid: %" PRIu8 " compid: %" PRIu8 ": %" PRIu32 ", lost: %" PRIu32 ", last %" PRIu32
 			       " ms ago\n",
