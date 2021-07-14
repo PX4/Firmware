@@ -56,6 +56,7 @@
 #			[ EXAMPLES <list> ]
 #			[ SERIAL_PORTS <list> ]
 #			[ CONSTRAINED_FLASH ]
+#			[   NO_HELP ]
 #			[ CONSTRAINED_MEMORY ]
 #			[ EXTERNAL_METADATA ]
 #			[ TESTING ]
@@ -82,7 +83,8 @@
 #		SYSTEMCMDS		: list of system commands to build for this board (relative to src/systemcmds)
 #		EXAMPLES		: list of example modules to build for this board (relative to src/examples)
 #		SERIAL_PORTS		: mapping of user configurable serial ports and param facing name
-#		CONSTRAINED_FLASH	: flag to enable constrained flash options (eg limit init script status text)
+#		CONSTRAINED_FLASH 	: flag to enable constrained flash options (eg limit init script status text)
+#		  NO_HELP 	 	: optional condition flag to disable help text on constrained flash systems
 #		CONSTRAINED_MEMORY	: flag to enable constrained memory options (eg limit maximum number of uORB publications)
 #		EXTERNAL_METADATA	: flag to exclude metadata to reduce flash
 #		TESTING			: flag to enable automatic inclusion of PX4 testing modules
@@ -165,6 +167,7 @@ function(px4_add_board)
 		OPTIONS
 			BUILD_BOOTLOADER
 			CONSTRAINED_FLASH
+			NO_HELP
 			CONSTRAINED_MEMORY
 			EXTERNAL_METADATA
 			TESTING
@@ -262,6 +265,9 @@ function(px4_add_board)
 	if(CONSTRAINED_FLASH)
 		set(px4_constrained_flash_build "1" CACHE INTERNAL "constrained flash build" FORCE)
 		add_definitions(-DCONSTRAINED_FLASH)
+		if (NO_HELP)
+			add_definitions(-DCONSTRAINED_FLASH_NO_HELP="https://docs.px4.io/master/en/modules/modules_main.html")
+		endif()
 	endif()
 
 	if(CONSTRAINED_MEMORY)
