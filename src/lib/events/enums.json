@@ -48,6 +48,198 @@
                             "description": "High Error Density"
                         }
                     }
+                },
+                "arming_state_t": {
+                    "type": "uint8_t",
+                    "description": "State of the main arming state machine",
+                    "entries": {
+                        "0": {
+                            "name": "init",
+                            "description": "Init"
+                        },
+                        "1": {
+                            "name": "standby",
+                            "description": "Standby"
+                        },
+                        "2": {
+                            "name": "armed",
+                            "description": "Armed"
+                        },
+                        "3": {
+                            "name": "standby_error",
+                            "description": "Standby Error"
+                        },
+                        "4": {
+                            "name": "shutdown",
+                            "description": "Shutdown"
+                        },
+                        "5": {
+                            "name": "inair_restore",
+                            "description": "In-air Restore"
+                        }
+                    }
+                },
+                "failsafe_reason_t": {
+                    "type": "uint8_t",
+                    "description": "Reason for entering failsafe",
+                    "entries": {
+                        "0": {
+                            "name": "no_rc",
+                            "description": "No manual control stick input"
+                        },
+                        "1": {
+                            "name": "no_offboard",
+                            "description": "No offboard control inputs"
+                        },
+                        "2": {
+                            "name": "no_rc_and_no_offboard",
+                            "description": "No manual control stick and no offboard control inputs"
+                        },
+                        "3": {
+                            "name": "no_local_position",
+                            "description": "No local position estimate"
+                        },
+                        "4": {
+                            "name": "no_global_position",
+                            "description": "No global position estimate"
+                        },
+                        "5": {
+                            "name": "no_datalink",
+                            "description": "No datalink"
+                        },
+                        "6": {
+                            "name": "no_rc_and_no_datalink",
+                            "description": "No RC and no datalink"
+                        }
+                    }
+                },
+                "arm_disarm_reason_t": {
+                    "type": "uint8_t",
+                    "description": "Reason for arming/disarming",
+                    "entries": {
+                        "0": {
+                            "name": "transition_to_standby",
+                            "description": "Transition to standby"
+                        },
+                        "1": {
+                            "name": "rc_stick",
+                            "description": "RC"
+                        },
+                        "2": {
+                            "name": "rc_switch",
+                            "description": "RC (switch)"
+                        },
+                        "3": {
+                            "name": "command_internal",
+                            "description": "internal command"
+                        },
+                        "4": {
+                            "name": "command_external",
+                            "description": "external command"
+                        },
+                        "5": {
+                            "name": "mission_start",
+                            "description": "mission start"
+                        },
+                        "6": {
+                            "name": "safety_button",
+                            "description": "safety button"
+                        },
+                        "7": {
+                            "name": "auto_disarm_land",
+                            "description": "landing"
+                        },
+                        "8": {
+                            "name": "auto_disarm_preflight",
+                            "description": "auto preflight disarming"
+                        },
+                        "9": {
+                            "name": "kill_switch",
+                            "description": "kill switch"
+                        },
+                        "10": {
+                            "name": "lockdown",
+                            "description": "lockdown"
+                        },
+                        "11": {
+                            "name": "failure_detector",
+                            "description": "failure detector"
+                        },
+                        "12": {
+                            "name": "shutdown",
+                            "description": "shutdown request"
+                        },
+                        "13": {
+                            "name": "unit_test",
+                            "description": "unit tests"
+                        }
+                    }
+                },
+                "navigation_mode_t": {
+                    "type": "uint8_t",
+                    "description": "Flight mode",
+                    "entries": {
+                        "0": {
+                            "name": "manual",
+                            "description": "Manual"
+                        },
+                        "1": {
+                            "name": "altctl",
+                            "description": "Altitude control"
+                        },
+                        "2": {
+                            "name": "posctl",
+                            "description": "Position control"
+                        },
+                        "3": {
+                            "name": "auto_mission",
+                            "description": "Mission"
+                        },
+                        "4": {
+                            "name": "auto_loiter",
+                            "description": "Hold"
+                        },
+                        "5": {
+                            "name": "auto_rtl",
+                            "description": "RTL"
+                        },
+                        "6": {
+                            "name": "acro",
+                            "description": "Acro"
+                        },
+                        "7": {
+                            "name": "offboard",
+                            "description": "Offboard"
+                        },
+                        "8": {
+                            "name": "stab",
+                            "description": "Stabilized"
+                        },
+                        "10": {
+                            "name": "auto_takeoff",
+                            "description": "Takeoff"
+                        },
+                        "11": {
+                            "name": "auto_land",
+                            "description": "Land"
+                        },
+                        "12": {
+                            "name": "auto_follow_target",
+                            "description": "Follow Target"
+                        },
+                        "13": {
+                            "name": "auto_precland",
+                            "description": "Precision Landing"
+                        },
+                        "14": {
+                            "name": "orbit",
+                            "description": "Orbit"
+                        },
+                        "255": {
+                            "name": "unknown",
+                            "description": "[Unknown]"
+                        }
+                    }
                 }
             }
         }

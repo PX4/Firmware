@@ -47,6 +47,7 @@
 #include <uORB/topics/mission.h>
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <px4_platform_common/events.h>
 #include <mathlib/mathlib.h>
 
 using matrix::Eulerf;
@@ -153,12 +154,15 @@ GpsFailure::advance_gpsf()
 	switch (_gpsf_state) {
 	case GPSF_STATE_NONE:
 		_gpsf_state = GPSF_STATE_LOITER;
-		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Global position failure: loitering");
+		mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Global position failure: loitering\t");
+		events::send(events::ID("navigator_gpsfailure_loitering"), events::Log::Error, "Global position failure: loitering");
 		break;
 
 	case GPSF_STATE_LOITER:
 		_gpsf_state = GPSF_STATE_TERMINATE;
-		mavlink_log_emergency(_navigator->get_mavlink_log_pub(), "no GPS recovery, terminating flight");
+		mavlink_log_emergency(_navigator->get_mavlink_log_pub(), "no GPS recovery, terminating flight\t");
+		events::send(events::ID("navigator_gpsfailure_terminate"), events::Log::Emergency,
+			     "No GPS recovery, terminating flight");
 		break;
 
 	case GPSF_STATE_TERMINATE:

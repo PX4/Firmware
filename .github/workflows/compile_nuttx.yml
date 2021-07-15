@@ -63,7 +63,7 @@ jobs:
           nxp_ucans32k146_canbootloader,
           nxp_ucans32k146_default,
           omnibus_f4sd_default,
-          px4_fmu-v2_default,
+          #px4_fmu-v2_default,
           px4_fmu-v2_fixedwing,
           px4_fmu-v2_multicopter,
           px4_fmu-v2_rover,

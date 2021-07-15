@@ -53,6 +53,7 @@
 #include <uORB/topics/safety.h>
 #include <uORB/topics/commander_state.h>
 #include <uORB/topics/vehicle_status_flags.h>
+#include <px4_platform_common/events.h>
 
 typedef enum {
 	TRANSITION_DENIED = -1,
@@ -98,22 +99,7 @@ enum class position_nav_loss_actions_t {
 extern const char *const arming_state_names[];
 extern const char *const nav_state_names[];
 
-enum class arm_disarm_reason_t {
-	TRANSITION_TO_STANDBY = 0,
-	RC_STICK = 1,
-	RC_SWITCH = 2,
-	COMMAND_INTERNAL = 3,
-	COMMAND_EXTERNAL = 4,
-	MISSION_START = 5,
-	SAFETY_BUTTON = 6,
-	AUTO_DISARM_LAND = 7,
-	AUTO_DISARM_PREFLIGHT = 8,
-	KILL_SWITCH = 9,
-	LOCKDOWN = 10,
-	FAILURE_DETECTOR = 11,
-	SHUTDOWN = 12,
-	UNIT_TEST = 13
-};
+using arm_disarm_reason_t = events::px4::enums::arm_disarm_reason_t;
 
 enum RCLossExceptionBits {
 	RCL_EXCEPT_MISSION = (1 << 0),
@@ -130,8 +116,6 @@ arming_state_transition(vehicle_status_s &status, const safety_s &safety, const 
 transition_result_t
 main_state_transition(const vehicle_status_s &status, const main_state_t new_main_state,
 		      const vehicle_status_flags_s &status_flags, commander_state_s &internal_state);
-
-void enable_failsafe(vehicle_status_s &status, bool old_failsafe, orb_advert_t *mavlink_log_pub, const char *reason);
 
 bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_state_s &internal_state,
 		   orb_advert_t *mavlink_log_pub, const link_loss_actions_t data_link_loss_act, const bool mission_finished,

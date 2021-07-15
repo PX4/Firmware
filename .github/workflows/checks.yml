@@ -18,7 +18,7 @@ jobs:
           "check_format",
           "tests",
           "tests_coverage",
-          "px4_fmu-v2_default stack_check",
+          #"px4_fmu-v2_default stack_check",
           "validate_module_configs",
           "shellcheck_all",
           "NO_NINJA_BUILD=1 px4_fmu-v5_default",
