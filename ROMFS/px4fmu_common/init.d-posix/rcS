@@ -221,6 +221,7 @@ load_mon start
 battery_simulator start
 tone_alarm start
 rc_update start
+manual_control start
 sensors start
 commander start
 navigator start

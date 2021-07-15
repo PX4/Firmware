@@ -341,9 +341,13 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 
 	case commander_state_s::MAIN_STATE_AUTO_MISSION:
 
+		if (!status_flags.condition_auto_mission_available) {
+			ret = TRANSITION_DENIED;
+		}
+
 		/* need global position, home position, and a valid mission */
-		if (status_flags.condition_global_position_valid &&
-		    status_flags.condition_auto_mission_available) {
+		else if (status_flags.condition_global_position_valid &&
+			 status_flags.condition_auto_mission_available) {
 
 			ret = TRANSITION_CHANGED;
 		}

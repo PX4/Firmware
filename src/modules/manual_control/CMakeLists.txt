@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2021 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,41 +31,18 @@
 #
 ############################################################################
 
-add_subdirectory(failure_detector)
-add_subdirectory(Arming)
-
 px4_add_module(
-	MODULE modules__commander
-	MAIN commander
+	MODULE module__manual_control
+	MAIN manual_control
 	COMPILE_FLAGS
 	SRCS
-		accelerometer_calibration.cpp
-		airspeed_calibration.cpp
-		calibration_routines.cpp
-		Commander.cpp
-		commander_helper.cpp
-		esc_calibration.cpp
-		factory_calibration_storage.cpp
-		gyro_calibration.cpp
-		level_calibration.cpp
-		lm_fit.cpp
-		mag_calibration.cpp
-		rc_calibration.cpp
-		state_machine_helper.cpp
-		worker_thread.cpp
+	ManualControl.cpp
+		ManualControl.cpp
+		ManualControl.hpp
+		ManualControlSelector.hpp
+		ManualControlSelector.cpp
 	DEPENDS
-		circuit_breaker
-		failure_detector
-		ecl_geo
-		hysteresis
-		PreFlightCheck
-		ArmAuthorization
-		HealthFlags
-		sensor_calibration
+		px4_work_queue
 	)
 
-if(PX4_TESTING)
-	add_subdirectory(commander_tests)
-endif()
-
-px4_add_unit_gtest(SRC mag_calibration_test.cpp LINKLIBS modules__commander)
+px4_add_unit_gtest(SRC ManualControlSelectorTest.cpp LINKLIBS module__manual_control)

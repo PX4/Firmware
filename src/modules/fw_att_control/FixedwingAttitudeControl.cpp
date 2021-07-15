@@ -148,15 +148,15 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 				if (_vcontrol_mode.flag_control_attitude_enabled) {
 					// STABILIZED mode generate the attitude setpoint from manual user inputs
 
-					_att_sp.roll_body = _manual_control_setpoint.y * radians(_param_fw_man_r_max.get());
+					_att_sp.roll_body = _manual_control_setpoint.chosen_input.y * radians(_param_fw_man_r_max.get());
 
-					_att_sp.pitch_body = -_manual_control_setpoint.x * radians(_param_fw_man_p_max.get())
+					_att_sp.pitch_body = -_manual_control_setpoint.chosen_input.x * radians(_param_fw_man_p_max.get())
 							     + radians(_param_fw_psp_off.get());
 					_att_sp.pitch_body = constrain(_att_sp.pitch_body,
 								       -radians(_param_fw_man_p_max.get()), radians(_param_fw_man_p_max.get()));
 
 					_att_sp.yaw_body = 0.0f;
-					_att_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
+					_att_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.chosen_input.z, 0.0f, 1.0f);
 
 					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 					q.copyTo(_att_sp.q_d);
@@ -170,22 +170,23 @@ FixedwingAttitudeControl::vehicle_manual_poll()
 
 					// RATE mode we need to generate the rate setpoint from manual user inputs
 					_rates_sp.timestamp = hrt_absolute_time();
-					_rates_sp.roll = _manual_control_setpoint.y * radians(_param_fw_acro_x_max.get());
-					_rates_sp.pitch = -_manual_control_setpoint.x * radians(_param_fw_acro_y_max.get());
-					_rates_sp.yaw = _manual_control_setpoint.r * radians(_param_fw_acro_z_max.get());
-					_rates_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
+					_rates_sp.roll = _manual_control_setpoint.chosen_input.y * radians(_param_fw_acro_x_max.get());
+					_rates_sp.pitch = -_manual_control_setpoint.chosen_input.x * radians(_param_fw_acro_y_max.get());
+					_rates_sp.yaw = _manual_control_setpoint.chosen_input.r * radians(_param_fw_acro_z_max.get());
+					_rates_sp.thrust_body[0] = math::constrain(_manual_control_setpoint.chosen_input.z, 0.0f, 1.0f);
 
 					_rate_sp_pub.publish(_rates_sp);
 
 				} else {
 					/* manual/direct control */
 					_actuators.control[actuator_controls_s::INDEX_ROLL] =
-						_manual_control_setpoint.y * _param_fw_man_r_sc.get() + _param_trim_roll.get();
+						_manual_control_setpoint.chosen_input.y * _param_fw_man_r_sc.get() + _param_trim_roll.get();
 					_actuators.control[actuator_controls_s::INDEX_PITCH] =
-						-_manual_control_setpoint.x * _param_fw_man_p_sc.get() + _param_trim_pitch.get();
+						-_manual_control_setpoint.chosen_input.x * _param_fw_man_p_sc.get() + _param_trim_pitch.get();
 					_actuators.control[actuator_controls_s::INDEX_YAW] =
-						_manual_control_setpoint.r * _param_fw_man_y_sc.get() + _param_trim_yaw.get();
-					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f);
+						_manual_control_setpoint.chosen_input.r * _param_fw_man_y_sc.get() + _param_trim_yaw.get();
+					_actuators.control[actuator_controls_s::INDEX_THROTTLE] = math::constrain(_manual_control_setpoint.chosen_input.z, 0.0f,
+							1.0f);
 				}
 			}
 		}
@@ -546,7 +547,7 @@ void FixedwingAttitudeControl::Run()
 
 					/* add in manual rudder control in manual modes */
 					if (_vcontrol_mode.flag_control_manual_enabled) {
-						_actuators.control[actuator_controls_s::INDEX_YAW] += _manual_control_setpoint.r;
+						_actuators.control[actuator_controls_s::INDEX_YAW] += _manual_control_setpoint.chosen_input.r;
 					}
 
 					if (!PX4_ISFINITE(yaw_u)) {
@@ -627,10 +628,10 @@ void FixedwingAttitudeControl::Run()
 				* constrain(_actuators.control[actuator_controls_s::INDEX_ROLL], -1.0f, 1.0f);
 
 		_actuators.control[actuator_controls_s::INDEX_FLAPS] = _flaps_applied;
-		_actuators.control[5] = _manual_control_setpoint.aux1;
+		_actuators.control[5] = _manual_control_setpoint.chosen_input.aux1;
 		_actuators.control[actuator_controls_s::INDEX_AIRBRAKES] = _flaperons_applied;
 		// FIXME: this should use _vcontrol_mode.landing_gear_pos in the future
-		_actuators.control[7] = _manual_control_setpoint.aux3;
+		_actuators.control[7] = _manual_control_setpoint.chosen_input.aux3;
 
 		/* lazily publish the setpoint only once available */
 		_actuators.timestamp = hrt_absolute_time();
@@ -653,9 +654,9 @@ void FixedwingAttitudeControl::control_flaps(const float dt)
 	float flap_control = 0.0f;
 
 	/* map flaps by default to manual if valid */
-	if (PX4_ISFINITE(_manual_control_setpoint.flaps) && _vcontrol_mode.flag_control_manual_enabled
+	if (PX4_ISFINITE(_manual_control_setpoint.chosen_input.flaps) && _vcontrol_mode.flag_control_manual_enabled
 	    && fabsf(_param_fw_flaps_scl.get()) > 0.01f) {
-		flap_control = 0.5f * (_manual_control_setpoint.flaps + 1.0f) * _param_fw_flaps_scl.get();
+		flap_control = 0.5f * (_manual_control_setpoint.chosen_input.flaps + 1.0f) * _param_fw_flaps_scl.get();
 
 	} else if (_vcontrol_mode.flag_control_auto_enabled
 		   && fabsf(_param_fw_flaps_scl.get()) > 0.01f) {
@@ -687,10 +688,10 @@ void FixedwingAttitudeControl::control_flaps(const float dt)
 	float flaperon_control = 0.0f;
 
 	/* map flaperons by default to manual if valid */
-	if (PX4_ISFINITE(_manual_control_setpoint.aux2) && _vcontrol_mode.flag_control_manual_enabled
+	if (PX4_ISFINITE(_manual_control_setpoint.chosen_input.aux2) && _vcontrol_mode.flag_control_manual_enabled
 	    && fabsf(_param_fw_flaperon_scl.get()) > 0.01f) {
 
-		flaperon_control = 0.5f * (_manual_control_setpoint.aux2 + 1.0f) * _param_fw_flaperon_scl.get();
+		flaperon_control = 0.5f * (_manual_control_setpoint.chosen_input.aux2 + 1.0f) * _param_fw_flaperon_scl.get();
 
 	} else if (_vcontrol_mode.flag_control_auto_enabled
 		   && fabsf(_param_fw_flaperon_scl.get()) > 0.01f) {

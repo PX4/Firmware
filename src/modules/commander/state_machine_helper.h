@@ -112,7 +112,8 @@ enum class arm_disarm_reason_t {
 	LOCKDOWN = 10,
 	FAILURE_DETECTOR = 11,
 	SHUTDOWN = 12,
-	UNIT_TEST = 13
+	UNIT_TEST = 13,
+	RC_BUTTON = 14,
 };
 
 enum RCLossExceptionBits {

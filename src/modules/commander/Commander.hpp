@@ -36,7 +36,6 @@
 /*   Helper classes  */
 #include "Arming/PreFlightCheck/PreFlightCheck.hpp"
 #include "failure_detector/FailureDetector.hpp"
-#include "ManualControl.hpp"
 #include "state_machine_helper.h"
 #include "worker_thread.hpp"
 
@@ -50,7 +49,6 @@
 #include <uORB/Publication.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/home_position.h>
-#include <uORB/topics/landing_gear.h>
 #include <uORB/topics/test_motor.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/vehicle_control_mode.h>
@@ -70,7 +68,7 @@
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/iridiumsbd_status.h>
-#include <uORB/topics/manual_control_switches.h>
+#include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/offboard_control_mode.h>
@@ -125,7 +123,6 @@ private:
 
 	transition_result_t arm(arm_disarm_reason_t calling_reason, bool run_preflight_checks = true);
 	transition_result_t disarm(arm_disarm_reason_t calling_reason);
-	transition_result_t try_mode_change(main_state_t desired_mode);
 
 	void battery_status_check();
 
@@ -173,25 +170,23 @@ private:
 
 	void UpdateEstimateValidity();
 
-	// Set the main system state based on RC and override device inputs
-	transition_result_t set_main_state(bool &changed);
-
-	// Enable override (manual reversion mode) on the system
-	transition_result_t set_main_state_override_on(bool &changed);
-
-	// Set the system main state based on the current RC inputs
-	transition_result_t set_main_state_rc();
-
 	bool shutdown_if_allowed();
 
 	bool stabilization_required();
 
 	void send_parachute_command();
 
+	enum class RcOverrideBits : int32_t {
+		AUTO_MODE_BIT = (1 << 0),
+		OFFBOARD_MODE_BIT = (1 << 1),
+	};
+
 	DEFINE_PARAMETERS(
 
 		(ParamInt<px4::params::NAV_DLL_ACT>) _param_nav_dll_act,
 		(ParamInt<px4::params::COM_DL_LOSS_T>) _param_com_dl_loss_t,
+
+		(ParamInt<px4::params::COM_RC_OVERRIDE>) _param_com_rc_override,
 
 		(ParamInt<px4::params::COM_HLDL_LOSS_T>) _param_com_hldl_loss_t,
 		(ParamInt<px4::params::COM_HLDL_REG_T>) _param_com_hldl_reg_t,
@@ -250,13 +245,6 @@ private:
 
 		(ParamInt<px4::params::COM_RC_IN_MODE>) _param_rc_in_off,
 
-		(ParamInt<px4::params::COM_FLTMODE1>) _param_fltmode_1,
-		(ParamInt<px4::params::COM_FLTMODE2>) _param_fltmode_2,
-		(ParamInt<px4::params::COM_FLTMODE3>) _param_fltmode_3,
-		(ParamInt<px4::params::COM_FLTMODE4>) _param_fltmode_4,
-		(ParamInt<px4::params::COM_FLTMODE5>) _param_fltmode_5,
-		(ParamInt<px4::params::COM_FLTMODE6>) _param_fltmode_6,
-
 		// Circuit breakers
 		(ParamInt<px4::params::CBRK_SUPPLY_CHK>) _param_cbrk_supply_chk,
 		(ParamInt<px4::params::CBRK_USB_CHK>) _param_cbrk_usb_chk,
@@ -266,7 +254,7 @@ private:
 		(ParamInt<px4::params::CBRK_VELPOSERR>) _param_cbrk_velposerr,
 		(ParamInt<px4::params::CBRK_VTOLARMING>) _param_cbrk_vtolarming,
 
-		// Geofrence
+		// Geofence
 		(ParamInt<px4::params::GF_ACTION>) _param_geofence_action,
 
 		// Mavlink
@@ -355,11 +343,10 @@ private:
 
 	unsigned int	_leds_counter{0};
 
-	manual_control_switches_s _manual_control_switches{};
-	manual_control_switches_s _last_manual_control_switches{};
-	ManualControl _manual_control{this};
-	hrt_abstime	_rc_signal_lost_timestamp{0};		///< Time at which the RC reception was lost
-	int32_t		_flight_mode_slots[manual_control_switches_s::MODE_SLOT_NUM] {};
+	hrt_abstime	_last_valid_manual_control_setpoint{0};
+
+	bool		_is_throttle_above_center{false};
+	bool		_is_throttle_low{false};
 
 	hrt_abstime	_boot_timestamp{0};
 	hrt_abstime	_last_disarmed_timestamp{0};
@@ -402,11 +389,11 @@ private:
 	uORB::Subscription					_iridiumsbd_status_sub{ORB_ID(iridiumsbd_status)};
 	uORB::Subscription					_land_detector_sub{ORB_ID(vehicle_land_detected)};
 	uORB::Subscription					_safety_sub{ORB_ID(safety)};
-	uORB::Subscription					_manual_control_switches_sub{ORB_ID(manual_control_switches)};
 	uORB::Subscription					_system_power_sub{ORB_ID(system_power)};
 	uORB::Subscription					_vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
 	uORB::Subscription					_vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription					_vtol_vehicle_status_sub{ORB_ID(vtol_vehicle_status)};
+	uORB::Subscription					_manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};
 
 	uORB::SubscriptionInterval				_parameter_update_sub{ORB_ID(parameter_update), 1_s};
 
@@ -434,7 +421,6 @@ private:
 	uORB::Publication<vehicle_status_flags_s>		_vehicle_status_flags_pub{ORB_ID(vehicle_status_flags)};
 	uORB::Publication<vehicle_status_s>			_status_pub{ORB_ID(vehicle_status)};
 	uORB::Publication<mission_s>				_mission_pub{ORB_ID(mission)};
-	uORB::Publication<landing_gear_s>			_landing_gear_pub{ORB_ID(landing_gear)};
 
 	uORB::PublicationData<home_position_s>			_home_pub{ORB_ID(home_position)};
 

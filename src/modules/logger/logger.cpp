@@ -1055,7 +1055,7 @@ bool Logger::start_stop_logging()
 
 		if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 
-			desired_state = (manual_control_setpoint.aux1 > 0.3f);
+			desired_state = (manual_control_setpoint.chosen_input.aux1 > 0.3f);
 			updated = true;
 		}
 

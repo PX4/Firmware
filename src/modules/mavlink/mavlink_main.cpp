@@ -2293,8 +2293,6 @@ Mavlink::task_main(int argc, char *argv[])
 				/* switch HIL mode if required */
 				set_hil_enabled(vehicle_status.hil_state == vehicle_status_s::HIL_STATE_ON);
 
-				set_generate_virtual_rc_input(vehicle_status.rc_input_mode == vehicle_status_s::RC_IN_MODE_GENERATED);
-
 				if (_mode == MAVLINK_MODE_IRIDIUM) {
 
 					if (_transmitting_enabled && vehicle_status.high_latency_data_link_lost &&

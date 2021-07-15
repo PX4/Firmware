@@ -280,9 +280,9 @@ void UUVAttitudeControl::Run()
 		// returning immediately and this loop will eat up resources.
 		if (_vcontrol_mode.flag_control_manual_enabled && !_vcontrol_mode.flag_control_rates_enabled) {
 			/* manual/direct control */
-			constrain_actuator_commands(_manual_control_setpoint.y, -_manual_control_setpoint.x,
-						    _manual_control_setpoint.r,
-						    _manual_control_setpoint.z, 0.f, 0.f);
+			constrain_actuator_commands(_manual_control_setpoint.chosen_input.y, -_manual_control_setpoint.chosen_input.x,
+						    _manual_control_setpoint.chosen_input.r,
+						    _manual_control_setpoint.chosen_input.z, 0.f, 0.f);
 		}
 
 	}

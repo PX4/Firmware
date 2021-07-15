@@ -136,12 +136,12 @@ RoverPositionControl::manual_control_setpoint_poll()
 
 					} else {
 						const float yaw_rate = math::radians(_param_gnd_man_y_max.get());
-						_att_sp.yaw_sp_move_rate = _manual_control_setpoint.y * yaw_rate;
+						_att_sp.yaw_sp_move_rate = _manual_control_setpoint.chosen_input.y * yaw_rate;
 						_manual_yaw_sp = wrap_pi(_manual_yaw_sp + _att_sp.yaw_sp_move_rate * dt);
 					}
 
 					_att_sp.yaw_body = _manual_yaw_sp;
-					_att_sp.thrust_body[0] = _manual_control_setpoint.z;
+					_att_sp.thrust_body[0] = _manual_control_setpoint.chosen_input.z;
 
 					Quatf q(Eulerf(_att_sp.roll_body, _att_sp.pitch_body, _att_sp.yaw_body));
 					q.copyTo(_att_sp.q_d);
@@ -156,9 +156,9 @@ RoverPositionControl::manual_control_setpoint_poll()
 					_act_controls.control[actuator_controls_s::INDEX_PITCH] = 0.0f; // Nominally pitch: -_manual_control_setpoint.x;
 					// Set heading from the manual roll input channel
 					_act_controls.control[actuator_controls_s::INDEX_YAW] =
-						_manual_control_setpoint.y; // Nominally yaw: _manual_control_setpoint.r;
+						_manual_control_setpoint.chosen_input.y; // Nominally yaw: _manual_control_setpoint.r;
 					// Set throttle from the manual throttle channel
-					_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.z;
+					_act_controls.control[actuator_controls_s::INDEX_THROTTLE] = _manual_control_setpoint.chosen_input.z;
 					_reset_yaw_sp = true;
 				}
 

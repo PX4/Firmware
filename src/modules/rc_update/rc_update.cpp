@@ -41,25 +41,20 @@
 
 using namespace time_literals;
 
-namespace RCUpdate
+namespace rc_update
 {
 
 // TODO: find a better home for this
 static bool operator ==(const manual_control_switches_s &a, const manual_control_switches_s &b)
 {
 	return (a.mode_slot == b.mode_slot &&
-		a.mode_switch == b.mode_switch &&
 		a.return_switch == b.return_switch &&
-		a.posctl_switch == b.posctl_switch &&
-		a.loiter_switch == b.loiter_switch &&
-		a.acro_switch == b.acro_switch &&
 		a.offboard_switch == b.offboard_switch &&
+		a.loiter_switch == b.loiter_switch &&
 		a.kill_switch == b.kill_switch &&
 		a.arm_switch == b.arm_switch &&
 		a.transition_switch == b.transition_switch &&
-		a.gear_switch == b.gear_switch &&
-		a.stab_switch == b.stab_switch &&
-		a.man_switch == b.man_switch);
+		a.gear_switch == b.gear_switch);
 }
 
 static bool operator !=(const manual_control_switches_s &a, const manual_control_switches_s &b) { return !(a == b); }
@@ -455,8 +450,8 @@ void RCUpdate::Run()
 				}
 
 				// limit processing if there's no update
-				if (rc_updated || (hrt_elapsed_time(&_last_manual_control_setpoint_publish) > 300_ms)) {
-					UpdateManualSetpoint(input_rc.timestamp_last_signal);
+				if (rc_updated || (hrt_elapsed_time(&_last_manual_control_input_publish) > 300_ms)) {
+					UpdateManualControlInput(input_rc.timestamp_last_signal);
 				}
 
 				UpdateManualSwitches(input_rc.timestamp_last_signal);
@@ -547,16 +542,6 @@ void RCUpdate::UpdateManualSwitches(const hrt_abstime &timestamp_sample)
 		if (switches.mode_slot > num_slots) {
 			switches.mode_slot = num_slots;
 		}
-
-	} else if (_param_rc_map_mode_sw.get() > 0) {
-		switches.mode_switch = get_rc_sw3pos_position(rc_channels_s::FUNCTION_MODE,
-				       _param_rc_auto_th.get(), _param_rc_assist_th.get());
-
-		// only used with legacy mode switch
-		switches.man_switch       = get_rc_sw2pos_position(rc_channels_s::FUNCTION_MAN,       _param_rc_man_th.get());
-		switches.acro_switch      = get_rc_sw2pos_position(rc_channels_s::FUNCTION_ACRO,      _param_rc_acro_th.get());
-		switches.stab_switch      = get_rc_sw2pos_position(rc_channels_s::FUNCTION_STAB,      _param_rc_stab_th.get());
-		switches.posctl_switch    = get_rc_sw2pos_position(rc_channels_s::FUNCTION_POSCTL,    _param_rc_posctl_th.get());
 	}
 
 	switches.return_switch     = get_rc_sw2pos_position(rc_channels_s::FUNCTION_RETURN,     _param_rc_return_th.get());
@@ -590,45 +575,45 @@ void RCUpdate::UpdateManualSwitches(const hrt_abstime &timestamp_sample)
 	_manual_switches_previous = switches;
 }
 
-void RCUpdate::UpdateManualSetpoint(const hrt_abstime &timestamp_sample)
+void RCUpdate::UpdateManualControlInput(const hrt_abstime &timestamp_sample)
 {
-	manual_control_setpoint_s manual_control_setpoint{};
-	manual_control_setpoint.timestamp_sample = timestamp_sample;
-	manual_control_setpoint.data_source = manual_control_setpoint_s::SOURCE_RC;
+	manual_control_input_s manual_control_input{};
+	manual_control_input.timestamp_sample = timestamp_sample;
+	manual_control_input.data_source = manual_control_input_s::SOURCE_RC;
 
 	// limit controls
-	manual_control_setpoint.y     = get_rc_value(rc_channels_s::FUNCTION_ROLL,    -1.f, 1.f);
-	manual_control_setpoint.x     = get_rc_value(rc_channels_s::FUNCTION_PITCH,   -1.f, 1.f);
-	manual_control_setpoint.r     = get_rc_value(rc_channels_s::FUNCTION_YAW,     -1.f, 1.f);
-	manual_control_setpoint.z     = get_rc_value(rc_channels_s::FUNCTION_THROTTLE, -1.f, 1.f);
-	manual_control_setpoint.flaps = get_rc_value(rc_channels_s::FUNCTION_FLAPS,   -1.f, 1.f);
-	manual_control_setpoint.aux1  = get_rc_value(rc_channels_s::FUNCTION_AUX_1,   -1.f, 1.f);
-	manual_control_setpoint.aux2  = get_rc_value(rc_channels_s::FUNCTION_AUX_2,   -1.f, 1.f);
-	manual_control_setpoint.aux3  = get_rc_value(rc_channels_s::FUNCTION_AUX_3,   -1.f, 1.f);
-	manual_control_setpoint.aux4  = get_rc_value(rc_channels_s::FUNCTION_AUX_4,   -1.f, 1.f);
-	manual_control_setpoint.aux5  = get_rc_value(rc_channels_s::FUNCTION_AUX_5,   -1.f, 1.f);
-	manual_control_setpoint.aux6  = get_rc_value(rc_channels_s::FUNCTION_AUX_6,   -1.f, 1.f);
+	manual_control_input.y     = get_rc_value(rc_channels_s::FUNCTION_ROLL,    -1.f, 1.f);
+	manual_control_input.x     = get_rc_value(rc_channels_s::FUNCTION_PITCH,   -1.f, 1.f);
+	manual_control_input.r     = get_rc_value(rc_channels_s::FUNCTION_YAW,     -1.f, 1.f);
+	manual_control_input.z     = get_rc_value(rc_channels_s::FUNCTION_THROTTLE, -1.f, 1.f);
+	manual_control_input.flaps = get_rc_value(rc_channels_s::FUNCTION_FLAPS,   -1.f, 1.f);
+	manual_control_input.aux1  = get_rc_value(rc_channels_s::FUNCTION_AUX_1,   -1.f, 1.f);
+	manual_control_input.aux2  = get_rc_value(rc_channels_s::FUNCTION_AUX_2,   -1.f, 1.f);
+	manual_control_input.aux3  = get_rc_value(rc_channels_s::FUNCTION_AUX_3,   -1.f, 1.f);
+	manual_control_input.aux4  = get_rc_value(rc_channels_s::FUNCTION_AUX_4,   -1.f, 1.f);
+	manual_control_input.aux5  = get_rc_value(rc_channels_s::FUNCTION_AUX_5,   -1.f, 1.f);
+	manual_control_input.aux6  = get_rc_value(rc_channels_s::FUNCTION_AUX_6,   -1.f, 1.f);
 
-	// publish manual_control_setpoint topic
-	manual_control_setpoint.timestamp = hrt_absolute_time();
-	_manual_control_setpoint_pub.publish(manual_control_setpoint);
-	_last_manual_control_setpoint_publish = manual_control_setpoint.timestamp;
+	// publish manual_control_input topic
+	manual_control_input.timestamp = hrt_absolute_time();
+	_manual_control_input_pub.publish(manual_control_input);
+	_last_manual_control_input_publish = manual_control_input.timestamp;
 
 
 	actuator_controls_s actuator_group_3{};
 	// copy in previous actuator control setpoint in case aux{1, 2, 3} isn't changed
 	_actuator_controls_3_sub.update(&actuator_group_3);
-	// populate and publish actuator_controls_3 copied from mapped manual_control_setpoint
-	actuator_group_3.control[0] = manual_control_setpoint.y;
-	actuator_group_3.control[1] = manual_control_setpoint.x;
-	actuator_group_3.control[2] = manual_control_setpoint.r;
-	actuator_group_3.control[3] = manual_control_setpoint.z;
-	actuator_group_3.control[4] = manual_control_setpoint.flaps;
+	// populate and publish actuator_controls_3 copied from mapped manual_control_input
+	actuator_group_3.control[0] = manual_control_input.y;
+	actuator_group_3.control[1] = manual_control_input.x;
+	actuator_group_3.control[2] = manual_control_input.r;
+	actuator_group_3.control[3] = manual_control_input.z;
+	actuator_group_3.control[4] = manual_control_input.flaps;
 
 	float new_aux_values[3];
-	new_aux_values[0] = manual_control_setpoint.aux1;
-	new_aux_values[1] = manual_control_setpoint.aux2;
-	new_aux_values[2] = manual_control_setpoint.aux3;
+	new_aux_values[0] = manual_control_input.aux1;
+	new_aux_values[1] = manual_control_input.aux2;
+	new_aux_values[2] = manual_control_input.aux3;
 
 	// if AUX RC was already active, we update. otherwise, we check
 	// if there is a major stick movement to re-activate RC mode
@@ -636,7 +621,7 @@ void RCUpdate::UpdateManualSetpoint(const hrt_abstime &timestamp_sample)
 
 	// detect a big stick movement
 	for (int i = 0; i < 3; i++) {
-		if (fabsf(_last_manual_control_setpoint[i] - new_aux_values[i]) > 0.1f) {
+		if (fabsf(_last_manual_control_input[i] - new_aux_values[i]) > 0.1f) {
 			major_movement[i] = true;
 		}
 	}
@@ -644,14 +629,14 @@ void RCUpdate::UpdateManualSetpoint(const hrt_abstime &timestamp_sample)
 	for (int i = 0; i < 3; i++) {
 		// if someone else (DO_SET_ACTUATOR) updated the actuator control
 		// and we haven't had a major movement, switch back to automatic control
-		if ((fabsf(_last_manual_control_setpoint[i] - actuator_group_3.control[5 + i])
+		if ((fabsf(_last_manual_control_input[i] - actuator_group_3.control[5 + i])
 		     > 0.0001f) && (!major_movement[i])) {
 			_aux_already_active[i] = false;
 		}
 
 		if (_aux_already_active[i] || major_movement[i]) {
 			_aux_already_active[i] = true;
-			_last_manual_control_setpoint[i] = new_aux_values[i];
+			_last_manual_control_input[i] = new_aux_values[i];
 
 			actuator_group_3.control[5 + i] = new_aux_values[i];
 		}
@@ -720,7 +705,7 @@ int RCUpdate::print_usage(const char *reason)
 ### Description
 The rc_update module handles RC channel mapping: read the raw input channels (`input_rc`),
 then apply the calibration, map the RC channels to the configured channels & mode switches
-and then publish as `rc_channels` and `manual_control_setpoint`.
+and then publish as `rc_channels` and `manual_control_input`.
 
 ### Implementation
 To reduce control latency, the module is scheduled on input_rc publications.
@@ -734,9 +719,9 @@ To reduce control latency, the module is scheduled on input_rc publications.
 	return 0;
 }
 
-} // namespace RCUpdate
+} // namespace rc_update
 
 extern "C" __EXPORT int rc_update_main(int argc, char *argv[])
 {
-	return RCUpdate::RCUpdate::main(argc, argv);
+	return rc_update::RCUpdate::main(argc, argv);
 }

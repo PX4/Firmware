@@ -127,11 +127,11 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 	if (reset_yaw_sp) {
 		_man_yaw_sp = yaw;
 
-	} else if (math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f) > 0.05f
+	} else if (math::constrain(_manual_control_setpoint.chosen_input.z, 0.0f, 1.0f) > 0.05f
 		   || _param_mc_airmode.get() == (int32_t)Mixer::Airmode::roll_pitch_yaw) {
 
 		const float yaw_rate = math::radians(_param_mpc_man_y_max.get());
-		attitude_setpoint.yaw_sp_move_rate = _manual_control_setpoint.r * yaw_rate;
+		attitude_setpoint.yaw_sp_move_rate = _manual_control_setpoint.chosen_input.r * yaw_rate;
 		_man_yaw_sp = wrap_pi(_man_yaw_sp + attitude_setpoint.yaw_sp_move_rate * dt);
 	}
 
@@ -147,8 +147,8 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 	 */
 	_man_x_input_filter.setParameters(dt, _param_mc_man_tilt_tau.get());
 	_man_y_input_filter.setParameters(dt, _param_mc_man_tilt_tau.get());
-	_man_x_input_filter.update(_manual_control_setpoint.x * _man_tilt_max);
-	_man_y_input_filter.update(_manual_control_setpoint.y * _man_tilt_max);
+	_man_x_input_filter.update(_manual_control_setpoint.chosen_input.x * _man_tilt_max);
+	_man_y_input_filter.update(_manual_control_setpoint.chosen_input.y * _man_tilt_max);
 	const float x = _man_x_input_filter.getState();
 	const float y = _man_y_input_filter.getState();
 
@@ -211,7 +211,8 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 	Quatf q_sp = Eulerf(attitude_setpoint.roll_body, attitude_setpoint.pitch_body, attitude_setpoint.yaw_body);
 	q_sp.copyTo(attitude_setpoint.q_d);
 
-	attitude_setpoint.thrust_body[2] = -throttle_curve(math::constrain(_manual_control_setpoint.z, 0.0f, 1.0f));
+	attitude_setpoint.thrust_body[2] = -throttle_curve(math::constrain(_manual_control_setpoint.chosen_input.z, 0.0f,
+					   1.0f));
 	attitude_setpoint.timestamp = hrt_absolute_time();
 
 	_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);

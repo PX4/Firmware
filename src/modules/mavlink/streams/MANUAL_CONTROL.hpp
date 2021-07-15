@@ -68,21 +68,21 @@ private:
 			mavlink_manual_control_t msg{};
 
 			msg.target = mavlink_system.sysid;
-			msg.x = manual_control_setpoint.x * 1000;
-			msg.y = manual_control_setpoint.y * 1000;
-			msg.z = manual_control_setpoint.z * 1000;
-			msg.r = manual_control_setpoint.r * 1000;
+			msg.x = manual_control_setpoint.chosen_input.x * 1000;
+			msg.y = manual_control_setpoint.chosen_input.y * 1000;
+			msg.z = manual_control_setpoint.chosen_input.z * 1000;
+			msg.r = manual_control_setpoint.chosen_input.r * 1000;
 
 			manual_control_switches_s manual_control_switches{};
 
 			if (_manual_control_switches_sub.copy(&manual_control_switches)) {
 				unsigned shift = 2;
 				msg.buttons = 0;
-				msg.buttons |= (manual_control_switches.mode_switch << (shift * 0));
+				//msg.buttons |= (manual_control_switches.mode_switch << (shift * 0));
 				msg.buttons |= (manual_control_switches.return_switch << (shift * 1));
-				msg.buttons |= (manual_control_switches.posctl_switch << (shift * 2));
+				//msg.buttons |= (manual_control_switches.posctl_switch << (shift * 2));
 				msg.buttons |= (manual_control_switches.loiter_switch << (shift * 3));
-				msg.buttons |= (manual_control_switches.acro_switch << (shift * 4));
+				//msg.buttons |= (manual_control_switches.acro_switch << (shift * 4));
 				msg.buttons |= (manual_control_switches.offboard_switch << (shift * 5));
 				msg.buttons |= (manual_control_switches.kill_switch << (shift * 6));
 			}

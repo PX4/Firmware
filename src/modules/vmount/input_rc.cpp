@@ -155,22 +155,22 @@ float InputRC::_get_aux_value(const manual_control_setpoint_s &manual_control_se
 	switch (_aux_channels[channel_idx]) {
 
 	case 1:
-		return manual_control_setpoint.aux1;
+		return manual_control_setpoint.chosen_input.aux1;
 
 	case 2:
-		return manual_control_setpoint.aux2;
+		return manual_control_setpoint.chosen_input.aux2;
 
 	case 3:
-		return manual_control_setpoint.aux3;
+		return manual_control_setpoint.chosen_input.aux3;
 
 	case 4:
-		return manual_control_setpoint.aux4;
+		return manual_control_setpoint.chosen_input.aux4;
 
 	case 5:
-		return manual_control_setpoint.aux5;
+		return manual_control_setpoint.chosen_input.aux5;
 
 	case 6:
-		return manual_control_setpoint.aux6;
+		return manual_control_setpoint.chosen_input.aux6;
 
 	default:
 		return 0.0f;

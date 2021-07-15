@@ -154,7 +154,12 @@ MulticopterRateControl::Run()
 
 			if (_landing_gear_sub.copy(&landing_gear)) {
 				if (landing_gear.landing_gear != landing_gear_s::GEAR_KEEP) {
-					_landing_gear = landing_gear.landing_gear;
+					if (landing_gear_s::GEAR_UP && (_landed || _maybe_landed)) {
+						mavlink_log_critical(&_mavlink_log_pub, "Landed, unable to retract landing gear")
+
+					} else {
+						_landing_gear = landing_gear.landing_gear;
+					}
 				}
 			}
 		}
@@ -166,12 +171,12 @@ MulticopterRateControl::Run()
 			if (_manual_control_setpoint_sub.update(&manual_control_setpoint)) {
 				// manual rates control - ACRO mode
 				const Vector3f man_rate_sp{
-					math::superexpo(manual_control_setpoint.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(-manual_control_setpoint.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
-					math::superexpo(manual_control_setpoint.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
+					math::superexpo(manual_control_setpoint.chosen_input.y, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(-manual_control_setpoint.chosen_input.x, _param_mc_acro_expo.get(), _param_mc_acro_supexpo.get()),
+					math::superexpo(manual_control_setpoint.chosen_input.r, _param_mc_acro_expo_y.get(), _param_mc_acro_supexpoy.get())};
 
 				_rates_sp = man_rate_sp.emult(_acro_rate_max);
-				_thrust_sp = math::constrain(manual_control_setpoint.z, 0.0f, 1.0f);
+				_thrust_sp = math::constrain(manual_control_setpoint.chosen_input.z, 0.0f, 1.0f);
 
 				// publish rate setpoint
 				vehicle_rates_setpoint_s v_rates_sp{};

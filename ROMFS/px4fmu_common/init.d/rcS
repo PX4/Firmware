@@ -312,6 +312,7 @@ else
 	#  start before commander
 	#
 	rc_update start
+	manual_control start
 
 	#
 	# Sensors System (start before Commander so Preflight checks are properly run).
