@@ -318,12 +318,11 @@ __EXPORT void		param_reset_specific(const char *resets[], int num_resets);
  * Note: this method requires a large amount of stack size!
  *
  * @param fd		File descriptor to export to (-1 selects the FLASH storage).
- * @param only_unsaved	Only export changed parameters that have not yet been exported.
  * @param filter	Filter parameters to be exported. The method should return true if
  * 			the parameter should be exported. No filtering if nullptr is passed.
  * @return		Zero on success, nonzero on failure.
  */
-__EXPORT int		param_export(int fd, bool only_unsaved, param_filter_func filter);
+__EXPORT int		param_export(int fd, param_filter_func filter);
 
 /**
  * Import parameters from a file, discarding any unrecognized parameters.
@@ -331,11 +330,10 @@ __EXPORT int		param_export(int fd, bool only_unsaved, param_filter_func filter);
  * This function merges the imported parameters with the current parameter set.
  *
  * @param fd		File descriptor to import from (-1 selects the FLASH storage).
- * @param mark_saved	Whether to mark imported parameters as already saved
  * @return		Zero on success, nonzero if an error occurred during import.
  *			Note that in the failure case, parameters may be inconsistent.
  */
-__EXPORT int		param_import(int fd, bool mark_saved);
+__EXPORT int		param_import(int fd);
 
 /**
  * Load parameters from a file.

@@ -80,6 +80,14 @@ public:
 		}
 	}
 
+	void reset()
+	{
+		// set bits to false
+		for (auto &d : _data) {
+			d.store(0);
+		}
+	}
+
 private:
 	static constexpr uint8_t BITS_PER_ELEMENT = 32;
 	static constexpr size_t ARRAY_SIZE = ((N % BITS_PER_ELEMENT) == 0) ? (N / BITS_PER_ELEMENT) :

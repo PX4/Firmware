@@ -84,7 +84,7 @@ int FactoryCalibrationStorage::store()
 		return 0;
 	}
 
-	int ret = param_export(_fd, false, filter_calibration_params);
+	int ret = param_export(_fd, filter_calibration_params);
 
 	if (ret != 0) {
 		PX4_ERR("param export failed (%i)", ret);

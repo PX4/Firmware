@@ -96,7 +96,7 @@ encode(bson_encoder_t encoder)
 }
 
 static int
-decode_callback(bson_decoder_t decoder, void *priv, bson_node_t node)
+decode_callback(bson_decoder_t decoder, bson_node_t node)
 {
 	unsigned len;
 
@@ -287,7 +287,7 @@ test_bson(int argc, char *argv[])
 	}
 
 	/* now test-decode it */
-	if (bson_decoder_init_buf(&decoder, buf, len, decode_callback, nullptr)) {
+	if (bson_decoder_init_buf(&decoder, buf, len, decode_callback)) {
 		PX4_ERR("FAIL: bson_decoder_init_buf");
 		return 1;
 	}
