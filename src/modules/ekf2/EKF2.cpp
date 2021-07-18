@@ -863,6 +863,56 @@ void EKF2::PublishLocalPosition(const hrt_abstime &timestamp)
 	_local_position_pub.publish(lpos);
 }
 
+matrix::SquareMatrix<float, 3> EKF2::propagate_covariances_from_quat_to_euler(const matrix::Quatf &q,
+		const matrix::SquareMatrix<float, 4> &quat_covariances) const
+{
+	// Jacobian matrix (3x4) containing the partial derivatives of the
+	// Euler angle equations with respect to the quaternions
+	matrix::Matrix<float, 3, 4> G;
+
+	// quaternion components
+	float q1 = q(0);
+	float q2 = q(1);
+	float q3 = q(2);
+	float q4 = q(3);
+
+	// numerator components
+	float n1 =  2 * q1 * q2 + 2 * q2 * q4;
+	float n2 = -2 * q2 * q2 - 2 * q3 * q3 + 1;
+	float n3 =  2 * q1 * q4 + 2 * q2 * q3;
+	float n4 = -2 * q3 * q3 - 2 * q4 * q4 + 1;
+	float n5 =  2 * q1 * q3 + 2 * q2 * q4;
+	float n6 = -2 * q1 * q2 - 2 * q2 * q4;
+	float n7 = -2 * q1 * q4 - 2 * q2 * q3;
+
+	// Protect against division by 0
+	float d1 = n1 * n1 + n2 * n2;
+	float d2 = n3 * n3 + n4 * n4;
+	d1 = math::max(0.0f, d1);
+	d2 = math::max(0.0f, d2);
+
+	// Protect against square root of negative numbers
+	float x = math::max(-n5 * n5 + 1, 0.0f);
+
+	// compute G matrix
+	float sqrt_x = sqrtf(x);
+	float g00_03 = 2 * q2 * n2 / d1;
+	G(0, 0) =  g00_03;
+	G(0, 1) = -4 * q2 * n6 / d1 + (2 * q1 + 2 * q4) * n2 / d1;
+	G(0, 2) = -4 * q3 * n6 / d1;
+	G(0, 3) =  g00_03;
+	G(1, 0) =  2 * q3 / sqrt_x;
+	G(1, 1) =  2 * q4 / sqrt_x;
+	G(1, 2) =  2 * q1 / sqrt_x;
+	G(1, 3) =  2 * q2 / sqrt_x;
+	G(2, 0) =  2 * q4 * n4 / d2;
+	G(2, 1) =  2 * q3 * n4 / d2;
+	G(2, 2) =  2 * q2 * n4 / d2 - 4 * q3 * n7 / d2;
+	G(2, 3) =  2 * q1 * n4 / d2 - 4 * q4 * n7 / d2;
+
+	return G * quat_covariances * G.transpose();
+}
+
 void EKF2::PublishOdometry(const hrt_abstime &timestamp, const imuSample &imu)
 {
 	// generate vehicle odometry data
@@ -894,36 +944,19 @@ void EKF2::PublishOdometry(const hrt_abstime &timestamp, const imuSample &imu)
 	odom.pitchspeed = rates(1) - gyro_bias(1);
 	odom.yawspeed = rates(2) - gyro_bias(2);
 
-	// get the covariance matrix size
-	static constexpr size_t POS_URT_SIZE = sizeof(odom.pose_covariance) / sizeof(odom.pose_covariance[0]);
-	static constexpr size_t VEL_URT_SIZE = sizeof(odom.velocity_covariance) / sizeof(odom.velocity_covariance[0]);
+	// Row-major representation of 6x6 pose cross-covariance matrix URT.
+	// Order: x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis
+	matrix::SquareMatrix<float, 6> pose_cov{matrix::nans<6, 6>()};
+	pose_cov.slice<3, 3>(0, 0) = _ekf.covariances().slice<3, 3>(7, 7);
+	pose_cov.slice<3, 3>(3, 3) = propagate_covariances_from_quat_to_euler(_ekf.getQuaternion(),
+				     _ekf.covariances().slice<4, 4>(0, 0));
+	pose_cov.upper_right_triangle().copyTo(odom.pose_covariance);
 
-	// Get covariances to vehicle odometry
-	float covariances[24];
-	_ekf.covariances_diagonal().copyTo(covariances);
-
-	// initially set pose covariances to 0
-	for (size_t i = 0; i < POS_URT_SIZE; i++) {
-		odom.pose_covariance[i] = 0.0;
-	}
-
-	// set the position variances
-	odom.pose_covariance[odom.COVARIANCE_MATRIX_X_VARIANCE] = covariances[7];
-	odom.pose_covariance[odom.COVARIANCE_MATRIX_Y_VARIANCE] = covariances[8];
-	odom.pose_covariance[odom.COVARIANCE_MATRIX_Z_VARIANCE] = covariances[9];
-
-	// TODO: implement propagation from quaternion covariance to Euler angle covariance
-	// by employing the covariance law
-
-	// initially set velocity covariances to 0
-	for (size_t i = 0; i < VEL_URT_SIZE; i++) {
-		odom.velocity_covariance[i] = 0.0;
-	}
-
-	// set the linear velocity variances
-	odom.velocity_covariance[odom.COVARIANCE_MATRIX_VX_VARIANCE] = covariances[4];
-	odom.velocity_covariance[odom.COVARIANCE_MATRIX_VY_VARIANCE] = covariances[5];
-	odom.velocity_covariance[odom.COVARIANCE_MATRIX_VZ_VARIANCE] = covariances[6];
+	// Row-major representation of 6x6 velocity cross-covariance matrix URT.
+	// Order: vx, vy, vz, rotation rate about X axis, rotation rate about Y axis, rotation rate about Z axis
+	matrix::SquareMatrix<float, 6> vel_cov{matrix::nans<6, 6>()};
+	vel_cov.slice<3, 3>(0, 0) = _ekf.covariances().slice<3, 3>(4, 4);
+	vel_cov.upper_right_triangle().copyTo(odom.velocity_covariance);
 
 	// publish vehicle odometry data
 	odom.timestamp = _replay_mode ? timestamp : hrt_absolute_time();

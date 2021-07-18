@@ -157,6 +157,9 @@ private:
 
 	void UpdateMagCalibration(const hrt_abstime &timestamp);
 
+	matrix::SquareMatrix<float, 3> propagate_covariances_from_quat_to_euler(const matrix::Quatf &q,
+			const matrix::SquareMatrix<float, 4> &quat_covariances) const;
+
 	/*
 	 * Calculate filtered WGS84 height from estimated AMSL height
 	 */
