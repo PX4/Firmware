@@ -61,7 +61,7 @@ void cpuload_monitor_start()
 
 		system_load.start_time = hrt_absolute_time();
 
-		for (int i = 1; i < CONFIG_MAX_TASKS; i++) {
+		for (int i = 1; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 			system_load.tasks[i].total_runtime = 0;
 			system_load.tasks[i].curr_start_time = 0;
 		}

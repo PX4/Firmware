@@ -290,7 +290,7 @@ void LoadMon::stack_usage()
 	}
 
 	// Continue after last checked task next cycle
-	_stack_task_index = (_stack_task_index + 1) % CONFIG_MAX_TASKS;
+	_stack_task_index = (_stack_task_index + 1) % CONFIG_FS_PROCFS_MAX_TASKS;
 }
 #endif
 

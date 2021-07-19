@@ -140,7 +140,7 @@ void watchdog_initialize(const pid_t pid_logger_main, const pthread_t writer_thr
 
 	sched_lock(); // need to lock the tcb access
 
-	for (int i = 0; i < CONFIG_MAX_TASKS; i++) {
+	for (int i = 0; i < CONFIG_FS_PROCFS_MAX_TASKS; i++) {
 		if (system_load.tasks[i].valid) {
 			if (system_load.tasks[i].tcb->pid == pid_logger_writer) {
 				watchdog_data.logger_writer_task_index = i;

@@ -10,7 +10,7 @@ px4_add_board(
 	ROMFSROOT px4fmu_common
 	IO px4_io-v2_default
 	CONSTRAINED_FLASH
-
+	  NO_HELP
 	SERIAL_PORTS
 		GPS1:/dev/ttyS3
 		TEL1:/dev/ttyS1

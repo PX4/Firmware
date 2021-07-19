@@ -187,6 +187,15 @@ void board_indicate(uiindication_t indication)
 		i2l[indication].hz);
 }
 
+// I2C Driver wants to use the px4 log
+
 __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *fmt, ...)
 {
+}
+
+// I2C Driver wants to use printf etal (putc,wite) so cut it off here
+
+int printf(FAR const IPTR char *fmt, ...)
+{
+	return 0;
 }
