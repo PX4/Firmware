@@ -264,15 +264,6 @@ PrecLand::run_state_horizontal_approach()
 
 	}
 
-	if (hrt_absolute_time() - _state_start_time > STATE_TIMEOUT) {
-		PX4_ERR("Precision landing took too long during horizontal approach phase.");
-
-		if (switch_to_state_fallback()) {
-			return;
-		}
-
-		PX4_ERR("Can't switch to fallback landing");
-	}
 
 	float x = _target_pose.x_abs;
 	float y = _target_pose.y_abs;
