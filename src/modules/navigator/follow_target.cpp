@@ -65,7 +65,7 @@ FollowTarget::FollowTarget(Navigator *navigator) :
 	ModuleParams(navigator)
 {
 	_current_vel.zero();
-	_step_vel.zero();
+	_acceleration_m_s2.zero();
 	_est_target_vel.zero();
 	_target_distance.zero();
 	_target_position_offset.zero();
@@ -186,9 +186,8 @@ void FollowTarget::on_active()
 			// just traveling at the exact velocity of the target will not
 			// get any closer or farther from the target
 
-			_step_vel = (_est_target_vel - _current_vel) + (_target_position_offset + _target_distance) * FF_K;
-			_step_vel /= (dt_ms / 1000.0F * (float) INTERPOLATION_PNTS);
-			_step_time_in_ms = (dt_ms / (float) INTERPOLATION_PNTS);
+			_acceleration_m_s2 = ((_est_target_vel - _current_vel) + (_target_position_offset + _target_distance) * FF_K) /
+					     (dt_ms / 1000.0f);
 
 			// if we are less than 1 meter from the target don't worry about trying to yaw
 			// lock the yaw until we are at a distance that makes sense
@@ -212,9 +211,9 @@ void FollowTarget::on_active()
 			}
 		}
 
-//		warnx(" _step_vel x %3.6f y %3.6f cur vel %3.6f %3.6f tar vel %3.6f %3.6f dist = %3.6f (%3.6f) mode = %d yaw rate = %3.6f",
-//				(double) _step_vel(0),
-//				(double) _step_vel(1),
+//		warnx(" _acceleration_m_s2 x %3.6f y %3.6f cur vel %3.6f %3.6f tar vel %3.6f %3.6f dist = %3.6f (%3.6f) mode = %d yaw rate = %3.6f",
+//				(double) _acceleration_m_s2(0),
+//				(double) _acceleration_m_s2(1),
 //				(double) _current_vel(0),
 //				(double) _current_vel(1),
 //				(double) _est_target_vel(0),
@@ -273,9 +272,8 @@ void FollowTarget::on_active()
 
 			} else if (target_velocity_valid()) {
 
-				if ((float)(current_time - _last_update_time) / 1000.0f >= _step_time_in_ms) {
-					_current_vel += _step_vel;
-					_last_update_time = current_time;
+				if (0 != _last_update_time) {
+					_current_vel += _acceleration_m_s2 * ((float)(current_time - _last_update_time) / 1000000.0f);
 				}
 
 				set_follow_target_item(&_mission_item, _param_nav_min_ft_ht.get(), target_motion_with_offset, _yaw_angle);
@@ -321,6 +319,8 @@ void FollowTarget::on_active()
 			break;
 		}
 	}
+
+	_last_update_time = current_time;
 }
 
 void FollowTarget::update_position_sp(bool use_velocity, bool use_position, float yaw_rate)
@@ -351,8 +351,9 @@ void FollowTarget::reset_target_validity()
 	_previous_target_motion = {};
 	_current_target_motion = {};
 	_target_updates = 0;
+	_last_update_time = 0;
 	_current_vel.zero();
-	_step_vel.zero();
+	_acceleration_m_s2.zero();
 	_est_target_vel.zero();
 	_target_distance.zero();
 	_target_position_offset.zero();

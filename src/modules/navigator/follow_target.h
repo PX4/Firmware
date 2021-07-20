@@ -65,7 +65,6 @@ private:
 
 	static constexpr int TARGET_TIMEOUT_MS = 2500;
 	static constexpr int TARGET_ACCEPTANCE_RADIUS_M = 5;
-	static constexpr int INTERPOLATION_PNTS = 20;
 	static constexpr float FF_K = .25F;
 	static constexpr float OFFSET_M = 8;
 
@@ -101,14 +100,13 @@ private:
 	int _follow_target_position{FOLLOW_FROM_BEHIND};
 
 	uORB::Subscription _follow_target_sub{ORB_ID(follow_target)};
-	float _step_time_in_ms{0.0f};
 	float _follow_offset{OFFSET_M};
 
 	uint64_t _target_updates{0};
 	uint64_t _last_update_time{0};
 
 	matrix::Vector3f _current_vel;
-	matrix::Vector3f _step_vel;
+	matrix::Vector3f _acceleration_m_s2;
 	matrix::Vector3f _est_target_vel;
 	matrix::Vector3f _target_distance;
 	matrix::Vector3f _target_position_offset;
