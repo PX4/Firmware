@@ -34,4 +34,4 @@
 add_subdirectory(bst)
 add_subdirectory(frsky_telemetry)
 add_subdirectory(hott)
-#add_subdirectory(iridiumsbd)
+add_subdirectory(iridiumsbd)

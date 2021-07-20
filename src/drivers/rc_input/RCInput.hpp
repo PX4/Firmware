@@ -44,6 +44,7 @@
 #include <lib/rc/ghst.hpp>
 #include <lib/rc/dsm.h>
 #include <lib/rc/sbus.h>
+#include <lib/rc/srxl.hpp>
 #include <lib/rc/st24.h>
 #include <lib/rc/sumd.h>
 #include <px4_platform_common/px4_config.h>
@@ -98,17 +99,19 @@ private:
 		RC_SCAN_SUMD,
 		RC_SCAN_ST24,
 		RC_SCAN_CRSF,
-		RC_SCAN_GHST
+		RC_SCAN_GHST,
+		RC_SCAN_SRXL,
 	} _rc_scan_state{RC_SCAN_SBUS};
 
-	static constexpr char const *RC_SCAN_STRING[7] {
+	static constexpr char const *RC_SCAN_STRING[8] {
 		"PPM",
 		"SBUS",
 		"DSM",
 		"SUMD",
 		"ST24",
 		"CRSF",
-		"GHST"
+		"GHST",
+		"SRXL",
 	};
 
 	void Run() override;
@@ -160,6 +163,9 @@ private:
 
 	CRSFTelemetry *_crsf_telemetry{nullptr};
 	GHSTTelemetry *_ghst_telemetry{nullptr};
+
+	// defined in `src/lib/rc/srxl.hpp`
+	SRXLCodec _srxl;
 
 	perf_counter_t	_cycle_perf;
 	perf_counter_t	_publish_interval_perf;

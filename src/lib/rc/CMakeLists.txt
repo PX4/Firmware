@@ -32,13 +32,14 @@
 ############################################################################
 
 add_library(rc
+	common_rc.cpp
 	crsf.cpp
+	dsm.cpp
 	ghst.cpp
+	sbus.cpp
+	srxl.cpp
 	st24.cpp
 	sumd.cpp
-	sbus.cpp
-	dsm.cpp
-	common_rc.cpp
 )
 target_compile_options(rc
 	PRIVATE

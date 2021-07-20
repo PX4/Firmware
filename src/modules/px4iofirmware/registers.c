@@ -665,9 +665,12 @@ registers_set_one(uint8_t page, uint8_t offset, uint16_t value)
 			schedule_reboot(100000);
 			break;
 
+#if defined(SPEKTRUM_POWER)
+
 		case PX4IO_P_SETUP_DSM:
 			dsm_bind(value & 0x0f, (value >> 4) & 0xF);
 			break;
+#endif
 
 		case PX4IO_P_SETUP_FORCE_SAFETY_ON:
 			if (value == PX4IO_FORCE_SAFETY_MAGIC) {
