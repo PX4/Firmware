@@ -319,6 +319,9 @@ MissionBlock::is_mission_item_reached()
 		if (_navigator->get_vstatus()->vehicle_type != vehicle_status_s::VEHICLE_TYPE_ROTARY_WING) {
 			_waypoint_yaw_reached = true;
 		}
+		if (_navigator->get_mnt_uav_yaw() == 1) {
+			_waypoint_yaw_reached = true;
+		}
 	}
 
 	/* Check if the requested yaw setpoint is reached (only for rotary wing flight). */

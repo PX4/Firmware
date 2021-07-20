@@ -88,6 +88,7 @@ static volatile ThreadData *g_thread_data = nullptr;
 struct Parameters {
 	int32_t mnt_mode_in;
 	int32_t mnt_mode_out;
+	int32_t mnt_uav_yaw;
 	int32_t mnt_mav_sys_id_v1;
 	int32_t mnt_mav_comp_id_v1;
 	float mnt_ob_lock_mode;
@@ -113,6 +114,7 @@ struct Parameters {
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 		return mnt_mode_in != p.mnt_mode_in ||
 		       mnt_mode_out != p.mnt_mode_out ||
+		       mnt_uav_yaw != p.mnt_uav_yaw ||
 		       mnt_mav_sys_id_v1 != p.mnt_mav_sys_id_v1 ||
 		       mnt_mav_comp_id_v1 != p.mnt_mav_comp_id_v1 ||
 		       fabsf(mnt_ob_lock_mode - p.mnt_ob_lock_mode) > 1e-6f ||
@@ -137,6 +139,7 @@ struct Parameters {
 struct ParameterHandles {
 	param_t mnt_mode_in;
 	param_t mnt_mode_out;
+	param_t mnt_uav_yaw;
 	param_t mnt_mav_sys_id_v1;
 	param_t mnt_mav_comp_id_v1;
 	param_t mnt_ob_lock_mode;
@@ -231,6 +234,7 @@ static int vmount_thread_main(int argc, char *argv[])
 
 		if (!thread_data.input_objs[0] && (params.mnt_mode_in >= 0 || test_input)) { //need to initialize
 
+			output_config.gimbal_as_uav_yaw = params.mnt_uav_yaw;
 			output_config.gimbal_normal_mode_value = params.mnt_ob_norm_mode;
 			output_config.gimbal_retracted_mode_value = params.mnt_ob_lock_mode;
 			output_config.pitch_scale = 1.0f / (math::radians(params.mnt_range_pitch / 2.0f));
@@ -565,6 +569,7 @@ void update_params(ParameterHandles &param_handles, Parameters &params, bool &go
 	Parameters prev_params = params;
 	param_get(param_handles.mnt_mode_in, &params.mnt_mode_in);
 	param_get(param_handles.mnt_mode_out, &params.mnt_mode_out);
+	param_get(param_handles.mnt_uav_yaw, &params.mnt_uav_yaw);
 	param_get(param_handles.mnt_mav_sys_id_v1, &params.mnt_mav_sys_id_v1);
 	param_get(param_handles.mnt_mav_comp_id_v1, &params.mnt_mav_comp_id_v1);
 	param_get(param_handles.mnt_ob_lock_mode, &params.mnt_ob_lock_mode);
@@ -591,6 +596,7 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 {
 	param_handles.mnt_mode_in = param_find("MNT_MODE_IN");
 	param_handles.mnt_mode_out = param_find("MNT_MODE_OUT");
+	param_handles.mnt_uav_yaw = param_find("MNT_UAV_YAW");
 	param_handles.mnt_mav_sys_id_v1 = param_find("MNT_MAV_SYSID");
 	param_handles.mnt_mav_comp_id_v1 = param_find("MNT_MAV_COMPID");
 	param_handles.mnt_ob_lock_mode = param_find("MNT_OB_LOCK_MODE");
@@ -612,6 +618,7 @@ bool get_params(ParameterHandles &param_handles, Parameters &params)
 
 	if (param_handles.mnt_mode_in == PARAM_INVALID ||
 	    param_handles.mnt_mode_out == PARAM_INVALID ||
+	    param_handles.mnt_uav_yaw == PARAM_INVALID ||
 	    param_handles.mnt_mav_sys_id_v1 == PARAM_INVALID ||
 	    param_handles.mnt_mav_comp_id_v1 == PARAM_INVALID ||
 	    param_handles.mnt_ob_lock_mode == PARAM_INVALID ||

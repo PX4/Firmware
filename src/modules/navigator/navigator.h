@@ -301,6 +301,7 @@ public:
 	bool		get_takeoff_required() const { return _param_mis_takeoff_req.get(); }
 	float		get_yaw_timeout() const { return _param_mis_yaw_tmt.get(); }
 	float		get_yaw_threshold() const { return math::radians(_param_mis_yaw_err.get()); }
+	int 		get_mnt_uav_yaw() const { return _param_mnt_uav_yaw.get(); }
 
 	float		get_vtol_back_trans_deceleration() const { return _param_back_trans_dec_mss; }
 	float		get_vtol_reverse_delay() const { return _param_reverse_delay; }
@@ -331,7 +332,8 @@ private:
 		(ParamFloat<px4::params::MIS_TAKEOFF_ALT>) _param_mis_takeoff_alt,
 		(ParamBool<px4::params::MIS_TAKEOFF_REQ>) _param_mis_takeoff_req,
 		(ParamFloat<px4::params::MIS_YAW_TMT>) _param_mis_yaw_tmt,
-		(ParamFloat<px4::params::MIS_YAW_ERR>) _param_mis_yaw_err
+		(ParamFloat<px4::params::MIS_YAW_ERR>) _param_mis_yaw_err,
+		(ParamInt<px4::params::MNT_UAV_YAW>) _param_mnt_uav_yaw
 	)
 
 	struct traffic_buffer_s {

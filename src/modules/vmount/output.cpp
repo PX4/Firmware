@@ -178,7 +178,10 @@ void OutputBase::_handle_position_update(bool force_update)
 		      _cur_control_data->type_data.lonlat.pitch_fixed_angle :
 		      _calculate_pitch(lon, lat, alt, vehicle_global_position);
 
-	float yaw = get_bearing_to_next_waypoint(vlat, vlon, lat, lon) - vehicle_local_position.heading;
+	float yaw = get_bearing_to_next_waypoint(vlat, vlon, lat, lon);
+	if (!_config.gimbal_as_uav_yaw) {
+		yaw -= vehicle_local_position.heading;
+	}
 
 	// add offsets from VEHICLE_CMD_DO_SET_ROI_WPNEXT_OFFSET
 	pitch += _cur_control_data->type_data.lonlat.pitch_angle_offset;
@@ -238,4 +241,3 @@ void OutputBase::_calculate_angle_output(const hrt_abstime &t)
 }
 
 } /* namespace vmount */
-

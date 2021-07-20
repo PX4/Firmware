@@ -53,6 +53,7 @@ namespace vmount
 {
 
 struct OutputConfig {
+	int32_t gimbal_as_uav_yaw;		/**< Use mixer output as UAV yaw */
 	float gimbal_retracted_mode_value;	/**< Mixer output value for selecting gimbal retracted mode */
 	float gimbal_normal_mode_value;		/**< Mixer output value for selecting gimbal normal mode */
 

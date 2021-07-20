@@ -75,6 +75,20 @@ PARAM_DEFINE_INT32(MNT_MODE_IN, -1);
 PARAM_DEFINE_INT32(MNT_MODE_OUT, 0);
 
 /**
+* Mount uav yaw
+*
+* If enabled the mount will use UAV yaw as part of the gimbal
+* Use this with one axis gimbal on a multirotor to enable two axis stabilization
+*
+* @value 0 Disabled
+* @value 1 Enabled
+* @min 0
+* @max 1
+* @group Mount
+*/
+PARAM_DEFINE_INT32(MNT_UAV_YAW, 0);
+
+/**
 * Mavlink System ID of the mount
 *
 * If MNT_MODE_OUT is MAVLink gimbal protocol v1, mount configure/control commands will be sent with this target ID.

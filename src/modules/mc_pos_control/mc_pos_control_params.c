@@ -732,6 +732,7 @@ PARAM_DEFINE_FLOAT(MPC_SPOOLUP_TIME, 1.0f);
  * @value 2 away from home
  * @value 3 along trajectory
  * @value 4 towards waypoint (yaw first)
+ * @value 5 vmount controls yaw; use along with MNT_UAV_YAW
  * @group Mission
  */
 PARAM_DEFINE_INT32(MPC_YAW_MODE, 0);
