@@ -62,6 +62,7 @@ void GeofenceBreachAvoidance::updateParameters()
 	param_get(_paramHandle.param_mpc_acc_down_max, &_params.param_mpc_acc_down_max);
 
 	updateMinHorDistToFenceMultirotor();
+	updateMinVertDistToFenceMultirotor();
 }
 
 void GeofenceBreachAvoidance::setCurrentPosition(double lat, double lon, float alt)
