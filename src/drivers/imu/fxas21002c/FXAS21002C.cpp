@@ -381,7 +381,7 @@ void FXAS21002C::RunImpl()
 	_px4_gyro.set_error_count(perf_event_count(_bad_registers));
 	_px4_gyro.update(timestamp_sample, x_raw, y_raw, z_raw);
 
-	if (hrt_elapsed_time(&_last_temperature_update) > 100_ms) {
+	if ((timestamp_sample - _last_temperature_update) > 100_ms) {
 		/*
 		 * The TEMP register contains an 8-bit 2's complement temperature value with a range
 		 * of –128 °C to +127 °C and a scaling of 1 °C/LSB. The temperature data is only

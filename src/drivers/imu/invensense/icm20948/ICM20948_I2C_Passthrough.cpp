@@ -121,7 +121,7 @@ void ICM20948_I2C_Passthrough::RunImpl()
 
 		} else {
 			// RESET not complete
-			if (hrt_elapsed_time(&_reset_timestamp) > 1000_ms) {
+			if ((now - _reset_timestamp) > 1000_ms) {
 				PX4_DEBUG("Reset failed, retrying");
 				_state = STATE::RESET;
 				ScheduleDelayed(100_ms);
@@ -141,7 +141,7 @@ void ICM20948_I2C_Passthrough::RunImpl()
 
 		} else {
 			// CONFIGURE not complete
-			if (hrt_elapsed_time(&_reset_timestamp) > 1000_ms) {
+			if ((now - _reset_timestamp) > 1000_ms) {
 				PX4_DEBUG("Configure failed, resetting");
 				_state = STATE::RESET;
 
@@ -155,7 +155,7 @@ void ICM20948_I2C_Passthrough::RunImpl()
 		break;
 
 	case STATE::READ: {
-			if (hrt_elapsed_time(&_last_config_check_timestamp) > 1000_ms) {
+			if ((now - _reset_timestamp) > 1000_ms) {
 				// check configuration registers periodically or immediately following any failure
 				if (RegisterCheck(_register_bank0_cfg[_checked_register_bank0])) {
 					_last_config_check_timestamp = now;
@@ -169,7 +169,7 @@ void ICM20948_I2C_Passthrough::RunImpl()
 
 			} else {
 				// periodically update temperature (~1 Hz)
-				if (hrt_elapsed_time(&_temperature_update_timestamp) >= 1_s) {
+				if ((now - _reset_timestamp) >= 1_s) {
 					UpdateTemperature();
 					_temperature_update_timestamp = now;
 				}

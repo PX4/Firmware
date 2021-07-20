@@ -338,7 +338,7 @@ void FXOS8701CQ::RunImpl()
 	_px4_accel.set_error_count(perf_event_count(_bad_registers));
 	_px4_accel.update(timestamp_sample, x, y, z);
 
-	if (hrt_elapsed_time(&_last_temperature_update) > 100_ms) {
+	if ((timestamp_sample - _last_temperature_update) > 100_ms) {
 		/*
 		 * Eight-bit 2’s complement sensor temperature value with 0.96 °C/LSB sensitivity.
 		 * Temperature data is only valid between –40 °C and 125 °C. The temperature sensor
@@ -355,11 +355,13 @@ void FXOS8701CQ::RunImpl()
 
 #if !defined(BOARD_HAS_NOISY_FXOS8700_MAG)
 
-	if (hrt_elapsed_time(&_mag_last_measure) >= 10_ms) {
+	if ((timestamp_sample - _mag_last_measure) >= 10_ms) {
 		int16_t mag_x = swap16(raw_accel_mag_report.mx);
 		int16_t mag_y = swap16(raw_accel_mag_report.my);
 		int16_t mag_z = swap16(raw_accel_mag_report.mz);
 		_px4_mag.update(timestamp_sample, mag_x, mag_y, mag_z);
+
+		_mag_last_measure = timestamp_sample;
 	}
 
 #endif
