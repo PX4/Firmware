@@ -493,6 +493,23 @@ int Sih::custom_command(int argc, char *argv[])
 	return print_usage("unknown command");
 }
 
+int Sih::print_status()
+{
+	PX4_INFO("Running");
+	PX4_INFO("vehicle landed: %d",_grounded);
+	PX4_INFO("groundtruth state:");
+	PX4_INFO("inertial position NED (m)");
+	_p_I.print();
+	PX4_INFO("inertial velocity NED (m/s)");
+	_v_I.print();
+	PX4_INFO("attitude roll-pitch-yaw (deg)");
+	(Eulerf(_q)*180.0f/M_PI_F).print();
+	PX4_INFO("angular acceleration roll-pitch-yaw (deg/s)");
+	(_w_B*180.0f/M_PI_F).print();
+
+	return 0;
+}
+
 int Sih::print_usage(const char *reason)
 {
 	if (reason) {
@@ -516,7 +533,6 @@ The simulator implements the equations of motion using matrix algebra.
 Quaternion representation is used for the attitude.
 Forward Euler is used for integration.
 Most of the variables are declared global in the .hpp file to avoid stack overflow.
-
 
 )DESCR_STR");
 

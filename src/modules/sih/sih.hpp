@@ -72,6 +72,9 @@ public:
 	/** @see ModuleBase */
 	static int custom_command(int argc, char *argv[]);
 
+	/** @see ModuleBase::print_status() */
+	int print_status() override;
+
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 

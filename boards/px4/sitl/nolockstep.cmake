@@ -52,7 +52,7 @@ px4_add_board(
 		replay
 		rover_pos_control
 		sensors
-		#sih
+		sih
 		simulator
 		temperature_compensation
 		uuv_att_control
