@@ -41,9 +41,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <px4_platform_common/log.h>
 
-#define debug(fmt, args...)	do { } while(0)
-//#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 SimpleMixer::SimpleMixer(ControlCallback control_cb, uintptr_t cb_handle, mixer_simple_s *mixinfo) :
 	Mixer(control_cb, cb_handle),
@@ -86,13 +88,13 @@ SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler
 	buf = findtag(buf, buflen, 'O');
 
 	if ((buf == nullptr) || (buflen < 12)) {
-		debug("output parser failed finding tag, ret: '%s'", buf);
+		PX4_ERR("output parser failed finding tag, ret: '%s'", buf);
 		return -1;
 	}
 
 	if ((ret = sscanf(buf, "O: %d %d %d %d %d %d %n",
 			  &s[0], &s[1], &s[2], &s[3], &s[4], &s[5], &n)) < 5) {
-		debug("out scaler parse failed on '%s' (got %d, consumed %d)", buf, ret, n);
+		PX4_ERR("out scaler parse failed on '%s' (got %d, consumed %d)", buf, ret, n);
 		return -1;
 	}
 
@@ -104,7 +106,7 @@ SimpleMixer::parse_output_scaler(const char *buf, unsigned &buflen, mixer_scaler
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return -1;
 	}
 
@@ -128,20 +130,20 @@ SimpleMixer::parse_control_scaler(const char *buf, unsigned &buflen, mixer_scale
 	buf = findtag(buf, buflen, 'S');
 
 	if ((buf == nullptr) || (buflen < 16)) {
-		debug("control parser failed finding tag, ret: '%s'", buf);
+		PX4_ERR("control parser failed finding tag, ret: '%s'", buf);
 		return -1;
 	}
 
 	if (sscanf(buf, "S: %u %u %d %d %d %d %d",
 		   &u[0], &u[1], &s[0], &s[1], &s[2], &s[3], &s[4]) != 7) {
-		debug("control parse failed on '%s'", buf);
+		PX4_ERR("control parse failed on '%s'", buf);
 		return -1;
 	}
 
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return -1;
 	}
 
@@ -173,27 +175,27 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 
 	/* get the base info for the mixer */
 	if (sscanf(buf, "M: %u%n", &inputs, &used) != 1) {
-		debug("simple parse failed on '%s'", buf);
+		PX4_ERR("simple parse failed on '%s'", buf);
 		goto out;
 	}
 
 	/* at least 1 input is required */
 	if (inputs == 0) {
-		debug("simple parse got 0 inputs");
+		PX4_ERR("simple parse got 0 inputs");
 		goto out;
 	}
 
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		goto out;
 	}
 
 	mixinfo = (mixer_simple_s *)malloc(MIXER_SIMPLE_SIZE(inputs));
 
 	if (mixinfo == nullptr) {
-		debug("could not allocate memory for mixer info");
+		PX4_ERR("could not allocate memory for mixer info");
 		goto out;
 	}
 
@@ -216,7 +218,7 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 
 	} else {
 		if (parse_output_scaler(end - buflen, buflen, mixinfo->output_scaler, mixinfo->slew_rate_rise_time)) {
-			debug("simple mixer parser failed parsing out scaler tag, ret: '%s'", buf);
+			PX4_ERR("simple mixer parser failed parsing out scaler tag, ret: '%s'", buf);
 			goto out;
 		}
 	}
@@ -226,7 +228,7 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 					 mixinfo->controls[i].scaler,
 					 mixinfo->controls[i].control_group,
 					 mixinfo->controls[i].control_index)) {
-			debug("simple mixer parser failed parsing ctrl scaler tag, ret: '%s'", buf);
+			PX4_ERR("simple mixer parser failed parsing ctrl scaler tag, ret: '%s'", buf);
 			goto out;
 		}
 	}
@@ -235,10 +237,10 @@ SimpleMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handle, c
 
 	if (sm != nullptr) {
 		mixinfo = nullptr;
-		debug("loaded mixer with %d input(s)", inputs);
+		PX4_INFO("loaded mixer with %d input(s)", inputs);
 
 	} else {
-		debug("could not allocate memory for mixer");
+		PX4_ERR("could not allocate memory for mixer");
 	}
 
 out:

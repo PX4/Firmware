@@ -42,11 +42,11 @@
 #include <mathlib/mathlib.h>
 #include <cstdio>
 #include <px4_platform_common/defines.h>
+#include <px4_platform_common/log.h>
 
-#define debug(fmt, args...)	do { } while(0)
-//#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
-//#include <debug.h>
-//#define debug(fmt, args...)	lowsyslog(fmt "\n", ##args)
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 using math::constrain;
 
@@ -71,37 +71,37 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	}
 
 	if (sscanf(buf, "H: %u%n", &swash_plate_servo_count, &used) != 1) {
-		debug("helicopter parse failed on '%s'", buf);
+		PX4_ERR("helicopter parse failed on '%s'", buf);
 		return nullptr;
 	}
 
 	if (swash_plate_servo_count < 3 || swash_plate_servo_count > 4) {
-		debug("only supporting swash plate with 3 or 4 servos");
+		PX4_ERR("only supporting swash plate with 3 or 4 servos");
 		return nullptr;
 	}
 
 	if (used > (int)buflen) {
-		debug("OVERFLOW: helicopter spec used %d of %u", used, buflen);
+		PX4_ERR("OVERFLOW: helicopter spec used %d of %u", used, buflen);
 		return nullptr;
 	}
 
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return nullptr;
 	}
 
 	buf = findtag(buf, buflen, 'T');
 
 	if ((buf == nullptr) || (buflen < 12)) {
-		debug("control parser failed finding tag, ret: '%s'", buf);
+		PX4_ERR("control parser failed finding tag, ret: '%s'", buf);
 		return nullptr;
 	}
 
 	if (sscanf(buf, "T: %u %u %u %u %u",
 		   &u[0], &u[1], &u[2], &u[3], &u[4]) != 5) {
-		debug("control parse failed on '%s'", buf);
+		PX4_ERR("control parse failed on '%s'", buf);
 		return nullptr;
 	}
 
@@ -112,20 +112,20 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return nullptr;
 	}
 
 	buf = findtag(buf, buflen, 'P');
 
 	if ((buf == nullptr) || (buflen < 12)) {
-		debug("control parser failed finding tag, ret: '%s'", buf);
+		PX4_ERR("control parser failed finding tag, ret: '%s'", buf);
 		return nullptr;
 	}
 
 	if (sscanf(buf, "P: %d %d %d %d %d",
 		   &s[0], &s[1], &s[2], &s[3], &s[4]) != 5) {
-		debug("control parse failed on '%s'", buf);
+		PX4_ERR("control parse failed on '%s'", buf);
 		return nullptr;
 	}
 
@@ -136,7 +136,7 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return nullptr;
 	}
 
@@ -148,7 +148,7 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 		buf = findtag(buf, buflen, 'S');
 
 		if ((buf == nullptr) || (buflen < 12)) {
-			debug("control parser failed finding tag, ret: '%s'", buf);
+			PX4_ERR("control parser failed finding tag, ret: '%s'", buf);
 			return nullptr;
 		}
 
@@ -159,7 +159,7 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 			   &s[1],
 			   &s[2],
 			   &s[3]) != 6) {
-			debug("control parse failed on '%s'", buf);
+			PX4_ERR("control parse failed on '%s'", buf);
 			return nullptr;
 		}
 
@@ -173,20 +173,20 @@ HelicopterMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 		buf = skipline(buf, buflen);
 
 		if (buf == nullptr) {
-			debug("no line ending, line is incomplete");
+			PX4_ERR("no line ending, line is incomplete");
 			return nullptr;
 		}
 	}
 
-	debug("remaining in buf: %d, first char: %c", buflen, buf[0]);
+	PX4_DEBUG("remaining in buf: %d, first char: %c", buflen, buf[0]);
 
 	HelicopterMixer *hm = new HelicopterMixer(control_cb, cb_handle, mixer_info);
 
 	if (hm != nullptr) {
-		debug("loaded heli mixer with %d swash plate input(s)", mixer_info.control_count);
+		PX4_INFO("loaded heli mixer with %d swash plate input(s)", mixer_info.control_count);
 
 	} else {
-		debug("could not allocate memory for mixer");
+		PX4_ERR("could not allocate memory for mixer");
 	}
 
 	return hm;

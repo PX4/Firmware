@@ -44,6 +44,11 @@
 #include <cstdio>
 
 #include <mathlib/mathlib.h>
+#include <px4_platform_common/log.h>
+
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 #ifdef MIXER_MULTIROTOR_USE_MOCK_GEOMETRY
 enum class MultirotorGeometry : MultirotorGeometryUnderlyingType {
@@ -72,12 +77,6 @@ const char *_config_key[] = {"4x"};
 #include "mixer_multirotor_normalized.generated.h"
 
 #endif /* MIXER_MULTIROTOR_USE_MOCK_GEOMETRY */
-
-
-#define debug(fmt, args...)	do { } while(0)
-//#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
-//#include <debug.h>
-//#define debug(fmt, args...)	syslog(fmt "\n", ##args)
 
 MultirotorMixer::MultirotorMixer(ControlCallback control_cb, uintptr_t cb_handle, MultirotorGeometry geometry) :
 	MultirotorMixer(control_cb, cb_handle, _config_index[(int)geometry], _config_rotor_count[(int)geometry])
@@ -115,18 +114,18 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	}
 
 	if (sscanf(buf, "R: %15s", geomname) != 1) {
-		debug("multirotor parse failed on '%s'", buf);
+		PX4_ERR("multirotor parse failed on '%s'", buf);
 		return nullptr;
 	}
 
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("no line ending, line is incomplete");
+		PX4_ERR("no line ending, line is incomplete");
 		return nullptr;
 	}
 
-	debug("remaining in buf: %d, first char: %c", buflen, buf[0]);
+	PX4_DEBUG("remaining in buf: %d, first char: %c", buflen, buf[0]);
 
 	for (MultirotorGeometryUnderlyingType i = 0; i < (MultirotorGeometryUnderlyingType)MultirotorGeometry::MAX_GEOMETRY;
 	     i++) {
@@ -137,11 +136,11 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	}
 
 	if (geometry == MultirotorGeometry::MAX_GEOMETRY) {
-		debug("unrecognised geometry '%s'", geomname);
+		PX4_ERR("unrecognised geometry '%s'", geomname);
 		return nullptr;
 	}
 
-	debug("adding multirotor mixer '%s'", geomname);
+	PX4_DEBUG("adding multirotor mixer '%s'", geomname);
 
 	return new MultirotorMixer(control_cb, cb_handle, geometry);
 }

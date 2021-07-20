@@ -44,11 +44,11 @@
 #include "MultirotorMixer/MultirotorMixer.hpp"
 #include "NullMixer/NullMixer.hpp"
 #include "SimpleMixer/SimpleMixer.hpp"
+#include <px4_platform_common/log.h>
 
-#define debug(fmt, args...)	do { } while(0)
-//#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
-//#include <debug.h>
-//#define debug(fmt, args...)	syslog(fmt "\n", ##args)
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 unsigned
 MixerGroup::mix(float *outputs, unsigned space)
@@ -82,7 +82,7 @@ MixerGroup::set_trims(int16_t *values, unsigned n)
 		// to be safe, clamp offset to range of [-500, 500] usec
 		float offset = math::constrain((float)values[index] / 10000, -1.0f, 1.0f);
 
-		debug("set trim: %d, offset: %5.3f", values[index], (double)offset);
+		PX4_DEBUG("set trim: %d, offset: %5.3f", values[index], (double)offset);
 		index += mixer->set_trim(offset);
 
 		if (index >= n) {
@@ -226,7 +226,7 @@ MixerGroup::load_from_buf(Mixer::ControlCallback control_cb, uintptr_t cb_handle
 
 			/* only adjust buflen if parsing was successful */
 			buflen = resid;
-			debug("SUCCESS - buflen: %d", buflen);
+			PX4_DEBUG("SUCCESS - buflen: %d", buflen);
 
 		} else {
 

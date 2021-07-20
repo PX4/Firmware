@@ -44,9 +44,11 @@
 #include <mathlib/mathlib.h>
 #include <cstdio>
 #include <px4_platform_common/defines.h>
+#include <px4_platform_common/log.h>
 
-// #define debug(fmt, args...)	do { } while(0)
-#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 AllocatedActuatorMixer::AllocatedActuatorMixer(ControlCallback control_cb,
 		uintptr_t cb_handle,
@@ -62,7 +64,7 @@ AllocatedActuatorMixer::AllocatedActuatorMixer(ControlCallback control_cb,
 		_control_index = index - 8;
 
 	} else {
-		debug("'A:' invalid index");
+		PX4_ERR("'A:' invalid index");
 	}
 }
 
@@ -90,14 +92,14 @@ AllocatedActuatorMixer::parse(const char *buf, unsigned &buflen, uint8_t &index)
 
 	// parse line
 	if ((ret = sscanf(buf, "A: %d", &i)) != 1) {
-		debug("'A:' parser: failed on '%s'", buf);
+		PX4_ERR("'A:' parser: failed on '%s'", buf);
 		return -1;
 	}
 
 	buf = skipline(buf, buflen);
 
 	if (buf == nullptr) {
-		debug("'A:' parser: no line ending, line is incomplete");
+		PX4_ERR("'A:' parser: no line ending, line is incomplete");
 		return -1;
 	}
 
@@ -106,7 +108,7 @@ AllocatedActuatorMixer::parse(const char *buf, unsigned &buflen, uint8_t &index)
 		index = i;
 
 	} else {
-		debug("'A:' parser: invalid index");
+		PX4_ERR("'A:' parser: invalid index");
 		return -1;
 	}
 

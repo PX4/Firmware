@@ -42,9 +42,11 @@
 #include <math.h>
 #include <cstring>
 #include <ctype.h>
+#include <px4_platform_common/log.h>
 
-#define debug(fmt, args...)	do { } while(0)
-//#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
+#ifndef MODULE_NAME
+#define MODULE_NAME "mixer"
+#endif
 
 float
 Mixer::get_control(uint8_t group, uint8_t index)
@@ -118,7 +120,7 @@ Mixer::string_well_formed(const char *buf, unsigned &buflen)
 
 	}
 
-	debug("pre-parser rejected: No newline in buf");
+	PX4_ERR("pre-parser rejected: No newline in buf");
 
 	return false;
 }
