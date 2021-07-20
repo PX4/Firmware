@@ -414,7 +414,7 @@ bool VtolType::set_motor_state(const motor_state target_state, const int32_t cha
 	case motor_state::DISABLED:
 		for (int i = 0; i < num_outputs_max; i++) {
 			if (is_channel_set(i, channel_bitmap)) {
-				_current_max_pwm_values.values[i] = _disarmed_pwm_values.values[i];
+				_current_max_pwm_values.values[i] = PWM_DEFAULT_MIN;
 			}
 		}
 
