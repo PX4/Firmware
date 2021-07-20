@@ -36,6 +36,8 @@
 #include "crsf_telemetry.h"
 #include <uORB/topics/vehicle_command_ack.h>
 
+#include <termios.h>
+
 using namespace time_literals;
 
 constexpr char const *RCInput::RC_SCAN_STRING[];
@@ -246,6 +248,8 @@ void RCInput::set_rc_scan_state(RC_SCAN newState)
 	_rc_scan_begin = 0;
 	_rc_scan_state = newState;
 	_rc_scan_locked = false;
+
+	_report_lock = true;
 }
 
 void RCInput::rc_io_invert(bool invert)
@@ -254,7 +258,14 @@ void RCInput::rc_io_invert(bool invert)
 	// and if not use an IOCTL
 	if (!board_rc_invert_input(_device, invert)) {
 #if defined(TIOCSINVERT)
-		ioctl(_rcs_fd, TIOCSINVERT, invert ? (SER_INVERT_ENABLED_RX | SER_INVERT_ENABLED_TX) : 0);
+
+		if (invert) {
+			ioctl(_rcs_fd, TIOCSINVERT, SER_INVERT_ENABLED_RX | SER_INVERT_ENABLED_TX);
+
+		} else {
+			ioctl(_rcs_fd, TIOCSINVERT, 0);
+		}
+
 #endif // TIOCSINVERT
 	}
 }
@@ -388,20 +399,13 @@ void RCInput::Run()
 
 		unsigned frame_drops = 0;
 
-		if (_report_lock && _rc_scan_locked) {
-			_report_lock = false;
-			PX4_INFO("RC scan: %s RC input locked", RC_SCAN_STRING[_rc_scan_state]);
-		}
-
-		int newBytes = 0;
-
 		// TODO: needs work (poll _rcs_fd)
 		// int ret = poll(fds, sizeof(fds) / sizeof(fds[0]), 100);
 		// then update priority to SCHED_PRIORITY_FAST_DRIVER
 		// read all available data from the serial RC input UART
 
 		// read all available data from the serial RC input UART
-		newBytes = ::read(_rcs_fd, &_rcs_buf[0], SBUS_BUFFER_SIZE);
+		int newBytes = ::read(_rcs_fd, &_rcs_buf[0], RC_MAX_BUFFER_SIZE);
 
 		if (newBytes > 0) {
 			_bytes_rx += newBytes;
@@ -414,6 +418,10 @@ void RCInput::Run()
 				// Configure serial port for SBUS
 				sbus_config(_rcs_fd, board_rc_singlewire(_device));
 				rc_io_invert(true);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -437,6 +445,7 @@ void RCInput::Run()
 
 			} else {
 				// Scan the next protocol
+				rc_io_invert(false);
 				set_rc_scan_state(RC_SCAN_DSM);
 			}
 
@@ -445,9 +454,12 @@ void RCInput::Run()
 		case RC_SCAN_DSM:
 			if (_rc_scan_begin == 0) {
 				_rc_scan_begin = cycle_timestamp;
-				//			// Configure serial port for DSM
+				// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -481,7 +493,10 @@ void RCInput::Run()
 				_rc_scan_begin = cycle_timestamp;
 				// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -529,7 +544,10 @@ void RCInput::Run()
 				_rc_scan_begin = cycle_timestamp;
 				// Configure serial port for DSM
 				dsm_config(_rcs_fd);
-				rc_io_invert(false);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -571,8 +589,6 @@ void RCInput::Run()
 				_rc_scan_begin = cycle_timestamp;
 				// Configure timer input pin for CPPM
 				px4_arch_configgpio(GPIO_PPM_IN);
-				rc_io_invert(false);
-				ioctl(_rcs_fd, TIOCSINVERT, 0);
 
 			} else if (_rc_scan_locked || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
 
@@ -606,7 +622,10 @@ void RCInput::Run()
 				_rc_scan_begin = cycle_timestamp;
 				// Configure serial port for CRSF
 				crsf_config(_rcs_fd);
-				rc_io_invert(false);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -651,7 +670,10 @@ void RCInput::Run()
 				_rc_scan_begin = cycle_timestamp;
 				// Configure serial port for GHST
 				ghst_config(_rcs_fd);
-				rc_io_invert(false);
+
+				// flush serial buffer and any existing buffered data
+				tcflush(_rcs_fd, TCIOFLUSH);
+				memset(_rcs_buf, 0, sizeof(_rcs_buf));
 
 			} else if (_rc_scan_locked
 				   || cycle_timestamp - _rc_scan_begin < rc_scan_max) {
@@ -701,8 +723,13 @@ void RCInput::Run()
 
 			_to_input_rc.publish(_rc_in);
 
-		} else if (!rc_updated && ((hrt_absolute_time() - _rc_in.timestamp_last_signal) > 1_s)) {
+		} else if (!rc_updated && !_armed && (hrt_elapsed_time(&_rc_in.timestamp_last_signal) > 1_s)) {
 			_rc_scan_locked = false;
+		}
+
+		if (_report_lock && _rc_scan_locked) {
+			_report_lock = false;
+			PX4_INFO("RC scan: %s RC input locked", RC_SCAN_STRING[_rc_scan_state]);
 		}
 	}
 }
@@ -823,7 +850,11 @@ int RCInput::print_status()
 	}
 
 #if ADC_RC_RSSI_CHANNEL
-	PX4_INFO("vrssi: %dmV", (int)(_analog_rc_rssi_volt * 1000.0f));
+
+	if (_analog_rc_rssi_stable) {
+		PX4_INFO("vrssi: %dmV", (int)(_analog_rc_rssi_volt * 1000.0f));
+	}
+
 #endif
 
 	perf_print_counter(_cycle_perf);
