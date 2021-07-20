@@ -82,12 +82,79 @@ static pthread_mutex_t mavlink_module_mutex = PTHREAD_MUTEX_INITIALIZER;
 events::EventBuffer *Mavlink::_event_buffer = nullptr;
 
 Mavlink *mavlink_module_instances[MAVLINK_COMM_NUM_BUFFERS] {};
+static mavlink_signing_streams_t global_mavlink_signig_streams = {};
+
+// magic for versioning of the structure
+#define SIGNING_KEY_MAGIC 0x3852fcd1
+
+// structure stored in persistent memory
+typedef struct {
+	uint32_t magic;
+	uint64_t timestamp;
+	uint8_t secret_key[32];
+} signing_key_t;
+
+static const signing_key_t mavlink_secret_key = {
+	SIGNING_KEY_MAGIC,
+	1420070400, // 1st January 2015
+	{
+		0xce, 0x39, 0x7e, 0x07, 0x27, 0x6c, 0xc8, 0xa1, 0xd9, 0x88, 0x76, 0x92, 0x8a, 0x9a, 0xab, 0xbb,
+		0x72, 0x7b, 0x9f, 0xbe, 0xee, 0xb7, 0x32, 0x71, 0xc6, 0x0c, 0x9c, 0xa1, 0x8a, 0x16, 0x14, 0xe3
+	} // plain text hex key ce397e07276cc8a1d98876928a9aabbb727b9fbeeeb73271c60c9ca18a1614e3
+};
 
 void mavlink_send_uart_bytes(mavlink_channel_t chan, const uint8_t *ch, int length) { mavlink_module_instances[chan]->send_bytes(ch, length); }
 void mavlink_start_uart_send(mavlink_channel_t chan, int length) { mavlink_module_instances[chan]->send_start(length); }
 void mavlink_end_uart_send(mavlink_channel_t chan, int length) { mavlink_module_instances[chan]->send_finish(); }
+void mavlink_start_sign_stream(uint8_t chan) { mavlink_module_instances[chan]->begin_signing(); }
+void mavlink_end_sign_stream(uint8_t chan) { mavlink_module_instances[chan]->end_signing(); }
 mavlink_status_t *mavlink_get_channel_status(uint8_t channel) { return mavlink_module_instances[channel]->get_status(); }
 mavlink_message_t *mavlink_get_channel_buffer(uint8_t channel) { return mavlink_module_instances[channel]->get_buffer(); }
+
+static const uint32_t unsigned_messages[] = {
+	MAVLINK_MSG_ID_RADIO_STATUS,
+	MAVLINK_MSG_ID_ADSB_VEHICLE,
+	MAVLINK_MSG_ID_COLLISION
+};
+
+static bool accept_unsigned_callback(const mavlink_status_t *status, uint32_t message_id)
+{
+	// Always accept a few select messages even if unsigned
+	for (unsigned i = 0; i < sizeof(unsigned_messages) / sizeof(unsigned_messages[0]); i++) {
+		if (unsigned_messages[i] == message_id) {
+			return true;
+		}
+	}
+
+	Mavlink *m = Mavlink::get_instance_for_status(status);
+
+	if (m != nullptr) {
+
+		// Count the failure
+		m->count_sign_error();
+
+		unsigned sign_mode = m->sign_mode();
+
+		switch (sign_mode) {
+		// If signing is not required always return true
+		case Mavlink::PROTO_SIGN_OPTIONAL:
+			return true;
+
+		// Accept USB links if enabled
+		case Mavlink::PROTO_SIGN_NON_USB:
+			return m->is_usb_uart();
+
+		case Mavlink::PROTO_SIGN_ALWAYS:
+
+		// fallthrough
+		default:
+			return false;
+
+		}
+	}
+
+	return false;
+}
 
 static void usage();
 
@@ -125,6 +192,17 @@ Mavlink::Mavlink() :
 	}
 
 	_vehicle_command_sub.subscribe();
+
+	// set the signing procedure
+	// TODO: implementation key fetch from parameters
+	memcpy(_mavlink_signing.secret_key, mavlink_secret_key.secret_key, 32);
+	_mavlink_signing.link_id = _instance_id;
+	_mavlink_signing.timestamp = mavlink_secret_key.timestamp;
+	_mavlink_signing.flags = MAVLINK_SIGNING_FLAG_SIGN_OUTGOING;
+	_mavlink_signing.accept_unsigned_callback = accept_unsigned_callback;
+	// copy pointer of the signing to status struct
+	_mavlink_status.signing = &_mavlink_signing;
+	_mavlink_status.signing_streams = &global_mavlink_signig_streams;
 }
 
 Mavlink::~Mavlink()
@@ -276,6 +354,20 @@ Mavlink::get_instance_for_device(const char *device_name)
 
 	for (Mavlink *inst : mavlink_module_instances) {
 		if (inst && (inst->_protocol == Protocol::SERIAL) && (strcmp(inst->_device_name, device_name) == 0)) {
+			return inst;
+		}
+	}
+
+	return nullptr;
+}
+
+Mavlink *
+Mavlink::get_instance_for_status(const mavlink_status_t *status)
+{
+	LockGuard lg{mavlink_module_mutex};
+
+	for (Mavlink *inst : mavlink_module_instances) {
+		if (status == mavlink_get_channel_status(inst->get_instance_id())) {
 			return inst;
 		}
 	}
@@ -797,6 +889,14 @@ void Mavlink::send_finish()
 	_buf_fill = 0;
 
 	pthread_mutex_unlock(&_send_mutex);
+}
+
+void Mavlink::begin_signing() {
+	// TODO Might require a mutex on resources
+}
+
+void Mavlink::end_signing() {
+	// TODO Might require a mutex on resources
 }
 
 void Mavlink::send_bytes(const uint8_t *buf, unsigned packet_len)

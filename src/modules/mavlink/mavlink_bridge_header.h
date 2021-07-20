@@ -52,6 +52,9 @@
 #define MAVLINK_START_UART_SEND mavlink_start_uart_send
 #define MAVLINK_END_UART_SEND mavlink_end_uart_send
 
+#define MAVLINK_START_SIGN_STREAM mavlink_start_sign_stream
+#define MAVLINK_END_SIGN_STREAM mavlink_end_sign_stream
+
 #define MAVLINK_GET_CHANNEL_BUFFER mavlink_get_channel_buffer
 #define MAVLINK_GET_CHANNEL_STATUS mavlink_get_channel_status
 
@@ -88,6 +91,9 @@ void mavlink_send_uart_bytes(mavlink_channel_t chan, const uint8_t *ch, int leng
 
 void mavlink_start_uart_send(mavlink_channel_t chan, int length);
 void mavlink_end_uart_send(mavlink_channel_t chan, int length);
+
+void mavlink_start_sign_stream(uint8_t chan);
+void mavlink_end_sign_stream(uint8_t chan);
 
 extern mavlink_status_t *mavlink_get_channel_status(uint8_t chan);
 extern mavlink_message_t *mavlink_get_channel_buffer(uint8_t chan);

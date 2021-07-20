@@ -143,6 +143,8 @@ public:
 
 	static Mavlink 		*get_instance_for_device(const char *device_name);
 
+	static Mavlink		*get_instance_for_status(const mavlink_status_t *status);
+
 	mavlink_message_t 	*get_buffer() { return &_mavlink_buffer; }
 
 	mavlink_status_t 	*get_status() { return &_mavlink_status; }
@@ -208,6 +210,12 @@ public:
 		FLOW_CONTROL_OFF = 0,
 		FLOW_CONTROL_AUTO,
 		FLOW_CONTROL_ON
+	};
+
+	enum PROTO_SIGN {
+		PROTO_SIGN_OPTIONAL = 0,
+		PROTO_SIGN_NON_USB,
+		PROTO_SIGN_ALWAYS
 	};
 
 	static const char *mavlink_mode_str(enum MAVLINK_MODE mode)
@@ -336,6 +344,16 @@ public:
 	void			send_bytes(const uint8_t *buf, unsigned packet_len);
 
 	/**
+	 * Begin signing of a packet
+	 */
+	void			begin_signing();
+
+	/**
+	 * End signing of a packet
+	 */
+	void			end_signing();
+
+	/**
 	 * Flush the transmit buffer and send one MAVLink packet
 	 */
 	void             	send_finish();
@@ -438,6 +456,11 @@ public:
 	void			count_rxbytes(unsigned n) { _bytes_rx += n; };
 
 	/**
+	 * Count sign errors
+	 */
+	void			count_sign_error() { _sign_err++; };
+
+	/**
 	 * Get the receive status of this MAVLink link
 	 */
 	telemetry_status_s	&telemetry_status() { return _tstatus; }
@@ -505,6 +528,7 @@ public:
 	bool ftp_enabled() const { return _ftp_on; }
 
 	bool hash_check_enabled() const { return _param_mav_hash_chk_en.get(); }
+	int32_t	sign_mode() const { return _param_mav_sign_mode.get(); }
 	bool forward_heartbeats_enabled() const { return _param_mav_hb_forw_en.get(); }
 	bool odometry_loopback_enabled() const { return _param_mav_odom_lp.get(); }
 
@@ -556,6 +580,7 @@ private:
 
 	mavlink_message_t	_mavlink_buffer {};
 	mavlink_status_t	_mavlink_status {};
+	mavlink_signing_t	_mavlink_signing {};
 
 	/* states */
 	bool			_hil_enabled{false};		/**< Hardware In the Loop mode */
@@ -617,6 +642,7 @@ private:
 	unsigned		_bytes_tx{0};
 	unsigned		_bytes_txerr{0};
 	unsigned		_bytes_rx{0};
+	unsigned		_sign_err{0};
 	hrt_abstime		_bytes_timestamp{0};
 
 #if defined(MAVLINK_UDP)
@@ -672,6 +698,7 @@ private:
 		(ParamBool<px4::params::MAV_USEHILGPS>) _param_mav_usehilgps,
 		(ParamBool<px4::params::MAV_FWDEXTSP>) _param_mav_fwdextsp,
 		(ParamBool<px4::params::MAV_HASH_CHK_EN>) _param_mav_hash_chk_en,
+		(ParamInt<px4::params::MAV_SIGN_MODE>) _param_mav_sign_mode,
 		(ParamBool<px4::params::MAV_HB_FORW_EN>) _param_mav_hb_forw_en,
 		(ParamBool<px4::params::MAV_ODOM_LP>) _param_mav_odom_lp,
 		(ParamInt<px4::params::MAV_RADIO_TOUT>)      _param_mav_radio_timeout,
