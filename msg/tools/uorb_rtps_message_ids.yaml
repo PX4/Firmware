@@ -343,6 +343,8 @@ rtps:
     id: 159
   - msg: event
     id: 160
+  - msg: internal_combustion_engine_status
+    id: 161
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 180

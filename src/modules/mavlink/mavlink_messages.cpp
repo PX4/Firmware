@@ -70,6 +70,7 @@
 #include "streams/COMMAND_LONG.hpp"
 #include "streams/COMPONENT_INFORMATION.hpp"
 #include "streams/DISTANCE_SENSOR.hpp"
+#include "streams/EFI_STATUS.hpp"
 #include "streams/ESC_INFO.hpp"
 #include "streams/ESC_STATUS.hpp"
 #include "streams/ESTIMATOR_STATUS.hpp"
@@ -535,8 +536,11 @@ static const StreamListItem streams_list[] = {
 	create_stream_list_item<MavlinkStreamComponentInformation>(),
 #endif // COMPONENT_INFORMATION_HPP
 #if defined(RAW_RPM_HPP)
-	create_stream_list_item<MavlinkStreamRawRpm>()
+	create_stream_list_item<MavlinkStreamRawRpm>(),
 #endif // RAW_RPM_HPP
+#if defined(EFI_STATUS_HPP)
+	create_stream_list_item<MavlinkStreamEfiStatus>()
+#endif // EFI_STATUS_HPP
 };
 
 const char *get_stream_name(const uint16_t msg_id)

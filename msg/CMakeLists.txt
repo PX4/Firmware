@@ -84,6 +84,7 @@ set(msg_files
 	heater_status.msg
 	home_position.msg
 	hover_thrust_estimate.msg
+	internal_combustion_engine_status.msg
 	input_rc.msg
 	iridiumsbd_status.msg
 	irlock_report.msg
