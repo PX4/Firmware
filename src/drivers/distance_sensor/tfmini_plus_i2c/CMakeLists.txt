@@ -30,22 +30,17 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-
-add_subdirectory(broadcom)
-add_subdirectory(cm8jl65)
-add_subdirectory(leddar_one)
-add_subdirectory(ll40ls)
-add_subdirectory(ll40ls_pwm)
-add_subdirectory(mappydot)
-add_subdirectory(mb12xx)
-add_subdirectory(pga460)
-add_subdirectory(lightware_laser_i2c)
-add_subdirectory(lightware_laser_serial)
-add_subdirectory(srf02)
-add_subdirectory(teraranger)
-add_subdirectory(tfmini)
-add_subdirectory(tfmini_plus_i2c)
-add_subdirectory(ulanding_radar)
-add_subdirectory(vl53l0x)
-add_subdirectory(vl53l1x)
-add_subdirectory(gy_us42)
+px4_add_module(
+	MODULE drivers__distance_sensor__tfmini_plus_i2c
+	MAIN tfmini_plus_i2c
+	SRCS
+		TFMINI_PLUS.cpp
+		TFMINI_PLUS.hpp
+		tfmini_plus_i2c_main.cpp
+		tfmini_plus_parser.cpp
+	MODULE_CONFIG
+		module.yaml
+	DEPENDS
+		drivers_rangefinder
+		px4_work_queue
+	)
