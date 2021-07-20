@@ -2991,7 +2991,7 @@ MavlinkReceiver::run()
 	ssize_t nread = 0;
 	hrt_abstime last_send_update = 0;
 
-	while (!_mavlink->_task_should_exit) {
+	while (!_mavlink->should_exit()) {
 
 		// check for parameter updates
 		if (_parameter_update_sub.updated()) {

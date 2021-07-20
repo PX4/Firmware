@@ -129,24 +129,23 @@ Mavlink::Mavlink() :
 
 Mavlink::~Mavlink()
 {
-	if (_task_running) {
+	if (running()) {
 		/* task wakes up every 10ms or so at the longest */
-		_task_should_exit = true;
+		request_stop();
 
 		/* wait for a second for the task to quit at our request */
 		unsigned i = 0;
 
 		do {
-			/* wait 20ms */
-			px4_usleep(20000);
+			/* wait at least 100 ms */
+			px4_usleep(100);
 
 			/* if we have given up, kill it */
-			if (++i > 50) {
-				//TODO store main task handle in Mavlink instance to allow killing task
-				//task_delete(_mavlink_task);
+			if (++i > 1000) {
+				px4_task_delete(_task_id);
 				break;
 			}
-		} while (_task_running);
+		} while (running());
 	}
 
 	if (_instance_id >= 0) {
@@ -310,9 +309,9 @@ Mavlink::destroy_all_instances()
 	for (Mavlink *inst_to_del : mavlink_module_instances) {
 		if (inst_to_del != nullptr) {
 			/* set flag to stop thread and wait for all threads to finish */
-			inst_to_del->_task_should_exit = true;
+			inst_to_del->request_stop();
 
-			while (inst_to_del->_task_running) {
+			while (inst_to_del->running()) {
 				printf(".");
 				fflush(stdout);
 				px4_usleep(10000);
@@ -522,7 +521,7 @@ Mavlink::mavlink_open_uart(const int baud, const char *uart_name, const FLOW_CON
 		uORB::SubscriptionData<actuator_armed_s> armed_sub{ORB_ID(actuator_armed)};
 
 		/* get the system arming state and abort on arming */
-		while (_uart_fd < 0 && !_task_should_exit) {
+		while (_uart_fd < 0 && !should_exit()) {
 
 			/* another task might have requested subscriptions: make sure we handle it */
 			check_requested_subscriptions();
@@ -1232,7 +1231,7 @@ Mavlink::configure_stream_threadsafe(const char *stream_name, const float rate)
 	/* orb subscription must be done from the main thread,
 	 * set _subscribe_to_stream and _subscribe_to_stream_rate fields
 	 * which polled in mavlink main loop */
-	if (!_task_should_exit) {
+	if (!should_exit()) {
 		/* wait for previous subscription completion */
 		while (_subscribe_to_stream != nullptr) {
 			px4_usleep(MAIN_LOOP_DELAY / 2);
@@ -2233,6 +2232,8 @@ Mavlink::task_main(int argc, char *argv[])
 
 #endif // MAVLINK_UDP
 
+	_task_id = px4_getpid();
+
 	/* if the protocol is serial, we send the system version blindly */
 	if (get_protocol() == Protocol::SERIAL) {
 		send_autopilot_capabilities();
@@ -2250,7 +2251,7 @@ Mavlink::task_main(int argc, char *argv[])
 
 	_mavlink_start_time = hrt_absolute_time();
 
-	while (!_task_should_exit) {
+	while (!should_exit()) {
 		/* main loop */
 		px4_usleep(_main_loop_delay);
 
@@ -2585,7 +2586,7 @@ Mavlink::task_main(int argc, char *argv[])
 
 	pthread_mutex_destroy(&_send_mutex);
 
-	_task_running = false;
+	_task_running.store(false);
 
 	PX4_INFO("exiting channel %i", (int)_channel);
 
@@ -2743,7 +2744,6 @@ int Mavlink::start_helper(int argc, char *argv[])
 	int res;
 
 	if (!instance) {
-
 		/* out of memory */
 		res = -ENOMEM;
 		PX4_ERR("OUT OF MEM");
@@ -2751,8 +2751,7 @@ int Mavlink::start_helper(int argc, char *argv[])
 	} else {
 		/* this will actually only return once MAVLink exits */
 		res = instance->task_main(argc, argv);
-		instance->_task_running = false;
-
+		instance->_task_running.store(false);
 	}
 
 	return res;
@@ -2960,6 +2959,107 @@ Mavlink::display_status_streams()
 }
 
 int
+Mavlink::stop_command(int argc, char *argv[])
+{
+	const char *device_name = nullptr;
+
+#if defined(MAVLINK_UDP)
+	char *eptr;
+	int temp_int_arg;
+	unsigned short network_port = 0;
+#endif // MAVLINK_UDP
+
+	bool provided_device = false;
+	bool provided_network_port = false;
+
+	/*
+	 * Called via main with original argv
+	 *   mavlink start
+	 *
+	 *  Remove 2
+	 */
+	argc -= 2;
+	argv += 2;
+
+	/* don't exit from getopt loop to leave getopt global variables in consistent state,
+	 * set error flag instead */
+	bool err_flag = false;
+
+	int i = 0;
+
+	while (i < argc) {
+		if (0 == strcmp(argv[i], "-d") && i < argc - 1) {
+			provided_device = true;
+			device_name = argv[i + 1];
+			i++;
+
+#if defined(MAVLINK_UDP)
+
+		} else if (0 == strcmp(argv[i], "-u") && i < argc - 1) {
+			provided_network_port = true;
+			temp_int_arg = strtoul(argv[i + 1], &eptr, 10);
+
+			if (*eptr == '\0') {
+				network_port = temp_int_arg;
+
+			} else {
+				err_flag = true;
+			}
+
+			i++;
+#endif // MAVLINK_UDP
+
+		} else {
+			err_flag = true;
+		}
+
+		i++;
+	}
+
+	if (!err_flag) {
+		Mavlink *inst = nullptr;
+
+		if (provided_device && !provided_network_port) {
+			inst = get_instance_for_device(device_name);
+
+#if defined(MAVLINK_UDP)
+
+		} else if (provided_network_port && !provided_device) {
+			inst = get_instance_for_network_port(network_port);
+#endif // MAVLINK_UDP
+
+		} else if (provided_device && provided_network_port) {
+			PX4_WARN("please provide either a device name or a network port");
+			return PX4_ERROR;
+		}
+
+		if (inst != nullptr) {
+			/* set flag to stop thread and wait for all threads to finish */
+			if (inst->running() && !inst->should_exit()) {
+				inst->request_stop();
+
+				LockGuard lg{mavlink_module_mutex};
+
+				for (int mavlink_instance = 0; mavlink_instance < MAVLINK_COMM_NUM_BUFFERS; mavlink_instance++) {
+					if (mavlink_module_instances[mavlink_instance] == inst) {
+						delete mavlink_module_instances[mavlink_instance];
+						mavlink_module_instances[mavlink_instance] = nullptr;
+						return PX4_OK;
+					}
+				}
+			}
+
+			return PX4_ERROR;
+		}
+
+	} else {
+		usage();
+	}
+
+	return PX4_ERROR;
+}
+
+int
 Mavlink::stream_command(int argc, char *argv[])
 {
 	const char *device_name = DEFAULT_DEVICE_NAME;
@@ -3160,6 +3260,13 @@ $ mavlink stream -u 14556 -s HIGHRES_IMU -r 50
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("stop-all", "Stop all instances");
 
+	PRINT_MODULE_USAGE_COMMAND_DESCR("stop", "Stop a running instance");
+#if defined(CONFIG_NET) || defined(__PX4_POSIX)
+	PRINT_MODULE_USAGE_PARAM_INT('u', -1, 0, 65536, "Select Mavlink instance via local Network Port", true);
+#endif
+	PRINT_MODULE_USAGE_PARAM_STRING('d', nullptr, "<file:dev>", "Select Mavlink instance via Serial Device", true);
+
+
 	PRINT_MODULE_USAGE_COMMAND_DESCR("status", "Print status for all instances");
 	PRINT_MODULE_USAGE_ARG("streams", "Print all enabled streams", true);
 
@@ -3186,17 +3293,15 @@ extern "C" __EXPORT int mavlink_main(int argc, char *argv[])
 	if (!strcmp(argv[1], "start")) {
 		return Mavlink::start(argc, argv);
 
-	} else if (!strcmp(argv[1], "stop")) {
-		PX4_WARN("mavlink stop is deprecated, use stop-all instead");
-		usage();
-		return 1;
-
 	} else if (!strcmp(argv[1], "stop-all")) {
 		return Mavlink::destroy_all_instances();
 
 	} else if (!strcmp(argv[1], "status")) {
 		bool show_streams_status = argc > 2 && strcmp(argv[2], "streams") == 0;
 		return Mavlink::get_status_all_instances(show_streams_status);
+
+	} else if (!strcmp(argv[1], "stop")) {
+		return Mavlink::stop_command(argc, argv);
 
 	} else if (!strcmp(argv[1], "stream")) {
 		return Mavlink::stream_command(argc, argv);

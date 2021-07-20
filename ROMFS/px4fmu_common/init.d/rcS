@@ -57,11 +57,6 @@ set VEHICLE_TYPE none
 mount -t procfs /proc
 
 #
-# Start CDC/ACM serial driver.
-#
-sercon
-
-#
 # Print full system version.
 #
 ver all

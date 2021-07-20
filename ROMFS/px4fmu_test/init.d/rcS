@@ -13,14 +13,6 @@ then
 	led_control on -c blue
 fi
 
-if sercon
-then
-	echo "[i] USB interface connected"
-
-	# Try to get an USB console
-	nshterm /dev/ttyACM0 &
-fi
-
 #
 # Try to mount the microSD card.
 #

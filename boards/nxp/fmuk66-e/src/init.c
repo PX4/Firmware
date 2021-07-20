@@ -127,23 +127,6 @@ void board_on_reset(int status)
 }
 
 /************************************************************************************
- * Name: board_read_VBUS_state
- *
- * Description:
- *   All boards must provide a way to read the state of VBUS, this my be simple
- *   digital input on a GPIO. Or something more complicated like a Analong input
- *   or reading a bit from a USB controller register.
- *
- * Returns -  0 if connected.
- *
- ************************************************************************************/
-
-int board_read_VBUS_state(void)
-{
-	return BOARD_ADC_USB_CONNECTED ? 0 : 1;
-}
-
-/************************************************************************************
  * Name: board_peripheral_reset
  *
  * Description:

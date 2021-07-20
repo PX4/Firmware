@@ -294,6 +294,7 @@ __END_DECLS
  *  VBUS detection is on 29  ADC_DPM0 and PTE8
  */
 #define GPIO_USB_VBUS_VALID         /* PTE8 */ (GPIO_PULLUP | PIN_PORTE | PIN8)
+#define GPIO_OTGFS_VBUS GPIO_USB_VBUS_VALID  /* for compatibility */
 
 /* PWM input driver. Use FMU PWM14 pin
  * todo:desing this

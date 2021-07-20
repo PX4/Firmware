@@ -44,6 +44,94 @@
 
 #include <fcntl.h>
 
+#if defined(GPIO_OTGFS_VBUS) && defined(CONFIG_SYSTEM_CDCACM)
+__BEGIN_DECLS
+#include <nuttx/wqueue.h>
+#include <builtin/builtin.h>
+
+extern int sercon_main(int c, char **argv);
+extern int serdis_main(int c, char **argv);
+__END_DECLS
+
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_armed.h>
+
+static struct work_s usb_serial_work;
+static int vbus_value_prev = 0;
+static int vbus_connected_count = 0;
+static bool sercon_running = false;
+static bool mavlink_usb_started = false;
+
+static void mavlink_usb_check(void *arg)
+{
+	// only start/stop mavlink USB if disarmed
+	uORB::SubscriptionData<actuator_armed_s> actuator_armed_sub{ORB_ID(actuator_armed)};
+
+	if (actuator_armed_sub.get().armed) {
+		vbus_connected_count = 0;
+		work_queue(LPWORK, &usb_serial_work, mavlink_usb_check, NULL, USEC2TICK(1000000));
+		return;
+	}
+
+	const int vbus_value = px4_arch_gpioread(GPIO_OTGFS_VBUS);
+
+	// reset on change
+	if (vbus_value_prev != vbus_value) {
+		vbus_connected_count = 0;
+		vbus_value_prev = vbus_value;
+	}
+
+	if (vbus_value == 1) {
+		vbus_connected_count++;
+
+	} else if (vbus_value == 0) {
+		vbus_connected_count--;
+	}
+
+	if (vbus_connected_count > 2) {
+		if (!sercon_running) {
+			if (sercon_main(0, NULL) == EXIT_SUCCESS) {
+				sercon_running = true;
+			}
+		}
+
+		if (sercon_running && !mavlink_usb_started) {
+			sched_lock();
+			static const char *mavlink_start_argv[] {"mavlink", "start", "-d", "/dev/ttyACM0", NULL};
+
+			if (exec_builtin("mavlink", (char **)mavlink_start_argv, NULL, 0) > 0) {
+				mavlink_usb_started = true;
+			}
+
+			sched_unlock();
+		}
+	}
+
+	if (vbus_connected_count < -2) {
+		if (mavlink_usb_started) {
+			// stop mavlink, then kill USB cdcacm (serdis)
+			sched_lock();
+			static const char *mavlink_stop_argv[] {"mavlink", "stop", "-d", "/dev/ttyACM0", NULL};
+
+			if (exec_builtin("mavlink", (char **)mavlink_stop_argv, NULL, 0) > 0) {
+				mavlink_usb_started = false;
+			}
+
+			sched_unlock();
+		}
+
+		if (!mavlink_usb_started && sercon_running && (vbus_connected_count < -20)) {
+			// serial disconnect if unused
+			serdis_main(0, NULL);
+			sercon_running = false;
+		}
+	}
+
+	work_queue(LPWORK, &usb_serial_work, mavlink_usb_check, NULL, USEC2TICK(200000));
+}
+
+#endif // GPIO_OTGFS_VBUS && CONFIG_SYSTEM_CDCACM
+
 int px4_platform_console_init(void)
 {
 #if !defined(CONFIG_DEV_CONSOLE) && defined(CONFIG_DEV_NULL)
@@ -86,7 +174,6 @@ int px4_platform_console_init(void)
 
 int px4_platform_init(void)
 {
-
 	int ret = px4_platform_console_init();
 
 	if (ret < 0) {
@@ -122,6 +209,10 @@ int px4_platform_init(void)
 	uorb_start();
 
 	px4_log_initialize();
+
+#if defined(GPIO_OTGFS_VBUS) && defined(CONFIG_SYSTEM_CDCACM)
+	work_queue(LPWORK, &usb_serial_work, mavlink_usb_check, NULL, 0);
+#endif // GPIO_OTGFS_VBUS && CONFIG_SYSTEM_CDCACM
 
 	return PX4_OK;
 }
