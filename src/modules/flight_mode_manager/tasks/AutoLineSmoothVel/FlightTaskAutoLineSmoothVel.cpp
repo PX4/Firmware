@@ -341,7 +341,7 @@ void FlightTaskAutoLineSmoothVel::_prepareSetpoints()
 		math::trajectory::clampToXYNorm(vel_sp_constrained, xy_speed, 0.5f);
 		math::trajectory::clampToZNorm(vel_sp_constrained, z_speed, 0.5f);
 
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 2; i++) {
 			// If available, use the existing velocity as a feedforward, otherwise replace it
 			if (PX4_ISFINITE(_velocity_setpoint(i))) {
 				_velocity_setpoint(i) += vel_sp_constrained(i);
@@ -349,6 +349,31 @@ void FlightTaskAutoLineSmoothVel::_prepareSetpoints()
 			} else {
 				_velocity_setpoint(i) = vel_sp_constrained(i);
 			}
+		}
+
+		if (_param_mpc_alt_auto.get() == 1) {
+			// use max rates of climb and descend
+			const float z_dir = sign(_position_setpoint(2) - _trajectory[2].getCurrentPosition());
+			const float vel_sp_z = z_dir * z_speed;
+
+			// If available, use the existing velocity as a feedforward, otherwise replace it
+			if (PX4_ISFINITE(_velocity_setpoint(2))) {
+				_velocity_setpoint(2) += vel_sp_z;
+
+			} else {
+				_velocity_setpoint(2) = vel_sp_z;
+			}
+
+		} else {
+			// diagonal climbing and descending
+			// If available, use the existing velocity as a feedforward, otherwise replace it
+			if (PX4_ISFINITE(_velocity_setpoint(2))) {
+				_velocity_setpoint(2) += vel_sp_constrained(2);
+
+			} else {
+				_velocity_setpoint(2) = vel_sp_constrained(2);
+			}
+
 		}
 	}
 

@@ -582,6 +582,23 @@ PARAM_DEFINE_FLOAT(MPC_JERK_AUTO, 4.0f);
 PARAM_DEFINE_INT32(MPC_ALT_MODE, 0);
 
 /**
+ * Altitude velocity mode in auto mode
+ *
+ * Specifies the behavior of climb and descend rate in Auto.
+ *
+ * Set to 0 - Z velocity and X/Y velocity are synchronized for 3D waypoints.
+ * The vehicle will now fly straight lines between 3D waypoints of different altitudes.
+ * Set to 1 - Z velocity will be the maximum allowed regardless to XY waypoint distance
+ *
+ * @min 0
+ * @max 1
+ * @value 0 diagonal climbing and descending
+ * @value 1 max rates
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_INT32(MPC_ALT_AUTO, 0);
+
+/**
  * Manual position control stick exponential curve sensitivity
  *
  * The higher the value the less sensitivity the stick has around zero
