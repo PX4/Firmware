@@ -156,6 +156,8 @@ typedef struct {
  */
 uint8_t st24_common_crc8(uint8_t *ptr, uint8_t len);
 
+__EXPORT void st24_reset(void);
+
 /**
  * Decoder for ST24 protocol
  *
