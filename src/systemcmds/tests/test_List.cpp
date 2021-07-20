@@ -53,6 +53,7 @@ public:
 	virtual bool run_tests();
 
 	bool test_add();
+	bool test_add_back();
 	bool test_remove();
 	bool test_range_based_for();
 	bool test_reinsert();
@@ -62,6 +63,7 @@ public:
 bool ListTest::run_tests()
 {
 	ut_run_test(test_add);
+	ut_run_test(test_add_back);
 	ut_run_test(test_remove);
 	ut_run_test(test_range_based_for);
 	ut_run_test(test_reinsert);
@@ -82,6 +84,45 @@ bool ListTest::test_add()
 		testContainer *t = new testContainer();
 		t->i = i;
 		list1.add(t);
+
+		ut_compare("size increasing with i", list1.size(), i + 1);
+		ut_assert_true(!list1.empty());
+	}
+
+	// verify full size (100)
+	ut_assert_true(list1.size() == 100);
+
+	int i = 99;
+
+	for (auto t : list1) {
+		// verify all elements were inserted in order
+		ut_compare("stored i", i, t->i);
+		i--;
+	}
+
+	// delete all elements
+	list1.clear();
+
+	// verify list has been cleared
+	ut_assert_true(list1.empty());
+	ut_compare("size 0", list1.size(), 0);
+
+	return true;
+}
+
+bool ListTest::test_add_back()
+{
+	List<testContainer *> list1;
+
+	// size should be 0 initially
+	ut_compare("size initially 0", list1.size(), 0);
+	ut_assert_true(list1.empty());
+
+	// insert 100
+	for (int i = 0; i < 100; i++) {
+		testContainer *t = new testContainer();
+		t->i = i;
+		list1.addBack(t);
 
 		ut_compare("size increasing with i", list1.size(), i + 1);
 		ut_assert_true(!list1.empty());
@@ -184,27 +225,27 @@ bool ListTest::test_range_based_for()
 		ut_assert_true(!list1.empty());
 	}
 
-	// first element should be 99 (first added)
-	ut_compare("first 0", list1.getHead()->i, 99);
+	// first element should be 0 (last added)
+	ut_compare("first 0", list1.getHead()->i, 0);
 
 	// verify all elements were inserted in order
-	int i = 99;
+	int i = 0;
 	auto t1 = list1.getHead();
 
 	while (t1 != nullptr) {
 		ut_compare("check count", i, t1->i);
 		t1 = t1->getSibling();
-		i--;
+		i++;
 	}
 
 	// verify full size (100)
 	ut_compare("size check", list1.size(), 100);
 
-	i = 99;
+	i = 0;
 
 	for (auto t2 : list1) {
 		ut_compare("range based for i", i, t2->i);
-		i--;
+		i++;
 	}
 
 	// verify full size (100)

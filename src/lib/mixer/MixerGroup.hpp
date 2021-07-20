@@ -66,7 +66,7 @@ public:
 	 *
 	 * @param mixer			The mixer to be added.
 	 */
-	void				add_mixer(Mixer *mixer) { _mixers.add(mixer); }
+	void				add_mixer(Mixer *mixer) { _mixers.addBack(mixer); }
 
 	/**
 	 * Remove all the mixers from the group.

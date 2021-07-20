@@ -60,7 +60,21 @@ class List
 {
 public:
 
-	void add(T newNode)
+	void add(T newNode) { addFront(newNode); }
+	void addFront(T newNode)
+	{
+		if (_head == nullptr) {
+			// list is empty, add as head
+			_head = newNode;
+			return;
+
+		} else {
+			newNode->setSibling(_head);
+			_head = newNode;
+		}
+	}
+
+	void addBack(T newNode)
 	{
 		if (_head == nullptr) {
 			// list is empty, add as head
