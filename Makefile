@@ -522,3 +522,58 @@ check_px4: $(call make_list,nuttx,"px4") \
 
 check_nxp: $(call make_list,nuttx,"nxp") \
 	sizes
+
+# Release
+# --------------------------------------------------------------------
+.PHONY: init-release tag-release patch-release bloom-release release
+
+init-release: RELEASE_REPO ?= Firmware
+init-release: RELEASE_ORG ?= PX4-release
+init-release: RELEASE_ARGS ?= -F private=false
+init-release:
+	@echo Manually create the release repository at https://github.com:${RELEASE_ORG}/${RELEASE_REPO}.git
+	@echo or run \`gh api -F name=\"${RELEASE_REPO}\" ${RELEASE_ARGS} orgs/${RELEASE_ORG}/repos\`
+
+# Generate a release
+# BUMP={major,minor,patch}
+# VERSION
+#  % make tag-release VERSION="1.11.0"
+#  % make tag-release BUMP="minor"
+tag-release: BUMP ?= patch
+tag-release: CATKIN_ARGS ?= --tag-prefix v --no-push --non-interactive
+tag-release:
+ifdef VERSION
+	@catkin_prepare_release --version ${VERSION} ${CATKIN_ARGS}
+else
+	@catkin_prepare_release --bump ${BUMP} ${CATKIN_ARGS}
+endif
+
+patch-release: TMP_DIR := $(shell mktemp --tmpdir=/tmp --directory tmpXXXXXX)
+patch-release: RELEASE_PUSH_URL ?= git@github.com:PX4-release/Firmware.git
+patch-release: ROS_DISTRO ?= melodic
+patch-release: PATCH_HEADER_DIR := ${TMP_DIR}/${ROS_DISTRO}/src/lib/version
+patch-release: PATCH_HEADER := ${PATCH_HEADER_DIR}/build_git_version.h
+patch-release:
+	@git clone --depth 1 ${RELEASE_PUSH_URL} ${TMP_DIR}
+	@mkdir -p ${PATCH_HEADER_DIR}
+	@${SRC_DIR}/src/lib/version/px_update_git_header.py ${TMP_DIR}/${ROS_DISTRO}/src/lib/version/build_git_version.h
+	@git -C ${TMP_DIR} add ${ROS_DISTRO}/src/lib/version/build_git_version.h
+	@git -C ${TMP_DIR} commit -m "Generated git metadata patch for ${ROS_DISTRO} release"
+	@git -C ${TMP_DIR} push
+	rm -Ir ${TMP_DIR}
+
+bloom-release: ROSDISTRO_INDEX_URL ?= https://raw.githubusercontent.com/ros/rosdistro/master/index-v4.yaml
+bloom-release: RELEASE_PUSH_URL ?= git@github.com:PX4-release/Firmware.git
+bloom-release: RELEASE_REPO_URL ?= https://github.com/PX4-release/Firmware.git
+bloom-release: ROS_DISTRO ?= melodic
+bloom-release: ROS_PACKAGE ?= px4
+bloom-release: patch-release
+	@ROSDISTRO_INDEX_URL=${ROSDISTRO_INDEX_URL} bloom-release \
+		--override-release-repository-url ${RELEASE_REPO_URL} \
+		--override-release-repository-push-url ${RELEASE_PUSH_URL} \
+		--rosdistro ${ROS_DISTRO} --track ${ROS_DISTRO} ${ROS_PACKAGE}
+
+release: CATKIN_ARGS := --tag-prefix v --non-interactive
+release:
+	${MAKE} tag-release CATKIN_ARGS="${CATKIN_ARGS}"
+	${MAKE} bloom-release
