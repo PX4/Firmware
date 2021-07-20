@@ -21,7 +21,6 @@ float32 true_airspeed_derivative_raw
 float32 true_airspeed_innovation
 
 float32 total_energy_error
-float32 energy_distribution_error
 float32 total_energy_rate_error
 float32 energy_distribution_rate_error
 
