@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# board specific defaults
+#------------------------------------------------------------------------------
+
+# system_power unavailable
+param set-default CBRK_SUPPLY_CHK 894281
+
+# Disable safety switch by default
+param set-default CBRK_IO_SAFETY 22027
+
+# use the Q attitude estimator, it works w/o mag or GPS.
+param set-default SYS_MC_EST_GROUP 3
+param set-default ATT_ACC_COMP 0
+param set-default ATT_W_ACC 0.4000
+param set-default ATT_W_GYRO_BIAS 0.0000
+
+param set-default SYS_HAS_MAG 0

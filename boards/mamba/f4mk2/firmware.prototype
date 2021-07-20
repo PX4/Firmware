@@ -1,0 +1,13 @@
+{
+    "board_id": 42,
+    "magic": "OMNIBUSF4SD",
+    "description": "Firmware for the OmnibusF4SD board",
+    "image": "",
+    "build_time": 0,
+    "summary": "PX4/OmnibusF4",
+    "version": "0.1",
+    "image_size": 0,
+    "image_maxsize": 1032192,
+    "git_identity": "",
+    "board_revision": 0
+}

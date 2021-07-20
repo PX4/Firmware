@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# OmnibusF4SD specific board extras init
+#------------------------------------------------------------------------------
+
+if ! param compare OSD_ATXXXX_CFG 0
+then
+	atxxxx start -s
+fi
+
+if ! param compare MAV_2_CONFIG 0
+then
+	serdis
+	sleep 1;ekf2 stop;sleep 1;ekf2 start
+fi
