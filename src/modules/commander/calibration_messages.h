@@ -52,8 +52,6 @@
 #define CAL_QGC_STARTED_MSG			"[cal] calibration started: 2 %s"
 #define CAL_QGC_DONE_MSG			"[cal] calibration done: %s"
 #define CAL_QGC_FAILED_MSG			"[cal] calibration failed: %s"
-// Warnings are deprecated because they were only used when it failed anyway.
-//#define CAL_QGC_WARNING_MSG			"[cal] calibration warning: %s"
 #define CAL_QGC_CANCELLED_MSG			"[cal] calibration cancelled"
 #define CAL_QGC_PROGRESS_MSG			"[cal] progress <%u>"
 #define CAL_QGC_ORIENTATION_DETECTED_MSG	"[cal] %s orientation detected"

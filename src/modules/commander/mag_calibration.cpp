@@ -121,14 +121,12 @@ int do_mag_calibration(orb_advert_t *mavlink_log_pub)
 			px4_usleep(200000);
 
 			calibration_log_info(mavlink_log_pub, CAL_QGC_PROGRESS_MSG, 100);
-			px4_usleep(20000);
+			px4_usleep(200000);
 			calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
-			px4_usleep(20000);
 			break;
 
 		default:
 			calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
-			px4_usleep(20000);
 			break;
 		}
 	}
@@ -921,6 +919,7 @@ calibrate_return mag_calibrate_all(orb_advert_t *mavlink_log_pub, int32_t cal_ma
 
 		if (param_save) {
 			param_notify_changes();
+			px4_usleep(600000); // give this enough time to propagate
 		}
 
 		if (failed) {
@@ -952,6 +951,9 @@ int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radian
 			}
 		}
 	}
+
+	bool param_save = false;
+	bool failed = true;
 
 	if (!mag_earth_available) {
 		calibration_log_critical(mavlink_log_pub, "GPS required for mag quick cal");
@@ -991,9 +993,6 @@ int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radian
 
 		const Vector3f expected_field = Dcmf(euler).transpose() * mag_earth_pred;
 
-		bool param_save = false;
-		bool failed = true;
-
 		for (uint8_t cur_mag = 0; cur_mag < MAX_MAGS; cur_mag++) {
 			uORB::Subscription mag_sub{ORB_ID(sensor_mag), cur_mag};
 			sensor_mag_s mag{};
@@ -1024,20 +1023,26 @@ int do_mag_calibration_quick(orb_advert_t *mavlink_log_pub, float heading_radian
 			}
 		}
 
-		if (param_save) {
-			param_notify_changes();
-		}
-
 		if (!failed && factory_storage.store() != PX4_OK) {
 			failed = true;
 		}
-
-		if (!failed) {
-			calibration_log_info(mavlink_log_pub, "Mag quick calibration finished");
-			return PX4_OK;
-		}
 	}
 
-	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
-	return PX4_ERROR;
+	int result = PX4_ERROR;
+
+	if (!failed) {
+		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		result = PX4_OK;
+
+	} else {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	}
+
+	px4_usleep(600000); // give this message enough time to propagate
+
+	if (param_save) {
+		param_notify_changes();
+	}
+
+	return result;
 }

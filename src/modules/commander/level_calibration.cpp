@@ -58,8 +58,6 @@ using math::radians;
 
 int do_level_calibration(orb_advert_t *mavlink_log_pub)
 {
-	bool success = false;
-
 	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "level");
 
 	param_t roll_offset_handle = param_find("SENS_BOARD_X_OFF");
@@ -102,7 +100,7 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 				// attitude estimator is not running
 				calibration_log_critical(mavlink_log_pub, "attitude estimator not running - check system boot");
 				calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
-				goto out;
+				return PX4_ERROR;
 			}
 
 			int progress = 100 * hrt_elapsed_time(&start) / calibration_duration;
@@ -167,20 +165,16 @@ int do_level_calibration(orb_advert_t *mavlink_log_pub)
 
 		param_set_no_notification(roll_offset_handle, &roll_mean_degrees);
 		param_set_no_notification(pitch_offset_handle, &pitch_mean_degrees);
-		param_notify_changes();
-		success = true;
-	}
 
-out:
-
-	if (success) {
 		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "level");
 		px4_usleep(600000); // give this message enough time to propagate
-		return 0;
 
-	} else {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
-		px4_usleep(600000); // give this message enough time to propagate
-		return 1;
+		param_notify_changes();
+
+		return PX4_OK;
 	}
+
+	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "level");
+
+	return PX4_ERROR;
 }

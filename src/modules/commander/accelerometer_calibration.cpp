@@ -359,14 +359,14 @@ int do_accel_calibration(orb_advert_t *mavlink_log_pub)
 	worker_data.mavlink_log_pub = mavlink_log_pub;
 	bool data_collected[detect_orientation_side_count] {};
 
+	bool param_save = false;
+	bool failed = true;
+
 	if (calibrate_from_orientation(mavlink_log_pub, data_collected, accel_calibration_worker, &worker_data,
 				       false) == calibrate_return_ok) {
 
 		const Dcmf board_rotation = calibration::GetBoardRotationMatrix();
 		const Dcmf board_rotation_t = board_rotation.transpose();
-
-		bool param_save = false;
-		bool failed = true;
 
 		for (unsigned i = 0; i < MAX_ACCEL_SENS; i++) {
 			if (i < active_sensors) {
@@ -435,25 +435,31 @@ int do_accel_calibration(orb_advert_t *mavlink_log_pub)
 		if (!failed && factory_storage.store() != PX4_OK) {
 			failed = true;
 		}
-
-		if (param_save) {
-			param_notify_changes();
-		}
-
-		if (!failed) {
-			calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
-			px4_usleep(600000); // give this message enough time to propagate
-			return PX4_OK;
-		}
 	}
 
-	calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	int result = PX4_ERROR;
+
+	if (!failed) {
+		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		result = PX4_OK;
+
+	} else {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	}
+
 	px4_usleep(600000); // give this message enough time to propagate
-	return PX4_ERROR;
+
+	if (param_save) {
+		param_notify_changes();
+	}
+
+	return result;
 }
 
 int do_accel_calibration_quick(orb_advert_t *mavlink_log_pub)
 {
+	int result = PX4_ERROR;
+
 #if !defined(CONSTRAINED_FLASH)
 	PX4_INFO("Accelerometer quick calibration");
 
@@ -580,7 +586,6 @@ int do_accel_calibration_quick(orb_advert_t *mavlink_log_pub)
 
 				} else {
 					failed = true;
-					calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "calibration save failed");
 					break;
 				}
 			}
@@ -591,15 +596,21 @@ int do_accel_calibration_quick(orb_advert_t *mavlink_log_pub)
 		failed = true;
 	}
 
+	if (!failed) {
+		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		result = PX4_OK;
+
+	} else {
+		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+	}
+
+	px4_usleep(600000); // give this message enough time to propagate
+
 	if (param_save) {
 		param_notify_changes();
 	}
 
-	if (!failed) {
-		return PX4_OK;
-	}
-
 #endif // !CONSTRAINED_FLASH
 
-	return PX4_ERROR;
+	return result;
 }
