@@ -140,6 +140,7 @@ SPI::transfer(uint8_t *send, uint8_t *recv, unsigned len)
 	spi_transfer.len = len;
 	spi_transfer.speed_hz = _frequency;
 	spi_transfer.bits_per_word = 8;
+	spi_transfer.cs_change = true;
 
 	result = ::ioctl(_fd, SPI_IOC_MESSAGE(1), &spi_transfer);
 

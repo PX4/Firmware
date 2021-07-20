@@ -31,6 +31,17 @@
 #
 ############################################################################
 
-add_subdirectory(adis16448)
-add_subdirectory(adis16470)
-add_subdirectory(adis16354)
+px4_add_module(
+	MODULE drivers__imu__analog_devices__adis16354
+	MAIN adis16354
+	COMPILE_FLAGS
+	SRCS
+		ADIS16354.cpp
+		ADIS16354.hpp
+		adis16354_main.cpp
+		Analog_Devices_ADIS16354_registers.hpp
+	DEPENDS
+		drivers_accelerometer
+		drivers_gyroscope
+		px4_work_queue
+	)
