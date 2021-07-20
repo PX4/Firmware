@@ -127,6 +127,35 @@ then
 	fi
 fi
 
+# Eagle Tree airspeed sensor external I2C
+if param compare -s SENS_EN_ETSASPD 1
+then
+	ets_airspeed start -X
+fi
+
+# Sensirion SDP3X differential pressure sensor external I2C
+if param compare -s SENS_EN_SDP3X 1
+then
+	if sdp3x_airspeed start -X
+	then
+	else
+		# try another common address
+		sdp3x_airspeed start -X -a 0x22
+	fi
+fi
+
+# TE MS4525 differential pressure sensor external I2C
+if param compare -s SENS_EN_MS4525 1
+then
+	ms4525_airspeed start -X
+fi
+
+# TE MS5525 differential pressure sensor external I2C
+if param compare -s SENS_EN_MS5525 1
+then
+	ms5525_airspeed start -X
+fi
+
 # probe for optional external I2C devices
 if param compare SENS_EXT_I2C_PRB 1
 then
@@ -143,30 +172,6 @@ then
 
 	# start last (wait for possible icm20948 passthrough mode)
 	ak09916 -X -q start
-
-	# differential pressure sensors
-	if [ ${VEHICLE_TYPE} = fw -o ${VEHICLE_TYPE} = vtol ]
-	then
-		# Always try to start the airspeed sensors
-		# even if their usage might be disabled
-		sdp3x_airspeed start -X -q
-		sdp3x_airspeed start -X -a 0x22 -q
-
-		# Pixhawk 2.1 has a MS5611 on I2C which gets wrongly
-		# detected as MS5525 because the chip manufacturer was so
-		# clever to assign the same I2C address and skip a WHO_AM_I
-		# register.
-		if [ $BOARD_FMUV3 = 21 ]
-		then
-			ms5525_airspeed start -X -b 2 -q
-		else
-			ms5525_airspeed start -X -q
-		fi
-
-		ms4525_airspeed start -X -q
-
-		ets_airspeed start -X -q
-	fi
 fi
 
 ###############################################################################
