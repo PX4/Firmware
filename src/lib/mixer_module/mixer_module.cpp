@@ -113,7 +113,6 @@ void MixingOutput::updateParams()
 		}
 
 		_mixers->set_thrust_factor(_param_thr_mdl_fac.get());
-		_mixers->set_airmode((Mixer::Airmode)_param_mc_airmode.get());
 	}
 }
 
@@ -332,6 +331,28 @@ bool MixingOutput::update()
 		handleCommands();
 		// do nothing until we have a valid mixer
 		return false;
+	}
+
+	if (_vehicle_land_detected_sub.updated()) {
+		vehicle_land_detected_s vehicle_land_detected;
+
+		if (_vehicle_land_detected_sub.copy(&vehicle_land_detected)) {
+
+			if (vehicle_land_detected.landed || vehicle_land_detected.maybe_landed) {
+				// disable airmode when landed to settle on uneven ground
+				_mixers->set_airmode(Mixer::Airmode::disabled);
+
+			} else {
+				const Mixer::Airmode airmode = static_cast<Mixer::Airmode>(_param_mc_airmode.get());
+
+				if (airmode == Mixer::Airmode::roll_pitch || airmode == Mixer::Airmode::roll_pitch_yaw) {
+					_mixers->set_airmode(airmode);
+
+				} else {
+					_mixers->set_airmode(Mixer::Airmode::disabled);
+				}
+			}
+		}
 	}
 
 	// check arming state
