@@ -436,6 +436,18 @@ px4_sitl_default-clang:
 	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && cmake "$(SRC_DIR)" $(CMAKE_ARGS) -G"$(PX4_CMAKE_GENERATOR)" -DCONFIG=px4_sitl_default -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 	@$(PX4_MAKE) -C "$(SRC_DIR)"/build/px4_sitl_default-clang
 
+misra-basic: px4_sitl_default-clang
+	@echo "Basic MISRA checks using clang-tidy"
+	@echo "This is not MISRA compliant!!"
+	@echo "Checking Rule 2-13-4: Literal suffixes shall be upper case"
+	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && "$(SRC_DIR)"/Tools/run-clang-tidy.py -checks=-*,readability-uppercase-literal-suffix -header-filter=".*\.hpp" -j$(j_clang_tidy) -p .
+	@echo "Checking Rule 5-0-7: There shall be no explicit floating-integral conversions of a cvalue expression"
+	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && "$(SRC_DIR)"/Tools/run-clang-tidy.py -checks=-*,bugprone-integer-division -header-filter=".*\.hpp" -j$(j_clang_tidy) -p .
+	@echo "Checking Rule 0–2–1: An object shall not be assigned to an overlapping object"
+	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && "$(SRC_DIR)"/Tools/run-clang-tidy.py -checks=-*,cppcoreguidelines-pro-type-union-access -header-filter=".*\.hpp" -j$(j_clang_tidy) -p .
+	@echo "Checking Rule 5–0–15: Array indexing shall be the only form of pointer arithmetic"
+	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && "$(SRC_DIR)"/Tools/run-clang-tidy.py -checks=-*,cppcoreguidelines-pro-bounds-pointer-arithmetic -header-filter=".*\.hpp" -j$(j_clang_tidy) -p .
+
 clang-tidy: px4_sitl_default-clang
 	@cd "$(SRC_DIR)"/build/px4_sitl_default-clang && "$(SRC_DIR)"/Tools/run-clang-tidy.py -header-filter=".*\.hpp" -j$(j_clang_tidy) -p .
 
