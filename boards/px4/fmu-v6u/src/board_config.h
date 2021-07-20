@@ -189,6 +189,7 @@
  * PWM in future
  */
 #define GPIO_HEATER_OUTPUT   /* PA2  T2CH3 */ (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_2MHz|GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN2)
+#define HEATER_OUTPUT_EN(on_true)	      px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, (on_true))
 
 /* PWM Capture
  *

@@ -136,7 +136,7 @@ void Heater::heater_off()
 #endif
 
 #ifdef HEATER_GPIO
-	px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, 0);
+	HEATER_OUTPUT_EN(false);
 #endif
 }
 
@@ -151,7 +151,7 @@ void Heater::heater_on()
 #endif
 
 #ifdef HEATER_GPIO
-	px4_arch_gpiowrite(GPIO_HEATER_OUTPUT, 1);
+	HEATER_OUTPUT_EN(true);
 #endif
 }
 
