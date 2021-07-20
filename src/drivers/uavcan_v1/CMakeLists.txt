@@ -76,6 +76,8 @@ px4_add_module(
 		${LIBCANARD_DIR}/libcanard/
 		${CMAKE_CURRENT_BINARY_DIR}/dsdlc_generated
 	SRCS
+		PublicationManager.cpp
+		PublicationManager.hpp
 		SubscriptionManager.cpp
 		SubscriptionManager.hpp
 		ParamManager.hpp
@@ -84,6 +86,7 @@ px4_add_module(
 		NodeManager.cpp
 		Uavcan.cpp
 		Uavcan.hpp
+		Publishers/uORB/uorb_publisher.cpp
 		${SRCS}
 		o1heap/o1heap.c
 		o1heap/o1heap.h
@@ -95,3 +98,5 @@ px4_add_module(
 		git_legacy_data_types
 		version
 	)
+
+set_property(GLOBAL APPEND PROPERTY PX4_MODULE_CONFIG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/uavcan_v1_act_params.yaml)

@@ -53,14 +53,17 @@
 #include <px4_platform_common/log.h>
 #include <px4_platform_common/module.h>
 #include <uORB/Publication.hpp>
-#include <uORB/PublicationMulti.hpp>
 #include <uORB/Subscription.hpp>
 #include <uORB/SubscriptionCallback.hpp>
+#include <uORB/SubscriptionMultiArray.hpp>
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/multirotor_motor_limits.h>
+#include <uORB/topics/output_control.h>
+#include <uORB/topics/output_feedback.h>
 #include <uORB/topics/parameter_update.h>
+#include <uORB/topics/safety.h>
 
 using namespace time_literals;
 
@@ -136,6 +139,8 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
+	const char *get_param_prefix() override { return "PWM_AUX"; }
+
 	void Run() override;
 
 	/** @see ModuleBase::print_status() */
@@ -186,7 +191,7 @@ private:
 
 	static const int MAX_PER_INSTANCE{8};
 
-	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true};
+	MixingOutput _mixing_output{FMU_MAX_ACTUATORS, *this, MixingOutput::SchedulingPolicy::Auto, true, true};
 
 	Mode		_mode{MODE_NONE};
 
@@ -201,6 +206,8 @@ private:
 	int		_current_update_rate{0};
 
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+
+	uORB::SubscriptionData<actuator_armed_s> _armed_sub{ORB_ID(actuator_armed)};
 
 	unsigned	_num_outputs{0};
 	int		_class_instance{-1};
@@ -222,6 +229,7 @@ private:
 	int			pwm_ioctl(file *filp, int cmd, unsigned long arg);
 
 	bool		update_pwm_out_state(bool on);
+	void		update_function_map();
 
 	void		update_params();
 

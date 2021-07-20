@@ -52,6 +52,44 @@ parameters:
             max: 2200
             default: 1500
 
+        PWM_EXTRA_FUNC${i}:
+            description:
+                short: PWM extra ${i} output function
+                long: |
+                    This is the function to be output on each pin
+            type: enum
+            values:
+                0: None/Disabled
+                1: Mixer file output (default)
+                100: MAVLink-controlled servo 0
+                101: MAVLink-controlled servo 1
+                102: MAVLink-controlled servo 2
+                103: MAVLink-controlled servo 3
+                104: MAVLink-controlled servo 4
+                105: MAVLink-controlled servo 5
+                106: MAVLink-controlled servo 6
+                107: MAVLink-controlled servo 7
+                1000: Control Allocator output 0
+                1001: Control Allocator output 1
+                1002: Control Allocator output 2
+                1003: Control Allocator output 3
+                1004: Control Allocator output 4
+                1005: Control Allocator output 5
+                1006: Control Allocator output 6
+                1007: Control Allocator output 7
+                1008: Control Allocator output 8
+                1009: Control Allocator output 9
+                1010: Control Allocator output 10
+                1011: Control Allocator output 11
+                1012: Control Allocator output 12
+                1013: Control Allocator output 13
+                1014: Control Allocator output 14
+                1015: Control Allocator output 15
+            reboot_required: false
+            num_instances: *max_num_config_instances
+            instance_start: 1
+            default: 1
+
         PWM_EXTRA_MIN${i}:
             description:
                 short: PWM extra ${i} minimum value

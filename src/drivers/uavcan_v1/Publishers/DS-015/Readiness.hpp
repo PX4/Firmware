@@ -45,7 +45,7 @@
 // DS-15 Specification Messages
 #include <reg/drone/service/common/Readiness_0_1.h>
 
-#include "Publisher.hpp"
+#include "../Publisher.hpp"
 
 class UavcanReadinessPublisher : public UavcanPublisher
 {
@@ -55,6 +55,8 @@ public:
 	{
 
 	};
+
+	~UavcanReadinessPublisher() override { };
 
 	// Update the uORB Subscription and broadcast a UAVCAN message
 	virtual void update() override

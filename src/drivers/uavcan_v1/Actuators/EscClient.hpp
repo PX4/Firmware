@@ -66,9 +66,14 @@ class UavcanEscController : public UavcanPublisher
 {
 public:
 	static constexpr int MAX_ACTUATORS = MixingOutput::MAX_ACTUATORS;
+	static constexpr hrt_abstime UPDATE_PERIOD_US = 2500; // Default to 400 Hz setpoint update rate
 
 	UavcanEscController(CanardInstance &ins, UavcanParamManager &pmgr) :
-		UavcanPublisher(ins, pmgr, "esc") { };
+		UavcanPublisher(ins, pmgr, "esc")
+	{
+		_armed.prearmed = false;
+		_armed.armed = false;
+	};
 
 	~UavcanEscController() {};
 
@@ -78,11 +83,12 @@ public:
 			actuator_armed_s new_arming;
 			_armed_sub.update(&new_arming);
 
-			if (new_arming.armed != _armed.armed) {
+			if (new_arming.prearmed != _armed.prearmed || new_arming.armed != _armed.armed) {
 				_armed = new_arming;
+				PX4_INFO("ARMING UPDATED -- SENDING READINESS");
 
 				// Only publish if we have a valid publication ID set
-				if (_port_id == 0) {
+				if (_port_id == CANARD_PORT_ID_UNSET) {
 					return;
 				}
 
@@ -119,6 +125,10 @@ public:
 					// set the data ready in the buffer and chop if needed
 					++_arming_transfer_id;  // The transfer-ID shall be incremented after every transmission on this subject.
 					result = canardTxPush(&_canard_instance, &transfer);
+					PX4_INFO("Push Readiness message");
+
+				} else {
+					PX4_ERR("UNABLE TO SEND READINESS: err %d", result);
 				}
 			}
 		}
@@ -126,7 +136,9 @@ public:
 
 	void update_outputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS], unsigned num_outputs)
 	{
-		if (_port_id > 0) {
+		hrt_abstime now = hrt_absolute_time();
+
+		if (_port_id != CANARD_PORT_ID_UNSET && now - _time_last_update > UPDATE_PERIOD_US) {
 			reg_drone_service_actuator_common_sp_Vector31_0_1 msg_sp {0};
 
 			for (uint8_t i = 0; i < MAX_ACTUATORS; i++) {
@@ -139,8 +151,8 @@ public:
 				}
 			}
 
-			PX4_INFO("Publish %d values %f, %f, %f, %f", num_outputs, (double)msg_sp.value[0], (double)msg_sp.value[1],
-				 (double)msg_sp.value[2], (double)msg_sp.value[3]);
+			// PX4_INFO("Publish %d values %f, %f, %f, %f", num_outputs, (double)msg_sp.value[0], (double)msg_sp.value[1],
+			//  (double)msg_sp.value[2], (double)msg_sp.value[3]);
 
 			uint8_t esc_sp_payload_buffer[reg_drone_service_actuator_common_sp_Vector31_0_1_SERIALIZATION_BUFFER_SIZE_BYTES_];
 
@@ -162,6 +174,7 @@ public:
 				// set the data ready in the buffer and chop if needed
 				++_transfer_id;  // The transfer-ID shall be incremented after every transmission on this subject.
 				result = canardTxPush(&_canard_instance, &transfer);
+				_time_last_update = hrt_absolute_time();
 			}
 		}
 	};
@@ -178,6 +191,7 @@ private:
 	void esc_status_sub_cb(const CanardTransfer &msg);
 
 	uint8_t _rotor_count {0};
+	hrt_abstime _time_last_update {0};
 
 	uORB::Subscription _armed_sub{ORB_ID(actuator_armed)};
 	actuator_armed_s _armed {};

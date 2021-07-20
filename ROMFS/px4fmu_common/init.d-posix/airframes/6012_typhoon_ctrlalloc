@@ -66,6 +66,13 @@ param set-default CA_MC_R5_PY -0.5
 param set-default CA_MC_R5_CT 9.5
 param set-default CA_MC_R5_KM -0.05
 
+param set-default PWM_MAIN_FUNC1 1000
+param set-default PWM_MAIN_FUNC2 1001
+param set-default PWM_MAIN_FUNC3 1002
+param set-default PWM_MAIN_FUNC4 1003
+param set-default PWM_MAIN_FUNC5 1004
+param set-default PWM_MAIN_FUNC6 1005
+
 set MAV_TYPE 13
 
 # set MIXER hexa_x

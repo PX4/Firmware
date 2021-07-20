@@ -32,34 +32,40 @@
  ****************************************************************************/
 
 /**
- * @file actuator_outputs.hpp
+ * @file uorb_template.hpp
  *
-* Defines uORB over UAVCANv1 actuator_outputs publisher
+* Defines generic, templatized uORB over UAVCANv1 publisher
  *
  * @author Peter van der Perk <peter.vanderperk@nxp.com>
  */
 
 #pragma once
 
-#include <uORB/topics/actuator_outputs.h>
-
 #include "../Publisher.hpp"
 
-class UORB_over_UAVCAN_actuator_outputs_Publisher : public UavcanPublisher
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/actuator_outputs.h>
+
+template <class T>
+class uORB_over_UAVCAN_Publisher : public UavcanPublisher
 {
 public:
-	UORB_over_UAVCAN_actuator_outputs_Publisher(CanardInstance &ins, UavcanParamManager &pmgr, uint8_t instance = 0) :
-		UavcanPublisher(ins, pmgr, "actuator_outputs", instance)
+	uORB_over_UAVCAN_Publisher(CanardInstance &ins, UavcanParamManager &pmgr, const orb_metadata *meta,
+				   uint8_t instance = 0) :
+		UavcanPublisher(ins, pmgr, meta->o_name, instance),
+		_uorb_meta{meta},
+		_uorb_sub(meta)
 	{};
 
+	~uORB_over_UAVCAN_Publisher() override { };
+
 	// Update the uORB Subscription and broadcast a UAVCAN message
-	// FIXME think about update and limiting
 	virtual void update() override
 	{
 		// Not sure if actuator_armed is a good indication of readiness but seems close to it
-		if (_actuator_outputs_sub.updated() && _port_id != CANARD_PORT_ID_UNSET && _port_id != 0) {
-			actuator_outputs_s actuator_msg {};
-			_actuator_outputs_sub.update(&actuator_msg);
+		if (_uorb_sub.updated() && _port_id != CANARD_PORT_ID_UNSET) {
+			T data {};
+			_uorb_sub.update(&data);
 
 			CanardTransfer transfer = {
 				.timestamp_usec = hrt_absolute_time() + PUBLISHER_DEFAULT_TIMEOUT_USEC,
@@ -68,8 +74,8 @@ public:
 				.port_id        = _port_id, // This is the subject-ID.
 				.remote_node_id = CANARD_NODE_ID_UNSET,
 				.transfer_id    = _transfer_id,
-				.payload_size   = actuator_payload_size(&actuator_msg),
-				.payload        = &actuator_msg,
+				.payload_size   = get_payload_size(&data),
+				.payload        = &data,
 			};
 
 			// set the data ready in the buffer and chop if needed
@@ -78,14 +84,20 @@ public:
 		}
 	};
 
-private:
-
-	// Remove unvalid output & padding from payload_size to save bandwidth
-	size_t actuator_payload_size(actuator_outputs_s *msg)
+protected:
+	// Default payload-size function -- can specialize in derived class
+	size_t get_payload_size(T *msg)
 	{
-		return sizeof(struct actuator_outputs_s) - sizeof(msg->_padding0) -
-		       ((sizeof(msg->output) / sizeof(msg->output[0]) - msg->noutputs) * sizeof(msg->output[0]));
+		(void)msg;
+		return sizeof(T);
 	}
 
-	uORB::Subscription _actuator_outputs_sub{ORB_ID(actuator_outputs)};
+private:
+	const orb_metadata *_uorb_meta;
+	uORB::Subscription _uorb_sub;
 };
+
+/* ---- Specializations of get_payload_size() to reduce wasted bandwidth where possible ---- */
+
+template<>
+size_t uORB_over_UAVCAN_Publisher<actuator_outputs_s>::get_payload_size(actuator_outputs_s *msg);

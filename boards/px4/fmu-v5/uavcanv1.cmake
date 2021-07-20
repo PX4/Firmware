@@ -58,9 +58,11 @@ px4_add_board(
 	MODULES
 		airspeed_selector
 		attitude_estimator_q
+		angular_velocity_controller
 		battery_status
 		camera_feedback
 		commander
+		control_allocator
 		dataman
 		ekf2
 		esc_battery

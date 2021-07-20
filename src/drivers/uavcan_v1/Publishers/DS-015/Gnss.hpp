@@ -45,7 +45,7 @@
 #include <reg/drone/physics/kinematics/geodetic/Point_0_1.h>
 #include <reg/drone/service/gnss/DilutionOfPrecision_0_1.h>
 
-#include "Publisher.hpp"
+#include "../Publisher.hpp"
 
 class UavcanGnssPublisher : public UavcanPublisher
 {
@@ -55,6 +55,8 @@ public:
 	{
 
 	};
+
+	~UavcanGnssPublisher() override { };
 
 	// Update the uORB Subscription and broadcast a UAVCAN message
 	virtual void update() override

@@ -1,0 +1,137 @@
+#!/bin/sh
+# Un comment and use set +e to ignore and set -e to enable 'exit on error control'
+set +e
+# Un comment the line below to help debug scripts by printing a trace of the script commands
+#set -x
+# PX4FMU startup script.
+#
+# NOTE: environment variable references:
+#    If the dollar sign ('$') is followed by a left bracket ('{') then the
+#    variable name is terminated with the right bracket character ('}').
+#    Otherwise, the variable name goes to the end of the argument.
+#
+#
+# NOTE: COMMENT LINES ARE REMOVED BEFORE STORED IN ROMFS.
+#
+#------------------------------------------------------------------------------
+
+#
+# Set default paramter values.
+# Do not add intra word spaces
+# it wastes flash
+#
+set R /
+# set AUTOCNF no
+# set AUX_MODE pwm
+# set DATAMAN_OPT ""
+# set FCONFIG /fs/microsd/etc/config.txt
+# set FEXTRAS /fs/microsd/etc/extras.txt
+# set FMU_MODE pwm
+# set FRC /fs/microsd/etc/rc.txt
+# set IO_PRESENT no
+# set LOGGER_ARGS ""
+# set LOGGER_BUF  14
+# set MAV_TYPE none
+# set OUTPUT_MODE none
+# set PARAM_FILE /fs/microsd/params
+# set PWM_OUT none
+# set PWM_MAIN_RATE p:PWM_MAIN_RATE
+# set PWM_AUX_OUT none
+# set PWM_AUX_RATE p:PWM_AUX_RATE
+# set STARTUP_TUNE 1
+
+# Airframe parameter versioning: airframe maintainers can set this in the
+# airframe startup script, and then increase it by one whenever an airframe
+# parameter is updated - it will ensure that these parameters will be updated
+# when the firmware is flashed.
+set PARAM_DEFAULTS_VER 1
+
+#
+# Mount the procfs.
+#
+mount -t procfs /proc
+
+#
+# Start CDC/ACM serial driver.
+#
+sercon
+
+#
+# Print full system version.
+#
+ver all
+
+if mft query -q -k MTD -s MTD_PARAMETERS -v /fs/mtd_params
+then
+	set PARAM_FILE /fs/mtd_params
+fi
+
+if mft query -q -k MTD -s MTD_PARAMETERS -v /dev/eeeprom0
+then
+	set PARAM_FILE /dev/eeeprom0
+fi
+
+#
+# Load parameters.
+#
+param select $PARAM_FILE
+if ! param load
+then
+	param reset_all
+fi
+
+#
+# Optional board defaults: rc.board_defaults
+#
+set BOARD_RC_DEFAULTS ${R}etc/init.d/rc.board_defaults
+if [ -f $BOARD_RC_DEFAULTS ]
+then
+	echo "Board defaults: ${BOARD_RC_DEFAULTS}"
+	. $BOARD_RC_DEFAULTS
+fi
+unset BOARD_RC_DEFAULTS
+
+#
+# Start system state indicator.
+#
+rgbled start -X -q
+rgbled_ncp5623c start -X -q
+rgbled_pwm start
+
+if param greater -s LIGHT_EN_BLINKM 0
+then
+	if blinkm start -X
+	then
+		blinkm systemstate
+	fi
+fi
+
+#
+# board sensors: rc.sensors
+#
+set BOARD_RC_SENSORS ${R}etc/init.d/rc.board_sensors
+if [ -f $BOARD_RC_SENSORS ]
+then
+	echo "Board sensors: ${BOARD_RC_SENSORS}"
+	. $BOARD_RC_SENSORS
+fi
+unset BOARD_RC_SENSORS
+
+#
+# Start UART/Serial device drivers.
+# Note: rc.serial is auto-generated from Tools/serial/generate_config.py
+#
+. ${R}etc/init.d/rc.serial
+
+# Check for flow sensor
+if param compare SENS_EN_PX4FLOW 1
+then
+	px4flow start -X
+fi
+
+# Start the PWMOut module for PWM input/output
+# TODO: Allow configuration of PWM input
+pwm_out mode_pwm
+
+uavcan_v1 start
+unset R

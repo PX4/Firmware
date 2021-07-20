@@ -343,6 +343,10 @@ rtps:
     id: 159
   - msg: event
     id: 160
+  - msg: output_control
+    id: 161
+  - msg: output_feedback
+    id: 162
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 180
@@ -450,4 +454,19 @@ rtps:
   - msg: estimator_wind
     id: 213
     alias: wind
+  - msg: output_control_ca
+    id: 204
+    alias: output_control
+  - msg: output_control_mavlink
+    id: 205
+    alias: output_control
+  - msg: output_control_mc
+    id: 206
+    alias: output_control
+  - msg: output_control_fw
+    id: 207
+    alias: output_control
+  - msg: output_control_gimbal
+    id: 208
+    alias: output_control
   ########## multi topics: end ##########

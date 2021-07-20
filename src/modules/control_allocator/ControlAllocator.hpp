@@ -63,6 +63,7 @@
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/control_allocator_status.h>
+#include <uORB/topics/output_control.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/vehicle_torque_setpoint.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
@@ -139,6 +140,7 @@ private:
 	// Outputs
 	uORB::Publication<vehicle_actuator_setpoint_s>	_vehicle_actuator_setpoint_pub{ORB_ID(vehicle_actuator_setpoint)};	/**< actuator setpoint publication */
 	uORB::Publication<control_allocator_status_s>	_control_allocator_status_pub{ORB_ID(control_allocator_status)};	/**< actuator setpoint publication */
+	uORB::Publication<output_control_s>             _output_control_pub{ORB_ID(output_control_ca)}; /// TODO: Merge with vehicle_actuator_setpoint
 
 	// actuator_controls publication handles (temporary hack to plug actuator_setpoint into the mixer system)
 	uORB::Publication<actuator_controls_s>	_actuator_controls_4_pub{ORB_ID(actuator_controls_4)};	/**< actuator controls 4 publication */

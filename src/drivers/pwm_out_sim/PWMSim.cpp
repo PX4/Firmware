@@ -71,6 +71,8 @@ PWMSim::Run()
 		parameter_update_s pupdate;
 		_parameter_update_sub.copy(&pupdate);
 		updateParams();
+
+		_mixing_output.updateParams();
 	}
 
 	// check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread)

@@ -386,6 +386,18 @@ int Commander::custom_command(int argc, char *argv[])
 		return (ret ? 0 : 1);
 	}
 
+	if (!strcmp(argv[0], "servo")) {
+		if (argc < 3) {
+			Commander::print_usage("not enough arguments; missing [id, value]");
+			return 1;
+		}
+
+		bool ret = send_vehicle_command(vehicle_command_s::VEHICLE_CMD_DO_SET_SERVO,
+						strtof(argv[1], nullptr), strtof(argv[2], nullptr));
+
+		return (ret ? 0 : 1);
+	}
+
 	if (!strcmp(argv[0], "set_ekf_origin")) {
 		if (argc > 3) {
 
@@ -403,7 +415,6 @@ int Commander::custom_command(int argc, char *argv[])
 			return 0;
 		}
 	}
-
 
 #endif
 
@@ -996,6 +1007,55 @@ Commander::handle_command(const vehicle_command_s &cmd)
 					cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_DENIED;
 				}
 			}
+		}
+		break;
+
+	case vehicle_command_s::VEHICLE_CMD_DO_SET_SERVO: {
+			output_control_s controls {};
+
+			// Initialize all values to NAN [denotes 'not set']
+			for (unsigned i = 0; i < output_control_s::MAX_ACTUATORS; i++) {
+				controls.value[i] = NAN;
+			}
+
+			controls.timestamp = hrt_absolute_time();
+			int index = cmd.param1;
+
+			if (index >= 0 && index < output_control_s::MAX_ACTUATORS) {
+				controls.value[index] = cmd.param2;
+
+				_output_control_pub.publish(controls);
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+
+			} else {
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_DENIED;
+			}
+		}
+		break;
+
+	case vehicle_command_s::VEHICLE_CMD_DO_SET_ACTUATOR: {
+
+			if (cmd.param7 > 0) {
+				// Param 7 doesn't make any sense if non-zero
+				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED;
+				break;
+			}
+
+			output_control_s controls {};
+			controls.timestamp = hrt_absolute_time();
+
+			controls.value[0] = cmd.param1;
+			controls.value[1] = cmd.param2;
+			controls.value[2] = cmd.param3;
+			controls.value[3] = cmd.param4;
+			controls.value[4] = cmd.param5;
+			controls.value[5] = cmd.param6;
+			controls.value[6] = NAN;
+			controls.value[7] = NAN;
+
+			_output_control_pub.publish(controls);
+
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;
 
@@ -4116,6 +4176,8 @@ The commander module contains the state machine for mode switching and failsafe 
 	PRINT_MODULE_USAGE_COMMAND("set_ekf_origin");
 	PRINT_MODULE_USAGE_ARG("lat, lon, alt", "Origin Latitude, Longitude, Altitude", false);
 	PRINT_MODULE_USAGE_COMMAND_DESCR("lat|lon|alt", "Origin latitude longitude altitude");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("servo", "Command a MAVLink servo");
+	PRINT_MODULE_USAGE_ARG("{id} {value}", "Set servo {id} to a normalized {value} in range [-1,1]", false);
 #endif
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 

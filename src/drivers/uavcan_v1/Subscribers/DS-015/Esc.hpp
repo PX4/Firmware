@@ -42,8 +42,8 @@
 
 #pragma once
 
-/// For use with PR-16808 once merged
-// #include <uORB/topics/output_control.h>
+#include <uORB/topics/actuator_armed.h>
+#include <uORB/topics/output_control.h>
 
 // DS-15 Specification Messages
 #include <reg/drone/service/actuator/common/sp/Vector8_0_1.h>
@@ -55,7 +55,19 @@ class UavcanEscSubscriber : public UavcanDynamicPortSubscriber
 {
 public:
 	UavcanEscSubscriber(CanardInstance &ins, UavcanParamManager &pmgr, uint8_t instance = 0) :
-		UavcanDynamicPortSubscriber(ins, pmgr, "esc", instance) { };
+		UavcanDynamicPortSubscriber(ins, pmgr, "esc", instance)
+	{
+		_subj_sub.next = &_readiness_sub;
+
+		_readiness_sub._subject_name = _readiness_name;
+		_readiness_sub._canard_sub.user_reference = this;
+		_readiness_sub.next = NULL;
+
+		_arming_pub.get().prearmed = false;
+		_arming_pub.get().armed = false;
+		_arming_pub.get().timestamp = hrt_absolute_time();
+		_arming_pub.update();
+	};
 
 	void subscribe() override
 	{
@@ -70,44 +82,82 @@ public:
 		// Subscribe to messages reg.drone.service.common.Readiness.0.1
 		canardRxSubscribe(&_canard_instance,
 				  CanardTransferKindMessage,
-				  static_cast<CanardPortID>(static_cast<uint32_t>(_subj_sub._canard_sub.port_id) + 1),
+				  _readiness_sub._canard_sub.port_id,
 				  reg_drone_service_common_Readiness_0_1_EXTENT_BYTES_,
 				  CANARD_DEFAULT_TRANSFER_ID_TIMEOUT_USEC,
-				  &_canard_sub_readiness);
+				  &_readiness_sub._canard_sub);
 	};
 
 	void callback(const CanardTransfer &receive) override
 	{
-		// Test with Yakut:
-		// export YAKUT_TRANSPORT="pyuavcan.transport.can.CANTransport(pyuavcan.transport.can.media.slcan.SLCANMedia('/dev/serial/by-id/usb-Zubax_Robotics_Zubax_Babel_23002B000E514E413431302000000000-if00', 8, 115200), 42)"
-		// yakut pub 22.reg.drone.service.actuator.common.sp.Vector8.0.1 '{value: [1000, 2000, 3000, 4000, 0, 0, 0, 0]}'
-		PX4_INFO("EscCallback");
+		if (receive.port_id == _subj_sub._canard_sub.port_id) {
+			// Test with Yakut:
+			// export YAKUT_TRANSPORT="pyuavcan.transport.can.CANTransport(pyuavcan.transport.can.media.slcan.SLCANMedia('/dev/serial/by-id/usb-Zubax_Robotics_Zubax_Babel_23002B000E514E413431302000000000-if00', 8, 115200), 42)"
+			// yakut pub 22.reg.drone.service.actuator.common.sp.Vector8.0.1 '{value: [1000, 2000, 3000, 4000, 0, 0, 0, 0]}'
+			// PX4_INFO("EscCallback");
 
-		reg_drone_service_actuator_common_sp_Vector8_0_1 esc {};
-		size_t esc_size_in_bits = receive.payload_size;
-		reg_drone_service_actuator_common_sp_Vector8_0_1_deserialize_(&esc, (const uint8_t *)receive.payload,
-				&esc_size_in_bits);
+			reg_drone_service_actuator_common_sp_Vector8_0_1 esc {};
+			size_t esc_size_in_bits = receive.payload_size;
+			reg_drone_service_actuator_common_sp_Vector8_0_1_deserialize_(&esc, (const uint8_t *)receive.payload,
+					&esc_size_in_bits);
 
-		double val1 = static_cast<double>(esc.value[0]);
-		double val2 = static_cast<double>(esc.value[1]);
-		double val3 = static_cast<double>(esc.value[2]);
-		double val4 = static_cast<double>(esc.value[3]);
-		PX4_INFO("values[0-3] = {%f, %f, %f, %f}", val1, val2, val3, val4);
-		/// do something with the data
+			// double val1 = static_cast<double>(esc.value[0]);
+			// double val2 = static_cast<double>(esc.value[1]);
+			// double val3 = static_cast<double>(esc.value[2]);
+			// double val4 = static_cast<double>(esc.value[3]);
+			// PX4_INFO("values[0-3] = {%f, %f, %f, %f}", val1, val2, val3, val4);
 
-		/// For use with PR-16808 once merged
-		// output_control_s outputs;
+			// Publish to the output_control_mc topic; whatever output module is configured with
+			// FUNCTION_MC_MOTOR{1-8} will accept these values
+			output_control_s outputs;
 
-		// for (uint8_t i = 0; i < 8; i++) {
-		// 	outputs.value[i] = 2.f * (esc.value[i] / 8191.f) - 1.f;
-		// }
+			outputs.timestamp = hrt_absolute_time();
 
-		// _output_pub.publish(outputs);
+			for (uint8_t i = 0; i < 8; i++) {
+				outputs.value[i] = 2.f * (esc.value[i] / 8191.f) - 1.f;
+			}
+
+			_output_pub.publish(outputs);
+
+		} else if (receive.port_id == _readiness_sub._canard_sub.port_id) {
+			reg_drone_service_common_Readiness_0_1 arm {};
+			size_t arm_size = receive.payload_size;
+			reg_drone_service_common_Readiness_0_1_deserialize_(&arm, (const uint8_t *)receive.payload,
+					&arm_size);
+
+			actuator_armed_s armed {};
+
+			switch (arm.value) {
+			case reg_drone_service_common_Readiness_0_1_SLEEP:
+				armed.armed = false;
+				armed.prearmed = false;
+				break;
+
+			case reg_drone_service_common_Readiness_0_1_STANDBY:
+				armed.armed = false;
+				armed.prearmed = true;
+				break;
+
+			case reg_drone_service_common_Readiness_0_1_ENGAGED:
+				armed.armed = true;
+				armed.prearmed = true;
+				break;
+			}
+
+			if (armed.prearmed != _arming_pub.get().prearmed || armed.armed != _arming_pub.get().armed) {
+				_arming_pub.get().prearmed = armed.prearmed;
+				_arming_pub.get().armed = armed.armed;
+				_arming_pub.get().timestamp = hrt_absolute_time();
+				_arming_pub.update();
+			}
+		}
 	};
 
 private:
-	/// For use with PR-16808 once merged
-	// uORB::Publication<output_control_s> _output_pub{ORB_ID(output_control_mc)};
+	SubjectSubscription _readiness_sub;
 
-	CanardRxSubscription _canard_sub_readiness;
+	const char *_readiness_name = "esc_readiness";
+
+	uORB::Publication<output_control_s> _output_pub{ORB_ID(output_control_mc)};
+	uORB::PublicationData<actuator_armed_s> _arming_pub{ORB_ID(actuator_armed)};
 };

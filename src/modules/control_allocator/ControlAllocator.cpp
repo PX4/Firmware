@@ -338,11 +338,6 @@ ControlAllocator::Run()
 		// Publish actuator setpoint and allocator status
 		publish_actuator_setpoint();
 		publish_control_allocator_status();
-
-		// Publish on legacy topics for compatibility with
-		// the current mixer system and multicopter controller
-		// TODO: remove
-		publish_legacy_actuator_controls();
 	}
 
 	perf_end(_loop_perf);
@@ -384,6 +379,21 @@ ControlAllocator::publish_actuator_setpoint()
 	actuator_sp.copyTo(vehicle_actuator_setpoint.actuator);
 
 	_vehicle_actuator_setpoint_pub.publish(vehicle_actuator_setpoint);
+
+	/// TODO: Merge with the vehicle_actuator_setpoint topic
+	output_control_s outputs;
+
+	outputs.timestamp = vehicle_actuator_setpoint.timestamp;
+	outputs.timestamp_sample = _timestamp_sample;
+
+	// Note: We must use the normalized values in the range [-1, 1]
+	auto actuator_sp_normalized = _control_allocation->normalizeActuatorSetpoint(actuator_sp);
+
+	for (unsigned i = 0; i < NUM_ACTUATORS; i++) {
+		outputs.value[i] = actuator_sp_normalized(i);
+	}
+
+	_output_control_pub.publish(outputs);
 }
 
 void

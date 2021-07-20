@@ -10,10 +10,6 @@
 # @board px4_fmu-v2 exclude
 #
 
-. ${R}etc/init.d/rc.mc_defaults
-. ${R}etc/init.d/rc.ctrlalloc
-
-
 param set-default MPC_USE_HTE 0
 
 param set-default VM_MASS 1.5
@@ -54,3 +50,7 @@ set PWM_OUT 1234
 
 set MIXER_AUX direct_aux
 set PWM_AUX_OUT 1234
+
+# Note: Have to set the default values above before starting modules that need them
+. ${R}etc/init.d/rc.mc_defaults
+. ${R}etc/init.d/rc.ctrlalloc

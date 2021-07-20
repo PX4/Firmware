@@ -45,4 +45,9 @@ param set-default CA_MC_R3_PY 0.1875
 param set-default CA_MC_R3_CT 6.5
 param set-default CA_MC_R3_KM -0.05
 
+param set-default PWM_MAIN_FUNC1 1000
+param set-default PWM_MAIN_FUNC2 1001
+param set-default PWM_MAIN_FUNC3 1002
+param set-default PWM_MAIN_FUNC4 1003
+
 set MIXER direct

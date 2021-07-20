@@ -88,6 +88,9 @@ int PWMOut::init()
 		return ret;
 	}
 
+	// Getting initial parameter values
+	update_params();
+
 	// XXX best would be to register / de-register the device depending on modes
 
 	/* try to claim the generic PWM output device node as well - it's OK if we fail at this */
@@ -103,9 +106,6 @@ int PWMOut::init()
 
 	/* force a reset of the update rate */
 	_current_update_rate = 0;
-
-	// Getting initial parameter values
-	update_params();
 
 	ScheduleNow();
 
@@ -625,8 +625,12 @@ void PWMOut::Run()
 
 	_mixing_output.update();
 
+	bool pwm_on;
+
 	/* update PWM status if armed or if disarmed PWM values are set */
-	bool pwm_on = _mixing_output.armed().armed || (_num_disarmed_set > 0) || _mixing_output.armed().in_esc_calibration_mode;
+	pwm_on = _mixing_output.armed().armed || (_num_disarmed_set > 0) || _mixing_output.armed().in_esc_calibration_mode;
+
+	pwm_on = _armed_sub.get().armed || (_num_disarmed_set > 0);
 
 	if (_pwm_on != pwm_on) {
 
@@ -650,7 +654,7 @@ void PWMOut::Run()
 	}
 
 	// check at end of cycle (updateSubscriptions() can potentially change to a different WorkQueue thread)
-	_mixing_output.updateSubscriptions(true, true);
+	_mixing_output.updateSubscriptions(true, false);
 
 	perf_end(_cycle_perf);
 }
@@ -669,6 +673,7 @@ void PWMOut::update_params()
 
 	if (_class_instance == CLASS_DEVICE_PRIMARY) {
 		prefix = "PWM_MAIN";
+		/// TODO: This should somehow be used as the prefix used for MixingOutput
 
 		param_get(param_find("PWM_MAIN_MIN"), &pwm_min_default);
 		param_get(param_find("PWM_MAIN_MAX"), &pwm_max_default);
@@ -828,6 +833,10 @@ void PWMOut::update_params()
 	}
 
 	_num_disarmed_set = num_disarmed_set;
+
+	/// TODO: All of the above should be handled by MixingOutput once a prefix is set
+
+	_mixing_output.updateParams();
 }
 
 int PWMOut::ioctl(file *filp, int cmd, unsigned long arg)
@@ -1043,7 +1052,6 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 					/* ignore 0 */
 				} else if (pwm->values[i] > PWM_HIGHEST_MIN) {
 					_mixing_output.minValue(i) = PWM_HIGHEST_MIN;
-
 				}
 
 #if PWM_LOWEST_MIN > 0
@@ -1109,12 +1117,40 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 
 			pwm->channel_count = FMU_MAX_ACTUATORS;
 			arg = (unsigned long)&pwm;
+			break;
 		}
-		break;
+
+	// case PWM_SERVO_SET_TRIM_PWM: {
+	// 		struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
+
+	// 		/* discard if too many values are sent */
+	// 		if (pwm->channel_count > FMU_MAX_ACTUATORS) {
+	// 			PX4_DEBUG("error: too many trim values: %d", pwm->channel_count);
+	// 			ret = -EINVAL;
+	// 			break;
+	// 		}
+
+	// 		/* copy the trim values to the mixer offsets */
+
+	// 		/// TODO: Refactor MixingOutput to not require direct call to mixers()
+	// 		if (_mixing_output.mixers() == nullptr) {
+	// 			PX4_ERR("error: no mixer loaded");
+	// 			ret = -EIO;
+	// 			break;
+	// 		}
+
+	// 		_mixing_output.mixers()->set_trims((int16_t *)pwm->values, pwm->channel_count);
+
+	// 		PX4_DEBUG("set_trims: %d, %d, %d, %d", pwm->values[0], pwm->values[1], pwm->values[2], pwm->values[3]);
+
+	// 		break;
+	// 	}
+	// 	break;
 
 	case PWM_SERVO_GET_TRIM_PWM: {
 			struct pwm_output_values *pwm = (struct pwm_output_values *)arg;
 
+			/// TODO: Refactor MixingOutput to not require direct call to mixers()
 			if (_mixing_output.mixers() == nullptr) {
 				memset(pwm, 0, sizeof(pwm_output_values));
 				PX4_WARN("warning: trim values not valid - no mixer loaded");
@@ -1453,6 +1489,7 @@ int PWMOut::pwm_ioctl(file *filp, int cmd, unsigned long arg)
 	case MIXERIOCLOADBUF: {
 			const char *buf = (const char *)arg;
 			unsigned buflen = strlen(buf);
+
 			ret = _mixing_output.loadMixerThreadSafe(buf, buflen);
 			update_params();
 
@@ -2268,6 +2305,7 @@ int PWMOut::print_status()
 
 	perf_print_counter(_cycle_perf);
 	perf_print_counter(_interval_perf);
+
 	_mixing_output.printStatus();
 
 	return 0;
@@ -2351,6 +2389,8 @@ mixer files.
 	PRINT_MODULE_USAGE_ARG("<bus_id> <rate>", "Specify the bus id (>=0) and rate in Hz", false);
 
 	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test inputs and outputs");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("mavtest", "Test control of a servo via MAVLink DO_SET_SERVO");
+	PRINT_MODULE_USAGE_ARG("<ID> <val>", "Servo ID (1-8) and value ([-1, 1])", true);
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;

@@ -534,38 +534,6 @@ void MavlinkReceiver::handle_message_command_both(mavlink_message_t *msg, const 
 			send_ack = true;
 		}
 
-	} else if (cmd_mavlink.command == MAV_CMD_DO_SET_ACTUATOR) {
-		// since we're only paying attention to 3 AUX outputs, the
-		// index should be 0, otherwise ignore the message
-		if (((int) vehicle_command.param7) == 0) {
-			actuator_controls_s actuator_controls{};
-			// update with existing values to avoid changing unspecified controls
-			_actuator_controls_3_sub.update(&actuator_controls);
-
-			actuator_controls.timestamp = hrt_absolute_time();
-
-			bool updated = false;
-
-			if (PX4_ISFINITE(vehicle_command.param1)) {
-				actuator_controls.control[5] = vehicle_command.param1;
-				updated = true;
-			}
-
-			if (PX4_ISFINITE(vehicle_command.param2)) {
-				actuator_controls.control[6] = vehicle_command.param2;
-				updated = true;
-			}
-
-			if (PX4_ISFINITE(vehicle_command.param3)) {
-				actuator_controls.control[7] = vehicle_command.param3;
-				updated = true;
-			}
-
-			if (updated) {
-				_actuator_controls_pubs[3].publish(actuator_controls);
-			}
-		}
-
 	} else {
 		send_ack = false;
 

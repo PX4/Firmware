@@ -174,3 +174,5 @@ px4_add_module(
 		# within libuavcan
 		uavcan
 	)
+
+set_property(GLOBAL APPEND PROPERTY PX4_MODULE_CONFIG_FILES ${CMAKE_CURRENT_SOURCE_DIR}/uavcan_v0_act_params.yaml)

@@ -37,6 +37,7 @@
  * Implements basic functionality of UAVCAN parameter management class
  *
  * @author Jacob Crabill <jacob@flyvoly.com>
+ * @author Peter van der Perk <peter.vanderperk@nxp.com>
  */
 
 #include "ParamManager.hpp"

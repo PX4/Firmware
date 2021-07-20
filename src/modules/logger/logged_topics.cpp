@@ -75,6 +75,8 @@ void LoggedTopics::add_default_topics()
 	add_topic("navigator_mission_item");
 	add_topic("offboard_control_mode", 100);
 	add_topic("onboard_computer_status", 10);
+	add_topic("output_control_ca", 50);
+	add_topic("output_control_mavlink", 100);
 	add_topic("parameter_update");
 	add_topic("position_controller_status", 500);
 	add_topic("position_setpoint_triplet", 200);
