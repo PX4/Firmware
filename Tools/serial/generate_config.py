@@ -311,7 +311,7 @@ for tag, device in board_ports:
     serial_devices.append({
         'tag': tag,
         'device': device,
-        'label': serial_ports[tag]["label"],
+        'label': serial_ports[tag]["label"] + ' (' + device + ')',
         'index': serial_ports[tag]["index"],
         'default_baudrate': serial_ports[tag]["default_baudrate"]
         })
