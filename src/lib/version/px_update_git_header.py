@@ -55,8 +55,8 @@ if validate:
     # remove optional -<num_commits>-g<commit_hash> at the end (in case we are not on a tagged commit)
     git_tag_test = re.sub(r'-[0-9]+-g[0-9a-fA-F]+$', '', git_tag_test)
     # now check the version format
-    m = re.match(r'v([0-9]+)\.([0-9]+)\.[0-9]+(((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|(-rc[0-9]+))|'\
-                 r'(-[0-9]+\.[0-9]+\.[0-9]+((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|([-]?rc[0-9]+))?))?$', git_tag_test)
+    m = re.match(r'v([0-9]+)\.([0-9]+)\.[0-9]+(((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|(-rc[0-9]+))'\
+                 r'(-[0-9]+\.[0-9]+\.[0-9]+((-dev)|(-alpha[0-9]+)|(-beta[0-9]+)|([-]?rc[0-9]+))?)?)?$', git_tag_test)
     if m:
         # format matches, check the major and minor numbers
         major = int(m.group(1))
