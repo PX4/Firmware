@@ -1013,14 +1013,13 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 
 		const uint16_t type_mask = target_global_int.type_mask;
 
-		// position
-		if (!(type_mask & (POSITION_TARGET_TYPEMASK_X_IGNORE | POSITION_TARGET_TYPEMASK_Y_IGNORE |
-				   POSITION_TARGET_TYPEMASK_Z_IGNORE))) {
+		// position x,y
+		if (!(type_mask & (POSITION_TARGET_TYPEMASK_X_IGNORE | POSITION_TARGET_TYPEMASK_Y_IGNORE))) {
 
 			vehicle_local_position_s local_pos{};
 			_vehicle_local_position_sub.copy(&local_pos);
 
-			if (!local_pos.xy_global || !local_pos.z_global) {
+			if (!local_pos.xy_global) {
 				return;
 			}
 
@@ -1031,6 +1030,21 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 			const double lat = target_global_int.lat_int / 1e7;
 			const double lon = target_global_int.lon_int / 1e7;
 			map_projection_project(&global_local_proj_ref, lat, lon, &setpoint.x, &setpoint.y);
+
+		} else {
+			setpoint.x = NAN;
+			setpoint.y = NAN;
+		}
+
+		// position z
+		if (!(type_mask & (POSITION_TARGET_TYPEMASK_Z_IGNORE))) {
+
+			vehicle_local_position_s local_pos{};
+			_vehicle_local_position_sub.copy(&local_pos);
+
+			if (!local_pos.z_global) {
+				return;
+			}
 
 			if (target_global_int.coordinate_frame == MAV_FRAME_GLOBAL_INT) {
 				setpoint.z = local_pos.ref_alt - target_global_int.alt;
@@ -1068,8 +1082,6 @@ MavlinkReceiver::handle_message_set_position_target_global_int(mavlink_message_t
 			}
 
 		} else {
-			setpoint.x = NAN;
-			setpoint.y = NAN;
 			setpoint.z = NAN;
 		}
 

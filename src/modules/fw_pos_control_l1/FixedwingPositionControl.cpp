@@ -825,6 +825,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 
 		_type = position_sp_type;
 
+		float position_sp_alt = pos_sp_curr.alt;
 
 		if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 			_att_sp.thrust_body[0] = 0.0f;
@@ -833,7 +834,6 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 
 		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
 			// waypoint is a plain navigation waypoint
-			float position_sp_alt = pos_sp_curr.alt;
 
 			// Altitude first order hold (FOH)
 			if (pos_sp_prev.valid && PX4_ISFINITE(pos_sp_prev.alt) &&
@@ -872,17 +872,6 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 			_att_sp.roll_body = _l1_control.get_roll_setpoint();
 			_att_sp.yaw_body = _l1_control.nav_bearing();
 
-			tecs_update_pitch_throttle(now, position_sp_alt,
-						   calculate_target_airspeed(mission_airspeed, ground_speed),
-						   radians(_param_fw_p_lim_min.get()),
-						   radians(_param_fw_p_lim_max.get()),
-						   tecs_fw_thr_min,
-						   tecs_fw_thr_max,
-						   tecs_fw_mission_throttle,
-						   false,
-						   radians(_param_fw_p_lim_min.get()));
-
-
 		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
 			/* waypoint is a loiter waypoint */
 			float loiter_radius = pos_sp_curr.loiter_radius;
@@ -899,8 +888,6 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 			_att_sp.roll_body = _l1_control.get_roll_setpoint();
 			_att_sp.yaw_body = _l1_control.nav_bearing();
 
-			float alt_sp = pos_sp_curr.alt;
-
 			if (pos_sp_next.type == position_setpoint_s::SETPOINT_TYPE_LAND && pos_sp_next.valid
 			    && _l1_control.circle_mode() && _param_fw_lnd_earlycfg.get()) {
 				// We're in a loiter directly before a landing WP. Enable our landing configuration (flaps,
@@ -912,7 +899,7 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 			}
 
 			if (in_takeoff_situation()) {
-				alt_sp = max(alt_sp, _takeoff_ground_alt + _param_fw_clmbout_diff.get());
+				position_sp_alt = max(position_sp_alt, _takeoff_ground_alt + _param_fw_clmbout_diff.get());
 				_att_sp.roll_body = constrain(_att_sp.roll_body, radians(-5.0f), radians(5.0f));
 			}
 
@@ -929,7 +916,24 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 				_tecs.set_height_error_time_constant(_param_fw_thrtc_sc.get() * _param_fw_t_h_error_tc.get());
 			}
 
-			tecs_update_pitch_throttle(now, alt_sp,
+		} else if (pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_VELOCITY) {
+			_l1_control.navigate_heading(atan2f(pos_sp_curr.vy, pos_sp_curr.vx), _yaw, nav_speed_2d);
+
+			_att_sp.roll_body = _l1_control.get_roll_setpoint();
+			_att_sp.yaw_body = _l1_control.nav_bearing();
+
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_LAND) {
+			control_landing(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
+
+		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+			control_takeoff(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
+		}
+
+		if ((pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_POSITION) ||
+		    (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_LOITER) ||
+		    (pos_sp_prev.type == position_setpoint_s::SETPOINT_TYPE_VELOCITY)) {
+
+			tecs_update_pitch_throttle(now, position_sp_alt,
 						   calculate_target_airspeed(mission_airspeed, ground_speed),
 						   radians(_param_fw_p_lim_min.get()),
 						   radians(_param_fw_p_lim_max.get()),
@@ -938,12 +942,6 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 						   tecs_fw_mission_throttle,
 						   false,
 						   radians(_param_fw_p_lim_min.get()));
-
-		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_LAND) {
-			control_landing(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
-
-		} else if (position_sp_type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
-			control_takeoff(now, curr_pos, ground_speed, pos_sp_prev, pos_sp_curr);
 		}
 
 		/* reset landing state */
@@ -1728,23 +1726,35 @@ FixedwingPositionControl::Run()
 			vehicle_local_position_setpoint_s trajectory_setpoint;
 
 			if (_trajectory_setpoint_sub.update(&trajectory_setpoint)) {
+				_pos_sp_triplet = {}; // clear any existing
+
+				_pos_sp_triplet.timestamp = trajectory_setpoint.timestamp;
+				_pos_sp_triplet.current.timestamp = trajectory_setpoint.timestamp;
+				_pos_sp_triplet.current.cruising_speed = NAN; // ignored
+				_pos_sp_triplet.current.cruising_throttle = NAN; // ignored
+
 				if (PX4_ISFINITE(trajectory_setpoint.x) && PX4_ISFINITE(trajectory_setpoint.y) && PX4_ISFINITE(trajectory_setpoint.z)) {
 					double lat;
 					double lon;
 
 					if (map_projection_reproject(&_global_local_proj_ref, trajectory_setpoint.x, trajectory_setpoint.y, &lat, &lon) == 0) {
-						_pos_sp_triplet = {}; // clear any existing
-
-						_pos_sp_triplet.timestamp = trajectory_setpoint.timestamp;
-						_pos_sp_triplet.current.timestamp = trajectory_setpoint.timestamp;
-						_pos_sp_triplet.current.valid = true;
 						_pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 						_pos_sp_triplet.current.lat = lat;
 						_pos_sp_triplet.current.lon = lon;
 						_pos_sp_triplet.current.alt = _global_local_alt0 - trajectory_setpoint.z;
-						_pos_sp_triplet.current.cruising_speed = NAN; // ignored
-						_pos_sp_triplet.current.cruising_throttle = NAN; // ignored
+						_pos_sp_triplet.current.valid = true;
 					}
+
+				} else if (PX4_ISFINITE(trajectory_setpoint.vx) && PX4_ISFINITE(trajectory_setpoint.vy)
+					   && PX4_ISFINITE(trajectory_setpoint.z)) {
+					_pos_sp_triplet.current.type = position_setpoint_s::SETPOINT_TYPE_VELOCITY;
+					_pos_sp_triplet.current.vx = trajectory_setpoint.vx;
+					_pos_sp_triplet.current.vy = trajectory_setpoint.vy;
+					_pos_sp_triplet.current.alt = _global_local_alt0 - trajectory_setpoint.z;
+					_pos_sp_triplet.current.cruising_speed = hypotf(trajectory_setpoint.vx, trajectory_setpoint.vy);
+					_pos_sp_triplet.current.velocity_valid = true;
+					_pos_sp_triplet.current.alt_valid = true;
+					_pos_sp_triplet.current.valid = true;
 
 				} else {
 					mavlink_log_critical(&_mavlink_log_pub, "Invalid offboard setpoint");
