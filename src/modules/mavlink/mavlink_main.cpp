@@ -379,6 +379,20 @@ Mavlink::serial_instance_exists(const char *device_name, Mavlink *self)
 	return false;
 }
 
+bool
+Mavlink::component_was_seen(int system_id, int component_id, Mavlink *self)
+{
+	LockGuard lg{mavlink_module_mutex};
+
+	for (Mavlink *inst : mavlink_module_instances) {
+		if (inst && (inst != self) && (inst->_receiver.component_was_seen(system_id, component_id))) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void
 Mavlink::forward_message(const mavlink_message_t *msg, Mavlink *self)
 {
@@ -399,7 +413,7 @@ Mavlink::forward_message(const mavlink_message_t *msg, Mavlink *self)
 		}
 	}
 
-	// If it's a message only for us, we keep it, otherwise, we forward it.
+	// If it's a message only for us, we keep it
 	if (target_system_id == self->get_system_id() && target_component_id == self->get_component_id()) {
 		return;
 	}
@@ -412,8 +426,11 @@ Mavlink::forward_message(const mavlink_message_t *msg, Mavlink *self)
 	LockGuard lg{mavlink_module_mutex};
 
 	for (Mavlink *inst : mavlink_module_instances) {
-		if (inst && (inst != self)) {
-			inst->pass_message(msg);
+		if (inst && (inst != self) && (inst->_forwarding_on)) {
+			// Pass message only if target component was seen before
+			if (inst->_receiver.component_was_seen(target_system_id, target_component_id)) {
+				inst->pass_message(msg);
+			}
 		}
 	}
 }
@@ -1362,13 +1379,11 @@ Mavlink::message_buffer_get_ptr(void **ptr, bool *is_part)
 void
 Mavlink::pass_message(const mavlink_message_t *msg)
 {
-	if (_forwarding_on) {
-		/* size is 8 bytes plus variable payload */
-		int size = MAVLINK_NUM_NON_PAYLOAD_BYTES + msg->len;
-		pthread_mutex_lock(&_message_buffer_mutex);
-		message_buffer_write(msg, size);
-		pthread_mutex_unlock(&_message_buffer_mutex);
-	}
+	/* size is 8 bytes plus variable payload */
+	int size = MAVLINK_NUM_NON_PAYLOAD_BYTES + msg->len;
+	pthread_mutex_lock(&_message_buffer_mutex);
+	message_buffer_write(msg, size);
+	pthread_mutex_unlock(&_message_buffer_mutex);
 }
 
 MavlinkShell *

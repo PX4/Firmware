@@ -124,6 +124,7 @@ public:
 	void start();
 	void stop();
 
+	bool component_was_seen(int system_id, int component_id);
 	void print_detailed_rx_stats() const;
 
 private:
@@ -251,6 +252,8 @@ private:
 		uint8_t last_sequence{0};
 	};
 	ComponentState _component_states[MAX_REMOTE_COMPONENTS] {};
+	uint8_t _component_states_count{0};
+	static_assert((1 << sizeof(_component_states_count) * 8) > MAX_REMOTE_COMPONENTS, "MAVLink inappropriate counter type");
 	bool _warned_component_states_full_once{false};
 
 	uint64_t _total_received_counter{0};                            ///< The total number of successfully received messages
