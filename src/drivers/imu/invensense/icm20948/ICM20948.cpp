@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -230,9 +230,16 @@ void ICM20948::RunImpl()
 		break;
 
 	case STATE::FIFO_READ: {
+			hrt_abstime timestamp_sample = now;
+
 			if (_data_ready_interrupt_enabled) {
-				// scheduled from interrupt if _drdy_fifo_read_samples was set
-				if (_drdy_fifo_read_samples.fetch_and(0) != _fifo_gyro_samples) {
+				// scheduled from interrupt if _drdy_timestamp_sample was set as expected
+				const hrt_abstime drdy_timestamp_sample = _drdy_timestamp_sample.fetch_and(0);
+
+				if ((drdy_timestamp_sample != 0) && ((now - drdy_timestamp_sample) < _fifo_empty_interval_us)) {
+					timestamp_sample = drdy_timestamp_sample;
+
+				} else {
 					perf_count(_drdy_missed_perf);
 				}
 
@@ -253,16 +260,21 @@ void ICM20948::RunImpl()
 
 			} else {
 				// FIFO count (size in bytes) should be a multiple of the FIFO::DATA structure
-				const uint8_t samples = (fifo_count / sizeof(FIFO::DATA) / SAMPLES_PER_TRANSFER) *
-							SAMPLES_PER_TRANSFER; // round down to nearest
+				uint8_t samples = fifo_count / sizeof(FIFO::DATA);
+
+				// tolerate minor jitter, leave sample to next iteration if behind by only 1
+				if (samples == _fifo_gyro_samples + 1) {
+					timestamp_sample -= FIFO_SAMPLE_DT;
+					samples--;
+				}
 
 				if (samples > FIFO_MAX_SAMPLES) {
 					// not technically an overflow, but more samples than we expected or can publish
 					FIFOReset();
 					perf_count(_fifo_overflow_perf);
 
-				} else if (samples >= 1) {
-					if (FIFORead(now, samples)) {
+				} else if (samples >= SAMPLES_PER_TRANSFER) {
+					if (FIFORead(timestamp_sample, samples)) {
 						success = true;
 
 						if (_failure_count > 0) {
@@ -442,13 +454,10 @@ int ICM20948::DataReadyInterruptCallback(int irq, void *context, void *arg)
 
 void ICM20948::DataReady()
 {
-	uint32_t expected = 0;
-
 	// at least the required number of samples in the FIFO
-	if (((_drdy_count.fetch_add(1) + 1) >= _fifo_gyro_samples)
-	    && _drdy_fifo_read_samples.compare_exchange(&expected, _fifo_gyro_samples)) {
-
-		_drdy_count.store(0);
+	if (++_drdy_count >= _fifo_gyro_samples) {
+		_drdy_timestamp_sample.store(hrt_absolute_time());
+		_drdy_count -= _fifo_gyro_samples;
 		ScheduleNow();
 	}
 }
@@ -598,8 +607,8 @@ void ICM20948::FIFOReset()
 	RegisterClearBits(Register::BANK_0::FIFO_RST, FIFO_RST_BIT::FIFO_RESET);
 
 	// reset while FIFO is disabled
-	_drdy_count.store(0);
-	_drdy_fifo_read_samples.store(0);
+	_drdy_count = 0;
+	_drdy_timestamp_sample.store(0);
 }
 
 static bool fifo_accel_equal(const FIFO::DATA &f0, const FIFO::DATA &f1)

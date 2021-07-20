@@ -105,14 +105,16 @@ private:
 	perf_counter_t _bad_register_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad register")};
 	perf_counter_t _bad_transfer_perf{perf_alloc(PC_COUNT, MODULE_NAME": bad transfer")};
 	perf_counter_t _perf_crc_bad{nullptr};
+	perf_counter_t _drdy_missed_perf{nullptr};
 
 	hrt_abstime _reset_timestamp{0};
 	hrt_abstime _last_config_check_timestamp{0};
 	int _failure_count{0};
 
-	bool _check_crc{false}; // CRC-16 not supported on earlier models (eg ADIS16448AMLZ)
+	px4::atomic<hrt_abstime> _drdy_timestamp_sample{0};
 	bool _data_ready_interrupt_enabled{false};
 
+	bool _check_crc{false}; // CRC-16 not supported on earlier models (eg ADIS16448AMLZ)
 	bool _self_test_passed{false};
 
 	int16_t _accel_prev[3] {};

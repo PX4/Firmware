@@ -104,6 +104,9 @@ ADIS16448::ADIS16448(const I2CSPIDriverConfig &config) :
 	_px4_gyro(get_device_id(), config.rotation),
 	_px4_mag(get_device_id(), config.rotation)
 {
+	if (_drdy_gpio != 0) {
+		_drdy_missed_perf = perf_alloc(PC_COUNT, MODULE_NAME": DRDY missed");
+	}
 }
 
 ADIS16448::~ADIS16448()
@@ -112,6 +115,7 @@ ADIS16448::~ADIS16448()
 	perf_free(_bad_register_perf);
 	perf_free(_bad_transfer_perf);
 	perf_free(_perf_crc_bad);
+	perf_free(_drdy_missed_perf);
 }
 
 int ADIS16448::init()
@@ -149,6 +153,7 @@ void ADIS16448::print_status()
 	perf_print_counter(_bad_register_perf);
 	perf_print_counter(_bad_transfer_perf);
 	perf_print_counter(_perf_crc_bad);
+	perf_print_counter(_drdy_missed_perf);
 }
 
 int ADIS16448::probe()
@@ -326,7 +331,19 @@ void ADIS16448::RunImpl()
 		break;
 
 	case STATE::READ: {
+			hrt_abstime timestamp_sample = now;
+
 			if (_data_ready_interrupt_enabled) {
+				// scheduled from interrupt if _drdy_timestamp_sample was set as expected
+				const hrt_abstime drdy_timestamp_sample = _drdy_timestamp_sample.fetch_and(0);
+
+				if ((drdy_timestamp_sample != 0) && ((now - drdy_timestamp_sample) < SAMPLE_INTERVAL_US)) {
+					timestamp_sample = drdy_timestamp_sample;
+
+				} else {
+					perf_count(_drdy_missed_perf);
+				}
+
 				// push backup schedule back
 				ScheduleDelayed(SAMPLE_INTERVAL_US * 2);
 			}
@@ -414,8 +431,8 @@ void ADIS16448::RunImpl()
 					}
 
 					if (imu_updated) {
-						_px4_accel.update(now, accel_x, accel_y, accel_z);
-						_px4_gyro.update(now, gyro_x, gyro_y, gyro_z);
+						_px4_accel.update(timestamp_sample, accel_x, accel_y, accel_z);
+						_px4_gyro.update(timestamp_sample, gyro_x, gyro_y, gyro_z);
 					}
 
 					// DIAG_STAT bit 7: New data, xMAGN_OUT/BARO_OUT
@@ -426,13 +443,13 @@ void ADIS16448::RunImpl()
 						const int16_t mag_x = buffer.XMAGN_OUT;
 						const int16_t mag_y = (buffer.YMAGN_OUT == INT16_MIN) ? INT16_MAX : -buffer.YMAGN_OUT;
 						const int16_t mag_z = (buffer.ZMAGN_OUT == INT16_MIN) ? INT16_MAX : -buffer.ZMAGN_OUT;
-						_px4_mag.update(now, mag_x, mag_y, mag_z);
+						_px4_mag.update(timestamp_sample, mag_x, mag_y, mag_z);
 
 						_px4_baro.set_error_count(error_count);
 						_px4_baro.set_temperature(temperature);
 
 						float pressure_pa = buffer.BARO_OUT * 0.02f; // 20 μbar per LSB
-						_px4_baro.update(now, pressure_pa);
+						_px4_baro.update(timestamp_sample, pressure_pa);
 					}
 
 					success = true;

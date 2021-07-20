@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,7 +58,7 @@ private:
 	static constexpr uint32_t RATE{2000}; // 2000 Hz
 	static constexpr float FIFO_SAMPLE_DT{1e6f / RATE};
 
-	static constexpr uint32_t FIFO_MAX_SAMPLES{math::min(FIFO::SIZE / sizeof(FIFO::DATA), sizeof(sensor_accel_fifo_s::x) / sizeof(sensor_accel_fifo_s::x[0]))};
+	static constexpr int32_t FIFO_MAX_SAMPLES{math::min(FIFO::SIZE / sizeof(FIFO::DATA), sizeof(sensor_accel_fifo_s::x) / sizeof(sensor_accel_fifo_s::x[0]))};
 
 	// Transfer data
 	struct FIFOTransferBuffer {
@@ -112,7 +112,7 @@ private:
 	static constexpr uint8_t size_register_cfg{7};
 	register_config_t _register_cfg[size_register_cfg] {
 		// Register                    | Set bits, Clear bits
-		{ Register::PMU_RANGE,         PMU_RANGE_BIT::range_16g, Bit1 | Bit0},
+		{ Register::PMU_RANGE,         PMU_RANGE_BIT::range_16g_set, PMU_RANGE_BIT::range_16g_clear},
 		{ Register::ACCD_HBW,          ACCD_HBW_BIT::data_high_bw, 0},
 		{ Register::INT_EN_1,          INT_EN_1_BIT::int_fwm_en, 0},
 		{ Register::INT_MAP_1,         INT_MAP_1_BIT::int1_fwm, 0},

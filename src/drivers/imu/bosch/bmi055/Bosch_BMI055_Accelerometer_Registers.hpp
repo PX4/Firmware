@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2020-2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -97,10 +97,17 @@ enum ACCD_HBW_BIT : uint8_t {
 // PMU_RANGE
 enum PMU_RANGE_BIT : uint8_t {
 	// range<3:0>
-	range_2g  = Bit1 | Bit0, //  ́0011b ́ -> ±2g range
-	range_4g  = Bit2 | Bit0, //  ́0101b ́ -> ±4g range
-	range_8g  = Bit3,        //  ́1000b ́ -> ±8g range
-	range_16g = Bit3 | Bit2, //  ́1100b ́ -> ±16g range
+	range_16g_set   = Bit3 | Bit2, //  ́1100b ́ -> ±16g range
+	range_16g_clear = Bit1 | Bit0,
+
+	range_8g_set    = Bit3,        //  ́1000b ́ -> ±8g range
+	range_8g_clear  = Bit2 | Bit1 | Bit0,
+
+	range_4g_set    = Bit2 | Bit0, //  ́0101b ́ -> ±4g range
+	range_4g_clear  = Bit3 | Bit1,
+
+	range_2g_set    = Bit1 | Bit0, //  ́0011b ́ -> ±2g range
+	range_2g_clear  = Bit3 | Bit2,
 };
 
 // INT_EN_1

@@ -42,7 +42,7 @@ px4_add_board(
 		#lights/rgbled_pwm
 		#magnetometer # all available magnetometer drivers
 		magnetometer/isentek/ist8310
-		optical_flow # all available optical flow drivers
+		#optical_flow # all available optical flow drivers
 		#osd
 		#pca9685
 		#pca9685_pwm_out
