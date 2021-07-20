@@ -87,4 +87,9 @@ private:
 	 */
 	void		advance_gpsf();
 
+	/**
+	 *  boolean to determine if the vehicle was in a landing state prior to activating gps failure
+	 */
+	bool was_landing{false};
+
 };
