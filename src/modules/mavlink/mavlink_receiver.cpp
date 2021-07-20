@@ -1998,6 +1998,8 @@ MavlinkReceiver::handle_message_heartbeat(mavlink_message_t *msg)
 
 		if (same_system || hb.type == MAV_TYPE_GCS) {
 
+			camera_status_s camera_status{};
+
 			switch (hb.type) {
 			case MAV_TYPE_ANTENNA_TRACKER:
 				_heartbeat_type_antenna_tracker = now;
@@ -2021,6 +2023,10 @@ MavlinkReceiver::handle_message_heartbeat(mavlink_message_t *msg)
 
 			case MAV_TYPE_CAMERA:
 				_heartbeat_type_camera = now;
+				camera_status.timestamp = now;
+				camera_status.active_comp_id = msg->compid;
+				camera_status.active_sys_id = msg->sysid;
+				_camera_status_pub.publish(camera_status);
 				break;
 
 			default:

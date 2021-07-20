@@ -343,6 +343,8 @@ rtps:
     id: 159
   - msg: event
     id: 160
+  - msg: camera_status
+    id: 168
   ########## multi topics: begin ##########
   - msg: actuator_controls_0
     id: 180

@@ -34,6 +34,7 @@
 #ifndef CAMERA_TRIGGER_HPP
 #define CAMERA_TRIGGER_HPP
 
+#include <uORB/topics/camera_status.h>
 #include <uORB/topics/camera_trigger.h>
 
 class MavlinkStreamCameraTrigger : public MavlinkStream
@@ -63,6 +64,12 @@ private:
 	explicit MavlinkStreamCameraTrigger(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
 	uORB::Subscription _camera_trigger_sub{ORB_ID(camera_trigger)};
+	uORB::Subscription _camera_status_sub{ORB_ID(camera_status)};
+	camera_status_s _camera_status = {
+		0,	//timestamp
+		0,	//target_sys_id
+		MAV_COMP_ID_CAMERA // active_comp_id
+	};
 
 	bool send() override
 	{
@@ -76,6 +83,7 @@ private:
 				msg.seq = camera_trigger.seq;
 				mavlink_msg_camera_trigger_send_struct(_mavlink->get_channel(), &msg);
 
+				_camera_status_sub.update(&_camera_status);
 
 				vehicle_command_s vcmd{};
 				vcmd.timestamp = hrt_absolute_time();
@@ -88,7 +96,7 @@ private:
 				vcmd.param7 = NAN;
 				vcmd.command = MAV_CMD_IMAGE_START_CAPTURE;
 				vcmd.target_system = mavlink_system.sysid;
-				vcmd.target_component = MAV_COMP_ID_CAMERA;
+				vcmd.target_component = _camera_status.active_comp_id;
 
 				MavlinkCommandSender::instance().handle_vehicle_command(vcmd, _mavlink->get_channel());
 
@@ -97,8 +105,8 @@ private:
 				/* send MAV_CMD_DO_DIGICAM_CONTROL*/
 				mavlink_command_long_t command_long_msg{};
 
-				command_long_msg.target_system = 0; // 0 for broadcast
-				command_long_msg.target_component = MAV_COMP_ID_CAMERA;
+				command_long_msg.target_system = _camera_status.active_sys_id;
+				command_long_msg.target_component = _camera_status.active_comp_id;
 				command_long_msg.command = MAV_CMD_DO_DIGICAM_CONTROL;
 				command_long_msg.confirmation = 0;
 				command_long_msg.param1 = NAN;

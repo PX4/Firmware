@@ -62,6 +62,7 @@
 #include <uORB/topics/actuator_outputs.h>
 #include <uORB/topics/airspeed.h>
 #include <uORB/topics/battery_status.h>
+#include <uORB/topics/camera_status.h>
 #include <uORB/topics/cellular_status.h>
 #include <uORB/topics/collision_report.h>
 #include <uORB/topics/differential_pressure.h>
@@ -264,6 +265,7 @@ private:
 	uORB::Publication<actuator_controls_s>			_actuator_controls_pubs[4] {ORB_ID(actuator_controls_0), ORB_ID(actuator_controls_1), ORB_ID(actuator_controls_2), ORB_ID(actuator_controls_3)};
 	uORB::Publication<airspeed_s>				_airspeed_pub{ORB_ID(airspeed)};
 	uORB::Publication<battery_status_s>			_battery_pub{ORB_ID(battery_status)};
+	uORB::Publication<camera_status_s>					_camera_status_pub{ORB_ID(camera_status)};
 	uORB::Publication<cellular_status_s>			_cellular_status_pub{ORB_ID(cellular_status)};
 	uORB::Publication<collision_report_s>			_collision_report_pub{ORB_ID(collision_report)};
 	uORB::Publication<differential_pressure_s>		_differential_pressure_pub{ORB_ID(differential_pressure)};

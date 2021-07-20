@@ -47,6 +47,7 @@ set(msg_files
 	baro_bias_estimate.msg
 	battery_status.msg
 	camera_capture.msg
+	camera_status.msg
 	camera_trigger.msg
 	cellular_status.msg
 	collision_constraints.msg
