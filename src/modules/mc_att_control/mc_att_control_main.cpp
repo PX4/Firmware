@@ -247,6 +247,9 @@ MulticopterAttitudeControl::Run()
 		if (_vehicle_attitude_setpoint_sub.updated()) {
 			vehicle_attitude_setpoint_s vehicle_attitude_setpoint;
 			_vehicle_attitude_setpoint_sub.update(&vehicle_attitude_setpoint);
+			const float yaw_weight = vehicle_attitude_setpoint.absolute_heading_valid ? _param_mc_yaw_weight.get() : 0.f;
+			_attitude_control.setProportionalGain(Vector3f(_param_mc_roll_p.get(), _param_mc_pitch_p.get(), _param_mc_yaw_p.get()),
+							      yaw_weight);
 			_attitude_control.setAttitudeSetpoint(Quatf(vehicle_attitude_setpoint.q_d), vehicle_attitude_setpoint.yaw_sp_move_rate);
 			_thrust_setpoint_body = Vector3f(vehicle_attitude_setpoint.thrust_body);
 		}
