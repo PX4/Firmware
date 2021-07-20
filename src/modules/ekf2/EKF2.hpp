@@ -460,7 +460,7 @@ private:
 		_param_ekf2_ev_pos_z,		///< Z position of VI sensor focal point in body frame (m)
 
 		// control of airspeed and sideslip fusion
-		(ParamFloat<px4::params::EKF2_ARSP_THR>)
+		(ParamExtFloat<px4::params::EKF2_ARSP_THR>)
 		_param_ekf2_arsp_thr, 	///< A value of zero will disabled airspeed fusion. Any positive value sets the minimum airspeed which will be used (m/sec)
 		(ParamInt<px4::params::EKF2_FUSE_BETA>)
 		_param_ekf2_fuse_beta,		///< Controls synthetic sideslip fusion, 0 disables, 1 enables

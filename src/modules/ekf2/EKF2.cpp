@@ -140,6 +140,7 @@ EKF2::EKF2(bool multi_mode, const px4::wq_config_t &config, bool replay_mode):
 	_param_ekf2_ev_pos_x(_params->ev_pos_body(0)),
 	_param_ekf2_ev_pos_y(_params->ev_pos_body(1)),
 	_param_ekf2_ev_pos_z(_params->ev_pos_body(2)),
+	_param_ekf2_arsp_thr(_params->arsp_thr),
 	_param_ekf2_tau_vel(_params->vel_Tau),
 	_param_ekf2_tau_pos(_params->pos_Tau),
 	_param_ekf2_gbias_init(_params->switch_on_gyro_bias),
