@@ -114,3 +114,18 @@ PARAM_DEFINE_FLOAT(LNDMC_ALT_MAX, -1.0f);
  *
  */
 PARAM_DEFINE_FLOAT(LNDMC_ALT_GND, -1.0f);
+
+/**
+ * Multicopter max distance to ground
+ *
+ * Maximum distance to ground allowed in the landed state (m/s up and down).
+ * Disabled if 0.
+ *
+ * @unit m
+ * @min 0.0
+ * @max 0.2
+ * @decimal 2
+ *
+ * @group Land Detector
+ */
+PARAM_DEFINE_FLOAT(LNDMC_GND_DIST, 0.0f);

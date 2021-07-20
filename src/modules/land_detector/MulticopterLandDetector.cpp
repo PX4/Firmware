@@ -156,6 +156,22 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 
 	const bool lpos_available = ((time_now_us - _vehicle_local_position.timestamp) < 1_s);
 
+	// if distance to ground within LNDMC_GND_DIST drastically reduce hysteresis requirements
+	bool dist_bottom = false;
+
+	if (lpos_available && _vehicle_local_position.dist_bottom_valid
+	    && (_vehicle_local_position.dist_bottom < _param_lndmc_gnd_dist.get())) {
+
+		dist_bottom = true;
+
+		_ground_contact_hysteresis.set_hysteresis_time_from(false, 10_ms);
+		_maybe_landed_hysteresis.set_hysteresis_time_from(false, 10_ms);
+
+	} else {
+		_ground_contact_hysteresis.set_hysteresis_time_from(false, GROUND_CONTACT_TRIGGER_TIME_US);
+		_maybe_landed_hysteresis.set_hysteresis_time_from(false, MAYBE_LAND_DETECTOR_TRIGGER_TIME_US);
+	}
+
 	// land speed threshold, 90% of MPC_LAND_SPEED
 	const float land_speed_threshold = 0.9f * math::max(_params.landSpeed, 0.1f);
 
@@ -202,7 +218,13 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 	}
 
 	// low thrust: 30% of throttle range between min and hover, relaxed to 60% if hover thrust estimate available
-	const float thr_pct_hover = _hover_thrust_estimate_valid ? 0.6f : 0.3f;
+	float thr_pct_hover = _hover_thrust_estimate_valid ? 0.6f : 0.3f;
+
+	if (dist_bottom) {
+		// if nearly on ground then further relax minimum throttle requirement
+		thr_pct_hover = 0.90f;
+	}
+
 	const float sys_low_throttle = _params.minThrottle + (_params.hoverThrottle - _params.minThrottle) * thr_pct_hover;
 	_has_low_throttle = (_actuator_controls_throttle <= sys_low_throttle);
 	bool ground_contact = _has_low_throttle;

@@ -144,7 +144,8 @@ private:
 		(ParamFloat<px4::params::LNDMC_ROT_MAX>)    _param_lndmc_rot_max,
 		(ParamFloat<px4::params::LNDMC_XY_VEL_MAX>) _param_lndmc_xy_vel_max,
 		(ParamFloat<px4::params::LNDMC_Z_VEL_MAX>)  _param_lndmc_z_vel_max,
-		(ParamFloat<px4::params::LNDMC_ALT_GND>)    _param_lndmc_alt_gnd_effect
+		(ParamFloat<px4::params::LNDMC_ALT_GND>)    _param_lndmc_alt_gnd_effect,
+		(ParamFloat<px4::params::LNDMC_GND_DIST>)   _param_lndmc_gnd_dist
 	);
 };
 
