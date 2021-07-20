@@ -50,3 +50,30 @@ PARAM_DEFINE_INT32(CANNODE_NODE_ID, 120);
  * @group UAVCAN
  */
 PARAM_DEFINE_INT32(CANNODE_BITRATE, 1000000);
+
+/**
+ * UAVCAN uavcan.equipment.air_data.RawAirData publication period
+ * @unit us
+ * @min 0
+ * @max 1000000
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_ARSP_T, 100000);
+
+/**
+ * UAVCAN uavcan.equipment.ahrs.MagneticFieldStrength2 publication period
+ * @unit us
+ * @min 0
+ * @max 1000000
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_BARO_T, 100000);
+
+/**
+ * uavcan.equipment.ahrs.MagneticFieldStrength2 publication period
+ * @unit us
+ * @min 0
+ * @max 1000000
+ * @group UAVCAN
+ */
+PARAM_DEFINE_INT32(UAVCAN_MAG_T, 100000);

@@ -32,32 +32,88 @@
  ****************************************************************************/
 
 /**
- * @file UavcanNodeParamManager.hpp
+ * @file parameters.cpp
  *
- * Defines a UAVCAN parameter/register manager.
+ * Implements UAVCAN parameter system functions.
  *
  * @author Kenneth Thompson <ken@flyvoly.com>
  */
 
-#pragma once
+#include <string.h>
 
-#include <uavcan/uavcan.hpp>
-#include <uavcan/protocol/param_server.hpp>
+#include "uavcan_parameters.h"
+#include "parameters.hpp"
 
-namespace uavcannode
+static const uavcan_param_info_s *uavcan_param_info_base = (const uavcan_param_info_s *) &uavcan_parameters;
+static const unsigned uavcan_param_info_count = uavcan_parameters.param_count;
+static bool uavcan_param_initialized = false;
+
+void uavcan_param_init()
 {
+	if (!uavcan_param_initialized) {
+		for (unsigned i = 0; i < uavcan_parameters.param_count; ++i) {
+			param_t handle = uavcan_param_get_handle_from_index(i);
+			uavcan_param_map[i] = handle;
+		}
+		uavcan_param_initialized = true;
+	}
+}
 
-class UavcanNodeParamManager : public uavcan::IParamManager
+const char *uavcan_param_name(unsigned index)
 {
-public:
-	UavcanNodeParamManager();
+	if (index >= uavcan_param_info_count) {
+		return nullptr;
+	}
 
-	void getParamNameByIndex(Index index, Name &out_name) const override;
-	void assignParamValue(const Name &name, const Value &value) override;
-	void readParamValue(const Name &name, Value &out_value) const override;
-	void readParamDefaultMaxMin(const Name &name, Value &out_default,
-				    NumericValue &out_max, NumericValue &out_min) const override;
-	int saveAllParams() override;
-	int eraseAllParams() override;
-};
-} // namespace uavcannode
+	return uavcan_param_info_base[index].name;
+}
+
+int uavcan_param_get_index(const char *name)
+{
+	int lhs = 0;
+	int rhs = uavcan_param_info_count;
+	int mid;
+
+	// Find parameter using binary search
+	while (lhs <= rhs) {
+		mid = (rhs + lhs) / 2;
+		const char *mid_name = uavcan_param_info_base[mid].name;
+		int res = strcmp(name, mid_name);
+
+		if (res == 0) {
+			return mid;
+
+		} else if (lhs == mid) {
+			return -1;
+
+		} else if (res < 0) {
+			rhs = mid;
+
+		} else {
+			lhs = mid;
+		}
+	}
+
+	return -1;
+}
+
+param_t uavcan_param_get_handle_from_index(unsigned index)
+{
+	if (index >= uavcan_param_info_count) {
+		return PARAM_INVALID;
+	}
+
+	return param_find(uavcan_param_info_base[index].px4_param_name);
+}
+
+unsigned uavcan_param_count()
+{
+	return uavcan_param_info_count;
+}
+
+void uavcan_param_erase_all()
+{
+	for (unsigned int i = 0; i < uavcan_param_info_count; ++i) {
+		param_reset(uavcan_param_get_handle_from_index(i));
+	}
+}

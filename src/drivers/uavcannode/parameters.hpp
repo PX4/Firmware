@@ -32,32 +32,44 @@
  ****************************************************************************/
 
 /**
- * @file UavcanNodeParamManager.hpp
+ * @file parameters.hpp
  *
- * Defines a UAVCAN parameter/register manager.
+ * Defines UAVCAN parameter system functions.
  *
  * @author Kenneth Thompson <ken@flyvoly.com>
  */
 
 #pragma once
 
-#include <uavcan/uavcan.hpp>
-#include <uavcan/protocol/param_server.hpp>
+#include <lib/parameters/param.h>
 
-namespace uavcannode
-{
+/**
+ * Initialize the uavcan -> px4 parameter map
+ */
+void uavcan_param_init();
 
-class UavcanNodeParamManager : public uavcan::IParamManager
-{
-public:
-	UavcanNodeParamManager();
+/**
+ * Look up a uavcan parameter name by UAVCAN parameter index
+ */
+const char *uavcan_param_name(unsigned index);
 
-	void getParamNameByIndex(Index index, Name &out_name) const override;
-	void assignParamValue(const Name &name, const Value &value) override;
-	void readParamValue(const Name &name, Value &out_value) const override;
-	void readParamDefaultMaxMin(const Name &name, Value &out_default,
-				    NumericValue &out_max, NumericValue &out_min) const override;
-	int saveAllParams() override;
-	int eraseAllParams() override;
-};
-} // namespace uavcannode
+/**
+ * Get the UAVCAN parameter index of a uavcan parameter
+ */
+int uavcan_param_get_index(const char *name);
+
+/**
+ * Get the px4 parameter handle for a UAVCAN parameter index
+ */
+param_t uavcan_param_get_handle_from_index(unsigned index);
+
+/**
+ * Get the number of UAVCAN parameters
+ */
+unsigned uavcan_param_count();
+
+/**
+ * Reset all UAVCAN parameter to their default values
+ */
+void uavcan_param_erase_all();
+

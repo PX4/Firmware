@@ -31,31 +31,46 @@
  *
  ****************************************************************************/
 
-#include "UavcanNodeParamManager.hpp"
+/**
+ * @file UavcanNodeParamManager.cpp
+ *
+ * Implements a UAVCAN parameter/register manager.
+ *
+ * @author Kenneth Thompson <ken@flyvoly.com>
+ */
 
 #include <px4_platform_common/defines.h>
-#include <lib/parameters/param.h>
+
+#include "UavcanNodeParamManager.hpp"
+#include "uavcan_parameters.h"
+#include "parameters.hpp"
+
+UavcanNodeParamManager::UavcanNodeParamManager()
+{
+	uavcan_param_init();
+}
 
 namespace uavcannode
 {
 
 void UavcanNodeParamManager::getParamNameByIndex(Index index, Name &out_name) const
 {
-	if (index < param_count_used()) {
-		out_name = param_name(param_for_used_index(index));
+	if (index < uavcan_param_count()) {
+		out_name = uavcan_param_name(index);
 	}
 }
 
 void UavcanNodeParamManager::assignParamValue(const Name &name, const Value &value)
 {
-	param_t param_handle = param_find(name.c_str());
+	int index = uavcan_param_get_index(name.c_str());
 
-	if (param_handle == PARAM_INVALID) {
+	if (index < 0) {
 		// Invalid parameter name
 		return;
 	}
 
 	// Assign input value to parameter if types match
+	param_t param_handle = uavcan_param_get_handle_from_index(index);
 	param_type_t value_type = param_type(param_handle);
 
 	if (value.is(uavcan::protocol::param::Value::Tag::integer_value) && (value_type == PARAM_TYPE_INT32)) {
@@ -75,14 +90,15 @@ void UavcanNodeParamManager::assignParamValue(const Name &name, const Value &val
 
 void UavcanNodeParamManager::readParamValue(const Name &name, Value &out_value) const
 {
-	param_t param_handle = param_find(name.c_str());
+	int index = uavcan_param_get_index(name.c_str());
 
-	if (param_handle == PARAM_INVALID) {
+	if (index < 0) {
 		// Invalid parameter name
 		return;
 	}
 
 	// Copy current parameter value to out_value
+	param_t param_handle = uavcan_param_get_handle_from_index(index);
 	param_type_t value_type = param_type(param_handle);
 
 	if (value_type == PARAM_TYPE_INT32) {
@@ -101,13 +117,15 @@ void UavcanNodeParamManager::readParamDefaultMaxMin(const Name &name, Value &out
 		NumericValue &out_max, NumericValue &out_min) const
 {
 	// TODO: get actual default value (will require a new function in param.h)
-	param_t param_handle = param_find(name.c_str());
 
-	if (param_handle == PARAM_INVALID) {
+	int index = uavcan_param_get_index(name.c_str());
+
+	if (index < 0) {
 		// Invalid parameter name
 		return;
 	}
 
+	param_t param_handle = uavcan_param_get_handle_from_index(index);
 	param_type_t value_type = param_type(param_handle);
 
 	if (value_type == PARAM_TYPE_INT32) {
@@ -136,7 +154,8 @@ int UavcanNodeParamManager::saveAllParams()
 
 int UavcanNodeParamManager::eraseAllParams()
 {
-	param_reset_all();
+	uavcan_param_erase_all();
+
 	return 0;
 }
 
