@@ -58,7 +58,7 @@ else()
 		bringup.c
 		buttons.c
 		clockconfig.c
-		# i2c.cpp # TODO
+		i2c.cpp
 		init.c
 		mtd.cpp
 		periphclocks.c

@@ -85,19 +85,17 @@ int LIS3MDL_I2C::probe()
 {
 	uint8_t data = 0;
 
-	_retries = 10;
-
 	if (read(ADDR_WHO_AM_I, &data, 1)) {
 		DEVICE_DEBUG("read_reg fail");
 		return -EIO;
 	}
 
-	_retries = 2;
-
 	if (data != ID_WHO_AM_I) {
 		DEVICE_DEBUG("LIS3MDL bad ID: %02x", data);
 		return -EIO;
 	}
+
+	_retries = 1;
 
 	return OK;
 }

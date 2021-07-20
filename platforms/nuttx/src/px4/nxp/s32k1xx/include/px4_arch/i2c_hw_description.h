@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2016-2020 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,79 +30,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+#pragma once
 
-/**
- * @file LPS25H_I2C.cpp
- *
- * I2C interface for LPS25H
- */
+#include <px4_arch/hw_description.h>
+#include <px4_platform_common/i2c.h>
 
-#include "lps25h.h"
-
-#include <drivers/device/i2c.h>
-
-device::Device *LPS25H_I2C_interface(int bus, int bus_frequency);
-
-class LPS25H_I2C : public device::I2C
+static inline constexpr px4_i2c_bus_t initI2CBusInternal(int bus)
 {
-public:
-	LPS25H_I2C(int bus, int bus_frequency);
-	virtual ~LPS25H_I2C() override = default;
-
-	int	read(unsigned address, void *data, unsigned count) override;
-	int	write(unsigned address, void *data, unsigned count) override;
-
-protected:
-	int	probe();
-
-};
-
-device::Device *LPS25H_I2C_interface(int bus, int bus_frequency)
-{
-	return new LPS25H_I2C(bus, bus_frequency);
+	px4_i2c_bus_t ret{};
+	ret.bus = bus;
+	ret.is_external = false;
+	return ret;
 }
 
-LPS25H_I2C::LPS25H_I2C(int bus, int bus_frequency) :
-	I2C(DRV_BARO_DEVTYPE_LPS25H, MODULE_NAME, bus, LPS25H_ADDRESS, bus_frequency)
+static inline constexpr px4_i2c_bus_t initI2CBusExternal(int bus)
 {
-}
-
-int LPS25H_I2C::probe()
-{
-	uint8_t id;
-
-	if (read(ADDR_WHO_AM_I, &id, 1)) {
-		DEVICE_DEBUG("read_reg fail");
-		return -EIO;
-	}
-
-	if (id != ID_WHO_AM_I) {
-		DEVICE_DEBUG("ID byte mismatch (%02x != %02x)", ID_WHO_AM_I, id);
-		return -EIO;
-	}
-
-	_retries = 1;
-
-	return OK;
-}
-
-int LPS25H_I2C::write(unsigned address, void *data, unsigned count)
-{
-	uint8_t buf[32];
-
-	if (sizeof(buf) < (count + 1)) {
-		return -EIO;
-	}
-
-	buf[0] = address;
-	memcpy(&buf[1], data, count);
-
-	return transfer(&buf[0], count + 1, nullptr, 0);
-}
-
-int
-LPS25H_I2C::read(unsigned address, void *data, unsigned count)
-{
-	uint8_t cmd = address;
-	return transfer(&cmd, 1, (uint8_t *)data, count);
+	px4_i2c_bus_t ret{};
+	ret.bus = bus;
+	ret.is_external = true;
+	return ret;
 }

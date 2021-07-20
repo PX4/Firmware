@@ -44,6 +44,9 @@
 
 #include <fcntl.h>
 
+#include <px4_platform_common/i2c.h>
+#include <nuttx/i2c/i2c_master.h>
+
 int px4_platform_console_init(void)
 {
 #if !defined(CONFIG_DEV_CONSOLE) && defined(CONFIG_DEV_NULL)
@@ -122,6 +125,34 @@ int px4_platform_init(void)
 	uorb_start();
 
 	px4_log_initialize();
+
+
+#if defined(CONFIG_I2C)
+	I2CBusIterator i2c_bus_iterator {I2CBusIterator::FilterType::All};
+
+	while (i2c_bus_iterator.next()) {
+		i2c_master_s *i2c_dev = px4_i2cbus_initialize(i2c_bus_iterator.bus().bus);
+
+#if defined(CONFIG_I2C_RESET)
+		I2C_RESET(i2c_dev);
+#endif // CONFIG_I2C_RESET
+
+		// send software reset to all
+		uint8_t buf[1] {};
+		buf[0] = 0x06; // software reset
+
+		i2c_msg_s msg{};
+		msg.frequency = I2C_SPEED_STANDARD;
+		msg.addr = 0x00; // general call address
+		msg.buffer = &buf[0];
+		msg.length = 1;
+
+		I2C_TRANSFER(i2c_dev, &msg, 1);
+
+		px4_i2cbus_uninitialize(i2c_dev);
+	}
+
+#endif // CONFIG_I2C
 
 	return PX4_OK;
 }

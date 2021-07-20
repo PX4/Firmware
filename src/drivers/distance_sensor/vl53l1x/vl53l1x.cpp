@@ -150,9 +150,6 @@ VL53L1X::VL53L1X(const I2CSPIDriverConfig &config) :
 	_px4_rangefinder.set_max_distance(2.f);
 	_px4_rangefinder.set_fov(math::radians(25.f));
 
-	// Allow 3 retries as the device typically misses the first measure attempts.
-	I2C::_retries = 3;
-
 	_px4_rangefinder.set_device_type(DRV_DIST_DEVTYPE_VL53L1X);
 }
 
@@ -214,6 +211,8 @@ int VL53L1X::probe()
 	if ((ret != PX4_OK) | (data != _device_id.devid_s.address)) {
 		return -EIO;
 	}
+
+	_retries = 1;
 
 	return PX4_OK;
 }

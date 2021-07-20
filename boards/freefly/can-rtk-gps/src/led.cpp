@@ -115,7 +115,7 @@ RGBLED_NCP5623C::init()
 int
 RGBLED_NCP5623C::probe()
 {
-	_retries = 4;
+	_retries = 1;
 
 	return write(NCP5623_LED_CURRENT, 0x00);
 }

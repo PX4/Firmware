@@ -86,12 +86,11 @@ void IST8308::print_status()
 
 int IST8308::probe()
 {
-	_retries = 2;
-
 	for (int retry = 0; retry < 3; retry++) {
 		const uint8_t WAI = RegisterRead(Register::WAI);
 
 		if (WAI == Device_ID) {
+			_retries = 1;
 			return PX4_OK;
 
 		} else {

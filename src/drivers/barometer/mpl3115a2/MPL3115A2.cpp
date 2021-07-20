@@ -85,7 +85,6 @@ int MPL3115A2::init()
 
 int MPL3115A2::probe()
 {
-	_retries = 10;
 	uint8_t whoami = 0;
 
 	if ((RegisterRead(MPL3115A2_REG_WHO_AM_I, &whoami) > 0) && (whoami == MPL3115A2_WHO_AM_I)) {
@@ -93,9 +92,10 @@ int MPL3115A2::probe()
 		 * Disable retries; we may enable them selectively in some cases,
 		 * but the device gets confused if we retry some of the commands.
 		 */
-		_retries = 0;
 		return PX4_OK;
 	}
+
+	_retries = 1;
 
 	return -EIO;
 }
@@ -202,7 +202,6 @@ int MPL3115A2::measure()
 	 * Disable retries on this command; we can't know whether failure
 	 * means the device did or did not see the command.
 	 */
-	_retries = 0;
 	int ret = RegisterWrite((addr >> 8) & 0xff, addr & 0xff);
 
 	if (ret == -EIO) {
