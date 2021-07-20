@@ -54,7 +54,8 @@ jobs:
           px4_fmu-v6u,
           px4_fmu-v6x,
           spracing_h7extreme,
-          uvify_core
+          uvify_core,
+          yuneec_mantis-g
           ]
     steps:
     - uses: actions/checkout@v1

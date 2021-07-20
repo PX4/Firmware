@@ -80,6 +80,7 @@ px4_add_romfs_files(
 	4052_holybro_qav250
 	4053_holybro_kopis2
 	4060_dji_matrice_100
+	4061_yuneec_mantis_g
 	4071_ifo
 	4072_draco
 	4073_ifo-s

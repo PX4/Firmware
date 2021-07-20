@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# board specific sensors init
+#------------------------------------------------------------------------------
+
+adc start
+
+# Internal SPI bus ICM-20602
+mpu6000 -R 2 -s -T 20602 start
+
+# External I2C bus
+ist8310 -C -R 4 start
+
+# Baro on internal I2C
+mpc2520 -I start

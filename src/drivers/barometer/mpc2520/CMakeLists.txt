@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2020 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,8 +30,17 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-
-px4_add_library(arch_board_hw_info
-	board_hw_rev_ver.c
+set(srcs
+	mpc2520_i2c.cpp
+	mpc2520.cpp
 )
-target_link_libraries(arch_board_hw_info PRIVATE arch_adc)
+
+px4_add_module(
+	MODULE drivers__mpc2520
+	MAIN mpc2520
+	STACK_MAIN 1200
+	COMPILE_FLAGS
+	SRCS ${srcs}
+	DEPENDS
+	)
+# vim: set noet ft=cmake fenc=utf-8 ff=unix :

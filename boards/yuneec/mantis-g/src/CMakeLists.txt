@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2016 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,27 @@
 #
 ############################################################################
 
-px4_add_library(arch_board_hw_info
-	board_hw_rev_ver.c
+add_library(drivers_board
+	can.c
+	i2c.cpp
+	init.c
+	led.c
+	manifest.c
+	sdio.c
+	spi.cpp
+	timer_config.cpp
+	usb.c
+	pwr.c
+	toc.c
 )
-target_link_libraries(arch_board_hw_info PRIVATE arch_adc)
+add_dependencies(drivers_board arch_board_hw_info)
+
+target_link_libraries(drivers_board
+	PRIVATE
+		arch_board_hw_info
+		arch_spi
+		drivers__led # drv_led_start
+		nuttx_arch # sdio
+		nuttx_drivers # sdio
+		px4_layer
+)

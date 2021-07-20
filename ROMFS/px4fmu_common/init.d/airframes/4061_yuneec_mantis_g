@@ -1,0 +1,78 @@
+#!/bin/sh
+#
+# @name Yuneec Mantis G
+#
+# @type Quadrotor x
+# @class Copter
+#
+# @output MAIN1 motor 1
+# @output MAIN2 motor 2
+# @output MAIN3 motor 3
+# @output MAIN4 motor 4
+#
+# @maintainer
+#
+
+# hover thrust
+param set-default MPC_THR_HOVER 0.49
+
+# Manual stick input parameters
+param set-default RC_FLT_SMP_RATE 33
+param set-default RC_FLT_CUTOFF 5
+
+param set-default MPC_AUTO_MODE 0
+param set-default MPC_ALT_MODE 0
+
+# Throttle pid attenuation
+param set-default MC_TPA_RATE_P 0.8
+param set-default MC_TPA_RATE_I 0.5
+param set-default MC_TPA_RATE_D 0.2
+param set-default MC_TPA_BREAK_P 0.45
+param set-default MC_TPA_BREAK_I 0.6
+param set-default MC_TPA_BREAK_D 0.65
+
+# Battery settings
+param set-default BAT_V_EMPTY 3.56
+param set-default BAT_V_CHARGED 4.15
+param set-default BAT_R_INTERNAL 0.005
+param set-default BAT_CAPACITY 6500
+param set-default BAT_LOW_THR 0.15
+param set-default BAT_CRIT_THR 0.1
+param set-default BAT_EMERGEN_THR 0.05
+param set-default BAT_V_TETHER 19.5
+
+# RC
+param set-default COM_RC_OVERRIDE 1
+param set-default COM_RC_LOSS_T 3
+param set-default COM_DL_LOSS_T 10
+param set-default COM_ARM_STK_TOL 0.08
+param set-default COM_ARM_SWISBTN 1
+
+# Altitude (manual) mode parameters
+param set-default MPC_MAN_TILT_MAX 24
+
+#
+# Throttle max/min setting
+#
+param set-default MPC_THR_MAX 0.9
+param set-default MPC_THR_MIN 0.1
+
+#
+# Maximum tilt angle
+#
+param set-default MPC_TILTMAX_AIR 35
+
+#
+# Flight modes
+#
+# Altitude hold
+param set-default COM_FLTMODE1 1
+# Position
+param set-default COM_FLTMODE2 2
+# RTL
+param set-default COM_FLTMODE3 5
+
+# sensor thermal calibration
+param set-default SYS_CAL_TDEL 60
+param set-default SYS_CAL_ACC_TOL 1
+param set-default SYS_CAL_GYRO_TOL 0.1
