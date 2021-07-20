@@ -20,6 +20,16 @@ ekf2 start &
 #
 uuv_att_control start
 
+
+#
+# Start UUV Position Controller for UUV with 6DOF
+#
+if [ $UUV_DOF_ACTUATED = 6 ]
+then
+	uuv_pos_control start
+fi
+
+
 #
 # Start UUV Land Detector.
 #

@@ -16,5 +16,10 @@ param set-default CBRK_AIRSPD_CHK 162128
 set MAV_TYPE 12
 param set MAV_TYPE ${MAV_TYPE}
 
+# set number of actuated degrees of freedom, i.e. 4 for the HippoCampus
+# as it is underactuated wrt to y/z-thrust
+set UUV_DOF_ACTUATED 4
+
+# set mixer file
 set MIXER_FILE etc/mixers-sitl/uuv_x_sitl.main.mix
 set MIXER custom

@@ -12,5 +12,11 @@ param set-default NAV_DLL_ACT 0
 param set-default CBRK_AIRSPD_CHK 162128
 
 set PWM_OUT 12345678
+
+# set number of actuated degrees of freedom
+#  =6 for heavy-config, =5 for regular-config, which is not yet supported
+set UUV_DOF_ACTUATED 6
+
+# set mixer file
 set MIXER_FILE etc/mixers-sitl/vectored6dof_sitl.main.mix
 set MIXER custom

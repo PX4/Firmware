@@ -42,6 +42,11 @@ param set-default BAT1_V_DIV 11.0
 param set-default BAT1_N_CELLS 4
 param set-default BAT_V_OFFS_CURR 0.33
 set PWM_OUT 12345678
+
+# set number of actuated degrees of freedom
+#  =6 for heavy-config, =5 for regular-config, which is not yet supported
+set UUV_DOF_ACTUATED 6
+
 # set MIXER IO_pass
 set MIXER vectored6dof
 

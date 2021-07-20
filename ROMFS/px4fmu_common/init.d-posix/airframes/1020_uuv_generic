@@ -16,5 +16,10 @@ param set-default CBRK_AIRSPD_CHK 162128
 set MAV_TYPE 12
 param set MAV_TYPE ${MAV_TYPE}
 
+
+# set number of actuated degrees of freedom
+set UUV_DOF_ACTUATED 6
+
+# set mixer file
 set MIXER_FILE etc/mixers-sitl/uuv_x_sitl.main.mix
 set MIXER custom
