@@ -708,9 +708,12 @@ FixedwingPositionControl::control_position(const hrt_abstime &now, const Vector2
 
 			if (!PX4_ISFINITE(_transition_waypoint(0))) {
 				double lat_transition, lon_transition;
-				// create a virtual waypoint HDG_HOLD_DIST_NEXT meters in front of the vehicle which the L1 controller can track
-				// during the transition
-				waypoint_from_heading_and_distance(_current_latitude, _current_longitude, _yaw, HDG_HOLD_DIST_NEXT, &lat_transition,
+				// create a virtual waypoint HDG_HOLD_DIST_NEXT meters in front of the vehicle,
+				// aligned with the position setpoint which the L1 controller can track during the transition
+				float desired_yaw = get_bearing_to_next_waypoint(_current_latitude, _current_longitude, pos_sp_curr.lat,
+						    pos_sp_curr.lon);
+				waypoint_from_heading_and_distance(_current_latitude, _current_longitude, desired_yaw, HDG_HOLD_DIST_NEXT,
+								   &lat_transition,
 								   &lon_transition);
 
 				_transition_waypoint(0) = lat_transition;
