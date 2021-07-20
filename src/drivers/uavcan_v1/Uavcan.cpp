@@ -82,9 +82,7 @@ UavcanNode::UavcanNode(CanardInterface *interface, uint32_t node_id) :
 
 	_node_manager.subscribe();
 
-	for (auto &publisher : _publishers) {
-		publisher->updateParam();
-	}
+	_pub_manager.updateParams();
 
 	_sub_manager.subscribe();
 
@@ -182,12 +180,8 @@ void UavcanNode::Run()
 		// update parameters from storage
 		updateParams();
 
-		for (auto &publisher : _publishers) {
-			// Have the publisher update its associated port-id parameter
-			// Setting to 0 disable publication
-			publisher->updateParam();
-		}
-
+		// Update dynamic pub/sub objects based on Port ID params
+		_pub_manager.updateParams();
 		_sub_manager.updateParams();
 
 		_mixing_output.updateParams();
@@ -202,9 +196,7 @@ void UavcanNode::Run()
 	sendHeartbeat();
 
 	// Check all publishers
-	for (auto &publisher : _publishers) {
-		publisher->update();
-	}
+	_pub_manager.update();
 
 	_node_manager.update();
 
@@ -318,9 +310,7 @@ void UavcanNode::print_info()
 		 heap_diagnostics.peak_allocated, heap_diagnostics.peak_request_size,
 		 heap_diagnostics.oom_count);
 
-	for (auto &publisher : _publishers) {
-		publisher->printInfo();
-	}
+	_pub_manager.printInfo();
 
 	CanardRxSubscription *rxs = _canard_instance.rx_subscriptions[CanardTransferKindMessage];
 

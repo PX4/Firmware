@@ -32,53 +32,22 @@
  ****************************************************************************/
 
 /**
- * @file sensor_gps.hpp
+ * @file uorb_template.cpp
  *
-* Defines uORB over UAVCANv1 sensor_gps publisher
+* Defines generic, templatized uORB over UAVCANv1 publisher
  *
  * @author Peter van der Perk <peter.vanderperk@nxp.com>
+ * @author Jacob Crabill <jacob@flyvoly.com>
  */
 
-#pragma once
+#include "uorb_publisher.hpp"
 
-#include <uORB/topics/sensor_gps.h>
+/* ---- Specializations of get_payload_size() to reduce wasted bandwidth where possible ---- */
 
-#include "../Publisher.hpp"
-
-class UORB_over_UAVCAN_sensor_gps_Publisher : public UavcanPublisher
+template<>
+size_t uORB_over_UAVCAN_Publisher<actuator_outputs_s>::get_payload_size(actuator_outputs_s *msg)
 {
-public:
-	UORB_over_UAVCAN_sensor_gps_Publisher(CanardInstance &ins, UavcanParamManager &pmgr, uint8_t instance = 0) :
-		UavcanPublisher(ins, pmgr, "sensor_gps", instance)
-	{};
-
-	// Update the uORB Subscription and broadcast a UAVCAN message
-	virtual void update() override
-	{
-		// Not sure if actuator_armed is a good indication of readiness but seems close to it
-		if (_sensor_gps_sub.updated() && _port_id != CANARD_PORT_ID_UNSET) {
-			sensor_gps_s gps_msg {};
-			_sensor_gps_sub.update(&gps_msg);
-
-			CanardTransfer transfer = {
-				.timestamp_usec = hrt_absolute_time() + PUBLISHER_DEFAULT_TIMEOUT_USEC,
-				.priority       = CanardPriorityNominal,
-				.transfer_kind  = CanardTransferKindMessage,
-				.port_id        = _port_id, // This is the subject-ID.
-				.remote_node_id = CANARD_NODE_ID_UNSET,
-				.transfer_id    = _transfer_id,
-				.payload_size   = sizeof(struct sensor_gps_s),
-				.payload        = &gps_msg,
-			};
-
-			if (result == 0) {
-				// set the data ready in the buffer and chop if needed
-				++_transfer_id;  // The transfer-ID shall be incremented after every transmission on this subject.
-				result = canardTxPush(&_canard_instance, &transfer);
-			}
-		}
-	};
-
-private:
-	uORB::Subscription _sensor_gps_sub{ORB_ID(sensor_gps)};
-};
+	// Remove unvalid output & padding from payload_size to save bandwidth
+	return sizeof(struct actuator_outputs_s) - sizeof(msg->_padding0) -
+	       ((sizeof(msg->output) / sizeof(msg->output[0]) - msg->noutputs) * sizeof(msg->output[0]));
+}
