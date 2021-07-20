@@ -363,25 +363,27 @@
  *
  */
 
-#define GPIO_SPI1_MISO   GPIO_SPI1_MISO_2   /* PB4  */
-#define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_2   /* PB5  */
-#define GPIO_SPI1_SCK    GPIO_SPI1_SCK_1    /* PA5  */
+#define ADJ_SLEW_RATE(p) (((p) & ~GPIO_SPEED_MASK) | (GPIO_SPEED_2MHz))
 
-#define GPIO_SPI2_MISO   GPIO_SPI2_MISO_3   /* PI2  */
-#define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_3   /* PI3  */
-#define GPIO_SPI2_SCK    GPIO_SPI2_SCK_5    /* PI1  */
+#define GPIO_SPI1_MISO   GPIO_SPI1_MISO_2                  /* PB4  */
+#define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_2                  /* PB5  */
+#define GPIO_SPI1_SCK    ADJ_SLEW_RATE(GPIO_SPI1_SCK_1)    /* PA5  */
 
-#define GPIO_SPI3_MISO   GPIO_SPI3_MISO_2   /* PC11 */
-#define GPIO_SPI3_MOSI   GPIO_SPI3_MOSI_1   /* PB2  */
-#define GPIO_SPI3_SCK    GPIO_SPI3_SCK_2    /* PC10 */
+#define GPIO_SPI2_MISO   GPIO_SPI2_MISO_3                  /* PI2  */
+#define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_3                  /* PI3  */
+#define GPIO_SPI2_SCK    ADJ_SLEW_RATE(GPIO_SPI2_SCK_5)    /* PI1  */
 
-#define GPIO_SPI5_MISO   GPIO_SPI5_MISO_1   /* PF8  */
-#define GPIO_SPI5_MOSI   GPIO_SPI5_MOSI_2   /* PF11 */
-#define GPIO_SPI5_SCK    GPIO_SPI5_SCK_1    /* PF7  */
+#define GPIO_SPI3_MISO   GPIO_SPI3_MISO_2                  /* PC11 */
+#define GPIO_SPI3_MOSI   GPIO_SPI3_MOSI_1                  /* PB2  */
+#define GPIO_SPI3_SCK    ADJ_SLEW_RATE(GPIO_SPI3_SCK_2)    /* PC10 */
 
-#define GPIO_SPI6_MISO   GPIO_SPI6_MISO_2   /* PA6  */
-#define GPIO_SPI6_MOSI   GPIO_SPI6_MOSI_1   /* PG14 */
-#define GPIO_SPI6_SCK    GPIO_SPI6_SCK_3    /* PB3  */
+#define GPIO_SPI5_MISO   GPIO_SPI5_MISO_1                  /* PF8  */
+#define GPIO_SPI5_MOSI   GPIO_SPI5_MOSI_2                  /* PF11 */
+#define GPIO_SPI5_SCK    ADJ_SLEW_RATE(GPIO_SPI5_SCK_1)    /* PF7  */
+
+#define GPIO_SPI6_MISO   GPIO_SPI6_MISO_2                  /* PA6  */
+#define GPIO_SPI6_MOSI   GPIO_SPI6_MOSI_1                  /* PG14 */
+#define GPIO_SPI6_SCK    ADJ_SLEW_RATE(GPIO_SPI6_SCK_3)    /* PB3  */
 
 /* I2C
  *
