@@ -32,67 +32,49 @@
  ****************************************************************************/
 
 /**
- * @file ecl_pitch_controller.h
- * Definition of a simple orthogonal pitch PID controller.
+ * @file ecl_limit_cycle_detector.h
  *
- * @author Lorenz Meier <lm@inf.ethz.ch>
- * @author Thomas Gubler <thomasgubler@gmail.com>
+ * Definition of an algorithm to detect limit cycle buildup from the supplied
+ * control action and calculate a gain factor to apply to the control action to
+ * stabilise the limit cycle.
  *
- * Acknowledgements:
+ * @author Paul Riseborough <gncsolns@gmail.com>
  *
- *   The control design is based on a design
- *   by Paul Riseborough and Andrew Tridgell, 2013,
- *   which in turn is based on initial work of
- *   Jonathan Challinger, 2012.
- */
+*/
 
-#ifndef ECL_PITCH_CONTROLLER_H
-#define ECL_PITCH_CONTROLLER_H
+#pragma once
 
-#include <mathlib/mathlib.h>
+#include <drivers/drv_hrt.h>
+#include <lib/ecl/AlphaFilter/AlphaFilter.hpp>
 
-#include "ecl_controller.h"
-#include "ecl_limit_cycle_detector.h"
+#define N_EVENTS 2
+#define WINDOW_US 300000
+#define COMPRESSOR_GAIN 1.5f
+#define DERIVATIVE_CUTOFF_TCONST 0.02f
 
-class ECL_PitchController :
-	public ECL_Controller
+class ECL_LimitCycleDetector
 {
 public:
-	ECL_PitchController() = default;
-	~ECL_PitchController() = default;
-
-	float control_attitude(const float dt, const ECL_ControlData &ctl_data) override;
-	float control_euler_rate(const float dt, const ECL_ControlData &ctl_data) override;
-	float control_bodyrate(const float dt, const ECL_ControlData &ctl_data) override;
-	float get_rate_gain_factor() const { return _rate_error_gain_factor; }
-	float get_angle_gain_factor() const { return _angle_gain_factor; }
-
-
-	/* Additional Setters */
-	void set_max_rate_pos(float max_rate_pos)
-	{
-		_max_rate = max_rate_pos;
-	}
-
-	void set_max_rate_neg(float max_rate_neg)
-	{
-		_max_rate_neg = max_rate_neg;
-	}
-
-	void set_bodyrate_setpoint(float rate)
-	{
-		_bodyrate_setpoint = math::constrain(rate, -_max_rate_neg, _max_rate);
-	}
-
-protected:
-	float _max_rate_neg{0.0f};
-	float _roll_ff{0.0f};
+	ECL_LimitCycleDetector() = default;
+	void set_parameters(float slew_rate_max, float slew_rate_tau) {_slew_rate_max = slew_rate_max; _slew_rate_tau = slew_rate_tau; }
+	float calculate_gain_factor(const float input, const float dt);
+	float get_limit_cycle_slew_rate() { return _output_slew_rate; }
 
 private:
-	ECL_LimitCycleDetector _fb_limit_cycle_detector; // limit cycle detector applied to rate feedback
-	ECL_LimitCycleDetector _ff_limit_cycle_detector; // limit cycle detector applied to rate feed-forward
-	float _rate_gain_factor = 1.0f;
-	float _angle_gain_factor = 1.0f;
+	float _slew_rate_max{5.0f};
+	float _slew_rate_tau{0.5f};
+	AlphaFilter<float> slew_filter;
+	float _output_slew_rate{0.0f};
+	float _modifier_slew_rate{0.0f};
+	float _last_input{0.0f};
+	float _max_pos_slew_rate{0.0f};
+	float _max_neg_slew_rate{0.0f};
+	uint64_t _max_pos_slew_event_us{0};
+	uint64_t _max_neg_slew_event_us{0};
+	uint8_t _pos_event_index{0};
+	uint8_t _neg_event_index{0};
+	uint64_t _pos_event_us[N_EVENTS] = {};
+	uint64_t _neg_event_us[N_EVENTS] = {};
+	bool _pos_event_stored{false};
+	bool _neg_event_stored{false};
 };
-
-#endif // ECL_PITCH_CONTROLLER_H

@@ -301,6 +301,16 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MAV_TYPE>) _param_mav_type,
 		(ParamInt<px4::params::MAV_SYS_ID>) _param_mav_sys_id,
-		(ParamInt<px4::params::MAV_COMP_ID>) _param_mav_comp_id
+		(ParamInt<px4::params::MAV_COMP_ID>) _param_mav_comp_id,
+		(ParamFloat<px4::params::SERVO_BW>) _param_servo_bw,
+		(ParamFloat<px4::params::SERVO_SLEW_TIME>) _param_servo_slew_time
 	)
+
+	// states used by servo actuator model
+	float _servo_omega = 8.0f * M_TWOPI_F; // (rad/sec)
+	const float _servo_zeta = 0.7f;
+	float _servo_rate_limit = 15.0f; // (1/sec)
+	float _servo_pos[16] = {};
+	float _servo_vel[16] = {};
+	uint64_t _servo_update_time_us = 0;
 };

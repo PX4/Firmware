@@ -87,6 +87,18 @@ void Simulator::actuator_controls_from_outputs(mavlink_hil_actuator_controls_t *
 
 	msg->time_usec = hrt_absolute_time() + hrt_absolute_time_offset();
 
+	const float dt = (float)(1E-6 * (double)(msg->time_usec - _servo_update_time_us));
+	_servo_update_time_us = msg->time_usec;
+
+	param_get(param_find("SERVO_BW"), &_servo_omega);
+	if (_servo_omega > 0.0f) {
+		_servo_omega *= M_TWOPI_F; // convert to rad/sec
+		float servo_slew_time;
+		param_get(param_find("SERVO_SLEW_TIME"), &servo_slew_time);
+		servo_slew_time = math::constrain(servo_slew_time, 0.01f, 0.2f);
+		_servo_rate_limit = 2.0f / servo_slew_time;
+	}
+
 	bool armed = (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
 
 	int _system_type = _param_mav_type.get();
@@ -163,8 +175,26 @@ void Simulator::actuator_controls_from_outputs(mavlink_hil_actuator_controls_t *
 			const float pwm_delta = (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2;
 
 			/* scale PWM out PWM_DEFAULT_MIN..PWM_DEFAULT_MAX us to -1..1 for other channels */
-			msg->controls[i] = (_actuator_outputs.output[i] - pwm_center) / pwm_delta;
-			msg->controls[i] = math::constrain(msg->controls[i], -1.f, 1.f);
+			float servo_demand = math::constrain((_actuator_outputs.output[i] - pwm_center) / pwm_delta, -1.f, 1.f);
+
+			if (_servo_omega > 0.0f && dt < 0.01f) {
+				// run a second order actuator model with slew rate limit
+				// limit angular accel due to position error so that maximum speed is limited to specification value
+				const float zero_speed_accel_limit = _servo_rate_limit * 2.0f * _servo_omega;
+				const float pos_error_accel = math::constrain((servo_demand - _servo_pos[i]) * _servo_omega * _servo_omega, - zero_speed_accel_limit, zero_speed_accel_limit);
+				const float damping_accel = - _servo_vel[i] * 2.0f * _servo_omega;
+				const float accel = pos_error_accel + damping_accel;
+				// use forward euer integration for velocity and trapezoidal integration for position
+				_servo_pos[i] += 0.5f * _servo_vel[i] * dt;
+				_servo_vel[i] += accel * dt;
+				_servo_pos[i] += 0.5f * _servo_vel[i] * dt;
+				msg->controls[i] = _servo_pos[i];
+			} else {
+				// update rate too slow to run a servo model
+				msg->controls[i] = servo_demand;
+				_servo_pos[i] = servo_demand;
+				_servo_vel[i] = 0.0f;
+			}
 		}
 
 	}

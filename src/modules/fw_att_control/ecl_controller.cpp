@@ -99,6 +99,11 @@ void ECL_Controller::set_integrator_max(float max)
 	_integrator_max = max;
 }
 
+void ECL_Controller::set_output_max_slew_rate(float max)
+{
+	_output_slew_rate_limit = max;
+}
+
 void ECL_Controller::set_max_rate(float max_rate)
 {
 	_max_rate = max_rate;

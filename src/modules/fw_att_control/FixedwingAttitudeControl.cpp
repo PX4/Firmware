@@ -91,6 +91,7 @@ FixedwingAttitudeControl::parameters_update()
 	_pitch_ctrl.set_k_i(_param_fw_pr_i.get());
 	_pitch_ctrl.set_k_ff(_param_fw_pr_ff.get());
 	_pitch_ctrl.set_integrator_max(_param_fw_pr_imax.get());
+	_pitch_ctrl.set_output_max_slew_rate(_param_fw_pr_slew_lim.get());
 
 	/* roll control parameters */
 	_roll_ctrl.set_time_constant(_param_fw_r_tc.get());
@@ -98,6 +99,7 @@ FixedwingAttitudeControl::parameters_update()
 	_roll_ctrl.set_k_i(_param_fw_rr_i.get());
 	_roll_ctrl.set_k_ff(_param_fw_rr_ff.get());
 	_roll_ctrl.set_integrator_max(_param_fw_rr_imax.get());
+	_roll_ctrl.set_output_max_slew_rate(_param_fw_rr_slew_lim.get());
 
 	/* yaw control parameters */
 	_yaw_ctrl.set_k_p(_param_fw_yr_p.get());
@@ -610,6 +612,10 @@ void FixedwingAttitudeControl::Run()
 			rate_ctrl_status.timestamp = hrt_absolute_time();
 			rate_ctrl_status.rollspeed_integ = _roll_ctrl.get_integrator();
 			rate_ctrl_status.pitchspeed_integ = _pitch_ctrl.get_integrator();
+			rate_ctrl_status.roll_rate_gcf = _roll_ctrl.get_rate_gain_factor();
+			rate_ctrl_status.roll_angle_gcf = _roll_ctrl.get_angle_gain_factor();
+			rate_ctrl_status.pitch_rate_gcf = _pitch_ctrl.get_rate_gain_factor();
+			rate_ctrl_status.pitch_angle_gcf = _pitch_ctrl.get_angle_gain_factor();
 
 			if (wheel_control) {
 				rate_ctrl_status.additional_integ1 = _wheel_ctrl.get_integrator();

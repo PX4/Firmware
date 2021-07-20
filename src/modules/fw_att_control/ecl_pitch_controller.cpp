@@ -60,7 +60,7 @@ float ECL_PitchController::control_attitude(const float dt, const ECL_ControlDat
 	/*  Apply P controller: rate setpoint from current error and time constant */
 	_rate_setpoint =  pitch_error / _tc;
 
-	return _rate_setpoint;
+	return _rate_setpoint * _angle_error_gain_factor;
 }
 
 float ECL_PitchController::control_bodyrate(const float dt, const ECL_ControlData &ctl_data)
@@ -102,11 +102,33 @@ float ECL_PitchController::control_bodyrate(const float dt, const ECL_ControlDat
 		_integrator = math::constrain(_integrator + id * _k_i, -_integrator_max, _integrator_max);
 	}
 
+	const float rate_gain = _k_p * ctl_data.scaler * ctl_data.scaler;
+	const float rate_feed_forward = _bodyrate_setpoint * (rate_gain + _k_ff * ctl_data.scaler);
+	const float rate_feed_back =  - ctl_data.body_x_rate * rate_gain;
+	const float p_term = _bodyrate_setpoint * rate_gain + rate_feed_back;
+
+	/* calculate gain compression factor required to prevent the rate feedback */
+	/* term exceeding the actuator slew rate limit */
+	if (_output_slew_rate_limit > 0.0f) {
+		const float decay_tconst = _tc * 3.0f;
+		_fb_limit_cycle_detector.set_parameters(_output_slew_rate_limit, decay_tconst);
+		_ff_limit_cycle_detector.set_parameters(_output_slew_rate_limit, decay_tconst);
+		_rate_gain_factor = _fb_limit_cycle_detector.calculate_gain_factor(rate_feed_back, dt);
+		_angle_gain_factor = _ff_limit_cycle_detector.calculate_gain_factor(rate_feed_forward, dt);
+		// If limit cycle is occurring in the demanded rate, then it is likely the root cause is
+		// insufficient bandwidth in the rate controller so we should reduce rate demand and not
+		// rate feedback.
+		_rate_error_gain_factor = _angle_gain_factor / _rate_gain_factor;
+		_angle_error_gain_factor = _angle_gain_factor;
+
+	} else {
+		_rate_error_gain_factor = 1.0f;
+		_angle_error_gain_factor = 1.0f;
+	}
+
 	/* Apply PI rate controller and store non-limited output */
 	/* FF terms scales with 1/TAS and P,I with 1/IAS^2 */
-	_last_output = _bodyrate_setpoint * _k_ff * ctl_data.scaler +
-		       _rate_error * _k_p * ctl_data.scaler * ctl_data.scaler
-		       + _integrator;
+	_last_output = _bodyrate_setpoint * _k_ff * ctl_data.scaler + p_term * _rate_error_gain_factor + _integrator;
 
 	return math::constrain(_last_output, -1.0f, 1.0f);
 }

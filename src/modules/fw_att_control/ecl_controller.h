@@ -50,6 +50,7 @@
 
 #include <drivers/drv_hrt.h>
 #include <px4_log.h>
+#include <lib/ecl/AlphaFilter/AlphaFilter.hpp>
 
 struct ECL_ControlData {
 	float roll;
@@ -89,6 +90,8 @@ public:
 	void set_k_i(float k_i);
 	void set_k_ff(float k_ff);
 	void set_integrator_max(float max);
+	void set_output_max_slew_rate(float max);
+	void set_output_slew_tau(float tau);
 	void set_max_rate(float max_rate);
 	void set_bodyrate_setpoint(float rate);
 
@@ -108,10 +111,18 @@ protected:
 	float _k_ff;
 	float _integrator_max;
 	float _max_rate;
+	float _output_slew_rate_limit;
 	float _last_output;
+	float _last_gyro_term_hpf;
 	float _integrator;
 	float _rate_error;
 	float _rate_setpoint;
 	float _bodyrate_setpoint;
 	float constrain_airspeed(float airspeed, float minspeed, float maxspeed);
+	AlphaFilter<float>
+	_gyro_contribution_lpf;	// contribution of the gyro feedback to the actuator demand after low pass filtering
+	float _max_pos_slew_rate{0.0f}; // peak slew rate of the gyro induced actuator demand in the positive direction
+	float _max_neg_slew_rate{0.0f}; // peak slew rate of the gyro induced actuator demand in the negative direction
+	float _rate_error_gain_factor{1.0f}; // factor applied to the rate error control gain _k_p
+	float _angle_error_gain_factor{1.0f}; // factor applied to the angle error control gain
 };

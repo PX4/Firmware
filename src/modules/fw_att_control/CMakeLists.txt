@@ -42,6 +42,7 @@ px4_add_module(
 		ecl_roll_controller.cpp
 		ecl_wheel_controller.cpp
 		ecl_yaw_controller.cpp
+		ecl_limit_cycle_detector.cpp
 	DEPENDS
 		px4_work_queue
 	)

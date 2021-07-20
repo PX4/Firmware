@@ -38,3 +38,29 @@
  *
  * @author Mohamed Abdelkader <mohamedashraf123@gmail.com>
  */
+
+/**
+ * Servo Bandwidth
+ *
+ * Bandwidth of the servo actutor model in Hz. Used when the SITL flight dynamics model does not model model servo dynamics. If the SITL flight dynamics model does model servo dynamics, set to 0 to disable.
+ *
+ * @min 0.0
+ * @max 15
+ * @decimal 1
+ * @increment 0.5
+ * @group Simulator
+ */
+PARAM_DEFINE_FLOAT(SERVO_BW, 8.0f);
+
+/**
+ * Servo Slew Time
+ *
+ * Time required for the servo to slew between movement limits.
+ *
+ * @min 0.02
+ * @max 0.2
+ * @decimal 3
+ * @increment 0.01
+ * @group Simulator
+ */
+PARAM_DEFINE_FLOAT(SERVO_SLEW_TIME, 0.2f);
