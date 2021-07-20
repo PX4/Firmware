@@ -222,18 +222,15 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 		uint8_t tcb_sched_priority = system_load.tasks[i].tcb->sched_priority;
 
 		unsigned int tcb_num_used_fds = 0; // number of used file descriptors
-#if CONFIG_NFILE_DESCRIPTORS > 0
-		FAR struct task_group_s *group = system_load.tasks[i].tcb->group;
+		struct filelist *filelist = &system_load.tasks[i].tcb->group->tg_filelist;
 
-		if (group) {
-			for (int fd_index = 0; fd_index < CONFIG_NFILE_DESCRIPTORS; ++fd_index) {
-				if (group->tg_filelist.fl_files[fd_index].f_inode) {
+		for (int fdr = 0; fdr < filelist->fl_rows; fdr++) {
+			for (int fdc = 0; fdc < CONFIG_NFILE_DESCRIPTORS_PER_BLOCK; fdc++) {
+				if (filelist->fl_files[fdr][fdc].f_inode) {
 					++tcb_num_used_fds;
 				}
 			}
 		}
-
-#endif
 
 		sched_unlock();
 
@@ -335,11 +332,10 @@ void print_load_buffer(char *buffer, int buffer_length, print_load_callback_f cb
 
 	const float sched_load = 1.f - idle_load - task_load;
 
-	snprintf(buffer, buffer_length, "Processes: %d total, %d running, %d sleeping, max FDs: %d",
+	snprintf(buffer, buffer_length, "Processes: %d total, %d running, %d sleeping",
 		 system_load.total_count,
 		 print_state->running_count,
-		 print_state->blocked_count,
-		 CONFIG_NFILE_DESCRIPTORS);
+		 print_state->blocked_count);
 	cb(user);
 	snprintf(buffer, buffer_length, "CPU usage: %.2f%% tasks, %.2f%% sched, %.2f%% idle",
 		 (double)(task_load * 100.f),

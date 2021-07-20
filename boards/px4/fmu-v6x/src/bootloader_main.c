@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019, 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,7 +65,6 @@ __EXPORT int board_app_initialize(uintptr_t arg)
 
 void board_late_initialize(void)
 {
-	px4_platform_console_init();
 	sercon_main(0, NULL);
 }
 

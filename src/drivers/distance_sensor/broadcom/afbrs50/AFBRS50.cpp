@@ -133,7 +133,8 @@ int AFBRS50::init()
 		uint8_t a = (value >> 24) & 0xFFU;
 		uint8_t b = (value >> 16) & 0xFFU;
 		uint8_t c = value & 0xFFFFU;
-		PX4_INFO_RAW("AFBR-S50 Chip ID: %d, API Version: %d v%d.%d.%d\n", id, value, a, b, c);
+		PX4_INFO_RAW("AFBR-S50 Chip ID: %"  PRId32 ", API Version: %"  PRId32 " v%"  PRId8 ".%"  PRId8 ".%"  PRId8 "\n", id,
+			     value, a, b, c);
 
 		argus_module_version_t mv = Argus_GetModuleVersion(_hnd);
 
@@ -221,7 +222,7 @@ void AFBRS50::Run()
 			status_t status = Argus_StartMeasurementTimer(_hnd, measurement_ready_callback);
 
 			if (status != STATUS_OK) {
-				PX4_ERR("CONFIGURE status not okay: %i", status);
+				PX4_ERR("CONFIGURE status not okay: %"  PRIi32, status);
 				_state = STATE::STOP;
 				ScheduleNow();
 

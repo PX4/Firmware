@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2017-2019 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2017-2019, 2021 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -326,7 +326,7 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 		pdump->info.stacks.user.size = CONFIG_IDLETHREAD_STACKSIZE;
 
 	} else {
-		pdump->info.stacks.user.top = (uint32_t) rtcb->adj_stack_ptr;
+		pdump->info.stacks.user.top = (uint32_t) rtcb->stack_base_ptr + rtcb->adj_stack_size;
 		pdump->info.stacks.user.size = (uint32_t) rtcb->adj_stack_size;
 	}
 
@@ -334,7 +334,7 @@ __EXPORT void board_crashdump(uintptr_t currentsp, FAR void *tcb, FAR const char
 
 	/* Get the limits on the interrupt stack memory */
 
-	pdump->info.stacks.interrupt.top = (uint32_t)&g_intstackbase;
+	pdump->info.stacks.interrupt.top = (uint32_t)&g_intstacktop;
 	pdump->info.stacks.interrupt.size  = (CONFIG_ARCH_INTERRUPTSTACK & ~3);
 
 	/* If In interrupt Context save the interrupt stack data centered
