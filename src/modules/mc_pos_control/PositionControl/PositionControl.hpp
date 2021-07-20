@@ -118,6 +118,7 @@ public:
 	 * @param thrust [0.1, 0.9] with which the vehicle hovers not acelerating down or up with level orientation
 	 */
 	void setHoverThrust(const float hover_thrust) { _hover_thrust = math::constrain(hover_thrust, 0.1f, 0.9f); }
+	float getHoverThrust() const { return _hover_thrust; }
 
 	/**
 	 * Update the hover thrust without immediately affecting the output

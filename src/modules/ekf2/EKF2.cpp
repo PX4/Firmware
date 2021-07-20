@@ -875,6 +875,8 @@ void EKF2::PublishLocalPosition(const hrt_abstime &timestamp)
 		lpos.hagl_max = INFINITY;
 	}
 
+	lpos.accelerometer_clipping = _ekf.fault_status_flags().bad_acc_clipping;
+
 	// publish vehicle local position data
 	lpos.timestamp = _replay_mode ? timestamp : hrt_absolute_time();
 	_local_position_pub.publish(lpos);

@@ -179,6 +179,12 @@ int MulticopterPositionControl::parameters_update(bool force)
 			_hover_thrust_initialized = true;
 		}
 
+		_maximum_thrust_slew.setSlewRate(_param_mpc_thr_max.get() - _param_mpc_thr_min.get());
+
+		if (_maximum_thrust_slew.getState() <= FLT_EPSILON) {
+			_maximum_thrust_slew.setForcedValue(_param_mpc_thr_max.get());
+		}
+
 		// initialize vectors from params and enforce constraints
 		_param_mpc_tko_speed.set(math::min(_param_mpc_tko_speed.get(), _param_mpc_z_vel_max_up.get()));
 		_param_mpc_land_speed.set(math::min(_param_mpc_land_speed.get(), _param_mpc_z_vel_max_dn.get()));
@@ -394,7 +400,16 @@ void MulticopterPositionControl::Run()
 			// Allow ramping from zero thrust on takeoff
 			const float minimum_thrust = flying ? _param_mpc_thr_min.get() : 0.f;
 
-			_control.setThrustLimits(minimum_thrust, _param_mpc_thr_max.get());
+			if (local_pos.accelerometer_clipping) {
+				// if accelerometer is currently clipping limit maximum thrust to hover + minimal margin
+				float maximum_thrust = _control.getHoverThrust() + 0.1f * (_param_mpc_thr_max.get() - _control.getHoverThrust());
+				_maximum_thrust_slew.update(maximum_thrust, dt);
+
+			} else {
+				_maximum_thrust_slew.update(_param_mpc_thr_max.get(), dt);
+			}
+
+			_control.setThrustLimits(minimum_thrust, _maximum_thrust_slew.getState());
 
 			_control.setVelocityLimits(
 				math::constrain(speed_horizontal, 0.f, _param_mpc_xy_vel_max.get()),
