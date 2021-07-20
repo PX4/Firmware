@@ -108,8 +108,9 @@ the driver terminates immediately.
 ### Examples
 
 The command to start this driver is:
-
+```
  $ roboclaw start <device> <baud>
+```
 
 `<device>` is the name of the UART port. On the Pixhawk 4, this is `/dev/ttyS3`.
 `<baud>` is te baud rate.
