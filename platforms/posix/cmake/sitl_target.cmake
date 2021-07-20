@@ -120,6 +120,7 @@ set(models
 	believer
 	boat
 	cloudship
+	glider
 	if750a
 	iris
 	iris_ctrlalloc
