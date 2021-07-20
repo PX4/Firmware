@@ -33,6 +33,10 @@
 
 #include "EKF2.hpp"
 
+#include <lib/sensor_defaults/AccelDefaults.hpp>
+#include <lib/sensor_defaults/GyroDefaults.hpp>
+#include <lib/sensor_defaults/MagDefaults.hpp>
+
 using namespace time_literals;
 using math::constrain;
 using matrix::Eulerf;
@@ -262,6 +266,24 @@ void EKF2::Run()
 		// update parameters from storage
 		updateParams();
 
+		if (_param_ekf2_acc_noise.is_default()) {
+			const auto noise = sensors::getAccelNoise(_device_id_accel);
+			_param_ekf2_acc_noise.set(noise.noise);
+			_param_ekf2_acc_b_noise.set(noise.bias_noise);
+			_param_ekf2_abias_init.set(noise.switch_on_bias);
+		}
+
+		if (_param_ekf2_gyr_noise.is_default()) {
+			const auto noise = sensors::getGyroNoise(_device_id_gyro);
+			_param_ekf2_gyr_noise.set(noise.noise);
+			_param_ekf2_gyr_b_noise.set(noise.bias_noise);
+			_param_ekf2_gbias_init.set(noise.switch_on_bias);
+		}
+
+		if (_param_ekf2_mag_noise.is_default()) {
+			_param_ekf2_mag_noise.set(sensors::getMagNoise(_device_id_mag));
+		}
+
 		_ekf.set_min_required_gps_health_time(_param_ekf2_req_gps_h.get() * 1_s);
 
 		// The airspeed scale factor correcton is only available via parameter as used by the airspeed module
@@ -336,6 +358,38 @@ void EKF2::Run()
 		}
 
 		imu_dt = imu.delta_angle_dt;
+
+		if (_device_id_accel != imu.accel_device_id) {
+			if (_param_ekf2_acc_noise.is_default()) {
+				const float old_noise = _param_ekf2_acc_noise.get();
+
+				const auto noise = sensors::getAccelNoise(imu.gyro_device_id);
+				_param_ekf2_acc_noise.set(noise.noise);
+				_param_ekf2_acc_b_noise.set(noise.bias_noise);
+				_param_ekf2_abias_init.set(noise.switch_on_bias);
+
+				if (fabsf(old_noise - _param_ekf2_acc_noise.get()) > 0.f) {
+					PX4_INFO("%d updating accel (%d) noise %.4f -> %4f", _instance, imu.accel_device_id, (double)old_noise,
+						 (double)_param_ekf2_acc_noise.get());
+				}
+			}
+		}
+
+		if (_device_id_gyro != imu.gyro_device_id) {
+			if (_param_ekf2_gyr_noise.is_default()) {
+				const float old_noise = _param_ekf2_gyr_noise.get();
+
+				const auto noise = sensors::getGyroNoise(imu.gyro_device_id);
+				_param_ekf2_gyr_noise.set(noise.noise);
+				_param_ekf2_gyr_b_noise.set(noise.bias_noise);
+				_param_ekf2_gbias_init.set(noise.switch_on_bias);
+
+				if (fabsf(old_noise - _param_ekf2_gyr_noise.get()) > 0.f) {
+					PX4_INFO("%d updating gyro (%d) noise %.4f -> %4f", _instance, imu.gyro_device_id, (double)old_noise,
+						 (double)_param_ekf2_gyr_noise.get());
+				}
+			}
+		}
 
 		if ((_device_id_accel == 0) || (_device_id_gyro == 0)) {
 			_device_id_accel = imu.accel_device_id;
@@ -1581,6 +1635,18 @@ void EKF2::UpdateMagSample(ekf2_timestamps_s &ekf2_timestamps)
 		if (magnetometer.device_id != _device_id_mag) {
 			if (_device_id_mag != 0) {
 				PX4_WARN("%d - mag sensor ID changed %" PRIu32 " -> %" PRIu32, _instance, _device_id_mag, magnetometer.device_id);
+			}
+
+			if (_param_ekf2_mag_noise.is_default()) {
+				const float old_noise = _param_ekf2_mag_noise.get();
+
+				const auto noise = sensors::getMagNoise(magnetometer.device_id);
+				_param_ekf2_mag_noise.set(noise);
+
+				if (fabsf(old_noise - _param_ekf2_mag_noise.get()) > 0.f) {
+					PX4_INFO("%d updating mag (%d) noise %.4f -> %4f", _instance, magnetometer.device_id, (double)old_noise,
+						 (double)_param_ekf2_mag_noise.get());
+				}
 			}
 
 			reset = true;

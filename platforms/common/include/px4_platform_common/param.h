@@ -146,6 +146,8 @@ public:
 
 	void set(float val) { _val = val; }
 
+	bool is_default() { return param_value_is_default(handle()); }
+
 	void reset()
 	{
 		param_reset_no_notification(handle());
@@ -198,6 +200,8 @@ public:
 
 	void set(float val) { _val = val; }
 
+	bool is_default() { return param_value_is_default(handle()); }
+
 	void reset()
 	{
 		param_reset_no_notification(handle());
@@ -247,6 +251,8 @@ public:
 	}
 
 	void set(int32_t val) { _val = val; }
+
+	bool is_default() { return param_value_is_default(handle()); }
 
 	void reset()
 	{
@@ -299,6 +305,8 @@ public:
 	}
 
 	void set(int32_t val) { _val = val; }
+
+	bool is_default() { return param_value_is_default(handle()); }
 
 	void reset()
 	{
@@ -357,6 +365,8 @@ public:
 	}
 
 	void set(bool val) { _val = val; }
+
+	bool is_default() { return param_value_is_default(handle()); }
 
 	void reset()
 	{
