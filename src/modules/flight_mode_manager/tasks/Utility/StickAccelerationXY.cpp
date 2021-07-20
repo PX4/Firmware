@@ -85,8 +85,11 @@ void StickAccelerationXY::generateSetpoints(Vector2f stick_xy, const float yaw, 
 
 	// Don't allow the drag to change the sign of the velocity, otherwise we might get into oscillations around 0, due
 	// to discretization
-	if (_acceleration_setpoint.norm_squared() < FLT_EPSILON
-	    && _velocity_setpoint.norm_squared() < drag.norm_squared() * dt * dt) {
+	if (((_acceleration_setpoint.norm_squared() < FLT_EPSILON)
+	     || (sign(_acceleration_setpoint_prev(0)) != sign(_acceleration_setpoint(0)))
+	     || (sign(_acceleration_setpoint_prev(1)) != sign(_acceleration_setpoint(1))))
+	    && (_velocity_setpoint.norm_squared() < (drag.norm_squared() * dt * dt))) {
+
 		drag.setZero();
 		_velocity_setpoint.setZero();
 	}
