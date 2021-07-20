@@ -294,7 +294,11 @@ MulticopterAttitudeControl::Run()
 		// vehicle is a tailsitter in transition mode
 		const bool is_tailsitter_transition = (_vtol_tailsitter && _vtol_in_transition_mode);
 
-		bool run_att_ctrl = _v_control_mode.flag_control_attitude_enabled && (is_hovering || is_tailsitter_transition);
+		// Aliases for clarity
+		const bool is_stablizing_att  = _v_control_mode.flag_control_attitude_enabled;
+		const bool is_controlling_alt = _v_control_mode.flag_control_altitude_enabled;
+
+		bool run_att_ctrl = is_stablizing_att && (is_hovering || is_tailsitter_transition);
 
 		if (run_att_ctrl) {
 
@@ -302,7 +306,7 @@ MulticopterAttitudeControl::Run()
 
 			// Generate the attitude setpoint from stick inputs if we are in Manual/Stabilized mode
 			if (_v_control_mode.flag_control_manual_enabled &&
-			    !_v_control_mode.flag_control_altitude_enabled &&
+			    !is_controlling_alt &&
 			    !_v_control_mode.flag_control_velocity_enabled &&
 			    !_v_control_mode.flag_control_position_enabled) {
 
