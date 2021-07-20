@@ -1785,6 +1785,13 @@ Mission::need_to_reset_mission()
 	if (_navigator->get_vstatus()->arming_state != vehicle_status_s::ARMING_STATE_ARMED && _need_mission_reset) {
 		_need_mission_reset = false;
 		return true;
+
+	} else if (_navigator->get_mission_result()->finished
+		   && _navigator->get_vstatus()->arming_state == vehicle_status_s::ARMING_STATE_ARMED
+		   && _need_mission_reset) {
+		/* mission is finished, need reset */
+		_need_mission_reset = false;
+		return true;
 	}
 
 	return false;
