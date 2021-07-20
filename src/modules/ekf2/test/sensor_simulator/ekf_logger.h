@@ -48,7 +48,7 @@ class EkfLogger
 {
 public:
 	EkfLogger(std::shared_ptr<Ekf> ekf);
-	~EkfLogger();
+	~EkfLogger() = default;
 	void setFilePath(std::string file_path);
 
 	void enableStateLogging() { _state_logging_enabled = true; };

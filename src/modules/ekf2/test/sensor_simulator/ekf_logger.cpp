@@ -1,13 +1,12 @@
 #include "ekf_logger.h"
 
+#include <iomanip>
+
 EkfLogger::EkfLogger(std::shared_ptr<Ekf> ekf):
 	_ekf{ekf},
 	_ekf_wrapper(ekf)
 {
-
 }
-
-EkfLogger::~EkfLogger() {}
 
 void EkfLogger::setFilePath(std::string file_path)
 {
@@ -56,7 +55,7 @@ void EkfLogger::writeState()
 			matrix::Vector<float, 24> state = _ekf->getStateAtFusionHorizonAsVector();
 
 			for (int i = 0; i < 24; i++) {
-				_file << "," << state(i);
+				_file << "," << std::setprecision(4) << state(i);
 			}
 		}
 
