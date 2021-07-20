@@ -92,7 +92,7 @@ PARAM_DEFINE_INT32(CAL_MAG_ROT_AUTO, 1);
  * @reboot_required true
  *
  */
-PARAM_DEFINE_FLOAT(SENS_MAG_RATE, 50.0f);
+PARAM_DEFINE_FLOAT(SENS_MAG_RATE, 30.0f);
 
 /**
  * Sensors hub mag mode
