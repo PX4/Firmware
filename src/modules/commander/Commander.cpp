@@ -342,6 +342,9 @@ int Commander::custom_command(int argc, char *argv[])
 			} else if (!strcmp(argv[1], "stabilized")) {
 				send_vehicle_command(vehicle_command_s::VEHICLE_CMD_DO_SET_MODE, 1, PX4_CUSTOM_MAIN_MODE_STABILIZED);
 
+			} else if (!strcmp(argv[1], "airspeed")) {
+				send_vehicle_command(vehicle_command_s::VEHICLE_CMD_DO_SET_MODE, 1, PX4_CUSTOM_MAIN_MODE_AIRSPEED);
+
 			} else if (!strcmp(argv[1], "auto:takeoff")) {
 				send_vehicle_command(vehicle_command_s::VEHICLE_CMD_DO_SET_MODE, 1, PX4_CUSTOM_MAIN_MODE_AUTO,
 						     PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF);
@@ -802,6 +805,11 @@ Commander::handle_command(const vehicle_command_s &cmd)
 
 					/* OFFBOARD */
 					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_OFFBOARD, _status_flags, _internal_state);
+
+				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_AIRSPEED) {
+					/* AIRSPEED */
+					main_ret = main_state_transition(_status, commander_state_s::MAIN_STATE_AIRSPEED, _status_flags, _internal_state);
+					printf("main_ret: %i\n", main_ret);
 				}
 
 			} else {
@@ -3227,6 +3235,13 @@ Commander::update_control_mode()
 		_vehicle_control_mode.flag_control_attitude_enabled = true;
 		break;
 
+	case vehicle_status_s::NAVIGATION_STATE_AIRSPEED:
+		_vehicle_control_mode.flag_control_manual_enabled = true;
+		_vehicle_control_mode.flag_control_rates_enabled = true;
+		_vehicle_control_mode.flag_control_attitude_enabled = true;
+		_vehicle_control_mode.flag_control_airspeed_enabled = true;
+		break;
+
 	case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
 		_vehicle_control_mode.flag_control_manual_enabled = true;
 		_vehicle_control_mode.flag_control_rates_enabled = true;
@@ -3886,6 +3901,8 @@ void Commander::estimator_check()
 	_status_flags.condition_angular_velocity_valid = (hrt_elapsed_time(&angular_velocity.timestamp) < 1_s)
 			&& PX4_ISFINITE(angular_velocity.xyz[0]) && PX4_ISFINITE(angular_velocity.xyz[1])
 			&& PX4_ISFINITE(angular_velocity.xyz[2]);
+
+	_status_flags.condition_airspeed_valid = true; // TODO: check airspeed status
 }
 
 void Commander::UpdateEstimateValidity()
@@ -4108,7 +4125,7 @@ The commander module contains the state machine for mode switching and failsafe 
 	PRINT_MODULE_USAGE_COMMAND("land");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("transition", "VTOL transition");
 	PRINT_MODULE_USAGE_COMMAND_DESCR("mode", "Change flight mode");
-	PRINT_MODULE_USAGE_ARG("manual|acro|offboard|stabilized|altctl|posctl|auto:mission|auto:loiter|auto:rtl|auto:takeoff|auto:land|auto:precland",
+	PRINT_MODULE_USAGE_ARG("manual|acro|offboard|stabilized|altctl|posctl|airspeed|auto:mission|auto:loiter|auto:rtl|auto:takeoff|auto:land|auto:precland",
 			"Flight mode", false);
 	PRINT_MODULE_USAGE_COMMAND("pair");
 	PRINT_MODULE_USAGE_COMMAND("lockdown");

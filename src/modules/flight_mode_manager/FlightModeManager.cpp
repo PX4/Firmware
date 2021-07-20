@@ -393,6 +393,10 @@ void FlightModeManager::send_vehicle_cmd_do(uint8_t nav_state)
 		command.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_LOITER;
 		break;
 
+	case vehicle_status_s::NAVIGATION_STATE_AIRSPEED:
+		command.param2 = (float)PX4_CUSTOM_MAIN_MODE_AIRSPEED;
+		break;
+
 	default: //vehicle_status_s::NAVIGATION_STATE_POSCTL
 		command.param2 = (float)PX4_CUSTOM_MAIN_MODE_POSCTL;
 		break;

@@ -300,6 +300,15 @@ main_state_transition(const vehicle_status_s &status, const main_state_t new_mai
 		ret = TRANSITION_CHANGED;
 		break;
 
+	case commander_state_s::MAIN_STATE_AIRSPEED:
+
+		/* need at minimum airspeed estimate */
+		if (status_flags.condition_airspeed_valid) {
+			ret = TRANSITION_CHANGED;
+		}
+
+		break;
+
 	case commander_state_s::MAIN_STATE_ALTCTL:
 
 		/* need at minimum altitude estimate */
@@ -457,6 +466,7 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 	case commander_state_s::MAIN_STATE_ACRO:
 	case commander_state_s::MAIN_STATE_MANUAL:
 	case commander_state_s::MAIN_STATE_STAB:
+	case commander_state_s::MAIN_STATE_AIRSPEED:
 	case commander_state_s::MAIN_STATE_ALTCTL:
 
 		// Require RC for all manual modes
@@ -476,6 +486,10 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 
 			case commander_state_s::MAIN_STATE_STAB:
 				status.nav_state = vehicle_status_s::NAVIGATION_STATE_STAB;
+				break;
+
+			case commander_state_s::MAIN_STATE_AIRSPEED:
+				status.nav_state = vehicle_status_s::NAVIGATION_STATE_AIRSPEED;
 				break;
 
 			case commander_state_s::MAIN_STATE_ALTCTL:

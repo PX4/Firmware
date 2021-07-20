@@ -261,6 +261,7 @@ private:
 	enum FW_POSCTRL_MODE {
 		FW_POSCTRL_MODE_AUTO,
 		FW_POSCTRL_MODE_POSITION,
+		FW_POSCTRL_MODE_AIRSPEED,
 		FW_POSCTRL_MODE_ALTITUDE,
 		FW_POSCTRL_MODE_OTHER
 	} _control_mode_current{FW_POSCTRL_MODE_OTHER};		///< used to check the mode in the last control loop iteration. Use to check if the last iteration was in the same mode.
