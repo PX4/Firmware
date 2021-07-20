@@ -481,15 +481,14 @@ void RCUpdate::Run()
 switch_pos_t RCUpdate::get_rc_sw3pos_position(uint8_t func, float on_th, float mid_th) const
 {
 	if (_rc.function[func] >= 0) {
-		const bool on_inv = (on_th < 0.f);
-		const bool mid_inv = (mid_th < 0.f);
 
+		// value is between 0 and 1
 		const float value = 0.5f * _rc.channels[_rc.function[func]] + 0.5f;
 
-		if (on_inv ? value < on_th : value > on_th) {
+		if ((on_th < 0.f) ? value < -on_th : value > on_th) {
 			return manual_control_switches_s::SWITCH_POS_ON;
 
-		} else if (mid_inv ? value < mid_th : value > mid_th) {
+		} else if ((mid_th < 0.f) ? value < -mid_th : value > mid_th) {
 			return manual_control_switches_s::SWITCH_POS_MIDDLE;
 
 		} else {
@@ -503,11 +502,11 @@ switch_pos_t RCUpdate::get_rc_sw3pos_position(uint8_t func, float on_th, float m
 switch_pos_t RCUpdate::get_rc_sw2pos_position(uint8_t func, float on_th) const
 {
 	if (_rc.function[func] >= 0) {
-		const bool on_inv = (on_th < 0.f);
 
+		// value is between 0 and 1
 		const float value = 0.5f * _rc.channels[_rc.function[func]] + 0.5f;
 
-		if (on_inv ? value < on_th : value > on_th) {
+		if ((on_th < 0.f) ? value < -on_th : value > on_th) {
 			return manual_control_switches_s::SWITCH_POS_ON;
 
 		} else {

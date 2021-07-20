@@ -118,6 +118,9 @@ private:
 
 	/**
 	 * Get switch position for specified function.
+	 *
+	 * @param on_th the threshold for the "on" position, from 0 to 1. To invert the switch, use 0 to -1.
+	 * @param mid_th the (lower) threshold for the "middle" position, from 0 to 1. To invert the switch, use 0 to -1.
 	 */
 	switch_pos_t	get_rc_sw3pos_position(uint8_t func, float on_th, float mid_th) const;
 	switch_pos_t	get_rc_sw2pos_position(uint8_t func, float on_th) const;
