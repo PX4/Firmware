@@ -359,8 +359,8 @@ bool BMI088_Gyroscope::FIFORead(const hrt_abstime &timestamp_sample, uint8_t sam
 		// sensor's frame is +x forward, +y left, +z up
 		//  flip y & z to publish right handed with z down (x forward, y right, z down)
 		gyro.x[i] = gyro_x;
-		gyro.y[i] = (gyro_y == INT16_MIN) ? INT16_MAX : -gyro_y;
-		gyro.z[i] = (gyro_z == INT16_MIN) ? INT16_MAX : -gyro_z;
+		gyro.y[i] = math::negate(gyro_y);
+		gyro.z[i] = math::negate(gyro_z);
 	}
 
 	_px4_gyro.set_error_count(perf_event_count(_bad_register_perf) + perf_event_count(_bad_transfer_perf) +
@@ -447,8 +447,8 @@ bool BMI088_Gyroscope::NormalRead(const hrt_abstime &timestamp_sample)
 	// sensor's frame is +x forward, +y left, +z up
 	//  flip y & z to publish right handed with z down (x forward, y right, z down)
 	x = gyro_x;
-	y = (gyro_y == INT16_MIN) ? INT16_MAX : -gyro_y;
-	z = (gyro_z == INT16_MIN) ? INT16_MAX : -gyro_z;
+	y = math::negate(gyro_y);
+	z = math::negate(gyro_z);
 
 	_px4_gyro.update(timestamp_sample, x, y, z);
 
@@ -497,8 +497,8 @@ bool BMI088_Gyroscope::SimpleFIFORead(const hrt_abstime &timestamp_sample)
 		};
 
 		gyro.x[i] = xyz[0];
-		gyro.y[i] = (xyz[1] == INT16_MIN) ? INT16_MAX : -xyz[1];
-		gyro.z[i] = (xyz[2] == INT16_MIN) ? INT16_MAX : -xyz[2];
+		gyro.y[i] = math::negate(xyz[1]);
+		gyro.z[i] = math::negate(xyz[2]);
 		gyro.samples++;
 	}
 

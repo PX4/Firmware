@@ -288,8 +288,8 @@ void ADIS16470::RunImpl()
 
 				// sensor's frame is +x forward, +y left, +z up
 				//  flip y & z to publish right handed with z down (x forward, y right, z down)
-				accel_y = (accel_y == INT16_MIN) ? INT16_MAX : -accel_y;
-				accel_z = (accel_z == INT16_MIN) ? INT16_MAX : -accel_z;
+				accel_y = math::negate(accel_y);
+				accel_z = math::negate(accel_z);
 
 				_px4_accel.update(now, accel_x, accel_y, accel_z);
 
@@ -299,8 +299,8 @@ void ADIS16470::RunImpl()
 				int16_t gyro_z = buffer.Z_GYRO_OUT;
 				// sensor's frame is +x forward, +y left, +z up
 				//  flip y & z to publish right handed with z down (x forward, y right, z down)
-				gyro_y = (gyro_y == INT16_MIN) ? INT16_MAX : -gyro_y;
-				gyro_z = (gyro_z == INT16_MIN) ? INT16_MAX : -gyro_z;
+				gyro_y = math::negate(gyro_y);
+				gyro_z = math::negate(gyro_z);
 				_px4_gyro.update(now, gyro_x, gyro_y, gyro_z);
 
 				success = true;

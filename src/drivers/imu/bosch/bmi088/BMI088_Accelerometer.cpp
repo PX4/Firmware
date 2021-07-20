@@ -500,8 +500,8 @@ bool BMI088_Accelerometer::FIFORead(const hrt_abstime &timestamp_sample, uint8_t
 				// sensor's frame is +x forward, +y left, +z up
 				//  flip y & z to publish right handed with z down (x forward, y right, z down)
 				accel.x[accel.samples] = accel_x;
-				accel.y[accel.samples] = (accel_y == INT16_MIN) ? INT16_MAX : -accel_y;
-				accel.z[accel.samples] = (accel_z == INT16_MIN) ? INT16_MAX : -accel_z;
+				accel.y[accel.samples] = math::negate(accel_y);
+				accel.z[accel.samples] = math::negate(accel_z);
 				accel.samples++;
 
 				fifo_buffer_index += 7; // move forward to next record

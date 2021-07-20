@@ -390,8 +390,8 @@ void ADIS16448::RunImpl()
 					// sensor's frame is +x forward, +y left, +z up
 					//  flip y & z to publish right handed with z down (x forward, y right, z down)
 					const int16_t accel_x = buffer.XACCL_OUT;
-					const int16_t accel_y = (buffer.YACCL_OUT == INT16_MIN) ? INT16_MAX : -buffer.YACCL_OUT;
-					const int16_t accel_z = (buffer.ZACCL_OUT == INT16_MIN) ? INT16_MAX : -buffer.ZACCL_OUT;
+					const int16_t accel_y = math::negate(buffer.YACCL_OUT);
+					const int16_t accel_z = math::negate(buffer.ZACCL_OUT);
 
 					if (accel_x != _accel_prev[0] || accel_y != _accel_prev[1] || accel_z != _accel_prev[2]) {
 						imu_updated = true;
@@ -402,8 +402,8 @@ void ADIS16448::RunImpl()
 					}
 
 					const int16_t gyro_x = buffer.XGYRO_OUT;
-					const int16_t gyro_y = (buffer.YGYRO_OUT == INT16_MIN) ? INT16_MAX : -buffer.YGYRO_OUT;
-					const int16_t gyro_z = (buffer.ZGYRO_OUT == INT16_MIN) ? INT16_MAX : -buffer.ZGYRO_OUT;
+					const int16_t gyro_y = math::negate(buffer.YGYRO_OUT);
+					const int16_t gyro_z = math::negate(buffer.ZGYRO_OUT);
 
 					if (gyro_x != _gyro_prev[0] || gyro_y != _gyro_prev[1] || gyro_z != _gyro_prev[2]) {
 						imu_updated = true;
@@ -424,8 +424,8 @@ void ADIS16448::RunImpl()
 						_px4_mag.set_temperature(temperature);
 
 						const int16_t mag_x = buffer.XMAGN_OUT;
-						const int16_t mag_y = (buffer.YMAGN_OUT == INT16_MIN) ? INT16_MAX : -buffer.YMAGN_OUT;
-						const int16_t mag_z = (buffer.ZMAGN_OUT == INT16_MIN) ? INT16_MAX : -buffer.ZMAGN_OUT;
+						const int16_t mag_y = math::negate(buffer.YMAGN_OUT);
+						const int16_t mag_z = math::negate(buffer.ZMAGN_OUT);
 						_px4_mag.update(now, mag_x, mag_y, mag_z);
 
 						_px4_baro.set_error_count(error_count);

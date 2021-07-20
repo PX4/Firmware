@@ -414,8 +414,8 @@ bool BMI055_Accelerometer::FIFORead(const hrt_abstime &timestamp_sample, uint8_t
 		// sensor's frame is +x forward, +y left, +z up
 		//  flip y & z to publish right handed with z down (x forward, y right, z down)
 		accel.x[i] = accel_x;
-		accel.y[i] = (accel_y == INT16_MIN) ? INT16_MAX : -accel_y;
-		accel.z[i] = (accel_z == INT16_MIN) ? INT16_MAX : -accel_z;
+		accel.y[i] = math::negate(accel_y);
+		accel.z[i] = math::negate(accel_z);
 	}
 
 	_px4_accel.set_error_count(perf_event_count(_bad_register_perf) + perf_event_count(_bad_transfer_perf) +
