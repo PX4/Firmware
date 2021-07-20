@@ -57,6 +57,12 @@
 
 class Navigator;
 
+/**
+ * Lower to minus this number if there is a breach in geofence while geofence action is hold
+ */
+#define NAVIGATOR_GEOFENCE_BREACH_LOWERING 10
+
+
 class Geofence : public ModuleParams
 {
 public:
@@ -137,6 +143,8 @@ public:
 	int getGeofenceAction() { return _param_gf_action.get(); }
 	float getMaxHorDistanceHome() { return _param_gf_max_hor_dist.get(); }
 	float getMaxVerDistanceHome() { return _param_gf_max_ver_dist.get(); }
+	float getVerThreshold() { return NAVIGATOR_GEOFENCE_BREACH_LOWERING; }
+
 
 	bool isHomeRequired();
 

@@ -73,7 +73,9 @@ public:
 
 	float generateLoiterAltitudeForFixedWing(geofence_violation_type_u violation_type);
 
-	float generateLoiterAltitudeForMulticopter(geofence_violation_type_u violation_type);
+	float generateLoiterAltitudeForMulticopter(geofence_violation_type_u violation_type, Geofence *geofence);
+
+	float generateBearingForMulticopter(geofence_violation_type_u violation_type, float current_heading);
 
 	float getMinHorDistToFenceMulticopter() {return _min_hor_dist_to_fence_mc;}
 

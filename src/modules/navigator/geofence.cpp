@@ -291,6 +291,11 @@ bool Geofence::checkAll(double lat, double lon, float altitude)
 		_outside_counter = 0;
 		return inside_fence;
 
+	} else if ((getGeofenceAction() == geofence_result_s::GF_ACTION_NONE)
+		   || (getGeofenceAction() == geofence_result_s::GF_ACTION_WARN)) {
+		_outside_counter = 0;
+		return true;
+
 	} else {
 		_outside_counter++;
 

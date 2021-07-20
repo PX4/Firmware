@@ -389,6 +389,7 @@ private:
 	bool		_geofence_violation_warning_sent{false}; /**< prevents spaming to mavlink */
 	GeofenceBreachAvoidance _gf_breach_avoidance;
 	hrt_abstime _last_geofence_check = 0;
+	int _last_grofence_action = geofence_result_s::GF_ACTION_NONE;
 
 	bool		_can_loiter_at_sp{false};			/**< flags if current position SP can be used to loiter */
 	bool		_pos_sp_triplet_updated{false};		/**< flags if position SP triplet needs to be published */
@@ -423,6 +424,11 @@ private:
 	float _mission_throttle{NAN};
 
 	bool _mission_landing_in_progress{false};	// this flag gets set if the mission is currently executing on a landing pattern
+
+	float _loiter_altitude_amsl{0};
+	matrix::Vector2<double> _lointer_center_lat_lon{};
+	float _bearing{0};
+
 	// if mission mode is inactive, this flag will be cleared after 2 seconds
 
 	traffic_buffer_s _traffic_buffer{};

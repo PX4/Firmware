@@ -204,13 +204,26 @@ float GeofenceBreachAvoidance::generateLoiterAltitudeForFixedWing(geofence_viola
 	}
 }
 
-float GeofenceBreachAvoidance::generateLoiterAltitudeForMulticopter(geofence_violation_type_u violation_type)
+float GeofenceBreachAvoidance::generateLoiterAltitudeForMulticopter(geofence_violation_type_u violation_type,
+		Geofence *geofence)
 {
 	if (violation_type.flags.max_altitude_exceeded) {
-		return _current_alt_amsl + _multirotor_vertical_braking_distance - _min_vert_dist_to_fence_mc;
+		return _home_alt_amsl + geofence->getMaxVerDistanceHome() - geofence->getVerThreshold();
 
 	} else {
 		return _current_alt_amsl;
+	}
+}
+
+float GeofenceBreachAvoidance::generateBearingForMulticopter(geofence_violation_type_u violation_type,
+		float current_heading)
+{
+	if (violation_type.flags.dist_to_home_exceeded || violation_type.flags.fence_violation) {
+		return get_bearing_to_next_waypoint(_current_pos_lat_lon(0), _current_pos_lat_lon(1), _home_lat_lon(0),
+						    _home_lat_lon(1));
+
+	} else {
+		return current_heading;
 	}
 }
 
